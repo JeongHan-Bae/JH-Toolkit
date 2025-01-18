@@ -1,0 +1,46 @@
+# Build artifacts
+/build/
+/out/
+/bin/
+/lib/
+/obj/
+/CMakeFiles/
+cmake-build-*/
+/CMakeCache.txt
+Makefile
+cmake_install.cmake
+compile_commands.json
+
+# C++ compiler generated files
+*.o
+*.obj
+*.so
+*.a
+*.lib
+*.dll
+*.exe
+*.exp
+*.pdb
+
+# Editor-specific files
+.idea/
+.vscode/
+*.suo
+*.ncb
+*.user
+*.sdf
+*.cbp
+*.layout
+*.clangd
+*.ccls-cache/
+*.vscode/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Debugging & Logs
+*.log
+*.swp
+*.swo
+*.bak
