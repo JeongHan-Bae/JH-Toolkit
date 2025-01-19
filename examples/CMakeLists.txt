@@ -1,3 +1,7 @@
+# Explicitly declare C++20
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # Define example directory
 add_executable(example_generator example_generator.cpp)
 add_executable(example_immutable_str example_immutable_str.cpp)

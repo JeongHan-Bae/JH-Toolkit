@@ -32,6 +32,7 @@
 #include <list>
 #include <optional>
 #include <vector>
+#include <variant>
 
 #include "sequence.h"
 
