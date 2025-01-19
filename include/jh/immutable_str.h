@@ -54,6 +54,7 @@
 #include <unordered_set>    // for std::unordered_set
 #include <string>           // for std::string
 #include <string_view>      // for std::string_view
+#include <cstdint>          // for std::uint64_t
 
 namespace jh {
     /**
