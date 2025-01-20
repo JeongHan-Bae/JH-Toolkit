@@ -61,7 +61,7 @@ TEST_CASE("STL Sequences Recognition") {
 // ✅ Extracting Sequence Value Types
 TEST_CASE("Extracting Sequence Value Types") {
     REQUIRE(std::is_same_v<jh::sequence_value_type<std::vector<int>>, int>);
-    REQUIRE(std::is_same_v<jh::sequence_value_type<std::list<const double>>, const double>);
+    REQUIRE(std::is_same_v<jh::sequence_value_type<std::array<const double, 3>>, double>);
     REQUIRE(std::is_same_v<jh::sequence_value_type<std::deque<char>>, char>);
     REQUIRE(std::is_same_v<jh::sequence_value_type<std::set<int>>, int>);
     REQUIRE(std::is_same_v<jh::sequence_value_type<std::array<float, 10>>, float>);
