@@ -1,5 +1,7 @@
 # JH Toolkit
 
+### **version: 1.0.1**
+
 **A Modern C++20 Utility Library with Coroutines, Immutable Strings, and Sequence Concepts**
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)

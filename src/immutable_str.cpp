@@ -1,3 +1,20 @@
+/**
+* Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
 #include "jh/immutable_str.h"
 
 #include <cstring>      // for std::strlen, std::memcpy, std::strcmp
@@ -5,12 +22,11 @@
 #include <algorithm>    // for std::max
 
 namespace jh {
-
-    immutable_str::immutable_str(const char* str) {
+    immutable_str::immutable_str(const char *str) {
         init_from_string(str);
     }
 
-    const char* immutable_str::c_str() const noexcept {
+    const char *immutable_str::c_str() const noexcept {
         return data_.get();
     }
 
@@ -26,7 +42,7 @@ namespace jh {
         return size_;
     }
 
-    bool immutable_str::operator==(const immutable_str& other) const noexcept {
+    bool immutable_str::operator==(const immutable_str &other) const noexcept {
         return std::strcmp(data_.get(), other.data_.get()) == 0;
     }
 
@@ -34,7 +50,7 @@ namespace jh {
         return std::hash<std::string_view>{}(std::string_view(data_.get(), size_));
     }
 
-    void immutable_str::init_from_string(const char* input_str) {
+    void immutable_str::init_from_string(const char *input_str) {
         if (!input_str) {
             // Initialize an empty string if input is null
             size_ = 0;
@@ -43,8 +59,8 @@ namespace jh {
             return;
         }
 
-        const char* start = input_str;
-        const char* end = input_str + std::strlen(input_str) - 1;
+        const char *start = input_str;
+        const char *end = input_str + std::strlen(input_str) - 1;
 
         // If auto_trim is enabled, remove leading and trailing whitespace
         if (auto_trim) {
@@ -74,12 +90,11 @@ namespace jh {
         data_[size_] = '\0';
     }
 
-    std::uint64_t atomic_str_hash::operator()(const std::shared_ptr<immutable_str>& ptr) const noexcept {
+    std::uint64_t atomic_str_hash::operator()(const std::shared_ptr<immutable_str> &ptr) const noexcept {
         return ptr->hash();
     }
 
-    bool atomic_str_eq::operator()(const atomic_str_ptr& lhs, const atomic_str_ptr& rhs) const noexcept {
+    bool atomic_str_eq::operator()(const atomic_str_ptr &lhs, const atomic_str_ptr &rhs) const noexcept {
         return *lhs == *rhs;
     }
-
 } // namespace jh
