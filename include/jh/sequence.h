@@ -30,25 +30,30 @@
  * - Provides `sequence_value_type<T>` to extract element type.
  * - Offers `is_sequence<T>` for compile-time checking.
  *
- * @version 1.0.x
+ * @version 1.1.x
  * @date 2025
  */
 
 #pragma once
 
 #include <iterator>
+#include "iterator.h"
 
 namespace jh {
     /**
-     * @brief Concept to check if a type is a sequence (immutable iterable).
+     * @brief Concept to check if a type is a valid sequence (immutable iterable).
+     * @details
+     * Ensures that the type has `begin()` and `end()` that return **iterators**.
+     * - Works for **both `std` and `jh` sequences**.
+     * - Requires `begin()` and `end()` to return **input iterators**.
+     *
      * @tparam T The type to check.
      */
     template<typename T>
     concept sequence = requires(const T t)
     {
-        // ✅ Force to use `const T`
-        { t.begin() } -> std::input_iterator;
-        { t.end() } -> std::input_iterator;
+        { t.begin() } -> input_iterator;
+        { t.end() } -> input_iterator;
     };
 
     /**

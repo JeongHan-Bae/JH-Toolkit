@@ -1,10 +1,16 @@
 # JH Toolkit
 
-### **version: 1.0.1**
+### **version: 1.1.0**
 
-**A Modern C++20 Utility Library with Coroutines, Immutable Strings, and Sequence Concepts**
+**A Modern C++20 Utility Library with Coroutine-based Generators, Immutable Strings, and Sequence Concepts**
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
+## What's New (1.1.0)
+
+- **`jh::generator<T, U>` now supports iterators** (`jh::generator<T, U>::iterator` which is actually `jh::iterator<jh::generator<T, U>>`), allowing use in **range-based for loops** for types without `send()` (i.e., `U == std::monostate`).
+- **Generators and immutable strings are now `final`**, preventing unintended inheritance.
+- **Explicit copy prohibition** for `jh::generator<T, U>` – only move construction is allowed.
 
 ## Overview
 
@@ -79,8 +85,10 @@ target_link_libraries(my_project PRIVATE jh::jh-toolkit-impl) # For compiled com
 ### 🌀 Coroutine-Based Generators (`jh::generator<T, U>`)
 - Implements **lazy evaluation** with **iterative** and **interactive** coroutine-based generators.
 - Supports `send()` to interactively send values into the generator.
+- **Now supports `iterator` (`jh::generator<T, U>::iterator`)** for range-based loops when `U == std::monostate`.
 - Provides utilities for converting generators to **`std::vector`** and **`std::list`**.
 - Designed to simplify the transition from Python’s `yield` mechanism to C++20.
+- **Explicitly prohibits copying** to prevent unintended behavior.
 
 **Example Use Case**:
 - **Efficient data streaming** without allocating large memory buffers.
@@ -134,6 +142,7 @@ For detailed API documentation, please refer to the corresponding module headers
 
 - [Coroutine-Based Generators (`generator.h`)](docs/generator.md)
 - [Immutable Strings (`immutable_str.h`)](docs/immutable_str.md)
+- [Iterator Declaration & Concept (`iterator.h`)](docs/iterator.md)
 - [Sequence Concept (`sequence.h`)](docs/sequence.md)
 
 ---

@@ -60,7 +60,7 @@
  * - **Seamless C-string Compatibility**: Provides `c_str()`[const char*], `view()`[std::string_view()],
  * and `str()`[std::string].
  *
- * @version 1.0.x
+ * @version 1.1.x
  * @date 2025
  */
 
@@ -84,7 +84,7 @@ namespace jh {
      * - **Recommended for shared use** via `std::shared_ptr<immutable_str>` to avoid unnecessary copies.
      * - **Automatically trims** leading and trailing whitespace unless `auto_trim` is set to `false`.
      */
-    struct immutable_str {
+    struct immutable_str final{
         /**
          * @brief Constructs an immutable string from a C-string.
          *
