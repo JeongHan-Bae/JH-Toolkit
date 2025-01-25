@@ -198,7 +198,7 @@ namespace jh {
     };
 
     template<typename T>
-    atomic_str_ptr make_atomic(T str) = delete;
+    [[maybe_unused]] atomic_str_ptr make_atomic(T str) = delete;
 
     /**
      * @brief Creates a shared pointer to an `immutable_str`.
