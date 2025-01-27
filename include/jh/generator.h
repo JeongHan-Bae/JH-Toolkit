@@ -51,6 +51,7 @@
 #include <vector>
 #include <variant>
 #include <stdexcept>
+#include <utility>
 
 #include "sequence.h"
 #include "iterator.h"
@@ -71,7 +72,7 @@ namespace jh {
          * This defines the type of values that are yielded by the generator.
          * It enables compatibility with standard iterator traits.
          */
-        using value_type = T;
+        using value_type [[maybe_unused]] = T;
 
         /**
          * @brief Type alias for the iterator associated with the generator.
@@ -182,16 +183,16 @@ namespace jh {
             struct awaiter {
                 promise_type &promise; ///< Reference to the coroutine promise.
 
-                static bool await_ready() { return false; } ///< Always returns false to suspend.
+                [[maybe_unused]] static bool await_ready() { return false; } ///< Always returns false to suspend.
 
-                static void await_suspend(std::coroutine_handle<>) {
+                [[maybe_unused]] static void await_suspend(std::coroutine_handle<>) {
                 } ///< No-op on suspension.
 
                 /**
                  * @brief Retrieves the last sent value or a default.
                  * @return The most recent value sent to the generator.
                  */
-                U await_resume() {
+                [[maybe_unused]] U await_resume() {
                     return promise.last_sent_value.value_or(U{});
                 }
             };
@@ -300,7 +301,7 @@ namespace jh {
          * @brief Retrieves the last value sent to the generator.
          * @return An optional containing the last sent value.
          */
-        std::optional<U> last_sent_value() {
+        [[maybe_unused]] std::optional<U> last_sent_value() {
             return co_ro.promise().last_sent_value;
         }
 
@@ -372,11 +373,11 @@ namespace jh {
      */
     template<typename T, typename U>
     struct iterator<generator<T, U> > {
-        using iterator_category = std::input_iterator_tag;
+        using iterator_category [[maybe_unused]] = std::input_iterator_tag;
         using value_type = T;
-        using difference_type = std::ptrdiff_t;
+        using difference_type [[maybe_unused]] = std::ptrdiff_t;
         using pointer = value_type *;
-        using reference = value_type &;
+        using reference [[maybe_unused]] = value_type &;
 
         std::optional<std::reference_wrapper<generator<T, U> > > gen;
         ///< Reference to the generator (optional to handle end-state).

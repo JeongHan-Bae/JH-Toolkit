@@ -63,7 +63,7 @@ namespace jh {
     };
 
     template<typename T>
-    inline constexpr bool has_value_type_v = has_value_type<T>::value;
+    [[maybe_unused]] inline constexpr bool has_value_type_v = has_value_type<T>::value;
 
     /**
      * @brief Concept to check if a type `I` is a valid input iterator.
