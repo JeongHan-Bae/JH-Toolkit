@@ -7,7 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(GNUInstallDirs)  # Ensure standardized installation directories
 
 # Define the INTERFACE library for header-only components
-add_library(jh-toolkit INTERFACE)
+add_library(jh-toolkit INTERFACE
+        include/jh/)
 target_include_directories(jh-toolkit INTERFACE
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -43,7 +44,7 @@ install(EXPORT jh-toolkitTargets
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/jh-toolkit-config-version.cmake"
-        VERSION 1.1.1
+        VERSION 1.1.2
         COMPATIBILITY SameMajorVersion
 )
 

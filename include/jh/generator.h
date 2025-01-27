@@ -48,10 +48,10 @@
 #include <coroutine>
 #include <list>
 #include <optional>
-#include <vector>
-#include <variant>
 #include <stdexcept>
 #include <utility>
+#include <variant>            // NOLINT for std::monostate in g++
+#include <vector>
 
 #include "sequence.h"
 #include "iterator.h"

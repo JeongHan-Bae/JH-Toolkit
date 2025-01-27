@@ -1,6 +1,6 @@
 # JH Toolkit
 
-### **version: 1.1.1**
+### **version: 1.1.2**
 
 **A Modern C++20 Utility Library with Coroutine-based Generators, Immutable Strings, and Sequence Concepts**
 
