@@ -501,7 +501,7 @@ namespace jh {
          * @return `true` if iterators are not equal, otherwise `false`.
          */
         bool operator!=(const iterator &other) const {
-            return *this != other;
+            return !(*this == other);
         }
 
     private:
