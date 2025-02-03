@@ -28,7 +28,7 @@ jobs:
           pip install -r requirements.txt || echo "No dependencies to install"
 
       - name: Generate dependencies.json using Python
-        run: python generate_dependencies.py
+        run: python .github/workflows/generate_dependencies.py
 
       - name: Commit and push dependencies.json
         env:
