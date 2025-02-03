@@ -1,0 +1,6 @@
+# Standard Python modules, no need to install:
+# json, re, pathlib (included in Python)
+
+# If running in a virtual environment, ensure Python 3.x is available
+# (Replace 3.x with your minimum required version)
+python>=3.6
