@@ -1,0 +1,28 @@
+{
+  "project": {
+    "name": "JH-Toolkit",
+    "version": "1.1.3",
+    "description": "A cross-platform C++20 toolkit library",
+    "platforms": ["Ubuntu", "macOS", "Windows"],
+    "source": {
+      "repository": "https://github.com/JeongHan-Bae/JH-Toolkit",
+      "download": "git clone https://github.com/JeongHan-Bae/JH-Toolkit.git"
+    }
+  },
+  "dependencies": [
+    {
+      "name": "C++20 Standard Library",
+      "platforms": ["Ubuntu", "macOS", "Windows"],
+      "install": "Already included in modern compilers (g++-10+, clang++-10+, MSVC 19.28+)",
+      "version": "C++20"
+    },
+    {
+      "name": "Catch2",
+      "platforms": ["Ubuntu", "macOS", "Windows"],
+      "install": "Debug mode only, automatically fetched via CMake FetchContent",
+      "version": "3.5.0",
+      "condition": "CMAKE_BUILD_TYPE=Debug",
+      "fetch_method": "FetchContent from GitHub"
+    }
+  ]
+}
