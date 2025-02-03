@@ -82,7 +82,7 @@ namespace jh {
          * - However, `begin()` and `end()` are only available when `U == std::monostate` (i.e., the generator does not require `send()`).
          * - This allows users to manually create iterators if needed, although we do not encourage inheritance-based customization.
          */
-        using iterator = iterator<generator>;
+        using iterator = jh::iterator<generator>; // Fixes GCC issue with iterator lookup, ensuring cross-platform stability
 
         /**
          * @brief Deleted copy constructor.

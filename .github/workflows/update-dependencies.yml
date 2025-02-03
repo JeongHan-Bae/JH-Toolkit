@@ -4,21 +4,26 @@ on:
   push:
   pull_request:
   schedule:
-    - cron: '0 0 * * *'  # Runs daily to keep dependencies up to date
+    - cron: '0 0 * * *'  # Runs daily
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   extract-dependencies:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push changes
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          persist-credentials: false  # Prevents using default credentials
 
       - name: Generate dependencies.json from CMake configuration
         run: |
           echo '{
             "project": {
               "name": "JH-Toolkit",
-              "version": "1.1.2",
+              "version": "1.1.3",
               "description": "A cross-platform C++20 toolkit library",
               "platforms": ["Ubuntu", "macOS", "Windows"],
               "source": {
@@ -45,10 +50,11 @@ jobs:
           }' > dependencies.json
 
       - name: Commit and push dependencies.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add dependencies.json
           git commit -m "Auto-update dependencies.json" || echo "No changes to commit"
-          git push || echo "No changes to push"
-
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git || echo "No changes to push"

@@ -1,6 +1,6 @@
 # JH Toolkit
 
-### **version: 1.1.2**
+### **version: 1.1.3**
 
 **A Modern C++20 Utility Library with Coroutine-based Generators, Immutable Strings, and Sequence Concepts**
 
@@ -103,12 +103,12 @@ target_link_libraries(my_project PRIVATE jh::jh-toolkit-impl) # For compiled com
 
 **Key Advantages over `std::string`**:
 
-| Feature | `jh::immutable_str`                    | `const std::string` |
-|---------|----------------------------------------|----------------------|
+| Feature               | `jh::immutable_str`                    | `const std::string`                |
+|-----------------------|----------------------------------------|------------------------------------|
 | **True Immutability** | ✅ Enforced at memory level             | ❌ Can be modified via `const_cast` |
-| **Thread Safety** | ✅ No modifications possible            | ❌ Not inherently thread-safe |
-| **Memory Efficiency** | ✅ Fixed-size allocation                | ❌ May trigger reallocation |
-| **Optimized Hashing** | ✅ Custom hash function for shared_ptrs | ❌ Uses default `std::hash` |
+| **Thread Safety**     | ✅ No modifications possible            | ❌ Not inherently thread-safe       |
+| **Memory Efficiency** | ✅ Fixed-size allocation                | ❌ May trigger reallocation         |
+| **Optimized Hashing** | ✅ Custom hash function for shared_ptrs | ❌ Uses default `std::hash`         |
 
 **Use Cases**:
 - **Global or shared string storage** where modification should be prevented.
