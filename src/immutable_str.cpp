@@ -26,6 +26,14 @@ namespace jh {
         init_from_string(str);
     }
 
+    immutable_str::immutable_str(const std::string_view sv, std::mutex &mtx) {
+        std::lock_guard lock(mtx);
+        if (std::strlen(sv.data()) != sv.size()) {
+            throw std::logic_error("jh::immutable_str does not support string views containing embedded null characters.");
+        }
+        init_from_string(sv.data());
+    }
+
     const char *immutable_str::c_str() const noexcept {
         return data_.get();
     }
@@ -47,15 +55,19 @@ namespace jh {
     }
 
     std::uint64_t immutable_str::hash() const noexcept {
-        return std::hash<std::string_view>{}(std::string_view(data_.get(), size_));
+        std::call_once(hash_flag_, [this] {
+            hash_.emplace(std::hash<std::string_view>{}(std::string_view(data_.get(), size_)));
+        });
+        return hash_.value();
     }
 
     void immutable_str::init_from_string(const char *input_str) {
         if (!input_str) {
             // Initialize an empty string if input is null
             size_ = 0;
-            data_ = std::make_unique<char[]>(1);
-            data_[0] = '\0';
+            auto data_array_ = std::make_unique<char[]>(1);
+            data_array_[0] = '\0';
+            data_ = std::move(data_array_);
             return;
         }
 
@@ -63,7 +75,7 @@ namespace jh {
         const char *end = input_str + std::strlen(input_str) - 1;
 
         // If auto_trim is enabled, remove leading and trailing whitespace
-        if (auto_trim) {
+        if (auto_trim.load()) {
             while (*start && std::isspace(static_cast<unsigned char>(*start))) {
                 ++start;
             }
@@ -71,8 +83,9 @@ namespace jh {
             // If the input contains only whitespace, treat it as an empty string
             if (*start == '\0') {
                 size_ = 0;
-                data_ = std::make_unique<char[]>(1);
-                data_[0] = '\0';
+                auto data_array_ = std::make_unique<char[]>(1);
+                data_array_[0] = '\0';
+                data_ = std::move(data_array_);
                 return;
             }
 
@@ -85,16 +98,18 @@ namespace jh {
         size_ = end - start + 1;
 
         // Allocate memory and copy the string
-        data_ = std::make_unique<char[]>(size_ + 1);
-        std::memcpy(data_.get(), start, size_);
-        data_[size_] = '\0';
+        auto data_array_ = std::make_unique<char[]>(size_ + 1);
+        std::memcpy(data_array_.get(), start, size_);
+        data_array_[size_] = '\0';
+        data_ = std::move(data_array_);
     }
 
     std::uint64_t atomic_str_hash::operator()(const std::shared_ptr<immutable_str> &ptr) const noexcept {
-        return ptr->hash();
+        return ptr ? ptr->hash() : 0;
     }
 
     bool atomic_str_eq::operator()(const atomic_str_ptr &lhs, const atomic_str_ptr &rhs) const noexcept {
+        if (!lhs || !rhs) return false;
         return *lhs == *rhs;
     }
 } // namespace jh

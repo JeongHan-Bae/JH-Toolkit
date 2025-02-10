@@ -1,6 +1,6 @@
 ### **JH Toolkit: Immutable String API Documentation**
 
-📌 **Version:** 1.1  
+📌 **Version:** 1.2  
 📅 **Date:** 2025  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
@@ -48,11 +48,13 @@ immutable string. The reasons are:
 ### **Key Features**
 
 - ✅ **True immutability** at the memory level, preventing unintended modifications.
-- ✅ **Efficient storage** using `std::unique_ptr<char[]>`, avoiding unnecessary memory reallocation.
+- ✅ **Memory Efficient**: Uses `std::unique_ptr<const char[]>` for compact storage.
 - ✅ **Thread safety** by design, with no modification APIs.
 - ✅ **Optimized hashing & comparison**, ideal for `std::unordered_map` and `std::unordered_set`.
 - ✅ **Configurable whitespace trimming**, enabled by default (`immutable_str::auto_trim = true`).
-- ✅ **C-string, `std::string`, and `std::string_view` compatibility**.
+- ✅ **Seamless C-string Compatibility**: Provides `c_str()`[const char*], `view()`[std::string_view()],
+  and `str()`[std::string].
+- ✅ **Pooling Support**: Compatible with `jh::pool` for efficient object pooling.
 
 ---
 
@@ -223,22 +225,35 @@ std::cout << (a == b);  // Output: 1 (true)
 
 ### **Global Configuration**
 
-#### 📌 `static inline bool auto_trim = true`
+#### 📌 `static inline std::atomic<bool> auto_trim = true`
 
 **Description:**  
-Controls whether **leading and trailing whitespace** is automatically removed.
+A **global flag** that controls whether **leading and trailing whitespace** should be automatically removed **before storing the string**.  
+**Trimming occurs only during initialization**—once an `immutable_str` is created, **its content never changes, regardless of `auto_trim`'s value**.
 
 🔹 **Values**
+- `true` (default) → **Trims** whitespace before storing.
+- `false` → **Preserves** the original string **without modification**.
 
-- `true` (default) → **Trims whitespace** before storage.
-- `false` → **Preserves original string**.
+🔹 **Important Notes**
+- **Trimming is performed only once, during initialization.**
+- **Once an `immutable_str` instance is created, changing `auto_trim` has no effect on existing instances.**
+- **⚠ Modifying this setting at runtime is strongly discouraged**, as it may cause **inconsistent behavior across different parts of the program**.
+- **The recommended approach** is to **set `auto_trim` correctly before creating any `immutable_str` instances** to avoid unexpected behaviors.
 
-🔹 **Example**
-
+🔹 **Example Usage**
 ```c++
-jh::immutable_str::auto_trim = false;  // Disable trimming
-jh::immutable_str imm("  padded  ");
-std::cout << imm.view();  // Output: "  padded  "
+jh::immutable_str::auto_trim = false;  // Define behavior globally before creating instances
+
+jh::immutable_str str1("   padded   ");
+std::cout << str1.view();  // Output: "   padded   " (no trimming)
+
+jh::immutable_str::auto_trim = true;   // Change setting (NOT recommended at runtime)
+
+jh::immutable_str str2("   trimmed   ");
+std::cout << str2.view();  // Output: "trimmed"
+
+std::cout << str1.view();  // Still "   padded   ", because existing instances remain unchanged
 ```
 
 ---
@@ -278,6 +293,39 @@ Creates a **shared pointer** to an `immutable_str`.
 jh::atomic_str_ptr shared_str = jh::make_atomic("Shared Example");
 ```
 
+### **Shared String Creation with Mutex Protection**
+
+#### 📌 `jh::atomic_str_ptr safe_from(std::string_view sv, std::mutex &mtx)`
+
+**Description:**  
+Creates a **shared pointer** to an `immutable_str` from a `std::string_view`, ensuring safe access.
+
+🔹 **Parameters**
+- `sv` → A `std::string_view` representing the string data.
+- `mtx` → A reference to the `std::mutex` that protects the lifetime of `sv`.
+
+🔹 **Throws**
+- `std::logic_error` → If `sv` contains embedded null (`\0`) characters.
+
+🔹 **Warning**
+- Any **implicitly convertible type** to `std::string_view` (e.g., `std::string`, `char[]`) **is allowed**.
+- The caller **must ensure** that `mtx` correctly protects the lifetime of the base string (e.g., `std::string`).
+- If the base string **changes** during `immutable_str` initialization, **undefined behavior may occur**.
+
+🔹 **Warning**
+- The caller **must ensure** that `mtx` correctly protects `sv`. If an unrelated mutex is provided, **undefined behavior may occur**.
+
+🔹 **Returns**
+- `atomic_str_ptr` → A **shared** immutable string.
+
+🔹 **Example**
+```c++
+std::mutex mtx;
+std::string shared_data = "Thread-safe string"; // Implicitly convertible to string_view
+// This is valid as long as `mtx` ensures `shared_data` does not change before immutable_str is created.
+jh::atomic_str_ptr safe_str = jh::safe_from(shared_data, mtx);
+```
+
 ---
 
 ### **Custom Hashing & Equality**
@@ -309,6 +357,24 @@ struct atomic_str_eq {
 ```c++
 std::unordered_set<jh::atomic_str_ptr, jh::atomic_str_hash, jh::atomic_str_eq> str_set;
 str_set.insert(jh::make_atomic("cached"));
+```
+---
+
+### **Pooling Support**
+
+📌 **`immutable_str` is compatible with `jh::pool` for efficient object pooling.**  
+📌 **For detailed usage, refer to **[pool.md](pool.md)**.**
+
+🔹 **Header Inclusion**
+- **No need to include `<jh/pool.h>` separately** if you are only using `jh::pool<immutable_str>`,  
+  since `immutable_str.h` already includes `pool.h`.
+
+🔹 **Example Usage**
+```c++
+jh::pool<jh::immutable_str> string_pool;  // No need to include <jh/pool.h> separately
+
+jh::atomic_str_ptr pooled_str = string_pool.acquire("Pooled String");
+std::cout << pooled_str->view();  // Output: "Pooled String"
 ```
 
 ---

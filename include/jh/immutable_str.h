@@ -36,14 +36,14 @@
  * - **Be naturally thread-safe** without requiring additional synchronization.
  *
  * ## Key Differences: `immutable_str` vs. `const std::string`
- * | Feature | `immutable_str` | `const std::string` |
- * |---------|----------------|----------------------|
- * | **True Immutability** | ✅ Enforced at memory level | ❌ Can be modified via `const_cast` |
- * | **Thread Safety** | ✅ No modifications possible | ❌ Potential unsafe modifications |
- * | **Memory Efficiency** | ✅ Fixed-size allocation | ❌ May trigger reallocation |
- * | **Copy Cost** | ✅ Can be shared via `std::shared_ptr` | ✅ Can be shared via `std::shared_ptr` |
- * | **Comparison & Hashing** | ✅ Custom methods avoid full data access | ❌ Default methods may require deep comparison |
- * | **Structure Simplicity** | ✅ Minimal overhead | ❌ Larger, manages dynamic capacity |
+ * | Feature                  | `immutable_str`                         | `const std::string`                           |
+ * |--------------------------|-----------------------------------------|-----------------------------------------------|
+ * | **True Immutability**    | ✅ Enforced at memory level             | ❌ Can be modified via `const_cast`           |
+ * | **Thread Safety**        | ✅ No modifications possible            | ❌ Potential unsafe modifications             |
+ * | **Memory Efficiency**    | ✅ Fixed-size allocation                | ❌ May trigger reallocation                   |
+ * | **Copy Cost**            | ✅ Can be shared via `std::shared_ptr`  | ✅ Can be shared via `std::shared_ptr`        |
+ * | **Comparison & Hashing** | ✅ Custom methods avoid full data access| ❌ Default methods may require deep comparison|
+ * | **Structure Simplicity** | ✅ Minimal overhead                     | ❌ Larger, manages dynamic capacity           |
  *
  * ## Best Practice
  * - `immutable_str` is **recommended for shared immutable storage**, especially in multithreaded applications.
@@ -54,13 +54,15 @@
  * ## Key Features
  * - **Immutable & Thread-Safe**: Once created, cannot be modified.
  * - **Configurable Trimming**: `static auto_trim` flag controls whitespace removal.
- * - **Memory Efficient**: Uses `std::unique_ptr<char[]>` for compact storage.
+ * - **Memory Efficient**: Uses `std::unique_ptr<const char[]>` for compact storage.
  * - **Optimized for Hash Containers**: Custom hashing and comparison methods allow efficient key lookup.
  * - **Recommended for Shared Use**: `std::shared_ptr<immutable_str>` enables efficient string sharing.
  * - **Seamless C-string Compatibility**: Provides `c_str()`[const char*], `view()`[std::string_view()],
  * and `str()`[std::string].
+ * - **Constructing**: Supports construction from [C-strings] and [`std::string_view` with mutex protection].
+ * - **Pooling Support**: Compatible with `jh::pool` for efficient object pooling.
  *
- * @version 1.1.x
+ * @version 1.2.x
  * @date 2025
  */
 
@@ -72,6 +74,7 @@
 #include <string>           // for std::string
 #include <string_view>      // for std::string_view
 #include <cstdint>          // for std::uint64_t
+#include "pool.h"
 
 namespace jh {
     /**
@@ -84,12 +87,18 @@ namespace jh {
      * - **Recommended for shared use** via `std::shared_ptr<immutable_str>` to avoid unnecessary copies.
      * - **Automatically trims** leading and trailing whitespace unless `auto_trim` is set to `false`.
      */
-    struct immutable_str final{
+    struct immutable_str final {
         /**
          * @brief Constructs an immutable string from a C-string.
          *
          * @param str A null-terminated C-string (ownership transferred).
-         * @note Trimming behavior depends on `immutable_str::auto_trim`.
+         * @note
+         * - This constructor is `explicit` to **prevent unintended implicit conversions** when passing single values.
+         *   This ensures that initialization does not involve unexpected conversions that could lead to **data races**
+         *   or modification of the intended input.
+         * - The `const char*` parameter is specifically chosen for **seamless compatibility** with
+         *   LLVM `extern "C"` APIs, ensuring safe and efficient interoperability with C-style strings.
+         * - Trimming behavior depends on `immutable_str::auto_trim`.
          */
         explicit immutable_str(const char *str);
 
@@ -99,13 +108,50 @@ namespace jh {
         template<typename T>
         explicit immutable_str(T) = delete;
 
-        // Deleted copy/move constructors and assignment operators
+        /**
+         * @brief Constructs an immutable string from a `std::string_view` with a mutex.
+         *
+         * @param sv A `std::string_view` representing the string data.
+         * @param mtx A reference to the `std::mutex` that protects the lifetime of the base-struct of `sv`.
+         *
+         * @throws std::logic_error If `sv` contains embedded null (`\0`) characters.
+         *
+         * @warning The caller must ensure that `mtx` is the correct mutex protecting `sv`.
+         *          If an unrelated mutex is provided, undefined behavior may occur.
+         */
+        immutable_str(std::string_view sv, std::mutex &mtx);
+
+        /**
+         * @brief Deleted copy constructor.
+         * @details
+         * `immutable_str` manages its string data using `std::unique_ptr<const char[]>`, which
+         * enforces exclusive ownership. Copying would require duplicating the underlying string
+         * data, which is not permitted.
+         * - To prevent unintended shallow copies and enforce immutability, the copy constructor
+         *   is explicitly deleted.
+         */
         immutable_str(const immutable_str &) = delete;
 
-        immutable_str &operator=(const immutable_str &) = delete;
-
+        /**
+         * @brief Deleted move constructor.
+         * @details
+         * Unlike typical moveable types, `immutable_str` does not support move semantics because
+         * immutable objects should not be transferred but rather shared.
+         * - Movement would mean transferring ownership of the internal buffer, which contradicts
+         *   the intended immutability.
+         * - Instead of moving, `immutable_str` instances should be managed with
+         *   `std::shared_ptr<jh::immutable_str>` to enable safe sharing.
+         */
         immutable_str(immutable_str &&) = delete;
 
+        /**
+         * @brief Deleted move assignment operator.
+         * @details
+         * Move assignment is disallowed because `immutable_str` is designed to be immutable, meaning
+         * its internal state should not be modified after creation.
+         * - Transferring ownership through assignment would break this principle.
+         * - Rather than moving, use `std::shared_ptr<jh::immutable_str>` to safely share instances.
+         */
         immutable_str &operator=(immutable_str &&) = delete;
 
         /**
@@ -150,12 +196,18 @@ namespace jh {
          *
          * - `true` (default): Trim leading/trailing whitespace.
          * - `false`: Preserve original string.
+         *
+         * @note
+         * `auto_trim` is a static global setting. Modifying it at runtime in a multithreaded environment
+         * may lead to race conditions. All instances of `immutable_str` will respect the current policy.
          */
-        static inline bool auto_trim = true;
+        static inline std::atomic<bool> auto_trim = true;
 
     private:
         uint64_t size_ = 0; ///< Length of the string
-        std::unique_ptr<char[]> data_; ///< Immutable string data
+        std::unique_ptr<const char[]> data_; ///< Immutable string data
+        mutable std::optional<std::uint64_t> hash_{std::nullopt}; ///< Cached hash value
+        mutable std::once_flag hash_flag_; ///< Ensures thread-safe lazy initialization
 
         /**
          * @brief Initializes the string from a C-string, with optional trimming.
@@ -172,6 +224,7 @@ namespace jh {
      * Using `std::shared_ptr<immutable_str>` avoids unnecessary deep copies of string data.
      */
     using atomic_str_ptr = std::shared_ptr<immutable_str>;
+    using weak_str_ptr = std::weak_ptr<immutable_str>;
 
     /**
      * @brief Custom hash function for `atomic_str_ptr`.
@@ -208,5 +261,25 @@ namespace jh {
      */
     inline atomic_str_ptr make_atomic(const char *str) {
         return std::make_shared<immutable_str>(str);
+    }
+
+    /**
+     * @brief Creates a shared pointer to an `immutable_str` from a `std::string_view` with a mutex.
+     *
+     * @param sv A `std::string_view` representing the string data.
+     * @param mtx A reference to the `std::mutex` that protects the lifetime of the base-struct of `sv`.
+     *
+     * @throws std::logic_error If `sv` contains embedded null (`\0`) characters.
+     *
+     * @warning The caller must ensure that `mtx` is the correct mutex protecting `sv`.
+     *          If an unrelated mutex is provided, undefined behavior may occur.
+     *
+     * @return A shared pointer to an `immutable_str`, ensuring safe access.
+     *
+     * @note This function is useful when dealing with `std::string_view` obtained from temporary or mutable sources
+     *       that require explicit locking to guarantee a valid string lifetime.
+     */
+    inline atomic_str_ptr safe_from(std::string_view sv, std::mutex &mtx) {
+        return std::make_shared<immutable_str>(sv, mtx);
     }
 } // namespace jh

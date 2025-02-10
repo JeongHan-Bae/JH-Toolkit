@@ -8,7 +8,7 @@
  *
  * ## Key Features
  * - **Immutable & Thread-Safe**: Once created, it cannot be modified.
- * - **Efficient Storage**: Uses `std::unique_ptr<char[]>` to minimize memory overhead.
+ * - **Efficient Storage**: Uses `std::unique_ptr<const char[]>` to minimize memory overhead.
  * - **Automatic Trimming**: Optionally removes leading/trailing whitespace.
  * - **Optimized for Hashing**: Designed for use in hash containers.
  * - **Supports Shared Ownership**: `std::shared_ptr<immutable_str>` allows efficient reference sharing.
@@ -16,7 +16,10 @@
  * ## Best Practices
  * - Use `immutable_str` when **storing fixed strings**, especially in **multithreaded applications**.
  * - Avoid passing `std::string_view` or `std::string` directly to the constructor to prevent unintended behavior.
- * - Utilize `make_atomic()` to create shared immutable strings efficiently.
+ * - Single parameter constructor is only available to [const char*] to prevent unintended conversions and ensure
+ *   LLVM extern "C" compatibility.
+ * - Any struct implicitly convertible to `std::string_view` can be used with a protecting mutex to ensure safe construction.
+ * - Utilize `make_atomic()` or `safe_from()` to create shared immutable strings efficiently.
  *
  * ## Linking Requirement
  * Since this module has an associated **source file**, ensure that you **link against `jh-toolkit-impl`**
@@ -136,6 +139,49 @@ namespace example {
 
         std::cout << "Set size (should be 2): " << immutable_set.size() << "\n";
     }
+
+    /**
+     * @brief Demonstrates safe construction from `std::string_view` with a mutex.
+     *
+     * - Ensures the **source data is properly synchronized** before creating an immutable string.
+     */
+    void safe_construct() {
+        std::cout << "\n🔹 Safe Construction with `std::string_view`:\n";
+
+        std::mutex mtx;
+        const std::string shared_data = "Thread-safe string";
+
+        // Safe construction with mutex protection
+        const jh::atomic_str_ptr safe_str = jh::safe_from(shared_data, mtx);
+
+        std::cout << "Safely constructed immutable string: " << safe_str->view() << "\n";
+    }
+
+    /**
+     * @brief Demonstrates pooling of immutable strings.
+     *
+     * - Uses `jh::pool<immutable_str>` to avoid duplicate allocations.
+     * - Shows that **identical strings are pooled together**.
+     */
+    void pooling() {
+        std::cout << "\n🔹 Pooling Immutable Strings:\n";
+
+        jh::pool<jh::immutable_str> string_pool;
+
+        auto pooled1 = string_pool.acquire("Pooled String");
+        auto pooled2 = string_pool.acquire("Pooled String");
+        const auto pooled3 = string_pool.acquire("Different String");
+
+        std::cout << "Pooled1 == Pooled2: " << (pooled1 == pooled2) << "\n";
+        std::cout << "Pooled1 != Pooled3: " << (pooled1 != pooled3) << "\n";
+        std::cout << "Pool size: " << string_pool.size() << "\n";
+
+        pooled1.reset();
+        pooled2.reset();
+
+        string_pool.cleanup(); // Remove expired references
+        std::cout << "After cleanup, pool size: " << string_pool.size() << "\n";
+    }
 } // namespace example
 
 /**
@@ -146,5 +192,7 @@ int main() {
     example::hashing_and_comparison();
     example::auto_trim_behavior();
     example::hash_container_usage();
+    example::safe_construct();
+    example::pooling();
     return 0;
 }
