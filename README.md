@@ -1,6 +1,6 @@
 # JH Toolkit
 
-### **version: 1.2.0**
+### **version: 1.2.1**
 
 **A Modern C++20 Utility Library with Coroutine-based Generators, Behavior-defined Iterator Concepts, Immutable Strings, Sequence Concepts and Weak pointer-based Object Pooling.**
 
