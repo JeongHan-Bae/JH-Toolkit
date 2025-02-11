@@ -63,8 +63,12 @@
 
 #include <atomic>
 #include <cstdint>          // for std::uint64_t
+#include <algorithm>        // for std::copy_if
+#include <vector>           // for std::vector
+#include <unordered_set>    // for std::unordered_set
+#include <mutex>            // For std::shared_mutex
 #include <shared_mutex>
-#include <unordered_set>
+
 
 namespace jh {
     /**
@@ -123,7 +127,7 @@ namespace jh {
          * @tparam Args Constructor arguments for `T`.
          */
         template<typename... Args>
-        std::shared_ptr<T> acquire(Args &&... args) const = delete;
+        [[maybe_unused]] std::shared_ptr<T> acquire(Args &&... args) const = delete;
 
         /**
          * @brief Retrieves an object from the pool, or creates a new one if none exists.
@@ -150,14 +154,18 @@ namespace jh {
          * This helps maintain an efficient pool size and prevents unnecessary memory usage.
          */
         void cleanup() {
-            std::unique_lock write_lock(pool_mutex_);
-            for (auto it = pool_.begin(); it != pool_.end();) {
-                if (it->expired()) {
-                    it = pool_.erase(it);
-                } else {
-                    ++it;
-                }
-            }
+            std::lock_guard<std::shared_mutex> lock(pool_mutex_);
+            // Step 1: Collect valid weak_ptrs using STL algorithms
+            std::vector<std::weak_ptr<T>> valid_elements;
+            valid_elements.reserve(pool_.size());
+
+            std::copy_if(pool_.begin(), pool_.end(), std::back_inserter(valid_elements),
+                         [](const std::weak_ptr<T> &w_ptr) { return !w_ptr.expired(); });
+
+            // Step 2: Safely replace `pool_` inside the lock
+            pool_.clear();
+            pool_.insert(std::make_move_iterator(valid_elements.begin()),
+                         std::make_move_iterator(valid_elements.end()));
         }
 
         /**

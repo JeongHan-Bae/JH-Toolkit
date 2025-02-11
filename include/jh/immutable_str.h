@@ -74,6 +74,7 @@
 #include <string>           // for std::string
 #include <string_view>      // for std::string_view
 #include <cstdint>          // for std::uint64_t
+#include <optional>         // for std::optional
 #include "pool.h"
 
 namespace jh {
@@ -135,7 +136,7 @@ namespace jh {
         /**
          * @brief Deleted move constructor.
          * @details
-         * Unlike typical moveable types, `immutable_str` does not support move semantics because
+         * Unlike typical movable types, `immutable_str` does not support move semantics because
          * immutable objects should not be transferred but rather shared.
          * - Movement would mean transferring ownership of the internal buffer, which contradicts
          *   the intended immutability.
@@ -224,7 +225,7 @@ namespace jh {
      * Using `std::shared_ptr<immutable_str>` avoids unnecessary deep copies of string data.
      */
     using atomic_str_ptr = std::shared_ptr<immutable_str>;
-    using weak_str_ptr = std::weak_ptr<immutable_str>;
+    using weak_str_ptr [[maybe_unused]] = std::weak_ptr<immutable_str>;
 
     /**
      * @brief Custom hash function for `atomic_str_ptr`.
