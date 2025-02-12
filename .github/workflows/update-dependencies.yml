@@ -4,51 +4,77 @@ on:
   push:
   pull_request:
   schedule:
-    - cron: '0 0 * * *'  # Runs daily
+    - cron: '0 0 * * *'  # Runs daily at midnight UTC
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
   extract-dependencies:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Required to push changes
+      contents: write  # Required to commit and push changes
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          persist-credentials: false  # Prevents using default credentials
+          persist-credentials: false  # Prevents overwriting SSH configuration
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.x'  # Installs the latest Python 3.x version
 
-      - name: Install dependencies (if required)
+      - name: Install dependencies
         run: |
           pip install -r requirements.txt || echo "No dependencies to install"
 
-      - name: Generate dependencies.json using Python
+      - name: Generate dependencies.json using Python script
         run: python .github/workflows/generate_dependencies.py
 
-      - name: Setup SSH Signing Key
+      - name: Set up SSH Signing Key
         run: |
+          # Create SSH directory if it does not exist
           mkdir -p ~/.ssh
+
+          # Retrieve the private key from GitHub Secrets
           echo "${{ secrets.SSH_SIGNING_KEY }}" > ~/.ssh/id_ed25519_signing
+
+          # Secure the private key
           chmod 600 ~/.ssh/id_ed25519_signing
+
+          # Add GitHub to known hosts to avoid SSH verification issues
           ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+
+          # Start ssh-agent and add the private key for signing
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_ed25519_signing
 
       - name: Configure Git for Signed Commits
         run: |
+          # Enable SSH key-based commit signing
           git config --global gpg.format ssh
-          git config --global user.signingkey ~/.ssh/id_ed25519_signing.pub
+          git config --global user.signingkey ~/.ssh/id_ed25519_signing  # Using private key
+
+          # Force Git to sign all commits
           git config --global commit.gpgsign true
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Configure Git identity
+          git config --global user.name "JeongHan-Bae"
+          git config --global user.email "mastropseudo@gmail.com"
+
+      - name: Debug Dependencies File
+        run: |
+          # Ensure dependencies.json exists before attempting to commit
+          ls -lah dependencies.json || echo "dependencies.json not found"
 
       - name: Commit and push dependencies.json
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub token for authentication
         run: |
+          # Add dependencies.json to Git
           git add dependencies.json
+
+          # Create a signed commit (will not fail if no changes)
           git commit -S -m "Auto-update dependencies.json" || echo "No changes to commit"
+
+          # Push changes back to the repository
           git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git || echo "No changes to push"
