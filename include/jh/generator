@@ -1,0 +1,11 @@
+/**
+ * @file generator
+ * @brief Forwarding header for jh::generator
+ *
+ * This header exists to provide a modern include style (`#include <jh/generator>`),
+ * forwarding to `jh/generator.h`. It contains no additional code.
+ */
+
+#pragma once
+
+#include "jh/generator.h"

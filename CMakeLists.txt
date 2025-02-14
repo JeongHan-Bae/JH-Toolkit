@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 3.20)
 project(jh-toolkit LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -44,7 +44,7 @@ install(EXPORT jh-toolkitTargets
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/jh-toolkit-config-version.cmake"
-        VERSION 1.2.1
+        VERSION 1.2.2
         COMPATIBILITY SameMajorVersion
 )
 

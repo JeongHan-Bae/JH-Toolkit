@@ -1,0 +1,11 @@
+/**
+ * @file sim_pool
+ * @brief Forwarding header for jh::sim_pool
+ *
+ * This header exists to provide a modern include style (`#include <jh/sim_pool>`),
+ * forwarding to `jh/sim_pool.h`. It contains no additional code.
+ */
+
+#pragma once
+
+#include "jh/sim_pool.h"

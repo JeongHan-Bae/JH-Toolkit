@@ -1,0 +1,11 @@
+/**
+ * @file iterator
+ * @brief Forwarding header for jh::iterator
+ *
+ * This header exists to provide a modern include style (`#include <jh/iterator>`),
+ * forwarding to `jh/iterator.h`. It contains no additional code.
+ */
+
+#pragma once
+
+#include "jh/iterator.h"

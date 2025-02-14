@@ -1,0 +1,11 @@
+/**
+ * @file sequence
+ * @brief Forwarding header for jh::sequence
+ *
+ * This header exists to provide a modern include style (`#include <jh/sequence>`),
+ * forwarding to `jh/sequence.h`. It contains no additional code.
+ */
+
+#pragma once
+
+#include "jh/sequence.h"

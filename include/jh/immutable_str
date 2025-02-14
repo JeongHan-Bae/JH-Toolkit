@@ -1,0 +1,11 @@
+/**
+ * @file immutable_str
+ * @brief Forwarding header for jh::immutable_str
+ *
+ * This header exists to provide a modern include style (`#include <jh/immutable_str>`),
+ * forwarding to `jh/immutable_str.h`. It contains no additional code.
+ */
+
+#pragma once
+
+#include "jh/immutable_str.h"

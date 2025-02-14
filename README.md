@@ -1,14 +1,20 @@
 # JH Toolkit
 
-### **version: 1.2.1**
+### **version: 1.2.2**
 
-**A Modern C++20 Utility Library with Coroutine-based Generators, Behavior-defined Iterator Concepts, Immutable Strings, Sequence Concepts and Weak pointer-based Object Pooling.**
+**A Modern C++20 Utility Library with Coroutine-based Generators, Behavior-defined Concepts, Immutable Strings and Weak pointer-based Object Pooling.**
 
 ---
 
-🚀 **JH Toolkit 1.2.0 - Fully Functional Version, Cross-Platform Patches and Stable Release Coming Soon!**  
-⚠️ **This version is feature-complete and has been successfully tested on macOS (Clang).**  
-Future patches (`1.2.x`) will focus on **cross-platform support (GCC, MinGW) and minor refinements**. MSVC support is not planned yet.
+🚀 **JH Toolkit 1.2.2 - Cross-Platform Compatibility Improved, Now Tested on Windows (MinGW), macOS (Clang), and Ubuntu (GCC).**
+
+✅ **CMake build requirement lowered to 3.20+ for broader system compatibility.**  
+✅ **CMake usage requirement remains 3.14+.**
+
+🆕 **New Feature:**
+- **Unified Header Inclusion:** You can now include headers using either `#include <jh/header>` or `#include <jh/header.h>` interchangeably.
+
+Future patches (`1.2.x`) will continue to enhance **cross-platform support**, refine build configurations, and potentially introduce more detailed test cases. MSVC support is not planned yet.
 
 🟢 **Looking for the last stable release?**  
 👉 Check out **[JH Toolkit 1.1.3 (Latest Stable Release)](https://github.com/JeongHan-Bae/JH-Toolkit/releases/latest)**
@@ -17,14 +23,11 @@ Future patches (`1.2.x`) will focus on **cross-platform support (GCC, MinGW) and
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-## 🚀 What's New in 1.2.0 (Feature-Complete 🎉)
+## 🚀 What's New in 1.2.0+ (Feature-Complete with Cross-Platform Support)
 
-### 🔥 **JH Toolkit 1.2.0 is Feature-Complete!**
+### 🔥 **JH Toolkit is Now Feature-Complete!**
 
-This version includes major improvements to **immutable strings** and **object pooling**, and has been successfully tested on **macOS Clang**.  
-Upcoming `1.2.x` patches will focus on **cross-platform refinements (GCC, MinGW)**.
-
-In **version 1.2.0**, we have introduced significant enhancements to **immutable strings** and added a powerful **object pooling system** to improve performance and memory efficiency. Here’s what’s new:
+This version includes major improvements to **immutable strings** and **object pooling**, with extensive cross-platform testing.
 
 #### 🚀 **New Features & Enhancements**
 1. **Enhanced `jh::immutable_str`**
@@ -89,7 +92,7 @@ git clone https://github.com/JeongHan-Bae/jh-toolkit.git
 git clone --branch JH-Toolkit-1.1.3 --depth=1 https://github.com/JeongHan-Bae/jh-toolkit.git
 ```
 👉 Or download from: **[JH Toolkit 1.1.3 Release Page](https://github.com/JeongHan-Bae/JH-Toolkit/releases/tag/JH-Toolkit-1.1.3)**
-```
+---
 
 ### 1️⃣ Build and Install
 
@@ -104,7 +107,7 @@ sudo cmake --install build
 If installation is successful, you should be able to include and use `jh-toolkit` in a minimal program:
 
 ```c++
-#include <jh/immutable_str.h>
+#include <jh/immutable_str> // or <jh/immutable_str.h>
 #include <iostream>
 
 int main() {

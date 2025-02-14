@@ -1,0 +1,11 @@
+/**
+ * @file pool
+ * @brief Forwarding header for jh::pool
+ *
+ * This header exists to provide a modern include style (`#include <jh/pool>`),
+ * forwarding to `jh/pool.h`. It contains no additional code.
+ */
+
+#pragma once
+
+#include "jh/pool.h"
