@@ -25,9 +25,9 @@
  * Unlike `const std::string`, which only **restricts modification at the API level**, `immutable_str` **ensures true immutability at the data level**.
  *
  * ## Motivation
- * In C++, `std::string` is inherently mutable, even when marked as `const`. This leads to issues such as:
+ * In C++, `std::string` is inherently mutable, even when marked as `const`. This leads to issues such as
  * - **Unintended modification** when cast away from `const`.
- * - **Reallocation overhead** due to copy-on-write or implicit resizing.
+ * - **Reallocation overhead** due to *copy-on-write* or implicit resizing.
  * - **Thread safety concerns** since `std::string`'s internal buffer can be modified in some contexts.
  *
  * `immutable_str` is designed to:
@@ -69,9 +69,10 @@
 #pragma once
 
 #include <memory>           // for std::unique_ptr, std::shared_ptr
-#include <unordered_map>    // for std::unordered_map
-#include <unordered_set>    // for std::unordered_set
+#include <unordered_map>    // NOLINT for std::unordered_map
+#include <unordered_set>    // NOLINT for std::unordered_set
 #include <string>           // for std::string
+#include <cstring>          // for strlen
 #include <string_view>      // for std::string_view
 #include <cstdint>          // for std::uint64_t
 #include <optional>         // for std::optional
@@ -113,7 +114,7 @@ namespace jh {
          * @brief Constructs an immutable string from a `std::string_view` with a mutex.
          *
          * @param sv A `std::string_view` representing the string data.
-         * @param mtx A reference to the `std::mutex` that protects the lifetime of the base-struct of `sv`.
+         * @param mtx A reference to the `std::mutex` that protects the lifetime of the base-struct containing `sv`.
          *
          * @throws std::logic_error If `sv` contains embedded null (`\0`) characters.
          *
@@ -357,7 +358,7 @@ namespace jh {
      * @brief Creates a shared pointer to an `immutable_str` from a `std::string_view` with a mutex.
      *
      * @param sv A `std::string_view` representing the string data.
-     * @param mtx A reference to the `std::mutex` that protects the lifetime of the base-struct of `sv`.
+     * @param mtx A reference to the `std::mutex` that protects the lifetime of the base-struct containing `sv`.
      *
      * @throws std::logic_error If `sv` contains embedded null (`\0`) characters.
      *

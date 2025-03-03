@@ -17,7 +17,6 @@
 
 #include "jh/immutable_str.h"
 
-#include <cstring>      // for std::strlen, std::memcpy, std::strcmp
 #include <cctype>       // for std::isspace
 #include <algorithm>    // for std::max
 

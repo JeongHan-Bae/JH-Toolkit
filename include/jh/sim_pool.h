@@ -52,7 +52,7 @@
  * - Objects will **remain in the pool** until `expand_and_cleanup()` is triggered.
  * - If `Eq` treats expired objects as equal, they **WILL NOT be removed** automatically.
  *
- * **For automatic pooling of types that already implement `operator==` and `T::hash()`,**
+ * **For automatic pooling of types that already implement `operator==` and `T::hash()`**,
  * consider using `jh::pool<T>` by including `<jh/pool.h>`.
  *
  * @version 1.2.x
@@ -167,6 +167,35 @@ namespace jh {
             pool_.insert(std::make_move_iterator(valid_elements.begin()),
                          std::make_move_iterator(valid_elements.end()));
         }
+
+        /**
+         * @brief Cleans up expired weak pointers and shrinks the reserved size if necessary.
+         *
+         * @details
+         * - This function first removes expired `weak_ptr`s from the pool, just like `cleanup()`.
+         * - After cleanup, it checks if the current pool size is **less than 1/4** of the reserved size:
+         *   - If true, it **shrinks the reserved size by half** (but never below `MIN_RESERVED_SIZE`).
+         *   - This ensures the pool does not hold excessive reserved memory when underutilized.
+         */
+        void cleanup_shrink() {
+            std::lock_guard<std::shared_mutex> lock(pool_mutex_);
+            // Step 1: Collect valid weak_ptrs using STL algorithms
+            std::vector<std::weak_ptr<T>> valid_elements;
+            valid_elements.reserve(pool_.size());
+
+            std::copy_if(pool_.begin(), pool_.end(), std::back_inserter(valid_elements),
+                         [](const std::weak_ptr<T> &w_ptr) { return !w_ptr.expired(); });
+
+            // Step 2: Safely replace `pool_` inside the lock
+            pool_.clear();
+            pool_.insert(std::make_move_iterator(valid_elements.begin()),
+                         std::make_move_iterator(valid_elements.end()));
+            auto current_size = pool_.size();
+            if (const auto current_reserved = reserved_size_.load(); current_size <= current_reserved / 4) {
+                reserved_size_.store(std::max(current_reserved / 2, MIN_RESERVED_SIZE));
+            }
+        }
+
 
         /**
          * @brief Gets the current number of elements in the pool.

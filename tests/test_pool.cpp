@@ -238,7 +238,7 @@ TEST_CASE("sim_pool multithreading without storing shared_ptr") {
             // 🎯 Since shared_ptrs are not stored, weak_ptrs may become expired,
             // but size() does not necessarily become 0 until expand_and_cleanup is triggered
             REQUIRE(pool.size() <= OBJECTS_PER_THREAD * THREADS);
-            pool.cleanup(); // 🎯 Explicit cleanup
+            pool.cleanup_shrink(); // 🎯 Explicit cleanup
             REQUIRE(pool.reserved_size() == test::CustomizedPool::MIN_RESERVED_SIZE);
             // 🎯 reserved_size should remain unchanged
             REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
@@ -274,7 +274,7 @@ TEST_CASE("pool multithreading without storing shared_ptr") {
             // 🎯 Since shared_ptrs are not stored, weak_ptrs may become expired,
             // but size() does not necessarily become 0 until expand_and_cleanup is triggered
             REQUIRE(pool.size() <= OBJECTS_PER_THREAD * THREADS);
-            pool.cleanup(); // 🎯 Explicit cleanup
+            pool.cleanup_shrink(); // 🎯 Explicit cleanup
             REQUIRE(pool.reserved_size() == test::DeducedPool::MIN_RESERVED_SIZE);
             // 🎯 reserved_size should remain unchanged
             REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
