@@ -39,6 +39,7 @@
 #include <iterator>
 
 namespace jh {
+
     /**
      * @brief Forward declaration of the `iterator` class template.
      * @details
@@ -153,4 +154,27 @@ namespace jh {
         { it++ } -> std::same_as<T>;
         { *it };
     };
+
+    /**
+     * @brief Extracts the iterator type of some container.
+     *
+     * `iterator_t<Container>` is a type alias used to deduce the iterator type of a given container `Container`.
+     * It is designed for **custom containers** that are compatible with `jh::iterator<>`.
+     *
+     * @tparam Container The container type whose iterator type needs to be deduced.
+     *
+     * @details
+     * - The iterator type is determined via `jh::iterator<Container>::type`.
+     * - `iterator_t<Container>` may be `jh::iterator<Container>`, such as for `jh::generator`.
+     * - For certain linear structures, `iterator_t<Container>` may resolve to `T*`, for example,
+     *   `jh::runtime_arr<T>` (planned for release in v1.3+) uses `T*` as its iterator type.
+     * .
+     * ## Usage Scenarios:
+     * - **Generic programming**: Allows obtaining the iterator type without explicitly specifying `Container::iterator`.
+     *   - For continuous linear structures, `T*` can be used as `jh::iterator<Container<T>>::type`.
+     * - **Concept-based programming**: Can be used in `concept` constraints for **SFINAE** and **template metaprogramming**.
+     * - Supports **STL-style containers** and **custom containers**, provided they are adapted to `jh::iterator<>`.
+     */
+    template<typename Container>
+    using iterator_t = typename iterator<Container>::type;
 } // namespace jh

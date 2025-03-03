@@ -13,19 +13,19 @@ JH-Toolkit follows a **semantic versioning** format:
 MAJOR.MINOR.PATCH
 ```
 
-- **PATCH (x.y.Z)** – Incremented for **cross-platform adaptations, standard conformance fixes, or bug fixes**.
+- **PATCH (x.y.Z)** – Incremented for **bug fixes**, **cross-platform adaptations**, or **small functionality enhancements** in existing modules.
   - Example: `1.0.0 → 1.0.1`
-- **MINOR (x.Y.0)** – Incremented when **adding features to an existing module**.
-  - Example: `1.0.{} → 1.1.0`
-- **MAJOR (X.0.0)** – Incremented when **introducing a new independent module**.
-  - Example: `1.{}.{} → 2.0.0`
+- **MINOR (x.Y.0)** – Incremented when **multiple features** are added together, not as a single feature addition.
+  - Example: `1.0.0 → 1.1.0` (features added together in a minor release)
+- **MAJOR (X.0.0)** – Incremented for **large-scale, planned improvements** or changes in functionality.
+  - Example: `1.2.0 → 2.0.0` (moving towards a significant milestone with additional features like benchmarks or performance optimizations)
 
 ### PR Naming and Documentation
 - Every **new PR** must **include the version number** in its **title**.
   - Example:
     ```
-    [1.1.0] Add new ... utilities for ... module
-    [1.0.2] Fix ... Platform compatibility for ... module
+    [1.1.0] Add new utilities for ... module
+    [1.0.2] Fix platform compatibility for ... module
     ```
 - The **README version number must be updated** at the beginning of the file:
   ```md
@@ -90,8 +90,10 @@ struct immutable_str {
 
 ### 2. **Stable Version Releases**
 - **New features can only be introduced if the previous version has a stable release.**
-- The **project owner** will **release a stable version** based on the most recent **minor version** once all necessary bug fixes and compatibility patches have been completed.
-- **Long-Term Support (LTS) Versions** will be maintained for stability and will only receive bug fixes and security updates.
+- **Stable releases** are considered **1.x.0** versions, where **1.3.0** and later versions will include **multiple features** added together as a **MINOR** update, as opposed to being a single new feature.
+- For **1.3.0 and later**, the first **stable version** with all features will be **released immediately**, with **PATCH updates** made for fixes or small enhancements.
+- **Long-Term Support (LTS) Versions** will be maintained for stability and will only receive bug fixes and security updates. Starting from **1.2.x**, **LTS versions** will be forked from the stable release and maintained independently.
+- If a bug is found in an LTS version, a fix will be made directly to the LTS version and merged into all later-maintained versions.
 
 ---
 

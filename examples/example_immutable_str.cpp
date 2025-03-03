@@ -14,12 +14,11 @@
  * - **Supports Shared Ownership**: `std::shared_ptr<immutable_str>` allows efficient reference sharing.
  *
  * ## Best Practices
- * - Use `immutable_str` when **storing fixed strings**, especially in **multithreaded applications**.
- * - Avoid passing `std::string_view` or `std::string` directly to the constructor to prevent unintended behavior.
- * - Single parameter constructor is only available to [const char*] to prevent unintended conversions and ensure
- *   LLVM extern "C" compatibility.
- * - Any struct implicitly convertible to `std::string_view` can be used with a protecting mutex to ensure safe construction.
- * - Utilize `make_atomic()` or `safe_from()` to create shared immutable strings efficiently.
+ * ✅ **Use `immutable_str` for fixed strings**, especially in **multithreaded applications**.
+ * ✅ **Avoid direct construction from `std::string_view` or `std::string`** to prevent unintended behavior.
+ * ✅ **Single-parameter constructor only accepts `const char*`**, ensuring safe type conversions and LLVM extern "C" compatibility.
+ * ✅ **For `std::string_view` inputs, use a protecting mutex** to prevent data race issues.
+ * ✅ **Use `make_atomic()` or `safe_from()`** for shared immutable string creation.
  *
  * ## Linking Requirement
  * Since this module has an associated **source file**, ensure that you **link against `jh-toolkit-impl`**
@@ -86,8 +85,18 @@ namespace example {
     /**
      * @brief Demonstrates the automatic trimming feature of `immutable_str`.
      *
-     * - **When `auto_trim` is enabled**, leading/trailing spaces are removed.
-     * - **When `auto_trim` is disabled**, spaces are preserved.
+     * - **When `auto_trim` is enabled**, leading/trailing spaces are removed:
+     *   ```cpp
+     *   jh::immutable_str::auto_trim = true;
+     *   jh::immutable_str str("  Trimmed  ");
+     *   std::cout << str.view();  // Output: "Trimmed"
+     *   ```
+     * - **When `auto_trim` is disabled**, spaces are preserved:
+     *   ```cpp
+     *   jh::immutable_str::auto_trim = false;
+     *   jh::immutable_str str("  Not Trimmed  ");
+     *   std::cout << str.view();  // Output: "  Not Trimmed  "
+     *   ```
      */
     void auto_trim_behavior() {
         std::cout << "\n🔹 Auto Trim Behavior:\n";
@@ -182,6 +191,76 @@ namespace example {
         string_pool.cleanup(); // Remove expired references
         std::cout << "After cleanup, pool size: " << string_pool.size() << "\n";
     }
+
+    /**
+     * @brief Demonstrates how to safely use `switch` with `jh::immutable_str` hashing.
+     * .
+     * ## Understanding `jh::immutable_str::hash()`
+     * - Just like `std::string` and `std::string_view`, `jh::immutable_str` provides a **runtime hash**.
+     * - The default hash function (`jh::immutable_str::hash()`) uses `std::hash<std::string_view>` internally.
+     * - Since this hash is **computed at runtime**, it is **not `constexpr`** and **cannot be directly used in `switch-case`**.
+     * .
+     * ## Why `std::unordered_map<size_t, size_t>` is Not Recommended
+     * - A common workaround is mapping hashes to unique identifiers in a `std::unordered_map<size_t, size_t>`.
+     * - This allows `switch` to work by providing **constexpr-compatible values**.
+     * - ❗ However, **hash collisions can occur**, potentially causing incorrect matches if different strings map to the same hash value.
+     * - While additional validation (`str_ptr->view() == "case"`) can mitigate this issue, it **is not a foolproof solution**.
+     * .
+     * ## Recommended Approach: Use `jh::atomic_str_ptr` as the Key
+     * - Instead of storing raw hashes (`size_t`), use `std::shared_ptr<jh::immutable_str>` (`jh::atomic_str_ptr`) as the key.
+     * - This approach **completely eliminates hash collisions** because keys are immutable string objects rather than numeric hash values.
+     * - `std::unordered_map<jh::atomic_str_ptr, size_t, jh::atomic_str_hash, jh::atomic_str_eq>` ensures **safe and precise matching**.
+     * - This method is both **efficient and scalable**, making it the preferred way to implement `switch`-like behavior.
+     */
+    void switch_case_usage(const char *str) {
+        jh::pool<jh::immutable_str> string_pool;
+
+        /*
+         * Recommended method: Directly map atomic immutable strings to unique identifiers
+         * **Use independently created `make_atomic()` instead of `pool.acquire()`**
+         *
+         * ## Design Rationale:
+         * 1. **Avoid affecting object lifecycle in the pool**
+         *    - If `unordered_map` stores keys acquired from `pool.acquire()`, those objects
+         *      will persist in the pool, preventing proper cleanup.
+         *
+         * 2. **Ensure correct matching behavior**
+         *    - `unordered_map` should store unique immutable string objects for consistent key lookup.
+         *    - This ensures `atomic_str_ptr` comparison works correctly using `jh::atomic_str_hash` and `jh::atomic_str_eq`.
+         *
+         * 3. **Enable proper memory cleanup**
+         *    - By using `make_atomic()` directly, `unordered_map` does not retain references to pooled objects.
+         *    - This allows `string_pool.cleanup()` or auto-cleanup behaviors to properly release unreferenced objects.
+         */
+
+        static const auto immutable_map = std::unordered_map<jh::atomic_str_ptr, size_t, jh::atomic_str_hash, jh::atomic_str_eq>{
+            {jh::make_atomic("hello world"), 1},
+            {jh::make_atomic("example string"), 2},
+            {jh::make_atomic("another_string"), 3}
+        };
+
+        const auto it = immutable_map.find(str);
+
+        if (it == immutable_map.end()) {
+            std::cout << "String not matched" << std::endl;
+            return;
+        }
+
+        switch (it->second) {
+            case 1:
+                std::cout << "Matched String: 'hello world'" << std::endl;
+            break;
+            case 2:
+                std::cout << "Matched String: 'example string'" << std::endl;
+            break;
+            case 3:
+                std::cout << "Matched String: 'another_string'" << std::endl;
+            break;
+            default:
+                std::cout << "String not matched" << std::endl;
+        }
+    }
+
 } // namespace example
 
 /**
@@ -194,5 +273,9 @@ int main() {
     example::hash_container_usage();
     example::safe_construct();
     example::pooling();
+    example::switch_case_usage("hello world");
+    example::switch_case_usage("example string");
+    example::switch_case_usage("another_string");
+    example::switch_case_usage("some random string");
     return 0;
 }
