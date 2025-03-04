@@ -4,6 +4,8 @@
 
 **A Modern C++20 Utility Library with Coroutine-based Generators, Behavior-defined Concepts, Immutable Strings and Weak pointer-based Object Pooling.**
 
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 ---
 
 🚀 **JH Toolkit 1.2.3 - First Stable Release of 1.2.x LTS, Now Available!**
@@ -19,8 +21,6 @@
 Future patches (`1.2.x`) will continue to enhance **cross-platform support**, refine build configurations, and introduce more detailed test cases as needed. MSVC support is not planned.
 
 ---
-
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 ## 🚀 What's New in 1.2.0+ (Feature-Complete with Cross-Platform Support)
 
@@ -71,11 +71,6 @@ git clone https://github.com/JeongHan-Bae/jh-toolkit.git
 git clone --branch 1.2.x-LTS --depth=1 https://github.com/JeongHan-Bae/jh-toolkit.git
 ```
 👉 Or download from: **[JH Toolkit Latest LTS Release](https://github.com/JeongHan-Bae/JH-Toolkit/releases/latest)**
-
----
-
-🚀 **Enjoy coding with `jh-toolkit`!** 🚀
-
 
 ---
 
