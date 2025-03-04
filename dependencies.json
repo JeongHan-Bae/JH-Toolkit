@@ -1,7 +1,7 @@
 {
   "project": {
     "name": "JH-Toolkit",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "description": "A cross-platform C++20 toolkit library",
     "platforms": [
       "Ubuntu",
