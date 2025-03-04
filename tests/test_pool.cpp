@@ -210,132 +210,162 @@ TEST_CASE("pool move semantics") {
     REQUIRE(pool3.reserved_size() == test::DeducedPool::MIN_RESERVED_SIZE); // 🎯 reserved_size should be reset
 }
 
-// ✅ Multithreading Test: Not storing shared_ptr
+// ✅ Multithreading Test (1024 Iterations for Data Race Detection): Not storing shared_ptr
 TEST_CASE("sim_pool multithreading without storing shared_ptr") {
     test::CustomizedPool pool;
-    constexpr int THREADS = 4;
-    constexpr int OBJECTS_PER_THREAD = 100;
+    constexpr int total_tests = 1024;
 
-    std::vector<std::thread> workers;
-    workers.reserve(THREADS);
-    for (int t = 0; t < THREADS; ++t) {
-        workers.emplace_back([&pool]() {
-            for (int i = 0; i < OBJECTS_PER_THREAD; ++i) {
-                pool.acquire(i); // 🎯 Not storing shared_ptr
+    for (int idx = 0; idx < total_tests; ++idx) {
+        SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {
+            constexpr int OBJECTS_PER_THREAD = 200;
+            constexpr int THREADS = 8;
+
+            std::vector<std::thread> workers;
+            workers.reserve(THREADS);
+            for (int t = 0; t < THREADS; ++t) {
+                workers.emplace_back([&pool] {
+                    for (int i = 0; i < OBJECTS_PER_THREAD; ++i) {
+                        pool.acquire(i);
+                        // 🎯 Not storing shared_ptr, not calling REQUIRE_NOTHROW() otherwise might cause dangling pointers
+                    }
+                });
             }
-        });
-    }
 
-    for (auto &w: workers) {
-        w.join();
-    }
+            for (auto &w: workers) {
+                w.join();
+            }
 
-    // 🎯 Since shared_ptrs are not stored, weak_ptrs may become expired,
-    // but size() does not necessarily become 0 until expand_and_cleanup is triggered
-    REQUIRE(pool.size() <= OBJECTS_PER_THREAD * THREADS);
-    pool.cleanup(); // 🎯 Explicit cleanup
-    REQUIRE(pool.reserved_size() == test::CustomizedPool::MIN_RESERVED_SIZE);
-    // 🎯 reserved_size should remain unchanged
-    REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
+            // 🎯 Since shared_ptrs are not stored, weak_ptrs may become expired,
+            // but size() does not necessarily become 0 until expand_and_cleanup is triggered
+            REQUIRE(pool.size() <= OBJECTS_PER_THREAD * THREADS);
+            pool.cleanup_shrink(); // 🎯 Explicit cleanup
+            REQUIRE(pool.reserved_size() == test::CustomizedPool::MIN_RESERVED_SIZE);
+            // 🎯 reserved_size should remain unchanged
+            REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
+        }
+    }
 }
 
+// ✅ Multithreading Test (1024 Iterations for Data Race Detection): Not storing shared_ptr
 TEST_CASE("pool multithreading without storing shared_ptr") {
     test::DeducedPool pool;
-    constexpr int THREADS = 4;
-    constexpr int OBJECTS_PER_THREAD = 100;
+    constexpr int total_tests = 1024;
 
-    std::vector<std::thread> workers;
-    workers.reserve(THREADS);
-    for (int t = 0; t < THREADS; ++t) {
-        workers.emplace_back([&pool]() {
-            for (int i = 0; i < OBJECTS_PER_THREAD; ++i) {
-                pool.acquire(i); // 🎯 Not storing shared_ptr
+    for (int idx = 0; idx < total_tests; ++idx) {
+        SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {
+            constexpr int OBJECTS_PER_THREAD = 200;
+            constexpr int THREADS = 8;
+
+            std::vector<std::thread> workers;
+            workers.reserve(THREADS);
+            for (int t = 0; t < THREADS; ++t) {
+                workers.emplace_back([&pool] {
+                    for (int i = 0; i < OBJECTS_PER_THREAD; ++i) {
+                        pool.acquire(i);
+                        // 🎯 Not storing shared_ptr, not calling REQUIRE_NOTHROW() otherwise might cause dangling pointers
+                    }
+                });
             }
-        });
-    }
 
-    for (auto &w: workers) {
-        w.join();
-    }
+            for (auto &w: workers) {
+                w.join();
+            }
 
-    // 🎯 Since shared_ptrs are not stored, weak_ptrs may become expired,
-    // but size() does not necessarily become 0 until expand_and_cleanup is triggered
-    REQUIRE(pool.size() <= OBJECTS_PER_THREAD * THREADS);
-    pool.cleanup(); // 🎯 Explicit cleanup
-    REQUIRE(pool.reserved_size() == test::DeducedPool::MIN_RESERVED_SIZE); // 🎯 reserved_size should remain unchanged
-    REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
+            // 🎯 Since shared_ptrs are not stored, weak_ptrs may become expired,
+            // but size() does not necessarily become 0 until expand_and_cleanup is triggered
+            REQUIRE(pool.size() <= OBJECTS_PER_THREAD * THREADS);
+            pool.cleanup_shrink(); // 🎯 Explicit cleanup
+            REQUIRE(pool.reserved_size() == test::DeducedPool::MIN_RESERVED_SIZE);
+            // 🎯 reserved_size should remain unchanged
+            REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
+        }
+    }
 }
 
-// ✅ Multithreading Test: Storing shared_ptr
+// ✅ Multithreading Test (1024 Iterations for Data Race Detection): Storing shared_ptr
 TEST_CASE("sim_pool multithreading with storing shared_ptr") {
     test::CustomizedPool pool;
-    constexpr int THREADS = 4;
-    constexpr int OBJECTS_PER_THREAD = 100;
+    constexpr int total_tests = 1024;
 
-    std::vector<std::shared_ptr<test::TestObject> > stored_objects;
-    std::mutex stored_mutex;
-    std::vector<std::thread> workers;
+    for (int idx = 0; idx < total_tests; ++idx) {
+        SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {
+            constexpr int OBJECTS_PER_THREAD = 200;
+            constexpr int THREADS = 8;
 
-    workers.reserve(THREADS);
-    for (int t = 0; t < THREADS; ++t) {
-        workers.emplace_back([&pool, &stored_objects, &stored_mutex, t]() {
-            for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) {
-                // 🎯 Avoid duplicate values
-                auto obj = pool.acquire(i); {
-                    // 🎯 Protect stored_objects with std::lock_guard
-                    std::lock_guard lock(stored_mutex);
-                    stored_objects.push_back(obj);
-                }
+            std::vector<std::shared_ptr<test::TestObject> > stored_objects;
+            std::mutex stored_mutex;
+            std::vector<std::thread> workers;
+
+            workers.reserve(THREADS);
+            for (int t = 0; t < THREADS; ++t) {
+                workers.emplace_back([&pool, &stored_objects, &stored_mutex, t] {
+                    for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) {
+                        // 🎯 Avoid duplicate values
+                        {
+                            auto obj = pool.acquire(i);
+                            // 🎯 Protect stored_objects with std::lock_guard
+                            std::lock_guard lock(stored_mutex);
+                            stored_objects.push_back(obj);
+                        }
+                    }
+                });
             }
-        });
+
+            for (auto &w: workers) {
+                w.join();
+            }
+
+            REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS); // 🎯 Ensure all objects are alive
+            REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS / 2); // 🎯 Ensure reserved_size has expanded
+
+            stored_objects.clear(); // 🎯 Release all shared_ptrs
+            pool.cleanup(); // 🎯 Trigger cleanup
+            REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS);
+            REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
+        }
     }
-
-    for (auto &w: workers) {
-        w.join();
-    }
-
-    REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS); // 🎯 Ensure all objects are alive
-    REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS / 2); // 🎯 Ensure reserved_size has expanded
-
-    stored_objects.clear(); // 🎯 Release all shared_ptrs
-    pool.cleanup(); // 🎯 Trigger cleanup
-    REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS);
-    REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
 }
 
-// ✅ Multithreading Test: Storing shared_ptr
+// ✅ Multithreading Test (1024 Iterations for Data Race Detection): Storing shared_ptr
 TEST_CASE("pool multithreading with storing shared_ptr") {
     test::DeducedPool pool;
-    constexpr int THREADS = 4;
-    constexpr int OBJECTS_PER_THREAD = 100;
+    constexpr int total_tests = 1024;
 
-    std::vector<std::shared_ptr<test::AutoPoolingObject> > stored_objects;
-    std::mutex stored_mutex;
-    std::vector<std::thread> workers;
+    for (int idx = 0; idx < total_tests; ++idx) {
+        SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {
+            constexpr int OBJECTS_PER_THREAD = 200;
+            constexpr int THREADS = 8;
 
-    workers.reserve(THREADS);
-    for (int t = 0; t < THREADS; ++t) {
-        workers.emplace_back([&pool, &stored_objects, &stored_mutex, t]() {
-            for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) {
-                // 🎯 Avoid duplicate values
-                auto obj = pool.acquire(i); {
-                    // 🎯 Protect stored_objects with std::lock_guard
-                    std::lock_guard lock(stored_mutex);
-                    stored_objects.push_back(obj);
-                }
+            std::vector<std::shared_ptr<test::AutoPoolingObject> > stored_objects;
+            std::mutex stored_mutex;
+            std::vector<std::thread> workers;
+
+            workers.reserve(THREADS);
+            for (int t = 0; t < THREADS; ++t) {
+                workers.emplace_back([&pool, &stored_objects, &stored_mutex, t]() {
+                    for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) {
+                        // 🎯 Avoid duplicate values
+                        {
+                            auto obj = pool.acquire(i);
+                            // 🎯 Protect stored_objects with std::lock_guard
+                            std::lock_guard lock(stored_mutex);
+                            stored_objects.push_back(obj);
+                        }
+                    }
+                });
             }
-        });
+
+            for (auto &w: workers) {
+                w.join();
+            }
+
+            REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS); // 🎯 Ensure all objects are alive
+            REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS / 2); // 🎯 Ensure reserved_size has expanded
+
+            stored_objects.clear(); // 🎯 Release all shared_ptrs
+            pool.cleanup(); // 🎯 Trigger cleanup
+            REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS);
+            REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
+        }
     }
-
-    for (auto &w: workers) {
-        w.join();
-    }
-
-    REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS); // 🎯 Ensure all objects are alive
-    REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS / 2); // 🎯 Ensure reserved_size has expanded
-
-    stored_objects.clear(); // 🎯 Release all shared_ptrs
-    pool.cleanup(); // 🎯 Trigger cleanup
-    REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS);
-    REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
 }

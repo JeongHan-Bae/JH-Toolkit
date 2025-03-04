@@ -23,7 +23,7 @@ It is particularly useful for scenarios where objects are frequently created and
 
 ✅ **Thread-Safe Implementation**
 - Uses `std::shared_mutex` for **safe concurrent access**.
-- `acquire()` and `cleanup()` operations are **lock-protected**.
+- `acquire()` and `cleanup()`(`cleanup_shrink()`) operations are **lock-protected**.
 
 ✅ **Custom Hashing and Equality Support**
 - **Uses content-based hashing** (`Hash`) and equality (`Eq`) instead of pointer-based lookup.
@@ -127,7 +127,7 @@ std::cout << pool.size();  // ✅ Output: 2 - Two objects in the pool
 
 ### **Automatic Expiration Handling**
 
-#### 📌 `void cleanup()`
+#### 📌 `void cleanup()` & `void cleanup_shrink()`
 
 **Description:**  
 Removes all expired `weak_ptr` references from the pool.
@@ -139,7 +139,7 @@ jh::sim_pool<MyObj, MyObjHash, MyObjEq> pool;
     auto obj = pool.acquire(100);
 } // obj goes out of scope
 
-pool.cleanup();  // Removes expired objects
+pool.cleanup();  // Removes expired objects (or using pool.cleanup_shrink() to shrink the pool if necessary)
 std::cout << pool.size();  // ✅ Output: 0 - Object has been removed
 ```
 

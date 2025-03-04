@@ -25,9 +25,9 @@
  * Unlike `const std::string`, which only **restricts modification at the API level**, `immutable_str` **ensures true immutability at the data level**.
  *
  * ## Motivation
- * In C++, `std::string` is inherently mutable, even when marked as `const`. This leads to issues such as:
+ * In C++, `std::string` is inherently mutable, even when marked as `const`. This leads to issues such as
  * - **Unintended modification** when cast away from `const`.
- * - **Reallocation overhead** due to copy-on-write or implicit resizing.
+ * - **Reallocation overhead** due to *copy-on-write* or implicit resizing.
  * - **Thread safety concerns** since `std::string`'s internal buffer can be modified in some contexts.
  *
  * `immutable_str` is designed to:
@@ -69,9 +69,10 @@
 #pragma once
 
 #include <memory>           // for std::unique_ptr, std::shared_ptr
-#include <unordered_map>    // for std::unordered_map
-#include <unordered_set>    // for std::unordered_set
+#include <unordered_map>    // NOLINT for std::unordered_map
+#include <unordered_set>    // NOLINT for std::unordered_set
 #include <string>           // for std::string
+#include <cstring>          // for strlen
 #include <string_view>      // for std::string_view
 #include <cstdint>          // for std::uint64_t
 #include <optional>         // for std::optional
@@ -113,7 +114,7 @@ namespace jh {
          * @brief Constructs an immutable string from a `std::string_view` with a mutex.
          *
          * @param sv A `std::string_view` representing the string data.
-         * @param mtx A reference to the `std::mutex` that protects the lifetime of the base-struct of `sv`.
+         * @param mtx A reference to the `std::mutex` that protects the lifetime of the base-struct containing `sv`.
          *
          * @throws std::logic_error If `sv` contains embedded null (`\0`) characters.
          *
@@ -202,7 +203,7 @@ namespace jh {
          * `auto_trim` is a static global setting. Modifying it at runtime in a multithreaded environment
          * may lead to race conditions. All instances of `immutable_str` will respect the current policy.
          */
-        static inline std::atomic<bool> auto_trim = true;
+        static inline bool auto_trim = true;
 
     private:
         uint64_t size_ = 0; ///< Length of the string
@@ -227,6 +228,9 @@ namespace jh {
     using atomic_str_ptr = std::shared_ptr<immutable_str>;
     using weak_str_ptr [[maybe_unused]] = std::weak_ptr<immutable_str>;
 
+    template<typename U>
+    concept is_immutable_str = std::same_as<U, atomic_str_ptr> || std::same_as<U, const char *>;
+
     /**
      * @brief Custom hash function for `atomic_str_ptr`.
      *
@@ -234,9 +238,41 @@ namespace jh {
      * The default `std::shared_ptr` hashing function compares the raw pointer itself,
      * which is not useful for comparing `immutable_str` content. This custom function
      * ensures the hash is computed based on the immutable string content instead.
+     * - Supports hashing for **both** `shared_ptr<immutable_str>` and `const char*`.
+     * - Allows **direct lookups using string literals** in hash-based containers, without requiring a temporary `immutable_str`.
+     * - **Auto-trims whitespace** (if `immutable_str::auto_trim` is enabled) before computing the hash.
+     * - **Optimized for hash containers** to ensure efficient key lookup.
+     * @note If `immutable_str::auto_trim` is enabled, leading and trailing spaces are **ignored** in hash calculations.
+     *
+     * @tparam U The type of the input value (either `atomic_str_ptr` or `const char*`).
+     * @param value The value to hash.
+     * @return The computed hash of the string content.
      */
     struct atomic_str_hash {
-        std::uint64_t operator()(const atomic_str_ptr &ptr) const noexcept;
+        using is_transparent = void; ///< Enables `find(const char*)` in hash-based containers.
+        template<typename U>
+            requires is_immutable_str<U>
+        std::uint64_t operator()(const U &value) const noexcept {
+            if constexpr (std::same_as<U, atomic_str_ptr>) {
+                return value ? value->hash() : 0;
+            } else {
+                if (value == nullptr) {
+                    return 0;
+                }
+                if (immutable_str::auto_trim) {
+                    const std::uint64_t len = std::strlen(value); // Get `const char*` length
+                    std::uint64_t leading = 0, trailing = len;
+                    while (leading < len && std::isspace(static_cast<unsigned char>(value[leading]))) {
+                        ++leading;
+                    }
+                    while (trailing > leading && std::isspace(static_cast<unsigned char>(value[trailing - 1]))) {
+                        --trailing;
+                    }
+                    return std::hash<std::string_view>{}({value + leading, trailing - leading});
+                }
+                return std::hash<std::string_view>{}(value);
+            }
+        }
     };
 
     /**
@@ -246,9 +282,63 @@ namespace jh {
      * The default `std::shared_ptr` equality operator only checks if two shared pointers
      * refer to the same memory address. This custom function allows content-based comparison
      * of `immutable_str` instances while keeping pointer safety intact.
+     * - Supports hashing for **both** `shared_ptr<immutable_str>` and `const char*`.
+     * - Allows **direct lookups using string literals** in hash-based containers, without requiring a temporary `immutable_str`.
+     * - **Auto-trims whitespace** (if `immutable_str::auto_trim` is enabled) before computing the hash.
+     * - **Optimized for hash containers** to ensure efficient key lookup.
+     * @note If `immutable_str::auto_trim` is enabled, leading and trailing spaces are **ignored** in hash calculations.
+     *
+     * @tparam U The type of the left-hand side value (either `atomic_str_ptr` or `const char*`).
+     * @tparam V The type of the right-hand side value (either `atomic_str_ptr` or `const char*`).
+     * @param lhs The left-hand side value to compare.
+     * @param rhs The right-hand side value to compare.
+     * @return `true` if the strings are equal. `false` if either value is `nullptr` or the strings are not equal.
      */
     struct atomic_str_eq {
-        bool operator()(const atomic_str_ptr &lhs, const atomic_str_ptr &rhs) const noexcept;
+        using is_transparent = void; ///< Enables `find(const char*)` in hash-based containers.
+
+        template<typename U, typename V>
+            requires (is_immutable_str<U> && is_immutable_str<V>)
+        bool operator()(const U &lhs, const V &rhs) const noexcept {
+            if constexpr (std::same_as<U, atomic_str_ptr> && std::same_as<V, atomic_str_ptr>) {
+                return lhs && rhs && *lhs == *rhs;
+            } else {
+                if (lhs == nullptr || rhs == nullptr) return false; // nullptr are considered as not eq
+                std::string_view lhs_view, rhs_view;
+
+                if constexpr (std::same_as<U, atomic_str_ptr> && std::same_as<V, const char *>) {
+                    lhs_view = lhs->view();
+                    if (immutable_str::auto_trim) {
+                        const auto &[leading, size_] = trim(rhs);
+                        rhs_view = std::string_view(rhs + leading, size_);
+                    } else {
+                        rhs_view = std::string_view(rhs);
+                    }
+                } else {
+                    rhs_view = rhs->view();
+                    if (immutable_str::auto_trim) {
+                        const auto &[leading, size_] = trim(lhs);
+                        lhs_view = std::string_view(lhs + leading, size_);
+                    } else {
+                        lhs_view = std::string_view(lhs);
+                    }
+                }
+                return lhs_view == rhs_view;
+            }
+        }
+
+    private:
+        static std::pair<uint64_t, uint64_t> trim(const char *str) noexcept {
+            std::uint64_t leading = 0, trailing = std::strlen(str);
+
+            while (leading < trailing && std::isspace(static_cast<unsigned char>(str[leading]))) {
+                ++leading;
+            }
+            while (trailing > leading && std::isspace(static_cast<unsigned char>(str[trailing - 1]))) {
+                --trailing;
+            }
+            return {leading, trailing - leading};
+        }
     };
 
     template<typename T>
@@ -268,7 +358,7 @@ namespace jh {
      * @brief Creates a shared pointer to an `immutable_str` from a `std::string_view` with a mutex.
      *
      * @param sv A `std::string_view` representing the string data.
-     * @param mtx A reference to the `std::mutex` that protects the lifetime of the base-struct of `sv`.
+     * @param mtx A reference to the `std::mutex` that protects the lifetime of the base-struct containing `sv`.
      *
      * @throws std::logic_error If `sv` contains embedded null (`\0`) characters.
      *

@@ -1,12 +1,14 @@
 # JH Toolkit
 
-### **version: 1.2.2**
+### **version: 1.2.3**
 
 **A Modern C++20 Utility Library with Coroutine-based Generators, Behavior-defined Concepts, Immutable Strings and Weak pointer-based Object Pooling.**
 
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 ---
 
-🚀 **JH Toolkit 1.2.2 - Cross-Platform Compatibility Improved, Now Tested on Windows (MinGW), macOS (Clang), and Ubuntu (GCC).**
+🚀 **JH Toolkit 1.2.3 - First Stable Release of 1.2.x LTS, Now Available!**
 
 ✅ **CMake build requirement lowered to 3.20+ for broader system compatibility.**  
 ✅ **CMake usage requirement remains 3.14+.**
@@ -14,14 +16,11 @@
 🆕 **New Feature:**
 - **Unified Header Inclusion:** You can now include headers using either `#include <jh/header>` or `#include <jh/header.h>` interchangeably.
 
-Future patches (`1.2.x`) will continue to enhance **cross-platform support**, refine build configurations, and potentially introduce more detailed test cases. MSVC support is not planned yet.
+**1.2.x is an LTS version** and will receive long-term support. The stable version can be found in the `1.2.x-LTS` branch, and the latest release can always be accessed via the repository's release section.
 
-🟢 **Looking for the last stable release?**  
-👉 Check out **[JH Toolkit 1.1.3 (Latest Stable Release)](https://github.com/JeongHan-Bae/JH-Toolkit/releases/latest)**
+Future patches (`1.2.x`) will continue to enhance **cross-platform support**, refine build configurations, and introduce more detailed test cases as needed. MSVC support is not planned.
 
 ---
-
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 ## 🚀 What's New in 1.2.0+ (Feature-Complete with Cross-Platform Support)
 
@@ -43,35 +42,16 @@ This version includes major improvements to **immutable strings** and **object p
 
 ---
 
-### 1.1.x Features
-
-- **`jh::generator<T, U>` now supports iterators** (`jh::generator<T, U>::iterator` which is actually `jh::iterator<jh::generator<T, U>>`), allowing use in **range-based for loops** for types without `send()` (i.e., `U == std::monostate`).
-- **Generators and immutable strings are now `final`**, preventing unintended inheritance.
-- **Explicit copy prohibition** for `jh::generator<T, U>` – only move construction is allowed.
-
----
-
-## Overview
-
-_Current version improves memory efficiency with object pooling, enhances immutable strings for safer lifetime management, and refines iterator validation with a behavior-driven approach._
-
-`jh-toolkit` is a modern, lightweight C++20 utility library that provides:
-- **Coroutine-Based Generators** – A Pythonic `yield` mechanism in C++20 for efficient lazy evaluation.
-- **Immutable Strings** – True immutability, memory efficiency, and thread safety, now with mutex-based safe construction.
-- **Sequence Concept** – A C++20 `concept` for compile-time validation of immutable sequences.
-- **Object Pooling System** – A `std::weak_ptr`-based **content-aware object pool** for deduplication and efficient resource reuse.
-- **Iterator Concepts and Forward Declarations** – A **behavior-driven** approach to iterator validation that ensures **compatibility with both standard (`std::`) and custom (`jh::` or self-defined) iterators** without relying on explicit type declarations.
-
-This library is designed for **high-performance applications**, ensuring **efficiency, type safety, and clean code**.
-
----
-
 ## 📌 Requirements
 
 - **C++20** (mandatory)
-- **CMake 3.14+**
-- **A modern C++20 compiler** (GCC 10+, Clang 10+, MSVC 19.28+)
+- **CMake 3.14+** (for library usage)
+- **CMake 20+** (for library compilation and installation)
+- **Git** (required for debugging mode compilation)
+- **A modern C++20 compiler** (GCC 10+, Clang 10+)
   > **GCC(MinGW)**, **Clang** are tested and supported in every release.
+  > **MSVC is not supported** due to its limited support for C++20 features. We do not plan to downgrade to match MSVC's capabilities, so users should use GCC or Clang instead.
+  > For **Windows ARM64**, native support for MinGW is limited. We recommend using **GCC within WSL2** to achieve near-native performance.
 
 Ensure your project enables **C++20**, otherwise `jh-toolkit` will not compile:
 ```cmake
@@ -81,17 +61,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ## 📥 Installation
 
-#### 🔸 **Option 1: Latest Development Version (1.2.x - Ongoing Updates)**
+#### 🔸 **Option 1: Latest Development Version (1.2+ - Ongoing Updates)**
 ```sh
 git clone https://github.com/JeongHan-Bae/jh-toolkit.git
 ```
 
-#### 🔹 **Option 2: Last Stable Release (1.1.3)**
+#### 🔹 **Option 2: Latest LTS Release (1.2.3+)**
 ```sh
-# Clone the last stable release (1.1.3)
-git clone --branch JH-Toolkit-1.1.3 --depth=1 https://github.com/JeongHan-Bae/jh-toolkit.git
+git clone --branch 1.2.x-LTS --depth=1 https://github.com/JeongHan-Bae/jh-toolkit.git
 ```
-👉 Or download from: **[JH Toolkit 1.1.3 Release Page](https://github.com/JeongHan-Bae/JH-Toolkit/releases/tag/JH-Toolkit-1.1.3)**
+👉 Or download from: **[JH Toolkit Latest LTS Release](https://github.com/JeongHan-Bae/JH-Toolkit/releases/latest)**
+
 ---
 
 ### 1️⃣ Build and Install

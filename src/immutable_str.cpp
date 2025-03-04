@@ -17,7 +17,6 @@
 
 #include "jh/immutable_str.h"
 
-#include <cstring>      // for std::strlen, std::memcpy, std::strcmp
 #include <cctype>       // for std::isspace
 #include <algorithm>    // for std::max
 
@@ -75,7 +74,7 @@ namespace jh {
         const char *end = input_str + std::strlen(input_str) - 1;
 
         // If auto_trim is enabled, remove leading and trailing whitespace
-        if (auto_trim.load()) {
+        if (auto_trim) {
             while (*start && std::isspace(static_cast<unsigned char>(*start))) {
                 ++start;
             }
@@ -102,14 +101,5 @@ namespace jh {
         std::memcpy(data_array_.get(), start, size_);
         data_array_[size_] = '\0';
         data_ = std::move(data_array_);
-    }
-
-    std::uint64_t atomic_str_hash::operator()(const std::shared_ptr<immutable_str> &ptr) const noexcept {
-        return ptr ? ptr->hash() : 0;
-    }
-
-    bool atomic_str_eq::operator()(const atomic_str_ptr &lhs, const atomic_str_ptr &rhs) const noexcept {
-        if (!lhs || !rhs) return false;
-        return *lhs == *rhs;
     }
 } // namespace jh

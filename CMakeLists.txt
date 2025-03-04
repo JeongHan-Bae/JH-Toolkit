@@ -44,7 +44,7 @@ install(EXPORT jh-toolkitTargets
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/jh-toolkit-config-version.cmake"
-        VERSION 1.2.2
+        VERSION 1.2.3
         COMPATIBILITY SameMajorVersion
 )
 

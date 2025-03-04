@@ -1,6 +1,6 @@
 ### **JH Toolkit: Iterator API Documentation**
 
-📌 **Version:** 1.1
+📌 **Version:** 1.2
 📅 **Date:** 2025  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
@@ -49,6 +49,47 @@ A **forward declaration** of the `iterator<>` template for use in `generator<>` 
 
 - Allows `generator<>` and container types to **reference `iterator<>`** without including the full definition.
 - The actual implementation of `iterator<>` is **specialized elsewhere** for different types.
+
+---
+
+### **Extracting Iterator Type: `iterator_t<Container>`**
+
+📌 **Description:**  
+A **type alias** used to deduce the iterator type of a given container `Container`.  
+It is particularly useful for **generic programming and concept-based validation**, ensuring that a container has a **well-defined iterator type**.
+
+#### **Definition:**
+```c++
+template<typename Container>
+using iterator_t = typename iterator<Container>::type;
+```
+
+#### **⚠ Important Requirement:**
+- **`jh::iterator<Container>::type` MUST be explicitly defined.**
+    - If `jh::iterator<Container>::type` is **not** defined, `iterator_t<Container>` **cannot be used**.
+    - Containers **must** either define `iterator<Container>` explicitly or provide a valid specialization.
+    - This ensures that **all containers using `iterator_t<Container>` have a well-formed iterator type**.
+
+#### **Purpose:**
+- Enables **generic iterator type deduction** without explicitly defining `Container::iterator`.
+- Works for both **custom containers** (that define `jh::iterator<>`) and **linear structures** (that use `T*` as an iterator).
+- Ensures **compatibility with STL-style containers** while allowing **custom iterator implementations**.
+
+#### **Details:**
+- The iterator type is **strictly determined** via `jh::iterator<Container>::type`.
+    - **Example:** `iterator_t<jh::generator<T>>` resolves to `jh::iterator<jh::generator<T>>::type` (which is `jh::iterator<jh::generator<T>>`).
+- `iterator_t<Container>` **may be** `jh::iterator<Container>`, such as for `jh::generator`.
+- **For certain linear structures**, `iterator_t<Container>` **may resolve to `T*`**.
+    - **Example:** `jh::runtime_arr<T>` (planned for release in v1.3+) uses `T*` as its iterator type.
+- **Concept-friendly**, allowing seamless integration in **concept-based constraints**.
+
+#### **Usage Scenarios:**
+- **Generic programming**:
+    - Helps obtain the iterator type **only if** `jh::iterator<Container>::type` is **explicitly defined**.
+    - For continuous linear structures, `T*` can be used as `jh::iterator<Container<T>>::type`.
+- **Concept-based programming**:
+    - Useful in `concept` constraints for **SFINAE** and **template metaprogramming**.
+- **Supports both STL-style containers and custom containers**, provided they are adapted to `jh::iterator<>`.
 
 ---
 

@@ -2,7 +2,11 @@ name: Update Dependencies
 
 on:
   push:
+    branches:
+      - main
   pull_request:
+    branches:
+      - main
   schedule:
     - cron: '0 0 * * *'  # Runs daily at midnight UTC
   workflow_dispatch:  # Allows manual triggering
@@ -14,9 +18,10 @@ jobs:
       contents: write  # Required to commit and push changes
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false  # Prevents overwriting SSH configuration
+          ref: main # Branch to check out
 
       - name: Set up Python
         uses: actions/setup-python@v4

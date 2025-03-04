@@ -375,6 +375,7 @@ namespace jh {
     struct iterator<generator<T, U> > {
         using iterator_category [[maybe_unused]] = std::input_iterator_tag;
         using value_type = T;
+        using type = iterator;
         using difference_type [[maybe_unused]] = std::ptrdiff_t;
         using pointer = value_type *;
         using reference [[maybe_unused]] = value_type &;

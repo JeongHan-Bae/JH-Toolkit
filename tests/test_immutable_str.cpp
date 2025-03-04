@@ -5,15 +5,14 @@
 #include "jh/immutable_str.h"
 
 namespace test {
-
     using ImmutablePool = jh::pool<jh::immutable_str>;
 
     // ✅ Generates a random string with visible characters only
     std::string generate_random_string(const size_t length) {
         static constexpr char charset[] =
-            "abcdefghijklmnopqrstuvwxyz"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            "0123456789";
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                "0123456789";
 
         static std::random_device rd;
         static std::mt19937 gen(rd());
@@ -28,7 +27,7 @@ namespace test {
     }
 
     // ✅ Adds random leading and trailing whitespace for auto_trim tests
-    std::string add_random_whitespace(const std::string& input) {
+    std::string add_random_whitespace(const std::string &input) {
         static std::random_device rd;
         static std::mt19937 gen(rd());
         static std::uniform_int_distribution<size_t> space_dist(0, 5);
@@ -236,8 +235,8 @@ TEST_CASE("pool<immutable_str> - Basic Functionality") {
     auto str2 = pool.acquire("Hello, World!");
     auto str3 = pool.acquire("Different String");
 
-    REQUIRE(str1 == str2);  // 🎯 Same string should return the same shared_ptr
-    REQUIRE(str1 != str3);  // 🎯 Different strings should return different shared_ptr
+    REQUIRE(str1 == str2); // 🎯 Same string should return the same shared_ptr
+    REQUIRE(str1 != str3); // 🎯 Different strings should return different shared_ptr
     REQUIRE(pool.size() == 2); // 🎯 There should be 2 unique string objects in the pool
 }
 
@@ -248,10 +247,10 @@ TEST_CASE("pool<immutable_str> - Cleanup Behavior") {
     auto str1 = pool.acquire("Persistent String");
     REQUIRE(pool.size() == 1);
 
-    str1.reset();  // 🎯 Release shared_ptr
-    REQUIRE(pool.size() == 1);  // 🎯 Since it's a weak_ptr, it won't be deleted before cleanup
+    str1.reset(); // 🎯 Release shared_ptr
+    REQUIRE(pool.size() == 1); // 🎯 Since it's a weak_ptr, it won't be deleted before cleanup
 
-    pool.cleanup();  // 🎯 Trigger cleanup
+    pool.cleanup(); // 🎯 Trigger cleanup
     REQUIRE(pool.size() == 0); // 🎯 The pool should be empty
 }
 
@@ -262,8 +261,8 @@ TEST_CASE("pool<immutable_str> - Hashing and Equality") {
     auto str1 = pool.acquire("Hash Test");
     auto str2 = pool.acquire("Hash Test");
 
-    REQUIRE(str1 == str2);  // 🎯 Ensure hash equality
-    REQUIRE(str1->hash() == str2->hash());  // 🎯 Ensure consistent hash
+    REQUIRE(str1 == str2); // 🎯 Ensure hash equality
+    REQUIRE(str1->hash() == str2->hash()); // 🎯 Ensure consistent hash
 }
 
 // ✅ Multithreading test: Pooling the same string
@@ -272,17 +271,18 @@ TEST_CASE("pool<immutable_str> - Multithreading Same String") {
     constexpr int THREADS = 4;
     constexpr int OBJECTS_PER_THREAD = 100;
 
-    std::vector<std::shared_ptr<jh::immutable_str>> stored_objects;
+    std::vector<std::shared_ptr<jh::immutable_str> > stored_objects;
     std::mutex stored_mutex;
     std::vector<std::thread> workers;
 
     workers.reserve(THREADS);
     for (int t = 0; t < THREADS; ++t) {
         workers.emplace_back([&pool, &stored_objects, &stored_mutex, t]() {
-            for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) { // 🎯 Avoid duplicate values
-                auto obj = pool.acquire("Shared String");
-
-                {  // 🎯 Protect `stored_objects` with a lock
+            for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) {
+                // 🎯 Avoid duplicate values
+                {
+                    auto obj = pool.acquire("Shared String");
+                    // 🎯 Protect `stored_objects` with a lock
                     std::lock_guard lock(stored_mutex);
                     stored_objects.push_back(obj);
                 }
@@ -290,11 +290,11 @@ TEST_CASE("pool<immutable_str> - Multithreading Same String") {
         });
     }
 
-    for (auto &w : workers) {
+    for (auto &w: workers) {
         w.join();
     }
 
-    REQUIRE(pool.size() == 1);  // Same immutable_str should be pooled
+    REQUIRE(pool.size() == 1); // Same immutable_str should be pooled
 }
 
 // ✅ Multithreading test: Correctly storing shared_ptr
@@ -303,17 +303,18 @@ TEST_CASE("pool<immutable_str> - Multithreading with Stored Shared_Ptr") {
     constexpr int THREADS = 4;
     constexpr int OBJECTS_PER_THREAD = 100;
 
-    std::vector<std::shared_ptr<jh::immutable_str>> stored_objects;
+    std::vector<std::shared_ptr<jh::immutable_str> > stored_objects;
     std::mutex stored_mutex;
     std::vector<std::thread> workers;
 
     workers.reserve(THREADS);
     for (int t = 0; t < THREADS; ++t) {
         workers.emplace_back([&pool, &stored_objects, &stored_mutex, t]() {
-            for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) { // 🎯 Avoid duplicate values
-                auto obj = pool.acquire(("Thread-" + std::to_string(t) + "-String-" + std::to_string(i)).c_str());
-
-                {  // 🎯 Protect `stored_objects` with a lock
+            for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) {
+                // 🎯 Avoid duplicate values
+                {
+                    auto obj = pool.acquire(("Thread-" + std::to_string(t) + "-String-" + std::to_string(i)).c_str());
+                    // 🎯 Protect `stored_objects` with a lock
                     std::lock_guard lock(stored_mutex);
                     stored_objects.push_back(obj);
                 }
@@ -321,18 +322,18 @@ TEST_CASE("pool<immutable_str> - Multithreading with Stored Shared_Ptr") {
         });
     }
 
-    for (auto &w : workers) {
+    for (auto &w: workers) {
         w.join();
     }
 
-    REQUIRE(pool.size() == THREADS * OBJECTS_PER_THREAD);  // 🎯 Each thread should store different strings
+    REQUIRE(pool.size() == THREADS * OBJECTS_PER_THREAD); // 🎯 Each thread should store different strings
 }
 
 // ✅ Automatic expansion and contraction
 TEST_CASE("pool<immutable_str> - Expansion and Contraction") {
     test::ImmutablePool pool(4); // 🎯 Initial size 4
 
-    std::vector<std::shared_ptr<jh::immutable_str>> objects;
+    std::vector<std::shared_ptr<jh::immutable_str> > objects;
     objects.reserve(10);
 
     for (int i = 0; i < 10; ++i) {
@@ -341,11 +342,11 @@ TEST_CASE("pool<immutable_str> - Expansion and Contraction") {
     }
 
     REQUIRE(pool.size() == 10);
-    REQUIRE(pool.reserved_size() >= 16);  // 🎯 Expansion
+    REQUIRE(pool.reserved_size() >= 16); // 🎯 Expansion
 
     objects.clear(); // 🎯 Release all objects
     pool.cleanup(); // 🎯 Trigger contraction
-    REQUIRE(pool.reserved_size() <= 16);  // 🎯 Contraction
+    REQUIRE(pool.reserved_size() <= 16); // 🎯 Contraction
 }
 
 // ✅ Clear pool
@@ -359,4 +360,59 @@ TEST_CASE("pool<immutable_str> - Clear Pool") {
     pool.clear();
     REQUIRE(pool.size() == 0);
     REQUIRE(pool.reserved_size() == test::ImmutablePool::MIN_RESERVED_SIZE);
+}
+
+TEST_CASE("Switch with HashMap Example Test") {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> rand_dist(0, 5);
+    constexpr int total_tests = 1024;
+
+    jh::pool<jh::immutable_str> pool;
+    // Recommended method: Directly map atomic immutable strings to unique identifiers
+    static const std::unordered_map<jh::atomic_str_ptr, size_t, jh::atomic_str_hash, jh::atomic_str_eq> immutable_map =
+    {
+        {jh::make_atomic("example 0"), 0},
+        {jh::make_atomic("example 1"), 1},
+        {jh::make_atomic("example 2"), 2},
+        {jh::make_atomic("example 3"), 3},
+        {jh::make_atomic("example 4"), 4}
+    };
+
+    for (int i = 0; i < total_tests; ++i) {
+        SECTION("Random Example Test " + std::to_string(i + 1)) {
+            int rand_num = rand_dist(gen);
+            std::string str_value;
+
+            if (rand_num < 5) {
+                str_value = "example " + std::to_string(rand_num);
+            } else {
+                str_value = test::generate_random_string(10); // Generate a random string
+            }
+
+            const auto str = pool.acquire(str_value.c_str());
+            const auto it = immutable_map.find(str);
+
+            std::string check_str;
+
+            switch (auto num = it == immutable_map.end() ? 5 : it->second) {
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                check_str = "example " + std::to_string(num);
+                    REQUIRE(str->view() == check_str);
+                    REQUIRE(immutable_map.find(check_str.c_str()) != immutable_map.end());
+                    break;
+                default:
+                    REQUIRE(str->view() != "example 0");
+                    REQUIRE(str->view() != "example 1");
+                    REQUIRE(str->view() != "example 2");
+                    REQUIRE(str->view() != "example 3");
+                    REQUIRE(str->view() != "example 4");
+                    break;
+            }
+        }
+    }
 }
