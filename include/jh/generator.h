@@ -39,7 +39,7 @@
  * - Provides utilities for converting generators to **std::vector** and **std::list**.
  * - Allows for a seamless migration from **Python-based generator logic to C++20** without losing clarity.
  *
- * @version 1.1.x
+ * @version 1.3.x
  * @date 2025
  */
 
@@ -82,7 +82,8 @@ namespace jh {
          * - However, `begin()` and `end()` are only available when `U == std::monostate` (i.e., the generator does not require `send()`).
          * - This allows users to manually create iterators if needed, although we do not encourage inheritance-based customization.
          */
-        using iterator = jh::iterator<generator>; // NOLINT Fixes GCC issue with iterator lookup, ensuring cross-platform stability
+        using iterator = jh::iterator<generator>;
+        // NOLINT Fixes GCC issue with iterator lookup, ensuring cross-platform stability
 
         /**
          * @brief Deleted copy constructor.
@@ -558,12 +559,27 @@ namespace jh {
      * @return A generator yielding elements from the sequence.
      */
     template<sequence T>
+        requires (!std::ranges::range<T>)
     generator<sequence_value_type<T> > make_generator(const T &seq) {
         for (const auto &elem: seq) {
             // ✅ Use range-based for-loop
             co_yield elem;
         }
     }
+
+    /**
+     * @brief Converts a range into a generator.
+     * @tparam R The range type.
+     * @param rng The range to convert.
+     * @return A generator yielding elements from the range.
+     */
+    template<std::ranges::range R>
+    generator<std::ranges::range_value_t<R> > make_generator(R &&rng) {
+        for (auto &&elem: rng) {
+            co_yield std::forward<decltype(elem)>(elem);
+        }
+    }
+
 
     /**
      * @brief Converts a generator to a std::vector.
@@ -600,21 +616,21 @@ namespace jh {
     /**
      * @brief Converts a generator to a std::vector using a sequence of input values.
      * @param gen The generator to convert.
-     * @param inputs A std::vector of input values to send sequentially.
+     * @param inputs A range of input values to send sequentially.
      * @return A std::vector containing all generated values.
      */
-    template<typename T, typename U>
-    std::vector<T> to_vector(generator<T, U> &gen, const std::vector<U> &inputs) {
+    template<typename T, std::ranges::range R>
+    std::vector<T> to_vector(generator<T, std::ranges::range_value_t<R> > &gen, const R &inputs) {
         std::vector<T> result;
-        size_t index = 0;
+        auto it = std::ranges::begin(inputs);
+        auto end = std::ranges::end(inputs);
 
-        if (!inputs.empty()) {
-            if (!gen.send(inputs[index])) return result;
+        if (it != end) {
+            if (!gen.send(*it)) return result;
             while (gen.next()) {
-                // ✅ Ensure each step processes a new input
                 result.push_back(gen.value().value());
-                if (++index >= inputs.size()) break;
-                if (!gen.send(inputs[index])) break; // ✅ Ensure input is used immediately
+                if (++it == end) break;
+                if (!gen.send(*it)) break;
             }
         }
 
@@ -654,21 +670,21 @@ namespace jh {
     /**
      * @brief Converts a generator to a std::list using a sequence of input values.
      * @param gen The generator to convert.
-     * @param inputs A std::vector of input values to send sequentially.
+     * @param inputs A range of input values to send sequentially.
      * @return A std::list containing all generated values.
      */
-    template<typename T, typename U>
-    std::list<T> to_list(generator<T, U> &gen, const std::vector<U> &inputs) {
+    template<typename T, std::ranges::range R>
+    std::list<T> to_list(generator<T, std::ranges::range_value_t<R> > &gen, const R &inputs) {
         std::list<T> result;
-        size_t index = 0;
+        auto it = std::ranges::begin(inputs);
+        auto end = std::ranges::end(inputs);
 
-        if (!inputs.empty()) {
-            if (!gen.send(inputs[index])) return result;
+        if (it != end) {
+            if (!gen.send(*it)) return result;
             while (gen.next()) {
-                // ✅ Ensure each step processes a new input
                 result.push_back(gen.value().value());
-                if (++index >= inputs.size()) break;
-                if (!gen.send(inputs[index])) break; // ✅ Ensure input is used immediately
+                if (++it == end) break;
+                if (!gen.send(*it)) break;
             }
         }
 

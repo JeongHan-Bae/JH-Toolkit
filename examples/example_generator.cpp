@@ -27,6 +27,7 @@
 #include "jh/generator.h"
 #include <iostream>
 #include <vector>
+#include <ranges>
 #include <list>
 
 namespace example {
@@ -63,10 +64,8 @@ namespace example {
      * - Users can **send a step value** to decrease the countdown dynamically.
      */
     jh::generator<int, int> countdown(int start) {
-        int step = 1;  // Default step size if no value is sent
         while (start > 0) {
-            volatile int next_step = step; // Ensure correct step handling
-            step = co_await next_step;  // Receive new step size via send()
+            const int step = co_await int{};  // NOLINT Receive new step size via send()
             start -= step;
             co_yield start;
         }
@@ -132,7 +131,7 @@ namespace example {
         std::cout << "\n🔹 Step Generator to `std::vector<int>`:\n";
 
         auto generator = range(1, 20, 3);
-        std::vector<int> values = to_vector(generator);
+        const std::vector<int> values = to_vector(generator);
 
         std::cout << "Collected values: ";
         for (const int val : values) {
@@ -148,11 +147,19 @@ namespace example {
         std::cout << "\n🔹 Step Generator to `std::list<int>`:\n";
 
         auto generator = range(1, 20, 4);
-        std::list<int> values = to_list(generator);
+        const std::list<int> values = to_list(generator);
 
         std::cout << "Collected values: ";
         for (const int val : values) {
             std::cout << val << " ";
+        }
+        std::cout << "\n";
+    }
+
+    void range_constructing() {
+        std::cout << "\n🔹 Constructing Generator with `std::views::iota`:\n";
+        for (auto gen = jh::make_generator(std::views::iota(0, 10)); const auto v : gen) {
+            std::cout << v << " ";
         }
         std::cout << "\n";
     }
@@ -168,5 +175,6 @@ int main() {
     example::step_generator_to_list_demo();
     example::interactive_generator_demo();
     example::send_ite_demo();
+    example::range_constructing();
     return 0;
 }

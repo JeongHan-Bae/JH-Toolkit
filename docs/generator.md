@@ -1,6 +1,6 @@
 ### **JH Toolkit: Generator API Documentation**
 
-📌 **Version:** 1.1  
+📌 **Version:** 1.3  
 📅 **Date:** 2025  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
@@ -252,23 +252,181 @@ Generators supporting range-based iteration can be used with the standard C++ fo
 ### 📌 `jh::generator<T> make_generator(const T& seq)`
 
 **Description:**  
-Converts a sequence into a generator.
+Converts a **sequence** into a generator.  
+This function is only enabled when `T` is **not** a `std::ranges::range`.
+
+🔹 **Template Parameters**
+- `T` - The type of sequence. Must support range-based for loops (`begin()` & `end()`).
+    - This function is **only available** when `T` does **not** satisfy `std::ranges::range`.
+    - If `T` is a `std::ranges::range`, the overload `make_generator(R&& rng)` will be used instead.
+
+🔹 **Parameters**
+- `seq` - The sequence to convert.
+
+🔹 **Returns**
+- `jh::generator<sequence_value_type<T>>` - A generator yielding elements from `seq`.
+
+🔹 **Usage Example**
+```c++
+struct MySequence {
+    int data[3] = {1, 2, 3};
+    int* begin() { return data; }
+    int* end() { return data + 3; }
+};
+
+MySequence seq;
+auto gen = jh::make_generator(seq);
+for (auto x : gen) {
+    std::cout << x << " ";  // Outputs: 1 2 3
+}
+```
+
+### 📌 `jh::generator<T> make_generator(std::ranges::range R)`
+
+**Description:**  
+Converts a **range** into a generator.  
+This function is available for all `std::ranges::range`, including STL containers (`std::vector`, `std::list`) and lazy ranges (`std::views::iota`, etc.).
+
+🔹 **Template Parameters**
+- `R` - The type of input range (`std::ranges::range`).
+
+🔹 **Parameters**
+- `rng` - The range to convert.
+
+🔹 **Returns**
+- `jh::generator<std::ranges::range_value_t<R>>` - A generator yielding elements from the range.
+
+🔹 **Usage Example**
+```c++
+#include <ranges>
+auto gen = jh::make_generator(std::views::iota(1, 5));  // Generates {1, 2, 3, 4}
+for (auto x : gen) {
+    std::cout << x << " ";
+}
+```
 
 ---
 
-### **Conversion to Containers**
+## **📌 Conversion to Containers**
 
-#### 📌 `std::vector<T> to_vector(generator<T>& gen)`
-
+### **1. `std::vector<T> to_vector(generator<T>& gen)`**
 **Description:**  
-Converts the generator into a `std::vector<T>`.
+Converts a generator **without `send()` support** into a `std::vector<T>`.  
+The function consumes all values produced by the generator and returns them as a `std::vector`.
+
+🔹 **Parameters**
+- `gen` - A generator that does not require `send()`.
+
+🔹 **Returns**
+- `std::vector<T>` - A vector containing all generated values.
+
+🔹 **Usage Example**
+```c++
+jh::generator<int> gen = some_generator();
+std::vector<int> result = jh::to_vector(gen);
+```
 
 ---
 
-#### 📌 `std::list<T> to_list(generator<T>& gen)`
-
+### **2. `std::vector<T> to_vector(generator<T, U>& gen, U input_value)`**
 **Description:**  
-Converts the generator into a `std::list<T>`.
+Converts a generator **with `send()` support** into a `std::vector<T>`,  
+where **the same value is sent to the generator at each step**.
+
+🔹 **Parameters**
+- `gen` - A generator that supports `send()`.
+- `input_value` - The value sent to the generator at each step.
+
+🔹 **Returns**
+- `std::vector<T>` - A vector containing all generated values.
+
+🔹 **Usage Example**
+```c++
+jh::generator<int, int> gen = some_generator();
+std::vector<int> result = jh::to_vector(gen, 42);  // Always sends 42
+```
+
+---
+
+### **3. `std::vector<T> to_vector(generator<T, std::ranges::range_value_t<R>>& gen, const R& inputs)`**
+**Description:**  
+Converts a generator **with `send()` support** into a `std::vector<T>`,  
+where **a sequence of input values is sent in order**.
+
+🔹 **Parameters**
+- `gen` - A generator that supports `send()`.
+- `inputs` - A `std::ranges::range` of values to send sequentially.
+
+🔹 **Returns**
+- `std::vector<T>` - A vector containing all generated values.
+
+🔹 **Usage Example**
+```c++
+std::vector<int> inputs = {1, 2, 3};
+jh::generator<int, int> gen = some_generator();
+std::vector<int> result = jh::to_vector(gen, inputs);
+```
+
+---
+
+### **4. `std::list<T> to_list(generator<T>& gen)`**
+**Description:**  
+Converts a generator **without `send()` support** into a `std::list<T>`.  
+The function consumes all values produced by the generator and returns them as a `std::list`.
+
+🔹 **Parameters**
+- `gen` - A generator that does not require `send()`.
+
+🔹 **Returns**
+- `std::list<T>` - A list containing all generated values.
+
+🔹 **Usage Example**
+```c++
+jh::generator<int> gen = some_generator();
+std::list<int> result = jh::to_list(gen);
+```
+
+---
+
+### **5. `std::list<T> to_list(generator<T, U>& gen, U input_value)`**
+**Description:**  
+Converts a generator **with `send()` support** into a `std::list<T>`,  
+where **the same value is sent to the generator at each step**.
+
+🔹 **Parameters**
+- `gen` - A generator that supports `send()`.
+- `input_value` - The value sent to the generator at each step.
+
+🔹 **Returns**
+- `std::list<T>` - A list containing all generated values.
+
+🔹 **Usage Example**
+```c++
+jh::generator<int, int> gen = some_generator();
+std::list<int> result = jh::to_list(gen, 42);  // Always sends 42
+```
+
+---
+
+### **6. `std::list<T> to_list(generator<T, std::ranges::range_value_t<R>>& gen, const R& inputs)`**
+**Description:**  
+Converts a generator **with `send()` support** into a `std::list<T>`,  
+where **a sequence of input values is sent in order**.
+
+🔹 **Parameters**
+- `gen` - A generator that supports `send()`.
+- `inputs` - A `std::ranges::range` of values to send sequentially.
+
+🔹 **Returns**
+- `std::list<T>` - A list containing all generated values.
+
+🔹 **Usage Example**
+```c++
+std::list<int> inputs = {1, 2, 3};
+jh::generator<int, int> gen = some_generator();
+std::list<int> result = jh::to_list(gen, inputs);
+```
+
 
 ---
 
@@ -355,8 +513,8 @@ Thus, the iterator can be referenced through the generator itself, making it mor
 - **Ensures safety against invalid accesses when generators expire.**
 - **Avoids unnecessary complexity by enforcing a strict usage pattern.**
 
-This iterator is an essential part of `jh::generator<T, U>`, enabling seamless iteration while maintaining the *
-*efficiency, safety, and integrity** of coroutine-based execution.
+This iterator is an essential part of `jh::generator<T, U>`, enabling seamless iteration while maintaining the 
+**efficiency, safety, and integrity** of coroutine-based execution.
 
 ## **Conclusion**
 

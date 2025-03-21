@@ -1,28 +1,69 @@
 # JH Toolkit
 
-### **version: 1.2.3**
+### **version: 1.3.0-dev**
 
-**A Modern C++20 Utility Library with Coroutine-based Generators, Behavior-defined Concepts, Immutable Strings and Weak pointer-based Object Pooling.**
+**A Modern C++20 Utility Library with Coroutine-based Generators, Behavior-defined Concepts, Immutable Strings, and Weak pointer-based Object Pooling.**
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 ---
 
-🚀 **JH Toolkit 1.2.3 - First Stable Release of 1.2.x LTS, Now Available!**
+🚀 **JH Toolkit 1.3.0-dev - Expanding Core Features!**
 
-✅ **CMake build requirement lowered to 3.20+ for broader system compatibility.**  
-✅ **CMake usage requirement remains 3.14+.**
+✅ **Updated `generator` for enhanced coroutine support.**  
+❌ **`sequence` expansion planned but not yet implemented.**  
+✅ **`data_sink` added as a new feature.**  
+❌ **`runtime_arr` planned for optimized small and fast templates.**
 
-🆕 **New Feature:**
-- **Unified Header Inclusion:** You can now include headers using either `#include <jh/header>` or `#include <jh/header.h>` interchangeably.
-
-**1.2.x is an LTS version** and will receive long-term support. The stable version can be found in the `1.2.x-LTS` branch, and the latest release can always be accessed via the repository's release section.
-
-Future patches (`1.2.x`) will continue to enhance **cross-platform support**, refine build configurations, and introduce more detailed test cases as needed. MSVC support is not planned.
+## **📋 Development Roadmap**
+| Feature                | Status                |
+|------------------------|-----------------------|
+| **Expand `generator`** | ✅ Done                |
+| **Expand `sequence`**  | ❌ Not Yet Implemented |
+| **Add `data_sink`**    | ✅ Done                |
+| **Add `runtime_arr`**  | ❌ Not Yet Implemented |
 
 ---
 
-## 🚀 What's New in 1.2.0+ (Feature-Complete with Cross-Platform Support)
+## **🔧 Debug Mode & Benchmarking**
+JH Toolkit’s primary goal is **functionality over micro-optimization** at this stage.  
+While **benchmarking is supported**, it is only available in **Debug Mode** for **performance testing of specialized structures** like `data_sink` and `runtime_arr`.
+
+### **Building for Debug Mode**
+```sh
+cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug -DENABLE_BENCHMARK=ON
+cmake --build build-debug
+```
+🔹 **No installation in Debug Mode (`build-debug` is separate from `build`).**  
+🔹 **Benchmarks are available but optional (`ENABLE_BENCHMARK=ON`).**  
+🔹 **⚠️ Do not run benchmarks with `ctest`, as they are time-consuming!**  
+🔹 **If you want to run benchmarks, execute the corresponding benchmark binary directly instead:**
+```sh
+./build-debug/tests/test_benchmark
+```
+
+---
+
+## 📖 **Library Philosophy**
+JH Toolkit's **original template structures (`data_sink` and `runtime_arr`)** are designed for **smaller,  
+faster, and more specialized template structures**, unlike the **generic STL**.
+
+- **`data_sink` and `runtime_arr` are custom structures** optimized for speed and memory efficiency.
+- **Benchmarking is enabled for these unique structures** to fine-tune performance in `Debug` builds.
+- **General-purpose functionality is prioritized over benchmark optimizations at this stage.**
+
+Other structures (mostly inspired by other languages, such as `jh::generator`)
+are **primarily implemented for functionality**.  
+They will **not be optimized for performance until all functions are fully complete and robust**.
+
+🔹 **Benchmarks for these general-purpose structures are planned in JH Toolkit 2+.x.**
+
+---
+
+This update ensures better flexibility in development while **keeping benchmarks optional** and **clearly separating Debug Mode builds**. 🚀
+
+
+## 🚀 1.2.x features
 
 ### 🔥 **JH Toolkit is Now Feature-Complete!**
 
@@ -172,9 +213,9 @@ target_link_libraries(my_project PRIVATE jh::jh-toolkit-impl) # For compiled com
 To enable **tests and examples**, build in `Debug` mode:
 
 ```sh
-cmake -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
-ctest --test-dir build
+cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-debug
+ctest --test-dir build-debug
 ```
 
 ---
@@ -183,6 +224,7 @@ ctest --test-dir build
 
 For detailed API documentation, please refer to the corresponding module headers:
 
+- [Append-Only, Cache-Optimized FIFO Buffer (`data_sink.h`)](docs/data_sink.md)
 - [Coroutine-Based Generators (`generator.h`)](docs/generator.md)
 - [Immutable Strings (`immutable_str.h`)](docs/immutable_str.md)
 - [Iterator Declaration & Concept (`iterator.h`)](docs/iterator.md)
@@ -294,15 +336,6 @@ JH Toolkit follows **`snake_case` naming conventions**, aligning with **C++ stan
 
 ---
 
-## 📊 **Why No Benchmarks Yet?** (Planned for 2+.x or higher)  
-JH Toolkit **prioritizes feature completeness over micro-optimizations** at this stage.
-
-- **Modern C++ optimizes well when used correctly.**
-    - Proper use of **RAII, `move`, `std::shared_ptr` / `std::unique_ptr`** leads to **reasonable efficiency**.
-- **Usability, safety, and Pythonic low-code abstractions** are the primary focus.
-- **Performance tuning may be introduced in future releases**, but for now, the priority is **ensuring API stability and cross-platform compatibility**.
-
----
 
 ## 👤 Author
 

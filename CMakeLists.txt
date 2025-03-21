@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)  # Ensure standardized installation directories
 
+set(ENABLE_BENCHMARK OFF CACHE BOOL "Enable benchmark tests")
+
 # Define the INTERFACE library for header-only components
 add_library(jh-toolkit INTERFACE
         include/jh/)
@@ -44,7 +46,7 @@ install(EXPORT jh-toolkitTargets
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/jh-toolkit-config-version.cmake"
-        VERSION 1.2.3
+        VERSION 1.3.0
         COMPATIBILITY SameMajorVersion
 )
 
