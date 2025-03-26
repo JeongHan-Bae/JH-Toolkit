@@ -41,6 +41,7 @@ TEST_CASE("data_sink Performance Benchmark", "[data_sink]") {
         });
     };
 
+#if !defined(JH_DISABLE_HIGH_ALLOC_BENCHMARK)
     BENCHMARK_ADVANCED("std::list Insert")(Catch::Benchmark::Chronometer meter) {
         std::list<int> lst;
         meter.measure([&] {
@@ -49,6 +50,9 @@ TEST_CASE("data_sink Performance Benchmark", "[data_sink]") {
             }
         });
     };
+#else
+    std::cout << "[Benchmark] Skipped std::list insert (disabled at compile time)\n";
+#endif
 }
 
 /**

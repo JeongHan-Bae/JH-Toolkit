@@ -1,6 +1,6 @@
 # Build artifacts
 /build/
-/build-debug/
+/build-debug*/
 /out/
 /bin/
 /lib/

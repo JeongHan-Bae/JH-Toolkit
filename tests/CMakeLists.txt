@@ -45,6 +45,12 @@ add_test(NAME data_sink_test COMMAND test_data_sink)
 # Benchmark only if ENABLE_BENCHMARK is ON
 if(ENABLE_BENCHMARK)
     message(STATUS "Benchmarking enabled: Adding benchmark executable")
+
+    if(JH_DISABLE_HIGH_ALLOC_BENCHMARK)
+        message(WARNING "std::list benchmark disabled by user")
+        add_compile_definitions(JH_DISABLE_HIGH_ALLOC_BENCHMARK=1)
+    endif()
+
     add_executable(test_benchmark benchmarks.cpp)
     target_link_libraries(test_benchmark PRIVATE jh-toolkit jh-toolkit-impl Catch2::Catch2WithMain)
     target_include_directories(test_benchmark PRIVATE ${CMAKE_SOURCE_DIR}/tests)

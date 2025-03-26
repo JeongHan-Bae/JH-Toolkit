@@ -64,7 +64,20 @@ install(FILES
 
 # Enable tests and examples only in Debug mode
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    option(LOW_MEMORY_BENCHMARK
+            "Disable benchmark sessions for high-memory consuming structs (for low-memory environments)" OFF)
+    if(LOW_MEMORY_BENCHMARK)
+        add_compile_definitions(JH_DISABLE_HIGH_ALLOC_BENCHMARK=1)
+    endif()
     enable_testing()
     add_subdirectory(tests)
     add_subdirectory(examples)
+
+    message(WARNING "Install is disabled in Debug mode. Use Release or RelWithDebInfo instead.")
+    add_custom_target(disable-install ALL
+            COMMENT "Install disabled in Debug mode"
+    )
+    function(install)
+        message(FATAL_ERROR "Install is explicitly disabled in Debug mode.")
+    endfunction()
 endif()

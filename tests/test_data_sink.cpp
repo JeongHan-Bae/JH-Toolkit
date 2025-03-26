@@ -17,6 +17,19 @@ std::vector<T> to_vector(const jh::data_sink<T, BLOCK_SIZE> &sink) {
     return result;
 }
 
+template<typename T>
+std::vector<T> generate_sequence(std::size_t N) {
+    std::vector<T> result(N);
+    if constexpr (std::is_same_v<T, bool>) {
+        for (std::size_t i = 0; i < N; ++i)
+            result[i] = static_cast<bool>(i);  // false for 0, true for others
+    } else {
+        std::iota(result.begin(), result.end(), static_cast<T>(0));
+    }
+    return result;
+}
+
+
 // **Basic Data Type Tests**
 TEMPLATE_TEST_CASE("data_sink Basic Type Test", "[data_sink]", int, float, bool) {
     constexpr std::uint32_t BLOCK_SIZE = 1024;
@@ -30,9 +43,7 @@ TEMPLATE_TEST_CASE("data_sink Basic Type Test", "[data_sink]", int, float, bool)
             sink.emplace_back(static_cast<TestType>(i));
         }
 
-        // Convert to vector for validation
-        std::vector<TestType> expected(N);
-        std::iota(expected.begin(), expected.end(), static_cast<TestType>(0));
+        auto expected = generate_sequence<TestType>(N);
 
         REQUIRE(to_vector(sink) == expected);
     }
@@ -40,12 +51,7 @@ TEMPLATE_TEST_CASE("data_sink Basic Type Test", "[data_sink]", int, float, bool)
     // **Test bulk_append**
     SECTION("Bulk Append") {
         constexpr int N = 5000;
-        std::vector<TestType> input(N);
-        if constexpr (std::is_same_v<TestType, bool>) {
-            std::generate(input.begin(), input.end(), [n = false]() mutable { return n = !n; });
-        } else {
-            std::iota(input.begin(), input.end(), static_cast<TestType>(0));
-        }
+        auto input = generate_sequence<TestType>(N);
 
         sink.bulk_append(input);
 

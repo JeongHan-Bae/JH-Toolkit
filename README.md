@@ -11,36 +11,73 @@
 🚀 **JH Toolkit 1.3.0-dev - Expanding Core Features!**
 
 ✅ **Updated `generator` for enhanced coroutine support.**  
+✅ **`data_sink` completed and benchmarked (with low-memory support).**  
+🔄 **`radix_sort` architecture-specific optimizations done for ARM (Clang & GCC).**  
 ❌ **`sequence` expansion planned but not yet implemented.**  
-✅ **`data_sink` added as a new feature.**  
-❌ **`runtime_arr` planned for optimized small and fast templates.**
+❌ **`runtime_arr` still pending – designed for small, fast, templated arrays.**
+
+---
 
 ## **📋 Development Roadmap**
-| Feature                | Status                |
-|------------------------|-----------------------|
-| **Expand `generator`** | ✅ Done                |
-| **Expand `sequence`**  | ❌ Not Yet Implemented |
-| **Add `data_sink`**    | ✅ Done                |
-| **Add `runtime_arr`**  | ❌ Not Yet Implemented |
+| Feature                  | Status                |
+|--------------------------|-----------------------|
+| **Expand `generator`**   | ✅ Done                |
+| **Expand `sequence`**    | ❌ Not Yet Implemented |
+| **Add `data_sink`**      | ✅ Done                |
+| **Add `runtime_arr`**    | ❌ Not Yet Implemented |
+| **Platform Tests (ARM)** | ✅ Clang / GCC Passed  |
+| **Platform Tests (AMD)** | ⏳ Pending             |
+
+---
+
+🛠 **Next Steps**
+- Finalize AMD architecture testing for `radix_sort`
+- Begin implementation of `sequence` and `runtime_arr`
+- Expand examples and documentation based on new features
 
 ---
 
 ## **🔧 Debug Mode & Benchmarking**
-JH Toolkit’s primary goal is **functionality over micro-optimization** at this stage.  
-While **benchmarking is supported**, it is only available in **Debug Mode** for **performance testing of specialized structures** like `data_sink` and `runtime_arr`.
+JH Toolkit prioritizes **functionality over micro-optimization** at this stage.  
+While **benchmarking is supported**, it is only enabled in **Debug Mode**, mainly for evaluating performance of specialized structures such as `data_sink` and `runtime_arr`.
 
-### **Building for Debug Mode**
+---
+
+### 🛠️ **Building in Debug Mode**
 ```sh
 cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug -DENABLE_BENCHMARK=ON
 cmake --build build-debug
 ```
-🔹 **No installation in Debug Mode (`build-debug` is separate from `build`).**  
-🔹 **Benchmarks are available but optional (`ENABLE_BENCHMARK=ON`).**  
-🔹 **⚠️ Do not run benchmarks with `ctest`, as they are time-consuming!**  
-🔹 **If you want to run benchmarks, execute the corresponding benchmark binary directly instead:**
+
+- 🔹 **No installation** in Debug Mode (`build-debug` is separate from `build`)
+- 🔹 Benchmarks are optional (`ENABLE_BENCHMARK=ON`)
+- ⚠️ **Do not run benchmarks using `ctest`** — they are time-consuming by design
+- ✅ Instead, run the benchmark binary directly:
 ```sh
 ./build-debug/tests/test_benchmark
 ```
+
+---
+
+#### 💡 **Low-Memory Mode (for VMs / limited environments)**
+
+For virtual machines or memory-constrained environments:
+
+```sh
+cmake -B build-debug-lowmem \
+      -DCMAKE_BUILD_TYPE=Debug \
+      -DENABLE_BENCHMARK=ON \
+      -DLOW_MEMORY_BENCHMARK=ON
+
+cmake --build build-debug-lowmem
+```
+
+Then run as usual:
+```sh
+./build-debug-lowmem/tests/test_benchmark
+```
+
+In this mode, **high-allocation benchmarks (e.g., `std::list`) are disabled** to prevent crashes due to OOM (out-of-memory).
 
 ---
 
