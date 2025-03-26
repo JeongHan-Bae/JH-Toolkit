@@ -11,8 +11,15 @@
 
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
-    #include <immintrin.h>  // Prefetch in x86 with SIMD
-    #define PREFETCH(addr) _mm_prefetch(reinterpret_cast<const char*>(addr), _MM_HINT_T0)
+
+#if defined(__GNUC__) || defined(__clang__)
+#include <xmmintrin.h>
+#define PREFETCH(addr) _mm_prefetch(reinterpret_cast<const char*>(addr), _MM_HINT_T0)
+#else
+#define PREFETCH(addr) ((void)0)  // fallback if unknown x86 compiler
+#endif
+
+
 #elif defined(__aarch64__) || defined(_M_ARM64)
 #include <arm_neon.h>  // Include <arm_neon.h> for Apple
 #define PREFETCH(addr) __builtin_prefetch(addr, 0, 3)
@@ -114,7 +121,9 @@ namespace jh::radix_impl {
     }
 
     inline void count_sort_uint16_t(std::uint16_t *input, const std::uint64_t n, const bool descending) {
-        std::uint64_t count[65536] = {};
+        constexpr uint64_t BASE = 65536;
+        auto count = std::make_unique<std::uint64_t[]>(BASE);
+        std::fill(count.get(), count.get() + BASE, 0);
 
         std::uint64_t i = 0;
         for (; i + 8 <= n; i += 8) {
@@ -156,7 +165,7 @@ namespace jh::radix_impl {
                   std::is_same_v<T, std::uint16_t> ||
                   std::is_same_v<T, std::uint32_t> ||
                   std::is_same_v<T, std::uint64_t>)
-    constexpr std::uint64_t get_base() {
+        [[maybe_unused]] constexpr std::uint64_t get_base() {
         if constexpr (std::is_same_v<T, std::uint8_t> || std::is_same_v<T, std::uint16_t>) {
             return 256;
         } else {
@@ -180,8 +189,13 @@ namespace jh::radix_impl {
         }
     }
 #else
-#define fast_emplace_back(buckets, vals, count) \
-for (std::uint64_t i = 0; i < count; ++i) { buckets[vals[i] & 0xFFFF].emplace_back(vals[i]); }
+    template<std::uint32_t BLOCK_SIZE>
+    inline void fast_emplace_back(data_sink<std::uint64_t, BLOCK_SIZE>* buckets,
+                                  const std::uint64_t* vals, const std::uint64_t count) {
+        for (std::uint64_t i = 0; i < count; ++i) {
+            buckets[vals[i] & 0xFFFF].emplace_back(vals[i]);
+        }
+    }
 #endif
 
     template<std::uint32_t BLOCK_SIZE>
@@ -189,7 +203,7 @@ for (std::uint64_t i = 0; i < count; ++i) { buckets[vals[i] & 0xFFFF].emplace_ba
         constexpr std::uint64_t BASE = 65536; // 2^16
         std::array<jh::data_sink<std::uint32_t, BLOCK_SIZE>, BASE> buckets;
 
-        // Only two 2 ^ 16 vals, first handle the Higher can save time (not low -> high, so called reverse)
+        // Only two 2 ^ 16 vals, first handle the Higher can save time (not low -> high, so-called reverse)
         std::uint64_t i = 0;
         for (; i + 8 <= n; i += 8) {
             buckets[input[i + 0] >> 16].emplace_back(input[i + 0]);
@@ -211,7 +225,8 @@ for (std::uint64_t i = 0; i < count; ++i) { buckets[vals[i] & 0xFFFF].emplace_ba
         for (std::uint64_t i_ = 0; i_ < BASE; ++i_) {
             if (!buckets[i_].empty()) {
                 // statistics for lower
-                alignas(64) std::uint64_t count[BASE] = {};
+                auto count = std::make_unique<std::uint64_t[]>(BASE);
+                std::fill(count.get(), count.get() + BASE, 0);
                 for (const auto &bucket = buckets[i_]; const auto &val: bucket) {
                     ++count[val & 0xFFFF];
                 }
