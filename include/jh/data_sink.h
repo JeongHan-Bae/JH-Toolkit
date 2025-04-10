@@ -109,6 +109,7 @@
 #include <cstdint>
 #include <functional>
 #include <algorithm>
+#include <initializer_list>
 #include <ranges>      // NOLINT
 #include <utility>     // NOLINT
 #include "iterator.h"
@@ -293,6 +294,38 @@ namespace jh {
          */
         [[nodiscard]] bool empty() const {
             return size_ == 0;
+        }
+
+        /**
+        * @brief Appends an element using an initializer list.
+        *
+        * @tparam U The type of elements in the initializer list.
+        * @param i_list A `std::initializer_list<U>` used to construct the internal object.
+        *
+        * @details
+        * This overload enables support for syntax like `sink.emplace_back({1, 2, 3})`,
+        * as long as the stored type `T` (or `U` if `T = std::unique_ptr<U>`) provides a
+        * constructor accepting a `std::initializer_list<U>`.
+        *
+        * @warning
+        * Mixed-types in a brace-enclosed expression is **not** considered as a valid initializer list.
+        */
+        template<typename U>
+        void emplace_back(std::initializer_list<U> i_list) {
+            if (!head_) [[unlikely]] {
+                head_ = std::make_unique<node>();
+                tail_ = head_.get();
+            } else if (tail_->full()) [[unlikely]] {
+                if (!tail_->next) {
+                    tail_->next = std::make_unique<node>();
+                } else {
+                    tail_->next->size_ = 0;
+                }
+                tail_ = tail_->next.get();
+            }
+            tail_->emplace(std::move(i_list));
+            // Although std::initializer_list<T> is lightweight, std::move(i_list) is preferred for clarity.
+            ++size_;
         }
 
         /**

@@ -1,0 +1,11 @@
+/**
+ * @file runtime_arr
+ * @brief Forwarding header for jh::runtime_arr.
+ *
+ * This header exists to provide a modern include style (`#include <jh/runtime_arr>`),
+ * forwarding to `jh/runtime_arr.h`. It contains no additional code.
+ */
+
+#pragma once
+
+#include "jh/runtime_arr.h"

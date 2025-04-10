@@ -8,20 +8,22 @@
 #include <type_traits>
 
 // Helper template to check if a class has a given member function
-template <typename, template <typename> typename, typename = void>
-struct is_detected : std::false_type {};
+template<typename, template <typename> typename, typename = void>
+struct is_detected : std::false_type {
+};
 
-template <typename T, template <typename> typename Op>
-struct is_detected<T, Op, std::void_t<Op<T>>> : std::true_type {};
+template<typename T, template <typename> typename Op>
+struct is_detected<T, Op, std::void_t<Op<T> > > : std::true_type {
+};
 
-template <typename T, template <typename> typename Op>
+template<typename T, template <typename> typename Op>
 inline constexpr bool is_detected_v = is_detected<T, Op>::value;
 
 // Detection templates for `begin()` and `end()`
-template <typename T>
+template<typename T>
 using has_begin_t = decltype(std::declval<T>().begin());
 
-template <typename T>
+template<typename T>
 using has_end_t = decltype(std::declval<T>().end());
 
 
@@ -545,11 +547,44 @@ TEST_CASE("Ranged-For Loop test") {
 
             // Iterate over the generator and validate values
             int expected_value = start;
-            for (const auto a : generator) {
+            for (const auto a: generator) {
                 REQUIRE(a == expected_value);
                 std::cout << "Generated: " << a << " | Expected: " << expected_value << std::endl;
                 ++expected_value;
             }
+
+            // Ensure iteration covered all expected values
+            REQUIRE(expected_value == end);
+        }
+    }
+}
+
+TEST_CASE("Ranged-For Range Loop test") {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution start_dist(-100, 100); // Random start value
+    std::uniform_int_distribution length_dist(1, 100); // Random length of the range
+
+    constexpr int total_tests = 1024;
+
+    for (int i = 0; i < total_tests; ++i) {
+        SECTION("Randomized Range Iteration Test " + std::to_string(i + 1)) {
+            // Generate a random range [start, start + length)
+            const int start = start_dist(gen);
+            const int length = length_dist(gen);
+            const int end = start + length;
+
+            // Create a generator for the range
+            auto range_ = jh::to_range([&] { return test::range(start, end); });
+            // Iterate over the generator and validate values
+            int expected_value = start;
+            static_assert(std::ranges::range<decltype(range_)>);
+
+            std::ranges::for_each(range_, [&](const int a) {
+                REQUIRE(a == expected_value);
+                std::cout << "Generated: " << a << " | Expected: " << expected_value << std::endl;
+                ++expected_value;
+            });
 
             // Ensure iteration covered all expected values
             REQUIRE(expected_value == end);
@@ -609,13 +644,13 @@ TEST_CASE("Static Compilation Test for countdown") {
     static_assert(is_detected_v<RangeType, has_end_t>,
                   "Error: range should HAVE end()");
 
-    static_assert(std::same_as<jh::generator<int, double>::iterator, jh::iterator<jh::generator<int, double>>>,
-        "Error: iterator should be of same type as jh::iterator<jh::generator<int, double>>");
+    static_assert(std::same_as<jh::generator<int, double>::iterator, jh::iterator<jh::generator<int, double> > >,
+                  "Error: iterator should be of same type as jh::iterator<jh::generator<int, double>>");
 
-    static_assert(std::same_as<jh::generator<int, std::monostate>::iterator, jh::iterator<jh::generator<int>>>,
-        "Error: iterator should be of same type as jh::iterator<jh::generator<int>>");
+    static_assert(std::same_as<jh::generator<int, std::monostate>::iterator, jh::iterator<jh::generator<int> > >,
+                  "Error: iterator should be of same type as jh::iterator<jh::generator<int>>");
 
-    static_assert(!jh::sequence<jh::generator<int>>, "jh::generator<int> should not be a sequence");
+    static_assert(!jh::sequence<jh::generator<int> >, "jh::generator<int> should not be a sequence");
 }
 
 TEST_CASE("Generator Iterator Consumption Test") {

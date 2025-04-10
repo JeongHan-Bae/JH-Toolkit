@@ -4,7 +4,17 @@
 
 **A Modern C++20 Utility Library with Coroutine-based Generators, Behavior-defined Concepts, Immutable Strings, and Weak pointer-based Object Pooling.**
 
+<!-- ✅ Language & Standard Support -->
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-violet.svg)](https://en.cppreference.com/w/cpp/20)
+[![Header-Only](https://img.shields.io/badge/header--only-partial-green)](#)
+[![Coroutines](https://img.shields.io/badge/coroutines-supported-brightgreen)](https://en.cppreference.com/w/cpp/language/coroutines)
+[![Concepts](https://img.shields.io/badge/concepts-supported-brightgreen)](https://en.cppreference.com/w/cpp/language/constraints)
+
+<!-- ✅ Feature Highlights -->
+[![Object Pool](https://img.shields.io/badge/object--pooling-weak_ptr_based-brown)](#)
+[![Immutable Strings](https://img.shields.io/badge/immutable--strings-truly_immutable-brown)](#)
+[![Generators](https://img.shields.io/badge/generators-coroutine_driven-brown)](#)
 
 ---
 
@@ -12,72 +22,9 @@
 
 ✅ **Updated `generator` for enhanced coroutine support.**  
 ✅ **`data_sink` completed and benchmarked (with low-memory support).**  
-🔄 **`radix_sort` architecture-specific optimizations done for ARM (Clang & GCC).**  
+✅ **`radix_sort` architecture-specific optimizations done for ARM & AMD.**  
 ❌ **`sequence` expansion planned but not yet implemented.**  
-❌ **`runtime_arr` still pending – designed for small, fast, templated arrays.**
-
----
-
-## **📋 Development Roadmap**
-| Feature                  | Status                |
-|--------------------------|-----------------------|
-| **Expand `generator`**   | ✅ Done                |
-| **Expand `sequence`**    | ❌ Not Yet Implemented |
-| **Add `data_sink`**      | ✅ Done                |
-| **Add `runtime_arr`**    | ❌ Not Yet Implemented |
-| **Platform Tests (ARM)** | ✅ Clang / GCC Passed  |
-| **Platform Tests (AMD)** | ⏳ Pending             |
-
----
-
-🛠 **Next Steps**
-- Finalize AMD architecture testing for `radix_sort`
-- Begin implementation of `sequence` and `runtime_arr`
-- Expand examples and documentation based on new features
-
----
-
-## **🔧 Debug Mode & Benchmarking**
-JH Toolkit prioritizes **functionality over micro-optimization** at this stage.  
-While **benchmarking is supported**, it is only enabled in **Debug Mode**, mainly for evaluating performance of specialized structures such as `data_sink` and `runtime_arr`.
-
----
-
-### 🛠️ **Building in Debug Mode**
-```sh
-cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug -DENABLE_BENCHMARK=ON
-cmake --build build-debug
-```
-
-- 🔹 **No installation** in Debug Mode (`build-debug` is separate from `build`)
-- 🔹 Benchmarks are optional (`ENABLE_BENCHMARK=ON`)
-- ⚠️ **Do not run benchmarks using `ctest`** — they are time-consuming by design
-- ✅ Instead, run the benchmark binary directly:
-```sh
-./build-debug/tests/test_benchmark
-```
-
----
-
-#### 💡 **Low-Memory Mode (for VMs / limited environments)**
-
-For virtual machines or memory-constrained environments:
-
-```sh
-cmake -B build-debug-lowmem \
-      -DCMAKE_BUILD_TYPE=Debug \
-      -DENABLE_BENCHMARK=ON \
-      -DLOW_MEMORY_BENCHMARK=ON
-
-cmake --build build-debug-lowmem
-```
-
-Then run as usual:
-```sh
-./build-debug-lowmem/tests/test_benchmark
-```
-
-In this mode, **high-allocation benchmarks (e.g., `std::list`) are disabled** to prevent crashes due to OOM (out-of-memory).
+🔄 **`runtime_arr` completed and benchmarked – ideal for small, fast, templated arrays (Clang) – GCC support pending.**
 
 ---
 
@@ -124,18 +71,41 @@ This version includes major improvements to **immutable strings** and **object p
 
 - **C++20** (mandatory)
 - **CMake 3.14+** (for library usage)
-- **CMake 20+** (for library compilation and installation)
+- **CMake 3.20+** (for library compilation and installation)
 - **Git** (required for debugging mode compilation)
 - **A modern C++20 compiler** (GCC 10+, Clang 10+)
   > **GCC(MinGW)**, **Clang** are tested and supported in every release.
   > **MSVC is not supported** due to its limited support for C++20 features. We do not plan to downgrade to match MSVC's capabilities, so users should use GCC or Clang instead.
   > For **Windows ARM64**, native support for MinGW is limited. We recommend using **GCC within WSL2** to achieve near-native performance.
-
+  
 Ensure your project enables **C++20**, otherwise `jh-toolkit` will not compile:
 ```cmake
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 ```
+
+> ⚠️ **Not Designed for Embedded or 32-bit Platforms**  
+> JH Toolkit is designed for **modern 64-bit systems** (x86_64, ARM64). All container internals use  
+> `uint64_t` for `size_`, and STL compatibility **requires `size()` to match `uint64_t` semantics**.  
+> As a result, **embedded targets or 32-bit builds are not supported**.
+
+> 📱 **Mobile (Android/iOS) and Cross-Compiling Notes**  
+> When targeting **mobile platforms**, we strongly recommend **project-local integration** (e.g., `add_subdirectory(jh-toolkit)`)  
+> instead of precompiled `install` + `find_package()`.
+>
+> This avoids **ABI mismatch issues** when pulling desktop-compiled binaries into mobile toolchains  
+> (e.g., NDK, Xcode, etc.), and allows tight control over architecture-specific builds.
+
+> 🧰 **CMake < 3.20 Systems**  
+> If your system does not support `CMake 3.20+`, you can still:
+> - Include the source directly in your CMake tree.
+> - Use `#include "jh/header"` instead of `#include <jh/header>`.
+> - Manually link `.cpp` sources for non-header-only modules.
+
+> ✅ Local embedding works well on modern Linux/macOS desktops, CI runners, or mobile SDKs —  
+> just **not embedded** or **resource-constrained systems**.
+
+---
 
 ## 📥 Installation
 
@@ -197,88 +167,129 @@ add_executable(my_project main.cpp)
 target_link_libraries(my_project PRIVATE jh::jh-toolkit) # For header-only modules
 target_link_libraries(my_project PRIVATE jh::jh-toolkit-impl) # For compiled components
 ```
----
-
-### **🔧 Modules Overview**
-
-### **🌀 Coroutine-Based Generators (`jh::generator<T, U>`)**
-- Provides **lazy evaluation** via **iterative** and **interactive** coroutine-based generators.
-- Supports `send()` for interactive communication within a generator.
-- Enables **range-based for loops** via `jh::generator<T, U>::iterator`.
-- Includes utilities for converting generators to **`std::vector`** and **`std::list`**.
-- **Explicitly move-only** to prevent unintended copies.
-
-### **🔒 Immutable Strings (`jh::immutable_str`)**
-- Provides **true immutability** with **memory-level enforcement**.
-- Ensures **thread safety** and prevents **accidental modification**.
-- Supports **efficient hash-based storage** with **delayed hash computation** (lazy evaluation).
-- Constructor: Accepts `const char*` as default single-parameter constructor (LLVM API compatible).
-- **New constructor:** Accepts `std::string_view` with an associated `std::mutex` for safe external storage.
-- Designed for **read-only data, global constants, and concurrent environments**.
-
-### **📚 Sequence Concept (`jh::sequence`)**
-- Defines `jh::sequence` as a **C++20 concept** for immutable iteration.
-- Provides `sequence_value_type<T>` for extracting element types at compile time.
-- Works seamlessly with **STL containers** and **custom iterables**.
-- Ensures **compile-time validation** of sequence-like types for safer API design.
 
 
-### **🔄 Object Pooling (`jh::pool<T>` & `jh::sim_pool<T, Hash, Eq>`)**
-
-**Designing principles:**
-- **Designed for memory management and object deduplication**, rather than extreme performance optimization.
-- Uses **`std::weak_ptr` for automatic cleanup**, eliminating manual tracking overhead.
-- **Not a raw memory pool**: `jh::pool<T>` does **not** allocate objects in a contiguous memory block like traditional memory pools.
-- **Provides safe, high-level API design over manual memory management.**
-
-**Realized features:**
-- Implements **weak pointer-based** content-aware object pooling.
-- **`jh::pool<T>`**: Automatically deduces **hash and equality functions** based on `T::hash()` and `operator==`.
-- **`jh::sim_pool<T, Hash, Eq>`**: Supports **custom hash and equality functions** for specialized object pooling.
-- **Thread-safe** with `std::shared_mutex`.
-- **Automatic cleanup** of expired objects with **optional manual cleanup**.
-
-### **⚙️ Iterator Concepts (`jh::iterator<>`)**
-- Provides **forward declaration** of `jh::iterator<>` for use in generators and containers.
-- Defines **C++20 concepts** (`input_iterator`, `output_iterator`, `forward_iterator`, etc.) to validate iterator behavior.
-- Works with **both `std::` and costume iterators**.
-- **Duck typing approach**: Concept validation is based on **behavior, not inheritance**.
-
----
-
-## 🔬 Debug Mode (Optional)
-To enable **tests and examples**, build in `Debug` mode:
+### ⚙️ Debug Build Setup
 
 ```sh
 cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug
 cmake --build build-debug
-ctest --test-dir build-debug
+```
+
+- 🧪 Tests and benchmarks are built **alongside** regular targets.
+- ⚠️ Do **not** use `ctest` for benchmarks — they are **intentionally slow**.
+- `ENABLE_BENCHMARK` is **off by default** in debug builds.
+- ✅ Run benchmarks with:
+
+```sh
+cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug -DENABLE_BENCHMARK=ON
+cmake --build build-debug
+./build-debug/tests/test_benchmark
 ```
 
 ---
 
-## 📖 API Documentation
+### 💾 Low-Memory Debug Mode
 
-For detailed API documentation, please refer to the corresponding module headers:
+For VMs or CI runners with tight memory:
 
-- [Append-Only, Cache-Optimized FIFO Buffer (`data_sink.h`)](docs/data_sink.md)
-- [Coroutine-Based Generators (`generator.h`)](docs/generator.md)
-- [Immutable Strings (`immutable_str.h`)](docs/immutable_str.md)
-- [Iterator Declaration & Concept (`iterator.h`)](docs/iterator.md)
-- [Object Pooling (`pool.h`)](docs/pool.md)
-- [Sequence Concept (`sequence.h`)](docs/sequence.md)
-- [Object Pooling Base Structure (`sim_pool.h`)](docs/sim_pool.md)
+```sh
+cmake -B build-debug-lowmem \
+      -DCMAKE_BUILD_TYPE=Debug \
+      -DENABLE_BENCHMARK=ON \
+      -DLOW_MEMORY_BENCHMARK=ON
+
+cmake --build build-debug-lowmem
+./build-debug-lowmem/tests/test_benchmark
+```
+
+🔹 Disables memory-heavy benchmarks (like `std::list`) to prevent OOM.  
+🔹 Ideal for environments with **<2GB RAM** or **shared runners**.
 
 ---
 
-### ⚡ **Performance & Design Philosophy**  
-JH Toolkit is designed to bring **high-level abstractions to modern C++20**, focusing on **usability, safety, Pythonic design, and cross-platform stability**.
+### ✅ Running Tests (Debug Mode)
 
-- **Performance is important, but usability and safety come first.**
-- **Reasonable overhead is acceptable** if it improves **API clarity, automatic memory management (RAII), and maintainability**.
-- **Standard C++ (`std`) is used as the foundation** to ensure **cross-platform stability** and **future compatibility** with C++ standards.
-- **RAII, `move`, `std::shared_ptr`, and `std::unique_ptr`** are leveraged correctly to ensure **safe and efficient resource management**.
-- **1.2.x focuses on feature completion**; optimizations may come later but are **not the primary goal** at this stage.
+```sh
+ctest --test-dir build-debug
+```
+> Run Benchmarks separately with `./build-debug/tests/test_benchmark` or only if you understand the implications.
+
+
+---
+
+### 📌 Notes
+
+- Benchmarks focus on **performance-oriented containers** like `data_sink`, `runtime_arr`, and `pod_stack`.
+- Functional modules like `generator`, `pool`, and `immutable_str` are tested for **behavioral correctness** — not micro-optimized (yet).
+- Benchmarking, Debugging and Examples are off in release builds.
+- Install is forbidden in Debug Mode to prevent accidental system changes.
+
+---
+
+## 📚 JH Toolkit Modules Overview
+
+### 📦 Template-Based Modules
+
+Modern C++ templates designed for **performance**, **type safety**, and **zero-cost abstraction**.
+
+#### 🚀 Performance-Oriented Templates
+Optimized for **tight loops**, **memory locality**, and **zero overhead reset/fill**.
+
+- [`runtime_arr<T>`](docs/runtime_arr.md) — Fixed-size flat buffer; bit-packed `bool` specialization; efficient for PODs and inner-loop algorithms.
+- [`pod_stack<T>`](docs/pod_stack.md) — Append/rollback stack for PODs; perfect for non-heap scoped memory reuse.
+- [`data_sink<T>`](docs/data_sink.md) — Append-only FIFO for low-latency pipelines; excellent for algorithms or cases where input size is not known in advance.
+
+#### 🛠️ Functional Utilities & Object Sharing
+Lightweight templates for **lifetime control**, **memory deduplication**, and **pool-based sharing**.
+
+- [`generator<T, U = std::monostate>`](docs/generator.md) — Coroutine-based lazy generator with `send()` support; usable with `range-for` and interactive iteration.
+- [`sim_pool<T, Hash, Eq>`](docs/sim_pool.md) — Type-stable content-aware object pool using `weak_ptr` + `shared_mutex`; supports custom hash/equality functions.
+- [`pool<T>`](docs/pool.md) — Auto-specialized wrapper over `sim_pool`; detects `.hash()` + `operator==()` and deduplicates immutable types by content.
+
+> 💡 Philosophy: Use `shared_ptr` + weak-pool strategy for **thread-safe**, **immutable** object sharing. We recommend `.hash()`-based caching on immutable types over repetitive `std::hash<T>`. Pool entries expire automatically when no longer referenced.
+
+> All JH template structures are **behavior-safe**, not thread-safe by default.
+> - Type constraints (like `T: pod_like`) ensure correctness by concept.
+> - Thread safety should be **explicitly handled** via `shared_ptr`-based pooling or external locking.
+> - We strongly recommend immutability for all pooled/shared objects.
+
+---
+
+### 🧱 Non-Template Value Types
+
+Robust C++ objects designed to be **immutable**, **final**, and **safe by design**.
+
+- [`immutable_str`](docs/immutable_str.md) — Truly immutable string with `std::string_view`, C-string, and hash-friendly access; thread-safe and `final`.
+    - `immutable_str` disallows copy/move; instances are allocated once and never modified.
+    - For shared access, use `jh::atomic_str_ptr` (`std::shared_ptr<immutable_str>`).
+
+---
+
+###  🧩 Concept & Trait Definitions
+
+Modern **C++20 concepts** for compile-time validation and expressive template constraints.
+
+- [`iterator<T>`](docs/iterator.md) — Extracts `iterator_t<T>` type trait; validates STL/custom iterators via concepts like `input_iterator`, `random_access_iterator`, etc.
+- [`sequence`](docs/sequence.md) — A concept for validating range-compatible containers; works with STL and custom iterable types.
+- [`pod_like<T>`](docs/pod.md) — Ensures a type is trivially constructible, copyable, destructible, and standard layout.
+    - Includes macros: `JH_POD_STRUCT(...)` and `JH_ASSERT_POD_LIKE(...)` for enforcing and validating PODs.
+
+---
+
+### 🔗 Quick Links to Module Docs
+
+- [`data_sink`](docs/data_sink.md)
+- [`generator`](docs/generator.md)
+- [`immutable_str`](docs/immutable_str.md)
+- [`iterator`](docs/iterator.md)
+- [`pod`](docs/pod.md)
+- [`pod_stack`](docs/pod_stack.md)
+- [`pool`](docs/pool.md)
+- [`runtime_arr`](docs/runtime_arr.md)
+- [`sequence`](docs/sequence.md)
+- [`sim_pool`](docs/sim_pool.md)
+- [`views`](docs/views.md)
 
 ---
 

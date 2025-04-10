@@ -1,4 +1,4 @@
-### **JH Toolkit: Generator API Documentation**
+# 🔁 JH Toolkit: `generator` API Documentation
 
 📌 **Version:** 1.3  
 📅 **Date:** 2025  

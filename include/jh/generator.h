@@ -46,6 +46,7 @@
 #pragma once
 
 #include <coroutine>
+#include <functional>
 #include <list>
 #include <optional>
 #include <stdexcept>
@@ -60,11 +61,20 @@ namespace jh {
     /**
      * @brief A coroutine-based generator that supports yielding values and receiving inputs.
      *
-     * @tparam T The type of values produced by the generator.
+     * @tparam T The value type yielded by the generator.
+     *           Must be **copy-constructible** as all values are stored internally in `std::optional<T>`.
+     *           If `T` is not copyable, the generator will fail to compile.
+     *           For best performance and layout optimization, prefer using:
+     *           - POD types (e.g., `int`, `float`, `struct { int x; float y; };`, `jh::pod::pair`, etc.)
+     *           - Trivially copyable types (`std::array`, `std::string`, etc.)
+     *
      * @tparam U The type of values that can be sent to the generator.
      *           If left as the default (`std::monostate`), the generator does not require input values and can function as a simple iterable sequence.
+     * @note If you need to use move-only types (e.g., `std::unique_ptr<T>`), you must
+     *       customize the generator logic and buffer strategy manually — not supported by default.
      */
     template<typename T, typename U = std::monostate>
+        requires std::is_copy_constructible_v<T>
     struct generator final {
         /**
          * @brief Type alias for the value type produced by the generator.
@@ -82,9 +92,8 @@ namespace jh {
          * - However, `begin()` and `end()` are only available when `U == std::monostate` (i.e., the generator does not require `send()`).
          * - This allows users to manually create iterators if needed, although we do not encourage inheritance-based customization.
          */
-        using iterator = jh::iterator<generator>;
-        // NOLINT Fixes GCC issue with iterator lookup, ensuring cross-platform stability
-
+        using iterator = jh::iterator<generator>; // NOLINT
+        // Fixes GCC issue with iterator lookup, ensuring cross-platform stability
         /**
          * @brief Deleted copy constructor.
          * @details
@@ -291,8 +300,11 @@ namespace jh {
         }
 
         /**
-         * @brief Retrieves the current yielded value.
-         * @return An optional containing the current value, or empty if none.
+         * @brief Retrieves the currently yielded value.
+         * @return An optional containing the current value.
+         *
+         * @note The returned value is a **copy** of the yielded value (`T` must be copyable).
+         *       This avoids any dangling reference or invalid lifetime issues.
          */
         std::optional<T> value() {
             return co_ro.promise().current_value;
@@ -692,4 +704,129 @@ namespace jh {
     }
 
     /// @}
+
+    /**
+     * @brief A range-like wrapper that enables iteration over a generator factory.
+     *
+     * @details
+     * `generator_range<T>` allows a coroutine-based `generator<T>()` to be converted into a
+     * **repeatable, range-compatible sequence**.
+     * Unlike `generator<T>`, which is **single-use** and consumes values during iteration,
+     * `generator_range<T>` takes a **factory function** (e.g. a lambda) that creates a **new generator each time**.
+     * This makes it usable in:
+     * - `for(auto x : range)` without consuming the generator.
+     * - `std::views::zip(range1, range2)`
+     * - `jh::enumerate(...)`
+     * - Any STL-style range algorithm or pipe expression.
+     *
+     * @tparam T The value type produced by the generator. Must be copyable.
+     *
+     * @note Requires the generator to return a **copyable type** (`T`) to support `std::optional<T>` and `operator*`.
+     *       Prefer using lightweight POD types for optimal performance.
+     *
+     * @see jh::to_range
+     */
+    template<typename T>
+    class generator_range : std::ranges::view_interface<generator_range<T> > {
+    public:
+        using generator_factory_t = std::function<generator<T>()>;
+
+        explicit generator_range(generator_factory_t factory)
+            : factory_(std::move(factory)) {
+        }
+
+        class iterator {
+        public:
+            using value_type = T;
+            using reference = const T &;
+            using pointer = const T *;
+            using iterator_category = std::input_iterator_tag;
+            using difference_type = std::ptrdiff_t;
+
+            iterator() = default;
+
+            explicit iterator(generator_factory_t factory)
+                : gen_(std::make_unique<generator<T> >(factory())) {
+                ++(*this); // prime
+            }
+
+            iterator &operator++() {
+                if (gen_ && gen_->next()) {
+                    // do nothing, value is updated
+                } else {
+                    gen_.reset();
+                }
+                return *this;
+            }
+
+            iterator operator++(int) {
+                iterator tmp = *this;
+                ++(*this);
+                return tmp;
+            }
+
+            value_type operator*() const {
+                if (!gen_ || !gen_->value().has_value())
+                    throw std::runtime_error("Dereferencing end iterator");
+                return *gen_->value();
+            }
+
+            pointer operator->() const {
+                return &**this;
+            }
+
+            // Support std::default_sentinel_t as the end
+            friend bool operator==(const iterator &it, std::default_sentinel_t) {
+                return !it.gen_;
+            }
+
+            friend bool operator!=(const iterator &it, std::default_sentinel_t s) {
+                return !(it == s);
+            }
+
+        private:
+            std::unique_ptr<generator<T> > gen_;
+        };
+
+        iterator begin() const {
+            return iterator{factory_};
+        }
+
+        [[nodiscard]] std::default_sentinel_t end() const noexcept {
+            return {};
+        }
+
+    private:
+        generator_factory_t factory_;
+    };
+
+    // Convenience helper
+    template<typename T>
+    generator_range<T> make_generator_range(std::function<generator<T>()> factory) {
+        return generator_range<T>(std::move(factory));
+    }
+
+    /**
+     * @brief Converts a generator factory (lambda or function) into a repeatable range.
+     *
+     * @tparam F A callable object with signature `generator<T>()`.
+     * @param f A factory function that returns a new generator instance each time it's called.
+     * @return A repeatable, range-compatible wrapper for the generator.
+     *
+     * @note This function is SFINAE-constrained to only accept factory functions that return `generator<T>`.
+     *
+     * @see jh::generator_range
+     */
+    template<typename F>
+        requires requires(F f)
+        {
+            typename std::invoke_result_t<F>;
+            requires std::is_same_v<std::remove_cvref_t<std::invoke_result_t<F> >,
+                generator<typename std::invoke_result_t<F>::value_type> >;
+        }
+    auto to_range(F &&f) {
+        using Gen = std::remove_cvref_t<std::invoke_result_t<F> >;
+        using T = typename Gen::value_type;
+        return generator_range<T>(std::function<Gen()>(std::forward<F>(f)));
+    }
 } // namespace jh

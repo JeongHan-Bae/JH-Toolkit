@@ -110,8 +110,8 @@ TEST_CASE("data_sink Unique Pointer Test", "[data_sink]") {
     // **Test emplace_back**
     SECTION("Emplace Back Unique Pointers") {
         for (int i = 0; i < N; ++i) {
-            sink.emplace_back(std::vector{i});
-            // or sink.emplace_back(1, i);
+            sink.emplace_back({i});
+            // or sink.emplace_back(1, i); or sink.emplace_back(std::vector{i});
         }
 
         // Validate unique pointer values

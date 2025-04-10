@@ -1,112 +1,193 @@
-### **JH Toolkit: Sequence API Documentation**
+# 🧩 JH Toolkit: `sequence` Concept API Documentation
 
-📌 **Version:** 1.1  
+📌 **Version:** 1.3  
 📅 **Date:** 2025  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 [![Back to README](https://img.shields.io/badge/%20Back%20to%20README-blue?style=for-the-badge)](../README.md)
 
-## **Overview**
+---
 
-The `jh::sequence` module provides a **lightweight C++20 concept** to enforce **immutable iteration**.  
-It ensures that a type supports **`begin()` and `end()`** methods, allowing it to be **recognized as a sequence-like
-container at compile time**.
+## 🧭 Overview
 
-### **Key Features**
-
-- **Concept-based validation** (`jh::sequence<T>`) to enforce **immutable iterability**.
-- **Compile-time checks** to determine whether a type qualifies as a sequence (`jh::is_sequence<T>`).
-- **Value type extraction** (`jh::sequence_value_type<T>`) to retrieve the element type of a sequence.
-- **Seamless compatibility** with **STL containers** (`std::vector`, `std::list`, `std::array`, etc.).
-- **Lightweight and constexpr-friendly**, with no runtime overhead.
+The `jh::sequence` module defines a **minimal C++20 concept** for validating immutable iteration.  
+It identifies types that support **read-only forward iteration** and enables them to seamlessly integrate into **generic pipelines**, including `jh::view`.
 
 ---
 
-## **API Reference**
+### ✅ Highlights
 
-📌 **Detailed module description can be found in `sequence.h`**  
-📌 **Function-specific documentation is embedded in the source code and can be viewed in modern IDEs.**
+- 🧩 `sequence<T>`: Concept for immutable, input-iterator-based iteration
+- 🔍 `sequence_value_type<T>`: Deduces value type from a sequence
+- 🧠 `is_sequence<T>`: Boolean check for the `sequence` concept
+- 🔄 `to_range(const T&)`: Converts any sequence to a standard-compliant range
+- ⚙️ Looser constraints than `std::ranges::range`, optimized for lightweight structures
+- 🚀 Powers the foundation of `jh::view` — supports more than just STL containers
 
 ---
 
-### **Concept: `jh::sequence<T>`**
-
-📌 **Description:**  
-A **C++20 concept** that checks whether a type `T` is a **sequence**, meaning it:
-
-- Has a const **`begin()`** method returning an **input iterator**.
-- Has a const **`end()`** method returning an **input iterator**.
+## 🔍 Concept: `jh::sequence<T>`
 
 ```c++
 template<typename T>
 concept sequence = requires(const T t) {
     { t.begin() } -> jh::input_iterator;
-    { t.end() } -> jh::input_iterator;
+    { t.end() }   -> jh::input_iterator;
 };
 ```
 
-🔹 **Example Usage**
+### 📌 Description
 
-```cpp
-static_assert(jh::sequence<std::vector<int>>, "std::vector<int> should be a sequence");
-static_assert(jh::sequence<std::list<double>>, "std::list<double> should be a sequence");
+A type satisfies `jh::sequence<T>` if it has a `const begin()` and `const end()` method, both returning **input iterators**.
+
+---
+
+### 🧠 Design Intent
+
+- ✅ Simpler than `std::ranges::range`
+- ✅ Works with raw pointers, POD containers, or types without `view_interface`
+- ❌ Excludes consumable or non-const iterables (e.g., `generator<T>`)
+- ❌ Excludes structures with non-iterator end types (e.g., `default_sentinel_t`)
+
+> `sequence` is the **core concept powering `jh::view`**, enabling maximum flexibility with minimal requirements.
+
+---
+
+### ✅ Example
+
+```c++
+static_assert(jh::sequence<std::vector<int>>);
+static_assert(jh::sequence<std::array<float, 4>>);
+static_assert(!jh::sequence<jh::generator<int>>);           // ❌ not const-safe
+static_assert(!jh::sequence<jh::generator_range<int>>);     // ❌ uses sentinel end
 ```
 
 ---
 
-### **Type Extraction: `jh::sequence_value_type<T>`**
-
-📌 **Description:**  
-Extracts the **value type** of a sequence **at compile time**.
+## 🧬 Type Extraction: `sequence_value_type<T>`
 
 ```c++
 template<typename T>
-using sequence_value_type = typename sequence_value_type_impl<T>::type;
+using sequence_value_type = typename detail::sequence_value_type_impl<T>::type;
 ```
 
-🔹 **Example Usage**
+Extracts the **value type** of a valid sequence based on its iterator's `value_type`.
+
+> Implemented internally as `detail::sequence_value_type_impl` to avoid unnecessary IDE suggestions.
+
+### 🔎 Example
 
 ```c++
-using ValueType = jh::sequence_value_type<std::vector<int>>;  // int
-static_assert(std::is_same_v<ValueType, int>, "ValueType should be int");
+using T = jh::sequence_value_type<std::list<double>>;
+static_assert(std::is_same_v<T, double>);
 ```
 
 ---
 
-### **Boolean Check: `jh::is_sequence<T>`**
-
-📌 **Description:**  
-A **compile-time boolean flag** to check whether a type satisfies the `jh::sequence<T>` concept.
+## 🧠 Boolean Trait: `is_sequence<T>`
 
 ```c++
 template<typename T>
 constexpr bool is_sequence = sequence<T>;
 ```
 
-🔹 **Example Usage**
+Provides a constexpr trait for use in SFINAE and meta-checks.
+
+---
+
+## 🔄 Adapter: `to_range(const Seq&)`
 
 ```c++
-static_assert(jh::is_sequence<std::array<int, 5>>, "std::array<int, 5> is a sequence");
-static_assert(!jh::is_sequence<int>, "int is not a sequence");
+template<sequence Seq>
+auto to_range(const Seq &s);
+```
+
+### 📌 Description
+
+Creates a `std::ranges::subrange` from any valid `jh::sequence`.  
+This allows non-view, non-`ranges::range` containers to be used in standard or JH-style view pipelines.
+
+---
+
+### 🧩 Why It Matters
+
+- ✅ **Zero inheritance** — your type doesn't need to model `view_interface`
+- ✅ ✅ Accepts **all types satisfying `jh::sequence`**
+- ✅ Seamlessly works with standard algorithms and `jh::view`
+- ❌ Not meant for `generator<T>` or types that don’t support `const begin()/end()`
+
+---
+
+### ✅ Example
+
+```c++
+jh::pod::array<int, 3> vec = {1, 2, 3}; // sequence, not a range
+auto range_ = jh::to_range(vec);
+
+std::ranges::for_each(range_, [&](const int a) {
+                std::cout << a << " ";
+            });
+```
+
+Output:
+```
+1 2 3
 ```
 
 ---
 
-## **Use Cases**
+### 🧠 Notes on Overloads
 
-- **Compile-time validation** of types that should support **immutable iteration**.
-- **Generic programming** that needs **type-safe sequences** without requiring concrete container types.
-- **Optimized functional programming** in C++20, where compile-time checks ensure **container compatibility**.
+> 🔀 Other modules may define **their own `to_range(...)`** overloads with different parameters  
+> (e.g., coroutine factories, adapters, sendable streams).  
+> These are **semantically distinct** but share the naming goal: produce a usable range.
+
+| Function Signature            | Intent                             |
+|-------------------------------|------------------------------------|
+| `to_range(const Seq&)`        | For any valid `jh::sequence`       |
+| `to_range(generator_factory)` | For coroutine-based `generator<T>` |
+| `to_range(stream_adapter)`    | For custom stream or event sources |
 
 ---
 
-## **Conclusion**
+## 🚫 What Doesn’t Qualify as a `sequence`
 
-The `jh::sequence` module provides a **lightweight**, **zero-runtime overhead** concept for **immutable sequences** in
-C++20.  
-It integrates seamlessly with STL containers and enables **safe, type-checked iteration** in generic code.
+| Type                       | `sequence`? | Reason                                            |
+|----------------------------|-------------|---------------------------------------------------|
+| `jh::generator<T>`         | ❌           | Requires mutation; not const-safe                 |
+| `jh::generator_range<T>`   | ❌           | Uses `default_sentinel_t` as end; not an iterator |
+| `std::istream_iterator<T>` | ❌           | Not const-repeatable                              |
 
-📌 **For detailed module information, refer to `sequence.h`.**  
-📌 **Function-specific documentation is available directly in modern IDEs.**
+---
 
-🚀 **Enjoy coding with JH Toolkit!**
+## 📚 Use with `jh::view`
+
+The `sequence` concept was **intentionally decoupled** from `std::ranges::range`, to support:
+
+- Lightweight containers (even C-style structs defining a raw array with `begin()`/`end()`)
+- Non-CRTP types that don’t or can’t model `view_interface`
+- Broader compatibility in range combinators like `zip`, `enumerate`, `take`, etc.
+
+> `jh::view` is built on top of `sequence`, **not `std::ranges::range`**, for this reason.
+
+---
+
+## ✅ Summary
+
+| Feature                  | Description                                                      |
+|--------------------------|------------------------------------------------------------------|
+| `sequence<T>`            | Checks if a type can be read-only iterated via `begin()`/`end()` |
+| `sequence_value_type<T>` | Gets the `value_type` of a sequence                              |
+| `is_sequence<T>`         | Boolean version of the concept                                   |
+| `to_range(const Seq&)`   | Turns a sequence into a reusable range                           |
+| 🤝 Works with `jh::view` | Enables full compatibility without needing `ranges::range`       |
+
+---
+
+## 🚀 Final Thoughts
+
+`jh::sequence` provides the **simplest possible abstraction** for safely modeling readable iteration.  
+It removes the overhead of modeling complex range traits, while still enabling **type-safe**, **zero-cost**, and **composable iteration**.
+
+📘 For more on how `sequence` powers views and pipelines, see [`views.md`](views.md).  
+📄 Implementation details are located in `sequence.h`.

@@ -1,5 +1,5 @@
 /**
- * @file generator
+ * @file data_sink
  * @brief Forwarding header for jh::data_sink
  *
  * This header exists to provide a modern include style (`#include <jh/data_sink>`),

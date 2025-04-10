@@ -77,6 +77,7 @@
 #include <cstdint>          // for std::uint64_t
 #include <optional>         // for std::optional
 #include "pool.h"
+#include "pods/string_view.h"
 
 namespace jh {
     /**
@@ -173,6 +174,14 @@ namespace jh {
          * @return A `std::string_view` to the immutable string.
          */
         [[nodiscard]] std::string_view view() const noexcept;
+
+        /**
+         * @brief Returns a `pod::string_view` for efficient access.
+         * @return A `jh::pod::string_view` to the immutable string.
+         */
+        [[nodiscard]] pod::string_view pod_view() const noexcept {
+            return {this->c_str(), this->size()};
+        }
 
         /**
          * @brief Returns the length of the string.
