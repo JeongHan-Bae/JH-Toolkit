@@ -68,6 +68,10 @@
 
 #pragma once
 
+#ifndef JH_IMMUTABLE_STR_AUTO_TRIM
+#define JH_IMMUTABLE_STR_AUTO_TRIM true
+#endif
+
 #include <memory>           // for std::unique_ptr, std::shared_ptr
 #include <unordered_map>    // NOLINT for std::unordered_map
 #include <unordered_set>    // NOLINT for std::unordered_set
@@ -78,6 +82,13 @@
 #include <optional>         // for std::optional
 #include "pool.h"
 #include "pods/string_view.h"
+
+namespace jh::detail {
+    constexpr bool is_space_ascii(const char ch) {
+        return ch == ' '  || ch == '\t' || ch == '\n' ||
+               ch == '\v' || ch == '\f' || ch == '\r';
+    }
+}
 
 namespace jh {
     /**
@@ -212,7 +223,7 @@ namespace jh {
          * `auto_trim` is a static global setting. Modifying it at runtime in a multithreaded environment
          * may lead to race conditions. All instances of `immutable_str` will respect the current policy.
          */
-        static inline bool auto_trim = true;
+        static constexpr bool auto_trim = JH_IMMUTABLE_STR_AUTO_TRIM;
 
     private:
         uint64_t size_ = 0; ///< Length of the string
@@ -223,8 +234,9 @@ namespace jh {
         /**
          * @brief Initializes the string from a C-string, with optional trimming.
          * @param input_str A null-terminated C-string.
+         * @param input_len len If known else -1
          */
-        void init_from_string(const char *input_str);
+        void init_from_string(const char *input_str, std::uint64_t input_len = static_cast<std::uint64_t>(-1));
     };
 
     /**
@@ -268,18 +280,18 @@ namespace jh {
                 if (value == nullptr) {
                     return 0;
                 }
-                if (immutable_str::auto_trim) {
+                if constexpr (immutable_str::auto_trim) {
                     const std::uint64_t len = std::strlen(value); // Get `const char*` length
                     std::uint64_t leading = 0, trailing = len;
-                    while (leading < len && std::isspace(static_cast<unsigned char>(value[leading]))) {
+                    while (leading < len && detail::is_space_ascii(value[leading])) {
                         ++leading;
                     }
-                    while (trailing > leading && std::isspace(static_cast<unsigned char>(value[trailing - 1]))) {
+                    while (trailing > leading && detail::is_space_ascii(value[trailing - 1])) {
                         --trailing;
                     }
                     return std::hash<std::string_view>{}({value + leading, trailing - leading});
                 }
-                return std::hash<std::string_view>{}(value);
+                return std::hash<std::string_view>{}(value);  // NOLINT if !auto_trim
             }
         }
     };
@@ -317,19 +329,19 @@ namespace jh {
 
                 if constexpr (std::same_as<U, atomic_str_ptr> && std::same_as<V, const char *>) {
                     lhs_view = lhs->view();
-                    if (immutable_str::auto_trim) {
+                    if constexpr (immutable_str::auto_trim) {
                         const auto &[leading, size_] = trim(rhs);
                         rhs_view = std::string_view(rhs + leading, size_);
                     } else {
-                        rhs_view = std::string_view(rhs);
+                        rhs_view = std::string_view(rhs);  // NOLINT if !auto_trim
                     }
                 } else {
                     rhs_view = rhs->view();
-                    if (immutable_str::auto_trim) {
+                    if constexpr (immutable_str::auto_trim) {
                         const auto &[leading, size_] = trim(lhs);
                         lhs_view = std::string_view(lhs + leading, size_);
                     } else {
-                        lhs_view = std::string_view(lhs);
+                        lhs_view = std::string_view(lhs);  // NOLINT if !auto_trim
                     }
                 }
                 return lhs_view == rhs_view;

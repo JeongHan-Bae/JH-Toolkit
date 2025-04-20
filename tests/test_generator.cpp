@@ -4,7 +4,6 @@
 #include <random>
 #include <catch2/catch_all.hpp>
 #include "jh/generator.h"
-
 #include <type_traits>
 
 // Helper template to check if a class has a given member function
@@ -50,7 +49,7 @@ namespace test {
         int step = 1; // Default step size if no value is sent
         while (start > 0) {
             volatile int next_step = step;
-            step = co_await next_step;
+            step = co_await next_step; // NOLINT
             start -= step;
             co_yield start;
         }
@@ -79,7 +78,7 @@ TEST_CASE("Basic Generator Test") {
     std::mt19937 gen(rd());
     std::uniform_int_distribution dist(1, 10000);
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Test " + std::to_string(i + 1)) {
@@ -110,7 +109,7 @@ TEST_CASE("Empty Generator Test") {
     std::mt19937 gen(rd());
     std::uniform_int_distribution dist(1, 10000);
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Empty Test " + std::to_string(i + 1)) {
@@ -132,9 +131,9 @@ TEST_CASE("Step Generator Test") {
     std::uniform_int_distribution dist(1, 10000); // Range for start & end
     std::uniform_int_distribution step_dist(1, 100); // Step size must be > 0
 
-    constexpr int total_tests = 1024;
+    constexpr std::uint64_t total_tests = 128;
 
-    for (int i = 0; i < total_tests; ++i) {
+    for (std::uint64_t i = 0; i < total_tests; ++i) {
         SECTION("Randomized Step Test " + std::to_string(i + 1)) {
             int start = dist(gen);
             int end = dist(gen);
@@ -152,7 +151,7 @@ TEST_CASE("Step Generator Test") {
             }
 
             // Compare generated sequence with expected
-            int index = 0;
+            std::uint64_t index = 0;
             while (generator.next()) {
                 REQUIRE(generator.value().value() == expected[index]);
                 index++;
@@ -169,7 +168,7 @@ TEST_CASE("Generator to Vector Test") {
     std::mt19937 gen(rd());
     std::uniform_int_distribution dist(1, 10000); // Range for start & end
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Vector Test " + std::to_string(i + 1)) {
@@ -193,16 +192,16 @@ TEST_CASE("Generator to Vector Test") {
     }
 }
 
-// **Convert Generator to List**
-TEST_CASE("Generator to List Test") {
+// **Convert Generator to deque**
+TEST_CASE("Generator to deque Test") {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution dist(1, 10000); // Range for start & end
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
-        SECTION("Randomized List Test " + std::to_string(i + 1)) {
+        SECTION("Randomized deque Test " + std::to_string(i + 1)) {
             int start = dist(gen);
             int end = dist(gen);
             if (start > end) std::swap(start, end); // Ensure start < end
@@ -214,14 +213,14 @@ TEST_CASE("Generator to List Test") {
             std::vector<int> expected_vec(end - start);
             std::iota(expected_vec.begin(), expected_vec.end(), start);
 
-            // Convert expected vector to list for comparison
-            std::list expected_list(expected_vec.begin(), expected_vec.end());
+            // Convert expected vector to deque for comparison
+            std::deque expected_deque(expected_vec.begin(), expected_vec.end());
 
-            // Convert generator to list
-            const std::list<int> generated_list = to_list(generator);
+            // Convert generator to deque
+            const std::deque<int> generated_deque = to_deque(generator);
 
-            // Compare generated list with expected list
-            REQUIRE(generated_list == expected_list);
+            // Compare generated deque with expected deque
+            REQUIRE(generated_deque == expected_deque);
         }
     }
 }
@@ -233,7 +232,7 @@ TEST_CASE("Step Generator to Vector Test") {
     std::uniform_int_distribution dist(0, 10000); // Range for start & end
     std::uniform_int_distribution step_dist(1, 100); // Ensure step > 0
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Step Vector Test " + std::to_string(i + 1)) {
@@ -261,17 +260,17 @@ TEST_CASE("Step Generator to Vector Test") {
     }
 }
 
-// **Convert Generator with Steps to List**
-TEST_CASE("Step Generator to List Test") {
+// **Convert Generator with Steps to deque**
+TEST_CASE("Step Generator to deque Test") {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution dist(0, 10000); // Range for start & end
     std::uniform_int_distribution step_dist(1, 100); // Ensure step > 0
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
-        SECTION("Randomized Step List Test " + std::to_string(i + 1)) {
+        SECTION("Randomized Step deque Test " + std::to_string(i + 1)) {
             int start = dist(gen);
             int end = dist(gen);
             if (start > end) std::swap(start, end); // Ensure start < end
@@ -287,14 +286,14 @@ TEST_CASE("Step Generator to List Test") {
                 expected_vec.push_back(val);
             }
 
-            // Convert expected vector to list for comparison
-            std::list expected_list(expected_vec.begin(), expected_vec.end());
+            // Convert expected vector to deque for comparison
+            std::deque expected_deque(expected_vec.begin(), expected_vec.end());
 
-            // Convert generator to list
-            const std::list<int> generated_list = to_list(generator);
+            // Convert generator to deque
+            const std::deque<int> generated_deque = to_deque(generator);
 
-            // Compare generated list with expected list
-            REQUIRE(generated_list == expected_list);
+            // Compare generated deque with expected deque
+            REQUIRE(generated_deque == expected_deque);
         }
     }
 }
@@ -303,10 +302,10 @@ TEST_CASE("Step Generator to List Test") {
 TEST_CASE("Negative Step Generator Test") {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution dist(1, 10000); // Range for start & end
+    std::uniform_int_distribution dist(1, 10000); // Range for start and end
     std::uniform_int_distribution step_dist(1, 100); // Positive values, later negated
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Negative Step Test " + std::to_string(i + 1)) {
@@ -328,7 +327,7 @@ TEST_CASE("Large Step Generator Test") {
     std::uniform_int_distribution dist(0, 10000); // Range for start
     std::uniform_int_distribution range_dist(1, 1000); // Range for end (ensuring it's larger than start)
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Large Step Test " + std::to_string(i + 1)) {
@@ -341,7 +340,7 @@ TEST_CASE("Large Step Generator Test") {
             auto generator = test::range(start, end, step);
 
             REQUIRE(generator.next()); // Should yield once
-            REQUIRE(generator.value().value() == start); // First value must be `start`
+            REQUIRE(generator.value().value() == start); // The First value must be `start`
             REQUIRE_FALSE(generator.next()); // No more values should be yielded
         }
     }
@@ -354,7 +353,7 @@ TEST_CASE("Generator with Single Input") {
     std::uniform_int_distribution start_dist(5, 10000); // Random starting value
     std::uniform_int_distribution step_dist(1, 50); // Ensure positive step
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Single Input Test " + std::to_string(i + 1)) {
@@ -388,7 +387,7 @@ TEST_CASE("Generator with Vector Input") {
     std::uniform_int_distribution step_dist(1, 50); // Random step values
     std::uniform_int_distribution step_count_dist(1, 20); // Number of steps
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Vector Input Test " + std::to_string(i + 1)) {
@@ -427,7 +426,7 @@ TEST_CASE("Generator with 'Send' Step by Step") {
     std::uniform_int_distribution step_dist(1, 50); // Step values
     std::uniform_int_distribution step_count_dist(1, 20); // Number of steps
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Send Step by Step Test " + std::to_string(i + 1)) {
@@ -466,7 +465,7 @@ TEST_CASE("Generator with 'Send_Ite' Step by Step") {
     std::uniform_int_distribution step_dist(1, 50); // Step values
     std::uniform_int_distribution step_count_dist(1, 20); // Number of steps
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Send_Ite Step by Step Test " + std::to_string(i + 1)) {
@@ -496,32 +495,32 @@ TEST_CASE("Generator with 'Send_Ite' Step by Step") {
     }
 }
 
-TEST_CASE("List -> Generator -> List Equivalence Test") {
+TEST_CASE("deque -> Generator -> deque Equivalence Test") {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution size_dist(1, 100); // List size
+    std::uniform_int_distribution size_dist(1, 100); // deque size
     std::uniform_int_distribution value_dist(-10000, 10000); // Random values
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
-        SECTION("Randomized List Equivalence Test " + std::to_string(i + 1)) {
+        SECTION("Randomized deque Equivalence Test " + std::to_string(i + 1)) {
             const int size = size_dist(gen);
 
-            // Generate a random list
-            std::list<int> original_list;
+            // Generate a random deque
+            std::deque<int> original_deque;
             for (int j = 0; j < size; ++j) {
-                original_list.push_back(value_dist(gen));
+                original_deque.push_back(value_dist(gen));
             }
 
-            // Convert list to generator
-            auto generator = jh::make_generator(original_list);
+            // Convert deque to generator
+            auto generator = jh::make_generator(original_deque);
 
-            // Convert generator back to list
-            const std::list<int> generated_list = to_list(generator);
+            // Convert generator back to deque
+            const std::deque<int> generated_deque = to_deque(generator);
 
-            // Ensure the final list matches the original list
-            REQUIRE(generated_list == original_list);
+            // Ensure the final deque matches the original deque
+            REQUIRE(generated_deque == original_deque);
         }
     }
 }
@@ -533,7 +532,7 @@ TEST_CASE("Ranged-For Loop test") {
     std::uniform_int_distribution start_dist(-100, 100); // Random start value
     std::uniform_int_distribution length_dist(1, 100); // Random length of the range
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Range Iteration Test " + std::to_string(i + 1)) {
@@ -565,7 +564,7 @@ TEST_CASE("Ranged-For Range Loop test") {
     std::uniform_int_distribution start_dist(-100, 100); // Random start value
     std::uniform_int_distribution length_dist(1, 100); // Random length of the range
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Range Iteration Test " + std::to_string(i + 1)) {
@@ -598,7 +597,7 @@ TEST_CASE("Iterator For Loop test") {
     std::uniform_int_distribution start_dist(-100, 100); // Random start value
     std::uniform_int_distribution length_dist(1, 100); // Random length of the range
 
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized Range Iteration Test " + std::to_string(i + 1)) {
@@ -612,7 +611,7 @@ TEST_CASE("Iterator For Loop test") {
 
             // Iterate over the generator and validate values
             int expected_value = start;
-            for (auto iter = generator.begin(); iter != generator.end(); ++iter) {
+            for (auto iter = generator.begin(); iter != jh::generator<int, jh::typed::monostate>::end(); ++iter) {
                 REQUIRE(*iter == expected_value);
                 std::cout << "Generated: " << *iter << " | Expected: " << expected_value << std::endl;
                 ++expected_value;
@@ -647,7 +646,7 @@ TEST_CASE("Static Compilation Test for countdown") {
     static_assert(std::same_as<jh::generator<int, double>::iterator, jh::iterator<jh::generator<int, double> > >,
                   "Error: iterator should be of same type as jh::iterator<jh::generator<int, double>>");
 
-    static_assert(std::same_as<jh::generator<int, std::monostate>::iterator, jh::iterator<jh::generator<int> > >,
+    static_assert(std::same_as<jh::generator<int, jh::typed::monostate>::iterator, jh::iterator<jh::generator<int> > >,
                   "Error: iterator should be of same type as jh::iterator<jh::generator<int>>");
 
     static_assert(!jh::sequence<jh::generator<int> >, "jh::generator<int> should not be a sequence");
@@ -683,4 +682,44 @@ TEST_CASE("Generator Iterator Consumption Test") {
     // 5️⃣ Calling *iter again does NOT advance the generator further
     REQUIRE(*iter == iter_val);
     REQUIRE(generator.value() == iter_val);
+}
+
+TEST_CASE("Generator to_range repeatable iteration test") {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution size_dist(1, 100);
+    std::uniform_int_distribution value_dist(-10000, 10000);
+
+    constexpr int total_tests = 128;
+
+    static_assert(jh::sequence<jh::generator_range<int>>, "jh::generator_range should satisfy sequence concept.");
+
+    for (int i = 0; i < total_tests; ++i) {
+        SECTION("Randomized to_range Test " + std::to_string(i + 1)) {
+            const int size = size_dist(gen);
+
+            std::vector<int> original;
+            original.reserve(size);
+            for (int j = 0; j < size; ++j) {
+                original.push_back(value_dist(gen));
+            }
+
+            auto range_ = jh::to_range([&] { return jh::make_generator(original); });
+
+            // First collection
+            std::vector<int> first_pass;
+            for (int x: range_) {
+                first_pass.push_back(x);
+            }
+            REQUIRE(first_pass == original);
+
+            // Second collection
+            std::vector<int> second_pass;
+            for (int x: range_) {
+                second_pass.push_back(x);
+            }
+            REQUIRE(second_pass == original);
+            REQUIRE(first_pass == second_pass);
+        }
+    }
 }

@@ -1,10 +1,13 @@
 #define CATCH_CONFIG_MAIN
+
 #include <catch2/catch_all.hpp>
 #include "jh/runtime_arr.h"
 #include <tuple>
 #include <memory>
 #include <vector>
 #include <random>
+#include "jh/pod.h"
+
 using namespace jh;
 
 // concepts for static interface checks
@@ -81,11 +84,10 @@ TEST_CASE("runtime_arr<int> full test", "[pod]") {
     }
 }
 
-// tests/test_runtime_arr.cpp
 
 JH_POD_STRUCT(MyPod,
               int id;
-              float score;
+                      float score;
 );
 
 TEST_CASE("runtime_arr<MyPod> full test", "[pod][struct]") {
@@ -123,7 +125,7 @@ TEST_CASE("runtime_arr<MyPod> full test", "[pod][struct]") {
 
     SECTION("move construction keeps values") {
         for (int i = 0; i < N; ++i)
-            arr.set(i, 100 + i, 2.0f * i);
+            arr.set(i, 100 + i, 2.0f * static_cast<float>(i));
 
         auto moved = std::move(arr);
         for (int i = 0; i < N; ++i) {
@@ -195,7 +197,7 @@ TEST_CASE("runtime_arr<bool> full test", "[bool]") {
     runtime_arr<bool> bits(N);
 
     SECTION("set bits randomly and test") {
-        std::mt19937 rng(123);
+        std::mt19937 rng(123);  // NOLINT
         std::bernoulli_distribution dist(0.5);
         std::vector<bool> ref(N);
 
@@ -237,8 +239,8 @@ TEST_CASE("concept checks for runtime_arr<T> and runtime_arr<bool>", "[concepts]
     }
 
     SECTION("iterator type correctness") {
-        STATIC_REQUIRE(std::is_same_v<begin_t<runtime_arr<int>>, int*>);
-        STATIC_REQUIRE(std::is_same_v<begin_t<runtime_arr<int, test_allocator<int>>>, int*>);
+        STATIC_REQUIRE(std::is_same_v<begin_t<runtime_arr<int>>, int *>);
+        STATIC_REQUIRE(std::is_same_v<begin_t<runtime_arr<int, test_allocator<int>>>, int *>);
         STATIC_REQUIRE(std::is_same_v<begin_t<runtime_arr<bool>>, runtime_arr<bool>::iterator>);
     }
 
@@ -252,4 +254,82 @@ TEST_CASE("concept checks for runtime_arr<T> and runtime_arr<bool>", "[concepts]
     SECTION("address-of access") {
         STATIC_REQUIRE(has_address_of<runtime_arr<int>>);
     }
+}
+
+// NOTE: &N required for GCC visibility inside BENCHMARK lambda
+TEST_CASE("Advanced Benchmark: runtime_arr vs std::vector<MyPod> (1024x)") {
+    constexpr size_t N = 1024;
+    std::vector<pod::pair<int, float>> inputs;
+    std::vector<MyPod> input_vals;
+    std::vector<int> int_vals;
+    inputs.reserve(N);
+
+    std::mt19937 gen(std::random_device{}());
+    std::uniform_int_distribution<int> id_dist(0, 10000);
+    std::uniform_real_distribution<float> score_dist(0.0f, 1000.0f);
+
+    for (size_t i = 0; i < N; ++i) {
+        inputs.emplace_back(id_dist(gen), score_dist(gen));
+        input_vals.emplace_back(id_dist(gen), score_dist(gen));
+        int_vals.emplace_back(id_dist(gen));
+    }
+
+    BENCHMARK_ADVANCED("std::vector<MyPod> by construction (1024x)")() {
+            std::vector<MyPod> buffer(N);
+            return [buffer = std::move(buffer), &inputs, &N]() mutable {
+                buffer.clear();
+                for (size_t i = 0; i < N; ++i) {
+                    const auto &[id, score] = inputs[i]; // NOLINT
+                    buffer[i] = MyPod{id, score};
+                }
+            };
+        };
+
+    BENCHMARK_ADVANCED("runtime_arr<MyPod> by construction (1024x)")() {
+            runtime_arr<MyPod> buffer(N);
+            return [buffer = std::move(buffer), &inputs, &N]() mutable {
+                for (size_t i = 0; i < N; ++i) {
+                    const auto &[id, score] = inputs[i]; //NOLINT
+                    buffer.set(i, id, score);
+                }
+            };
+        };
+
+    BENCHMARK_ADVANCED("std::vector<MyPod> set by value (1024x)")() {
+            std::vector<MyPod> buffer(N);
+            return [buffer = std::move(buffer), &input_vals, &N]() mutable {
+                buffer.clear();
+                for (size_t i = 0; i < N; ++i) {
+                    buffer[i] = input_vals[i];
+                }
+            };
+        };
+
+    BENCHMARK_ADVANCED("runtime_arr<MyPod> by value (1024x)")() {
+            runtime_arr<MyPod> buffer(N);
+            return [buffer = std::move(buffer), &input_vals, &N]() mutable {
+                for (size_t i = 0; i < N; ++i) {
+                    buffer.set(i, input_vals[i]);
+                }
+            };
+        };
+
+    BENCHMARK_ADVANCED("std::vector<MyPod> set int (1024x)")() {
+            std::vector<int> buffer(N);
+            return [buffer = std::move(buffer), &int_vals, &N]() mutable {
+                buffer.clear();
+                for (size_t i = 0; i < N; ++i) {
+                    buffer[i] = int_vals[i];
+                }
+            };
+        };
+
+    BENCHMARK_ADVANCED("runtime_arr<MyPod> set int (1024x)")() {
+            runtime_arr<int> buffer(N);
+            return [buffer = std::move(buffer), &int_vals, &N]() mutable {
+                for (size_t i = 0; i < N; ++i) {
+                    buffer.set(i, int_vals[i]);
+                }
+            };
+        };
 }

@@ -36,7 +36,9 @@ namespace test {
     struct MutableIterSequence {
         std::vector<int> data{7, 8, 9};
         auto begin() { return data.begin(); }
+        void begin() const = delete;
         auto end() { return data.end(); }
+        void end() const = delete;
     };
     struct NoBeginEnd {}; // ❌ No `begin()` / `end()`
 

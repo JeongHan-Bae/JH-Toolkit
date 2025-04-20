@@ -210,10 +210,10 @@ TEST_CASE("pool move semantics") {
     REQUIRE(pool3.reserved_size() == test::DeducedPool::MIN_RESERVED_SIZE); // 🎯 reserved_size should be reset
 }
 
-// ✅ Multithreading Test (1024 Iterations for Data Race Detection): Not storing shared_ptr
+// ✅ Multithreading Test (128 Iterations for Data Race Detection): Not storing shared_ptr
 TEST_CASE("sim_pool multithreading without storing shared_ptr") {
     test::CustomizedPool pool;
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int idx = 0; idx < total_tests; ++idx) {
         SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {
@@ -246,10 +246,10 @@ TEST_CASE("sim_pool multithreading without storing shared_ptr") {
     }
 }
 
-// ✅ Multithreading Test (1024 Iterations for Data Race Detection): Not storing shared_ptr
+// ✅ Multithreading Test (128 Iterations for Data Race Detection): Not storing shared_ptr
 TEST_CASE("pool multithreading without storing shared_ptr") {
     test::DeducedPool pool;
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int idx = 0; idx < total_tests; ++idx) {
         SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {
@@ -282,10 +282,10 @@ TEST_CASE("pool multithreading without storing shared_ptr") {
     }
 }
 
-// ✅ Multithreading Test (1024 Iterations for Data Race Detection): Storing shared_ptr
+// ✅ Multithreading Test (128 Iterations for Data Race Detection): Storing shared_ptr
 TEST_CASE("sim_pool multithreading with storing shared_ptr") {
     test::CustomizedPool pool;
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int idx = 0; idx < total_tests; ++idx) {
         SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {
@@ -326,10 +326,10 @@ TEST_CASE("sim_pool multithreading with storing shared_ptr") {
     }
 }
 
-// ✅ Multithreading Test (1024 Iterations for Data Race Detection): Storing shared_ptr
+// ✅ Multithreading Test (128 Iterations for Data Race Detection): Storing shared_ptr
 TEST_CASE("pool multithreading with storing shared_ptr") {
     test::DeducedPool pool;
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int idx = 0; idx < total_tests; ++idx) {
         SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {

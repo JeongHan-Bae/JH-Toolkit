@@ -17,49 +17,51 @@
 /**
  * @file runtime_arr.h
  * @author JeongHan-Bae <mastropseudo@gmail.com>
- * @brief A fixed-size, read-stable runtime array with optional allocator and POD-level optimization.
+ * @brief A non-resizable, strongly-semantic runtime array for fixed-length buffer logic.
  *
  * @details
- * `runtime_arr<T, Alloc>` is a minimal, explicitly bounded container designed for high-performance
- * algorithms and data pipelines where dynamic growth is **undesirable or disallowed**.
+ * `runtime_arr<T, Alloc>` is a move-only, fixed-size container designed for scenarios
+ * where **buffer size is known at runtime** but **mutating size (e.g. via `resize()`) is forbidden**.
  *
- * It offers:
- * - Fast initialization, with optional uninitialized construction for POD types
- * - Value-range-safe access (via `at()`, or unsafe fast version via `operator[]`)
- * - Iteration via STL-style pointers and C++20 `view_interface`
- * - Move-only semantics, with opt-in allocator support and efficient `.reset_all()` for zeroing
+ * It aims to provide semantic clarity, avoid misuse (such as accidental dynamic growth),
+ * and act as a safer alternative to raw heap arrays when using POD or trivially constructible types.
  *
- * ## Core Behavior
- * - `runtime_arr<T>` behaves like a fixed-capacity, flat buffer with no `resize()` or `insert()` APIs
- * - It does not support element removal, capacity extension, or iterator invalidation semantics
- * - This restriction allows compilers to perform aggressive loop and alias analysis
+ * ## Key Properties
+ * - The buffer is allocated with a runtime-determined size, fixed during lifetime.
+ * - No `resize()`, `push_back()`, or any size-altering operations are available.
+ * - Suitable for **performance-aware**, **memory-stable**, and **temporary data** usage patterns.
+ * - Fully compatible with STL-style iteration and `std::ranges::view_interface`.
  *
- * ## Specializations
- * - `runtime_arr<bool>` provides a bit-packed array using `uint64_t[]` as the internal storage
- *   - Fully indexable
- *   - Supports logical access via `bit_ref`, `set()`, `test()`, `unset()`
- *   - Exposes `raw_data()` and `raw_word_count()` for direct bit-level interoperability
+ * ## Comparison vs `std::vector`
+ * | Feature                        | `std::vector<T>`           | `runtime_arr<T>`                  |
+ * |--------------------------------|----------------------------|-----------------------------------|
+ * | Resizability                   | ✅ (`resize`, `push_back`) | ❌ (fixed-size only)              |
+ * | Initialization customization   | Partial (`reserve`, etc.)  | ✅ (`uninitialized`, `reset_all`) |
+ * | POD-optimized zeroing          | ❌                         | ✅ (`reset_all()` for `T = POD`)  |
+ * | Allocator control              | ✅                         | ✅ (optional custom allocator)    |
+ * | Access safety                  | `at()`, bounds-check opt   | ✅ (`at()` + `operator[]`)        |
+ * | Iterator & range support       | ✅                         | ✅ (`view_interface`)             |
  *
- * ## Use Cases
- * - Intermediate buffers in algorithms (sorting, filtering, dynamic programming)
- * - Per-frame storage in simulation pipelines
- * - Temporary space for zero-initialized POD blocks (e.g., bitmap masks, lookup tables)
- * - Efficient serialization and compression routines that demand control over memory layout
+ * ## Design Motivation
+ * - Better **communicates intent** for fixed-capacity buffers.
+ * - Avoids accidental reallocation or memory growth in inner loops.
+ * - Offers reset capability without reallocating, improving memory reuse patterns.
  *
- * ## Comparison vs std::vector
- * | Feature                  | std::vector<T>   | runtime_arr<T>             |
- * |--------------------------|------------------|----------------------------|
- * | Dynamic resize           | ✅                | ❌                          |
- * | Default initialization   | ✅                | Optional (`uninitialized`) |
- * | POD memset shortcut      | ❌                | ✅ (`reset_all()`)          |
- * | Allocator override       | ✅                | ✅                          |
- * | Range view compatibility | ✅ (via adaptors) | ✅ (native view_interface)  |
- * | Move into/from vector    | ✅                | ✅                          |
+ * ## Caveats
+ * - `runtime_arr` **is not faster** than `std::vector` in most compiler-optimized paths (especially with trivial types).
+ * - Intended more for **semantic clarity** and **compile-time safety**, not micro-optimization.
+ * - No implicit copy/clone support: move-only by design.
  *
- * ## Notes
- * - POD types benefit most from this structure
- * - For safety-critical code or complex ownership, prefer `std::vector<T>`
- * - For performance-critical code with known sizes, prefer `runtime_arr<T>`
+ * ## Specialization Note
+ * - `runtime_arr<bool, typed::monostate>` provides bit-packing using `uint64_t[]`, and exposes methods like:
+ *   - `set(i)`, `unset(i)`, `test(i)`
+ *   - `bit_ref`, `raw_data()`, and `raw_word_count()`
+ *
+ * ## Typical Use Cases
+ * - Intermediate fixed-size buffers in sort, radix pipelines, or scratch space.
+ * - Preventing accidental container growth in memory-critical paths.
+ * - Enforcing allocation discipline in systems that rely on buffer contracts.
+ * - Safer replacement for raw `T* arr = new T[n]` heap buffers.
  *
  * ## Version
  * @version 1.3.x
@@ -76,29 +78,51 @@
 #include <cstring>
 #include <functional>
 #include "iterator.h"
-#include "pod.h"
+#include "pods/pod_like.h"
+#include "utils/typed.h"
 
 namespace jh {
     /**
-     * @brief A fixed-size, allocator-aware, move-only runtime array.
+     * @brief A move-only, fixed-size array for runtime-determined, non-resizable storage.
      *
-     * @tparam T The element type stored in the array
-     * @tparam Alloc Optional allocator type (defaults to std::monostate)
+     * @tparam T      Element type
+     * @tparam Alloc  Optional allocator (defaults to `typed::monostate`)
      *
-     * @details
-     * The default allocator is `std::monostate`, meaning internal memory is managed via `new[]` and `delete[]`,
-     * (which makes this class usable without explicitly passing allocators, but also means no memory pooling, no alignment control).
-     * This is suitable for **small POD types** and **moderate-sized data structures** used in intermediate computation.
-     * This structure models a non-resizable flat container intended for fast initialization,
-     * predictable memory behavior, and algorithmic processing.
+     *  Short for "runtime-sized array" – move-only, heap-allocated, fixed-length.
      *
-     * @note
-     * For large total size (e.g., > 1MB) or non-pod types, prefer supplying a custom allocator,
-     * such as `std::allocator<T>` or pool allocators, to avoid heap fragmentation and allocator overhead.
-     * This container is not meant to replace `std::vector<T>`, but to serve as a **bounded, fast-reset, move-only**
-     * alternative in performance-critical contexts.
+     * `runtime_arr<T, Alloc>` is a strongly semantic array structure meant to replace raw heap buffers
+     * (like `new T[n]`) in performance-sensitive or correctness-critical code.
+     *
+     * Unlike `std::vector`, it forbids resizing, shrinking, or growth semantics.
+     * The goal is not to outperform STL containers, but to **clarify intent**, **limit misuse**, and **make memory behavior predictable**.
+     *
+     * ### Core Features
+     * - Move-only: no accidental copies or aliasing
+     * - Optional zero/uninitialized construction
+     * - Compatible with STL/ranges interfaces (via `view_interface`)
+     * - `reset_all()` for fast re-zeroing of POD/trivial types
+     * - Allocator customization (if needed)
+     * - Provides `as_span()` helper for safe and ergonomic interop with `std::span<T>`
+     *
+     * ### When to Use
+     * - In-place buffers for radix sort, DP tables, etc.
+     * - Safer alternative to raw `T*` when lifetime and size are known
+     * - Where fixed-capacity is a **hard constraint**, not a performance hint
+     *
+     * ### When *Not* to Use
+     * - You need `push_back`, `resize`, or dynamic append
+     * - You require polymorphic container behavior (e.g., erase/insert/iterator invalidation)
+     *
+     * ### Interop Notes
+     * - `runtime_arr<T>` is contiguous and span-compatible: use `std::span(arr.data(), arr.size())`
+     * - Also compatible with range-based for-loops, `std::ranges::views`, and STL algorithms
+     *
+     * ### Notes
+     * - Use `reset_all()` instead of `clear()`
+     * - Use `.data()` if interop with raw APIs is needed
+     * - Use `runtime_arr<T>::uninitialized` to skip default-construction (if safe for T)
      */
-    template<typename T, typename Alloc = std::monostate>
+    template<typename T, typename Alloc = typed::monostate>
     struct runtime_arr : std::ranges::view_interface<runtime_arr<T, Alloc> > {
     private:
         std::uint64_t size_{0};
@@ -109,7 +133,7 @@ namespace jh {
         static void default_deleter(T *p) { delete[] p; } // NOLINT
 
         static deleter_t make_deleter() {
-            if constexpr (std::is_same_v<Alloc, std::monostate>) {
+            if constexpr (typed::monostate_t<Alloc>) {
                 return default_deleter;
             } else {
                 return nullptr; // No-op deleter, it will be bound to lambda
@@ -118,7 +142,7 @@ namespace jh {
 
         template<typename A>
         static constexpr bool is_valid_allocator =
-                std::is_same_v<A, std::monostate> || requires(A a, std::uint64_t n)
+                typed::monostate_t<A> || requires(A a, std::uint64_t n)
                 {
                     { a.allocate(n) } -> std::same_as<T *>;
                     { a.deallocate(std::declval<T *>(), n) };
@@ -138,7 +162,7 @@ namespace jh {
          * @param size The number of elements to allocate
          */
         explicit runtime_arr(const std::uint64_t size, uninitialized_t)
-            requires jh::pod::pod_like<T> && std::is_same_v<Alloc, std::monostate> {
+            requires jh::pod::pod_like<T> && typed::monostate_t<Alloc> {
             size_ = size;
             T *ptr = static_cast<T *>(operator new[](sizeof(T) * size_));
             data_.reset(ptr);
@@ -151,7 +175,7 @@ namespace jh {
         explicit runtime_arr(std::uint64_t size)
             requires (is_valid_allocator<Alloc>)
             : size_(size) {
-            if constexpr (std::is_same_v<Alloc, std::monostate>) {
+            if constexpr (typed::monostate_t<Alloc>) {
                 T *ptr = new T[size_];
                 data_.reset(ptr); // Use default_deleter
             } else {
@@ -172,7 +196,7 @@ namespace jh {
          * @param alloc Allocator instance
          */
         explicit runtime_arr(std::uint64_t size, Alloc alloc)
-            requires (!std::is_same_v<Alloc, std::monostate>)
+            requires (!typed::monostate_t<Alloc>)
             : size_(size) {
             T *ptr = alloc.allocate(size_);
             data_ = std::unique_ptr<T[], deleter_t>(
@@ -188,7 +212,7 @@ namespace jh {
          * @param vec Rvalue reference to std::vector<T>
          */
         explicit runtime_arr(std::vector<T> &&vec)
-            requires (std::is_same_v<Alloc, std::monostate>)
+            requires (typed::monostate_t<Alloc>)
             : size_(vec.size()), data_(nullptr, default_deleter) {
             if (!vec.empty()) {
                 T *ptr = new T[size_];
@@ -204,7 +228,7 @@ namespace jh {
          */
         template<typename InputIt>
         runtime_arr(InputIt first, InputIt last)
-            requires (std::is_same_v<Alloc, std::monostate> &&
+            requires (typed::monostate_t<Alloc> &&
                       jh::input_iterator<InputIt> &&
                       std::is_copy_constructible_v<T>)
             : data_(nullptr, default_deleter) {
@@ -277,15 +301,18 @@ namespace jh {
             data_[i] = T(std::forward<Args>(args)...);
         }
 
-
         /**
          * @brief Resets all elements to default state.
-         *  - For POD-like types, uses `memset(0)` for max speed.
-         *  - For trivially destructible but non-POD types, uses placement-new to reinitialize.
-         *  - For complex types, falls back to `T{}` assignment (requiring destructor + constructor).
-         * @note
-         * This avoids undefined behavior by not using placement-new on non-trivial types.
-         * Types must be default-constructible.
+         *
+         * @note This operation is only meaningful for types that are default-constructible.
+         *       For types without a valid `T()`, reset has no semantic definition and is therefore disabled.
+         *
+         *       The behavior varies depending on the type trait of `T`:
+         *       - For POD-like types: uses `memset` for maximal efficiency.
+         *       - For trivially destructible types: re-initializes via placement-new.
+         *       - Otherwise: assigns `T{}` to each element (requires destructor and constructor).
+         *
+         * @warning This function is disabled at compile-time for types that do not satisfy `is_default_constructible<T>`.
          */
         template<typename U = T>
             requires (std::is_default_constructible_v<U>)
@@ -363,6 +390,10 @@ namespace jh {
 
         /// @brief Deleted copy assignment
         runtime_arr &operator=(const runtime_arr &) = delete;
+
+        [[nodiscard]] std::span<T> as_span() noexcept { return {data(), size()}; }
+
+        [[nodiscard]] std::span<const T> as_span() const noexcept { return {data(), size()}; }
     };
 
     /// @brief Iterator traits helper for runtime_arr<T>; enables custom traits resolution.
@@ -372,19 +403,39 @@ namespace jh {
     };
 
     /**
-     * @brief A bit-packed specialization of `runtime_arr<bool>`, backed by raw `uint64_t[]`.
-     * (By using an Allocator != std::monostate, the runtime_arr will not be bit-packed but a normal array of bool).
+     * @brief A compact, fixed-size bit array specialized for `bool`, with bit-level access.
      *
-     * @details
-     * This version stores `bool` values in a compact form using 64-bit words.
-     * Bit-access is provided via `bit_ref` proxy, and iterators support read/write traversal.
-     *  - Internally allocated with `new uint64_t[]`, without allocator customization.
+     * This specialization stores bits in 64-bit blocks (`uint64_t[]`) and supports read/write access via `bit_ref`.
      *
-     * @note
-     * This structure is efficient for compact bitset operations and logical flags,
-     * but is **not suitable for massive-scale bitmaps** (e.g., 1e9+ bits) due to linear scan cost and allocation method.
-     * - Use `raw_data()` and `raw_word_count()` to access the underlying storage directly
-     * if bit-level operations (e.g., hashing, export, SIMD scan) are needed.
+     * Compared to `std::vector<bool>`:
+     * - More explicit and less overloaded
+     * - Does not rely on STL vector implementation tricks
+     * - Exposes raw storage (`raw_data()`, `raw_word_count()`) for custom bit ops
+     *
+     * ### Suitable For:
+     * - Compact masks and flags
+     * - Custom bitmap-based algorithms
+     * - Bit-parallelism or bit-serialization routines
+     *
+     * ### Key APIs:
+     * - `set(i)`, `unset(i)`, `test(i)`
+     * - `reset_all()` to zero entire array
+     * - STL-style iteration over bits (via `bit_iterator`)
+     *
+     * ### Notable Limitations:
+     * - Not allocator-customizable
+     * - Not intended for massive-scale bitmap (e.g. > 1e9 bits)
+     * - No `std::span/view` compatibility, does NOT inherit the std::ranges::view_interface like other templates.
+     *
+     * ⚠️ Do NOT reinterpret the underlying storage as `bool*`.
+     * Use `bit_ref` or safe iterators instead.
+     * Only the default <bool> case is affected, those with Allocators are normal.
+     *
+     * @note Similar to `std::bitset` in storage layout (contiguous bits), but supports runtime-sized arrays.
+     *       Unlike `std::bitset`, access is via mapped proxy references (`bit_ref`), which may involve
+     *       minor indirection overhead (index to word/bit mapping).
+     *       Compared to `std::vector<bool>`, this class offers more explicit behavior and safer access
+     *       patterns, with predictable memory structure (`uint64_t[]`) and no STL-specific optimizations.
      */
     template<>
     struct runtime_arr<bool> {
@@ -639,6 +690,10 @@ namespace jh {
          * @note Reinterpreting the bit-packed array as a bool* data buffer will not work as expected.
          */
         void data() const = delete;
+
+        [[nodiscard]] std::span<bool> as_span() = delete;
+
+        [[nodiscard]] std::span<const bool> as_span() const = delete;
     };
 
     template<>

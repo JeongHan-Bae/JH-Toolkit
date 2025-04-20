@@ -53,8 +53,13 @@ namespace jh {
     concept sequence = requires(const T t)
     {
         { t.begin() } -> input_iterator;
-        { t.end() } -> input_iterator;
+        { t.end() };
+
+        // Can compare
+        { t.begin() == t.end() } -> std::convertible_to<bool>;
+        { t.begin() != t.end() } -> std::convertible_to<bool>;
     };
+
 
     namespace detail {
         /// Removes `const`, `volatile`, and reference qualifiers before accessing `begin()`.

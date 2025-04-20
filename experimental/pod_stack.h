@@ -1,3 +1,4 @@
+// ⚠️ [EXPERIMENTAL] This module is internal and not part of the public API.
 /**
  * Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
  *
@@ -66,7 +67,7 @@
 #include <cassert>
 #include <optional>
 #include <type_traits> // NOLINT
-#include "pods/pod_like.h"
+#include "jh/pods/pod_like.h"
 
 namespace jh {
     /**

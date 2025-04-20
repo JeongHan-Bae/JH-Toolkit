@@ -23,6 +23,7 @@
  * - POD detection via `pod_like<T>` concept
  * - Verified POD struct macro `JH_POD_STRUCT(...)`
  * - Lightweight value types: `pair`, `array`, `optional`, `string_view`, `tuple`
+ * - Bit-level POD flag sets via `bitflags<N>`
  *
  * ## Design Goals:
  * - Enforce raw-layout safety and zero-overhead memory access
@@ -35,7 +36,10 @@
  * | `pod_like<T>`       | Concept for POD compliance                      |
  * | `pair<T1, T2>`      | 2-field struct, pod version of std::pair        |
  * | `array<T, N>`       | Fixed buffer with POD enforcement               |
+ * | `bitflags<N>`       | POD bitsets for fixed-width flag control        |
  * | `tuple<Ts...>`      | Transitional tuple replacement (2–8 fields)     |
+ * | `bytes_view`        | Raw byte view + safe reinterpreting/cloning     |
+ * | `span<T>`           | POD-only view into contiguous typed memory      |
  * | `string_view`       | POD-safe (char*, len) view for immutable text   |
  * | `optional<T>`       | POD-safe nullable value (no constructors)       |
  * | `JH_POD_STRUCT(...)`| Macro to define and assert layout safety        |
@@ -53,6 +57,9 @@
 #include "pods/pod_like.h"
 #include "pods/pair.h"
 #include "pods/array.h"
-#include "pods/tools.h"
+#include "pods/bits.h"
+#include "pods/bytes_view.h"
+#include "pods/span.h"
 #include "pods/string_view.h"
+#include "pods/tools.h"
 #include "pods/optional.h"

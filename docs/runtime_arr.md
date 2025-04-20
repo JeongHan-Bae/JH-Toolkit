@@ -17,7 +17,7 @@ Unlike `std::vector`, it offers no resizing or insertion. Instead, it delivers:
 - Optional uninitialized construction for **POD types**
 - **STL-compatible iteration**, via pointers or C++20 ranges
 - Efficient `reset_all()` with POD optimizations
-- Bit-packed specialization for `bool` (like a custom `bitset`, *only if Alloc = std::monostate*)
+- Bit-packed specialization for `bool` (like a custom `bitset`, *only if Alloc = jh::typed::monostate*)
 
 ---
 
@@ -58,12 +58,12 @@ Unlike `std::vector`, it offers no resizing or insertion. Instead, it delivers:
 ## 🔹 Template Parameters
 
 ```c++
-template<typename T, typename Alloc = std::monostate>
+template<typename T, typename Alloc = jh::typed::monostate>
 struct runtime_arr;
 ```
 
 - `T`: Type of element stored
-- `Alloc`: Optional allocator (default = no-op, raw new/delete)
+- `Alloc`: Optional allocator (default = raw `new[]`)
 
 ---
 
@@ -71,72 +71,54 @@ struct runtime_arr;
 
 ### Construction
 
-- `runtime_arr(std::uint64_t size)`
-    - Zero-initialized
+- `runtime_arr(std::uint64_t size)`  
+  → Zero-initialized, safe for all types
 
-- `runtime_arr(size, Alloc)`
-    - Uses custom allocator
+- `runtime_arr(size, Alloc)`  
+  → Uses custom allocator
 
-- `runtime_arr(size, uninitialized)`
-    - For PODs: skip init for performance
+- `runtime_arr(size, runtime_arr<T>::uninitialized)`  
+  → POD-only: skips construction, zeroes bytes (⚠ see below)
 
-- `runtime_arr(std::vector<T>&&)`
-    - Move from vector
+- `runtime_arr(std::vector<T>&&)`  
+  → Move from vector
 
-- `runtime_arr(first, last)`
-    - Iterator-based construction
+- `runtime_arr(first, last)`  
+  → Iterator-based construction
 
----
+### Access & Mutation
 
-### Element Access
-
-- `operator[](i)` - unchecked
-- `at(i)` - checked (throws on overflow)
-- `set(i, args...)` - constructs value at index
-
-### Iteration
-
-- `begin() / end()` - pointer-style
-- `cbegin() / cend()` - const iterators
+- `operator[](i)` – unchecked
+- `at(i)` – bounds-checked
+- `set(i, args...)` – constructs value at index
 
 ### Meta & Utility
 
-- `size()` - current element count
-- `empty()` - true if size == 0
-- `data()` - raw pointer
-- `reset_all()` - zero or default reset
+- `data()` – raw pointer (if applicable)
+- `size()`, `empty()`
+- `reset_all()` – zero or default-init all
 
-### Vector Conversion
+### Conversion
 
 ```c++
 std::vector<T> vec = std::move(arr);
 ```
 
-- PODs use memcpy
-- Others use `std::move`
-
 ---
 
 ## 👁‍🗨️ `runtime_arr<bool>` Specialization
 
-Bit-packed boolean array with custom `bit_ref` proxy and `uint64_t` storage.
+Bit-packed boolean array using `uint64_t[]` and proxy references.
 
-> ⚠️ Only applies when `Alloc = std::monostate`. If any custom allocator is used, `runtime_arr<bool>` will fall back to a regular array of `bool` with full STL compatibility.
+> ⚠ Only applies when `Alloc = jh::typed::monostate`
 
-### Features (bit-packed version)
-- Efficient bit-level access via `operator[]`, `set(i)`, `unset(i)`, `test(i)`
-- Compact memory layout: each bit is packed into 64-bit words
-- Supports `reset_all()` for fast zeroing
-- Provides `raw_data()` and `raw_word_count()` for direct access and SIMD or hashing
-- Includes `bit_iterator` and `bit_ref` for proxy-based logic and iteration
-
-### Limitations (bit-packed version)
-- ❌ No `data()` pointer — bit-packed layout cannot expose a `bool*`
-- ❌ No C++20 `range` support — use only range-based `for` loops or explicit iterators
-- ❗ `bit_ref` is a lightweight proxy type, **not** a `bool&`. It supports assignment and conversion to `bool`, but cannot be used where a true reference is required (e.g., `bool*`, references to references, `std::swap`) — similar to `std::vector<bool>::reference`
-
-### Compatibility Note
-- When using **custom allocators**, the specialization disables bit-packing. In that mode, `runtime_arr<bool>` behaves like a normal `runtime_arr<T>` with full `bool*` access, iterator and range support, and higher compatibility at the cost of memory usage.
+| Feature                      | Supported? |
+|------------------------------|------------|
+| Packed storage               | ✅          |
+| `operator[]`, `set`, `unset` | ✅          |
+| STL-style iteration          | ❌          |
+| C++20 range support          | ❌          |
+| `bit_ref` reference proxy    | ✅          |
 
 ---
 
@@ -145,60 +127,133 @@ Bit-packed boolean array with custom `bit_ref` proxy and `uint64_t` storage.
 - ❌ No resize / insert
 - ❌ Copy disabled (move-only)
 - ❌ Not thread-safe
-- ❌ No RAII containers inside (POD preferred — but not required)
-
-> ✅ You may use any **move-constructible** type in `runtime_arr<T>`
->
-> ✅ `reset_all()` works for any **default-constructible** type
-> 
-> 🔥 PODs are just more optimized — not required
+- ❌ No RAII container types inside (PODs preferred)
 
 ---
 
 ## 🔎 Internals Summary
 
-- Manual memory via RAII wrapper (`unique_ptr<T[], Deleter>`)
-- Deleter type is allocator-bound for flexibility
-- For POD types, avoids construction overhead
-- For `bool`, raw `uint64_t[]` used as backend **only if allocator is monostate**
+- Backed by `std::unique_ptr<T[], Deleter>`
+- `reset_all()` is `memset()` for PODs
+- `runtime_arr<bool>` uses bitmask backend
+- `uninitialized` is a construction tag that zero-fills the bytes but skips `T()` constructor
 
 ---
 
-## 🔹 Recommended Practices
+## 🔧 Technical Highlights
 
-| Task                       | Method                  |
-|----------------------------|-------------------------|
-| POD zero-initialization    | `reset_all()`           |
-| Bitmask-style operations   | `runtime_arr<bool>`     |
-| High-freq allocator resets | reuse via move          |
-| Raw pointer handoff        | `data()`                |
-| SIMD or hash optimizations | `raw_data()` (bit mode) |
+- Minimal allocation overhead
+- Optional allocator customization
+- POD-aware memory model
+- Specialized packed `bool` storage
 
 ---
 
-## 🎉 Conclusion
+## ✅ Recommended Usage
 
-`runtime_arr<T>` is a performance-focused flat container best used in **bounded, predictable-size, high-throughput** contexts.
+| Scenario                           | Use                             |
+|------------------------------------|---------------------------------|
+| Fixed-size POD / buffer            | `runtime_arr<T>`                |
+| Zero-initialized POD block         | `runtime_arr<T>::reset_all()`   |
+| High-performance flag container    | `runtime_arr<bool>`             |
+| Large overwrite-only memory region | `runtime_arr<T>::uninitialized` |
+| Incremental append/growth          | `std::vector<T>` + `reserve()`  |
 
-Use `runtime_arr<bool>` when you need bit-packed logic or compact flag buffers.
+---
 
-If your data doesn't need to grow, but must **go fast**, this is the structure to reach for.
+## 🧪 Performance Benchmarks
 
-Internally, it is a specialized RAII wrapper around `unique_ptr<T[], Deleter>`.
+### 🔍 Summary (construction + assignment @ N = 1024)
 
-If you're defining interfaces or composing temporary buffers, it can save time.
+| Compiler  | Optimization | Operation     | Type               | Mean (ns) | Notes                                           |
+|-----------|--------------|---------------|--------------------|-----------|-------------------------------------------------|
+| **Clang** | `-O2`        | Construction  | `std::vector`      | 126.93    | Full heap + default-init (1024x)                |
+|           |              | Construction  | `runtime_arr`      | 19.17     | POD optimized, no capacity                      |
+|           |              | Set by Value  | `std::vector`      | 137.76    | `buffer[i] = value`                             |
+|           |              | Set by Value  | `runtime_arr`      | 19.40     | `.set(i, T)`                                    |
+|           |              | Set Primitive | `std::vector<int>` | 62.42     | reserve + clear overhead                        |
+|           |              | Set Primitive | `runtime_arr<int>` | 19.41     | tight loop                                      |
+|           |              | Zero Init     | `std::vector`      | 0.265     | `std::fill`                                     |
+|           |              | Zero Init     | `runtime_arr`      | 0.265     | `reset_all()`                                   |
+| **Clang** | `-O0`        | Construction  | `std::vector`      | 10,305    | Debug-mode STL overhead                         |
+|           |              | Construction  | `runtime_arr`      | 307.25    | Lean in debug mode                              |
+|           |              | Set by Value  | `std::vector`      | 10,866    |                                                 |
+|           |              | Set by Value  | `runtime_arr`      | 320.17    |                                                 |
+|           |              | Set Primitive | `std::vector<int>` | 9,867     |                                                 |
+|           |              | Set Primitive | `runtime_arr<int>` | 307.72    |                                                 |
+|           |              | Zero Init     | `std::vector`      | 3.52      | `std::fill`                                     |
+|           |              | Zero Init     | `runtime_arr`      | 3.77      |                                                 |
+| **GCC**   | `-O2`        | Construction  | `std::vector`      | 220.27    | Much slower than Clang                          |
+|           |              | Construction  | `runtime_arr`      | 24.74     | Consistently fast                               |
+|           |              | Set by Value  | `std::vector`      | 218.05    |                                                 |
+|           |              | Set by Value  | `runtime_arr`      | 24.73     |                                                 |
+|           |              | Set Primitive | `std::vector<int>` | 94.60     |                                                 |
+|           |              | Set Primitive | `runtime_arr<int>` | 25.54     |                                                 |
+|           |              | Zero Init     | *(skipped)*        | *(--)*    | **GCC optimized away**; results not reliable ⚠️ |
+| **GCC**   | `-O0`        | Construction  | `std::vector`      | 709.81    |                                                 |
+|           |              | Construction  | `runtime_arr`      | 163.15    |                                                 |
+|           |              | Set by Value  | `std::vector`      | 693.56    |                                                 |
+|           |              | Set by Value  | `runtime_arr`      | 164.73    |                                                 |
+|           |              | Set Primitive | `std::vector<int>` | 792.39    |                                                 |
+|           |              | Set Primitive | `runtime_arr<int>` | 163.93    |                                                 |
+|           |              | Zero Init     | `std::vector`      | 3.46      |                                                 |
+|           |              | Zero Init     | `runtime_arr`      | 3.22      |                                                 |
 
-However, **if you're writing complex algorithms**, prefer operating directly on `unique_ptr<T[], Deleter>` plus a manual `size_t` to avoid abstraction overhead.
+---
 
-For **RAII-capable types** like `std::tuple<...>`, `runtime_arr` still works well:
-- Recommended to use zero-init or `reset_all()` only if type supports trivial/default construction
-- In **small-scale or default-allocator usage**, performance exceeds `std::vector`
-- With **allocator + RAII**, performance matches `vector` — with the benefit of fixed-capacity constraint
+### 💡 Insights
+
+- `runtime_arr<T>` is significantly faster than `std::vector<T>` for **fixed-size fill patterns**.
+- POD + `reset_all()` is nearly free (just `memset()`).
+- `uninitialized` **zeroes bytes** but skips constructor — only use when full overwrite is guaranteed.
+- `std::vector::reserve()` is still best if:
+  - You don't want initial construction
+  - You're doing incremental `push_back` style usage
+
+---
+
+### ⚠️ Notes on Initialization Semantics
+
+- `runtime_arr<T>` always ensures ownership + defined memory state.
+- Even when using `runtime_arr<T>(N, runtime_arr<T>::uninitialized)`:
+  - It does **not** leave garbage memory (it's zero-initialized).
+  - But **T is not constructed** — useful only for POD / trivially copyable types.
+- This is **not equivalent** to `std::vector<T>::reserve(N)` — which skips all initialization.
+
+> 📌 **Attention :** Using `runtime_arr<T>`, the construction cost is **ALWAYS** paid. If you want to avoid construction, use `std::vector<T>` with `reserve(N)`.
+
+---
+
+## 🧠 Design Philosophy
+
+> “If you don’t need to grow, you don’t need to pay the price of growth.”
+
+- `runtime_arr<T>` targets **fixed-size buffer use cases**
+- It ensures all memory is **safe, stable, and move-only**
+- Use `vector` when you need flexibility
+- Use `runtime_arr` when you need safety and predictability
+
+---
+
+## ✅ Summary
+
+- `runtime_arr<T>` is ideal for:
+  - POD buffers
+  - Per-frame memory
+  - Performance-critical batch jobs
+  - Bit-packed flag arrays
+- **Safer than raw arrays**, **faster than `std::vector`** (in fixed-size use)
+- Just like `std::array`, but dynamic and heap-backed
+
+📌 For any structure that:
+- Requires a known size
+- Is written once, read many times
+- Should never be resized  
+  ... `runtime_arr<T>` is likely the right choice.
 
 ---
 
 📌 **For detailed module information, refer to `runtime_arr.h`.**  
-📌 **For additional pod definitions, see [`pod.md`](pod.md).**
+📌 **For additional pod types, see [`pod.md`](pod.md).**
 
-🚀 **Enjoy coding with JH Toolkit!**
-
+🚀 **Enjoy fast, fixed-capacity memory with `runtime_arr` in JH Toolkit!**

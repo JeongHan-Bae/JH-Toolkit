@@ -39,7 +39,6 @@
 #include <cstdint>
 #include <cstring> // for memcmp, memcpy
 
-#include "pod_like.h"
 #include "../utils/hash_fn.h"
 
 namespace jh::pod {
@@ -62,7 +61,7 @@ namespace jh::pod {
             return data[index];
         }
 
-        /// @brief Pointer to beginning of data.
+        /// @brief Pointer to the beginning of data.
         [[nodiscard]] constexpr const char *begin() const noexcept { return data; }
 
         /** @brief Pointer to end of data (`data + len`).
@@ -157,7 +156,4 @@ namespace jh::pod {
             buffer[n] = '\0';
         }
     };
-
-    /// @brief Compile-time check for POD conformance.
-    static_assert(pod_like<string_view>);
 } // namespace jh::pod

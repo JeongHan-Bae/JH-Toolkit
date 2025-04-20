@@ -1,3 +1,4 @@
+// ⚠️ [EXPERIMENTAL] This module is internal and not part of the public API.
 /**
  * Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
  *
@@ -15,7 +16,7 @@
  */
 
 /**
- * @file data_sink.h
+ * @file data_sink.h (experimental)
  * @author JeongHan-Bae <mastropseudo@gmail.com>
  * @brief High-performance append-only data structure for sequential storage and retrieval.
  *
@@ -112,7 +113,7 @@
 #include <initializer_list>
 #include <ranges>      // NOLINT
 #include <utility>     // NOLINT
-#include "iterator.h"
+#include "jh/iterator.h"
 
 namespace jh::data_sink_restrictions {
     /**
@@ -197,7 +198,7 @@ namespace jh::data_sink_restrictions {
      *   for fast bitwise calculations and cache efficiency.
      */
     template<std::uint32_t BLOCK_SIZE>
-    concept valid_block_size = BLOCK_SIZE >= 1024 && (BLOCK_SIZE & BLOCK_SIZE - 1) == 0;
+    concept valid_block_size = BLOCK_SIZE >= 64 && (BLOCK_SIZE & BLOCK_SIZE - 1) == 0;
 } // namespace jh::data_sink_restrictions
 
 namespace jh {
@@ -245,7 +246,7 @@ namespace jh {
             [[nodiscard]] bool full() const { return size_ == BLOCK_SIZE; }
 
             template<typename... Args>
-            void emplace(Args &&... args) {
+            [[gnu::flatten]] [[gnu::always_inline]] void emplace(Args &&... args) {
                 new(&this->data_[this->size_]) Reg(std::forward<Args>(args)...);
                 ++this->size_;
             }
@@ -264,7 +265,7 @@ namespace jh {
             [[nodiscard]] bool full() const { return size_ == BLOCK_SIZE; }
 
             template<typename... Args>
-            void emplace(Args &&... args) {
+            [[gnu::flatten]] [[gnu::always_inline]] void emplace(Args &&... args) {
                 data_[size_].reset(new Inner(std::forward<Args>(args)...));
                 ++this->size_;
             }
@@ -278,7 +279,11 @@ namespace jh {
         >;
 
         std::unique_ptr<node> head_; ///< Pointer to the first block.
+#if defined(__GNUC__) && !defined(__clang__)
+        node *__restrict__ tail_;
+#else
         node *tail_; ///< Pointer to the last block. (should not use alignas() or might lead to UB.)
+#endif
         std::uint64_t size_; ///< Number of elements stored.
 
     public:
@@ -323,7 +328,7 @@ namespace jh {
                 }
                 tail_ = tail_->next.get();
             }
-            tail_->emplace(std::move(i_list));
+            _fast_emplace(std::move(i_list));
             // Although std::initializer_list<T> is lightweight, std::move(i_list) is preferred for clarity.
             ++size_;
         }
@@ -338,10 +343,9 @@ namespace jh {
         template<typename... Args>
         void emplace_back(Args &&... args) {
             if (!head_) [[unlikely]] {
-                // Instead of checking empty, check if head is nullptr in case last called clear_reserve
                 head_ = std::make_unique<node>();
                 tail_ = head_.get();
-            } else if (const std::uint32_t tail_size = tail_->size_; tail_size == BLOCK_SIZE) [[unlikely]] {
+            } else if (tail_->full()) [[unlikely]] {
                 if (!tail_->next) {
                     tail_->next = std::make_unique<node>();
                 } else {
@@ -349,8 +353,7 @@ namespace jh {
                 }
                 tail_ = tail_->next.get();
             }
-            tail_->emplace(std::forward<Args>(args)...);
-            ++size_;
+            _fast_emplace(std::forward<Args>(args)...);
         }
 
         /**
@@ -504,6 +507,12 @@ namespace jh {
          */
         explicit operator std::ranges::subrange<iterator>() const {
             return std::ranges::subrange<iterator>(begin(), end());
+        }
+    private:
+        template<typename... Args>
+        [[gnu::flatten]] [[gnu::always_inline]] void _fast_emplace(Args &&... args) {
+            tail_->emplace(std::forward<Args>(args)...);
+            ++size_;
         }
     };
 

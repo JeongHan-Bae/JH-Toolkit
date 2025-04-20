@@ -35,7 +35,6 @@
 #include "pod_like.h"
 #include <new>
 #include <cstring>
-#include <memory>
 
 namespace jh::pod {
     /**

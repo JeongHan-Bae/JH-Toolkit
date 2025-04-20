@@ -18,6 +18,8 @@ This document outlines the folder ↔ namespace ↔ header naming conventions us
 | `utility`   | `jh::utils` | `jh/utils/` | `<jh/utility>` | Helpers and wrappers (e.g., pairs) |
 
 
+> 📌 **Note :** `jh::utility` is not ready for using, no umbrela header is provided temporarily.
+
 ## 📚 Philosophy
 
 - **Modular, low-overhead building blocks**

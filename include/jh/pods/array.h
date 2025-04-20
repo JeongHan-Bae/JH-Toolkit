@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include "pod_like.h"
 
 namespace jh::pod {

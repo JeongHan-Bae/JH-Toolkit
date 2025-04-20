@@ -1,4 +1,4 @@
-# 🧩 JH Toolkit: `POD` System API Documentation
+# 🏆 JH Toolkit: `POD` System API Documentation
 
 📌 **Version:** 1.3   
 🕝 **Date:** 2025  
@@ -8,10 +8,30 @@
 
 ---
 
-## 🔍 Overview
+## 📚 Table of Contents
 
-The `jh::pod` module defines a complete system for working with **Plain Old Data (POD)-like types**, optimized for **raw
-memory containers**, **placement-new**, and **low-overhead computation**.
+- [🌍 Overview](#-overview)
+- [🧠 POD Design Philosophy](#-pod-design-philosophy)
+- [Header Structure](#header-structure)
+- [🔧 Key Concepts & Macros](#-key-concepts--macros)
+- [📦 Built-in POD Types](#-built-in-pod-type-apis)
+  - [`pod::pair`](#-jhpodpairt1-t2)
+  - [`pod::tuple`](#-jhpodtuplets-transitional)
+  - [`pod::array`](#-jhpodarrayt-n)
+  - [`pod::bitflags`](#-jhpodbitflagsn)
+  - [`pod::string_view`](#-jhpodstring_view)
+  - [`pod::optional`](#-jhpodoptionalt)
+- [📊 STL Optimization with pod_like Types](#-stl-optimization-with-pod_like-types)
+- [✅ Best Practices](#-best-practices)
+- [↔️ Byte Order Disclaimer](#-byte-order-disclaimer)
+- [📊 Alignment Disclaimer](#-alignment-disclaimer)
+- [🧬 Compiler Optimization Behavior](#-pod_like-and-compiler-optimizations)
+
+---
+
+## 🌍 Overview
+
+The `jh::pod` module defines a complete system for working with **Plain Old Data (POD)-like types**, optimized for **raw memory containers**, **placement-new**, and **low-overhead computation**.
 
 > 🔀 Both `<jh/pod>` and `<jh/pod.h>` are supported. Prefer `<jh/pod>` for modern-style inclusion.
 
@@ -20,10 +40,12 @@ This module enforces memory-safe layout and guarantees:
 - Zero-cost construction
 - `memcpy`-safe semantics
 - Standard layout
-- High-performance compatibility with `jh::pod_stack`, `arena`, `mmap`, etc.
+- High-performance compatibility with `std::stack`, `arena`, `mmap`, etc.
 
-> 📌 **Target platform:** 64-bit only — `std::size_t` is avoided in favor of fixed-size types (`std::uint*_t`) for layout clarity and deterministic memory modeling.
-
+> 📌 **Target platform:** 64-bit only — `std::size_t` is avoided in favor of fixed-size types (`std::uint*_t`) for layout clarity and deterministic memory modeling.  
+> 💡 `jh::pod` types use fixed-size integers like `uint32_t` / `uint64_t` in place of `size_t`  
+> This ensures consistent layout across all platforms and reflects our 64-bit-only design.  
+> All buffer sizes are explicitly bounded — oversize instantiations will fail at compile time via `concept` checks.
 
 ---
 
@@ -33,6 +55,16 @@ This module enforces memory-safe layout and guarantees:
 - 🧼 No constructors, destructors, virtual tables, hidden heap allocations
 - 🔒 Enables safe serialization, memory mapping, bare-metal operation
 - 🧠 All fields known at compile time → layout-stable, tooling-friendly
+
+📦 `pod` is a lightweight, template-based subsystem that offers value-semantic types such as `pod::pair`, `pod::optional`, and `pod::bitflags`, designed specifically for **C++20** and **64-bit desktop/server-class platforms**.
+
+🔹 While header-only and minimal in implementation, `pod` leverages advanced language features like:
+- C++20 concepts and constraints
+- `constexpr` evaluations
+- Structured bindings and template deduction
+- Flattened STL containers and `std::is_trivially_copyable` checks
+
+❗ As such, **`pod` is not designed for embedded, 32-bit, or C++14/11 platforms**.
 
 ---
 
@@ -44,8 +76,11 @@ This module enforces memory-safe layout and guarantees:
 | `<jh/pods/pod_like.h>`    | Only the `pod_like` concept                                    | For SFINAE / constraints                    |
 | `<jh/pods/pair.h>`        | `pod::pair<T1, T2>` only                                       | Low-level generic usage                     |
 | `<jh/pods/array.h>`       | `pod::array<T, N>` only                                        | Low-level generic usage                     |
-| `<jh/pods/tools.h>`       | Macros & non-recommended types like `tuple`                    | Internal only — auto-included by `<jh/pod>` |
+| `<jh/pods/bits.h>`        | `pod::bitflags<N>` only                                        | Low-level algorithmic usage                 |
+| `<jh/pods/bytes_view.h>`  | `pod::bytes_view` only                                         | Low-level serialization usage               |
+| `<jh/pods/span.h>`        | `pod::span<T>` only                                            | Pod Compatible span view                    |
 | `<jh/pods/string_view.h>` | `pod::string_view` only                                        | Low-level algorithmic usage                 |
+| `<jh/pods/tools.h>`       | Macros & non-recommended types like `tuple`                    | Internal only — auto-included by `<jh/pod>` |
 | `<jh/pods/optional.h>`    | `pod::optional<T>` only                                        | Pod Compatible optional type                |
 
 ---
@@ -64,451 +99,450 @@ concept pod_like = std::is_trivially_copyable_v<T> &&
                    std::is_standard_layout_v<T>;
 ```
 
-> 🧠 A type that satisfies `pod_like<T>` can be stored in `jh::pod_stack`, copied with `memcpy`, and used safely in
-`.data` segments.
-
----
-
 ### ⚙️ `JH_POD_STRUCT(NAME, ...)`
 
-Define a POD struct with boilerplate-free layout checking:
+Define a POD struct with layout validation.
 
 ```c++
-JH_POD_STRUCT(MyVec2,
-    float x;
-    float y;
+// Example: Memory-mapped network packet header
+JH_POD_STRUCT(PacketHeader,
+    uint16_t id;
+    uint8_t flags;
+    uint8_t length;
 );
 ```
 
 - Declares a struct with `==` operator
 - Triggers a `static_assert` if not `pod_like`
 
----
-
 ### 📌 `JH_ASSERT_POD_LIKE(T)`
 
-Use this macro to validate any existing struct:
+Validate existing struct:
 
 ```c++
 struct Packet { int len; char data[8]; };
 JH_ASSERT_POD_LIKE(Packet);
 ```
 
-> Ensures `Packet` satisfies `pod_like`.
-
 ---
 
-## 📦 Built-in POD Types
+
+## 📦 Built-in POD Type APIs
 
 ### 🔹 `jh::pod::pair<T1, T2>`
 
-Minimal `std::pair` replacement:
+A POD-compatible replacement for `std::pair`, designed for raw memory use and binary-safe operations.
 
+#### ⚙️ Requirements
+- `T1`, `T2` must satisfy `pod_like<T>`
+
+#### 🧩 Members
 ```c++
-pair<int, float> p = {1, 2.0f};
+T1 first;
+T2 second;
+
+constexpr bool operator==(const pair&) const = default;
 ```
 
-- Always `{ T1 first; T2 second; }`
-- Fully layout-safe, `==` supported
-- Drop-in for simple key-value/tuple use
-
----
-
-### 🔹 `jh::pod::tuple<Ts...>` (2 to 8 elements)
-
-Fixed-field, layout-stable tuple replacement with POD guarantees:
-
+#### 💡 Example
 ```c++
-tuple<int, float, char> t = {1, 2.5f, 'A'};
-t.get<1>() = 3.0f;
+jh::pod::pair<int, float> p{42, 3.14f};
 ```
 
-- Fields are named `_0` to `_7`
-- Supports **2 to 8 fields only**
-- Unused fields default to `std::monostate` and are optimized away
-- POD-safe, layout-stable, `==` supported
-- **Index-based access only** via `get<N>()`
-
-#### 📌 Design rationale:
-
-> 🧠 This is a **hardcoded, 8-field struct**, not a variadic pack.  
-> This is **intentional**, by design — not a technical limitation.
-
-- ✋ Unlike `std::tuple`, this type avoids recursive inheritance to **preserve `standard_layout` and POD properties**.
-- ✅ We enforce **2–8 fields** — the typical range in real-world use.
-- ❌ Single-field tuples are disallowed — they offer no real benefit and reduce clarity.
-- ✅ The 8-field cap is deliberate — it’s sufficient for almost all algorithmic or migration use cases, and discourages
-  abuse.
-- 🚫 Supporting arbitrary element counts invites over-generic, unreadable "data soup" — **which this library explicitly
-  prevents**.
-
-> 🔒 This is a **deliberate design constraint** — to protect your codebase from overengineering and ensure memory layout
-> safety.
-
 ---
 
-#### ⚠️ When to use:
+### ⚠️ `jh::pod::tuple<Ts...>` (transitional)
 
-| Use case                                 | Recommended |
-|------------------------------------------|-------------|
-| Replacing `std::tuple` in hot code       | ✅ Yes       |
-| Algorithmic bridging (e.g. sorting keys) | ⚠️ Maybe    |
-| General-purpose data modeling            | ❌ No        |
-| Anything with more than 8 fields         | ❌ Refactor  |
+A **POD-safe, fixed-field tuple replacement**, primarily designed to ease migration from `std::tuple` to `pod_like` types. It supports up to 8 fields, but is explicitly marked **deprecated** to encourage eventual migration to **custom POD structs with real field names**.
 
----
+> ⚠️ **`pod::tuple` is a temporary migration tool**  
+> Use it to quickly port from `std::tuple`, but replace with `JH_POD_STRUCT(...)` ASAP for better field naming and safety.
 
-#### ✅ Best practice:
+#### 🧭 Intended Purpose
+> ✅ Use it as a bridge from `std::tuple<Ts...>`  
+> ❌ Not meant for long-term or high-level use  
+> ✅ Encourages compile-time layout and serialization stability  
+> ❌ No structured bindings, no `std::get`, no runtime flexibility
 
-> Use `jh::pod::tuple<Ts...>` only as a **transitional or algorithmic tool**.  
-> For long-term structures, prefer clear, named fields with `JH_POD_STRUCT(...)`.  
-> ❌ No structured bindings (`auto [a, b] = t;` is not supported), as tuples are actually of size 8.  
-> ⚠️ This is intentional: structured binding would destructure all 8 fields including unused ones. Use `get<N>()` instead.
+> **Final goal:** define proper `JH_POD_STRUCT(...)` types with explicit field names (not `get<0>()`, etc.)
 
----
+#### ⚙️ Requirements
+- `T1`, `T2` must be `pod_like`
+- Optional fields `T3`–`T8` can be `jh::typed::monostate` or `pod_like`
+- `jh::typed::monostate` is a placeholder type to express "Nothing" without reliance to `std::variant` (`std::monostate`).
 
-#### **🧾 Deprecation Notice**
+#### 🧩 Members
+```c++
+T1 _0; T2 _1; T3 _2; T4 _3; T5 _4; T6 _5; T7 _6; T8 _7;
 
-> ⚠️ `pod::tuple<Ts...>` is **not deprecated because it's broken**, but because it's a **temporary, migration-oriented utility**.
+template<uint8_t V> Tn& get();       // Indexed field access (get<0>(), get<1>(), ...)
+constexpr bool operator==(const tuple&) const = default;
+```
 
-Its `[[deprecated]]` attribute is intentional — not to block you, but to **gently push you** toward explicit, long-term-safe structures.
+#### 🛑 Limitations
+- No structured binding (`auto [a, b] = t;` is **not** supported)
+- No variadic unpacking
+- All field names are positional (`_0`, `_1`, etc.)
+- Not semantically meaningful → harder to read/maintain
 
-#### ❗ Important Clarification:
-
-- `pod::tuple` is **not a JH Toolkit legacy API** — it's a supported part of the toolkit.
-- But it **is** a type designed specifically for **short-term bridging** and **algorithmic composition**.
-- You are **not "done"** if you've migrated from `std::tuple` to `pod::tuple`.
-- You are only "done" when you've replaced it with a clear, fixed-layout `JH_POD_STRUCT`.
-
-> ✅ `pod::tuple` helps you survive.  
-> ✅ A real POD struct helps your compiler **optimize**.
-
----
-
-#### 🧠 **Why it's marked `[[deprecated]]`**
-
-- To discourage **complacency** — it’s not a permanent model.
-- To give **structured build warnings** — every use reminds you to migrate.
-- To support **toolchain scans** — enabling CI and static analysis to track migration progress.
-- To prevent **“POD-soup” syndrome** — where unbounded genericity leads to unreadable, unsafe data blobs.
-
-> 🧱 True SIMD and alignment-aware optimization **requires field names and layout certainty**.  
-> That means real structs, not pseudo-generic tuples.
-
----
-
-#### 🔧 Best Migration Strategy
-
-| Migration Step                   | Goal                         |
-|----------------------------------|------------------------------|
-| Replace `std::tuple`             | ✅ Move to `pod::tuple`       |
-| Replace generic algo glue        | ⚠️ Minimize tuple use        |
-| Finalize long-term struct layout | ✅ Write `JH_POD_STRUCT(...)` |
-| Kill tuple                       | ✅ Zero use in production     |
-
----
-
-> 🧠 Don’t stop at being better than `std::tuple`.  
-> **Go all the way** to layout-defined, inspectable, cache-predictable data.
+#### 💡 Example
+```c++
+// Temporary tuple form
+jh::pod::tuple<int, float, char> t{1, 3.0f, 'x'};
+t.template get<1>() += 1.5f;
+```
 
 ---
 
 ### 🔹 `jh::pod::array<T, N>`
 
-POD-safe array — `std::array` layout, but:
+A fixed-size inline buffer — raw, no-allocator, no bounds-checking. Designed for stack or `.data` memory.
 
-- No constructor
-- No allocator
-- No `fill()`, `at()`
+#### ⚙️ Requirements
+- `T` must be `pod_like`
+- `sizeof(T) * N <= 16 * 1024` (max 16 KB)
 
-> "POD-safe" means satisfying `pod_like<T>`, guaranteeing trivial layout.
-
+#### 🧩 Members
 ```c++
-jh::pod::array<int, 128> a;
-a[0] = 1;
+T data[N];
+
+T& operator[](std::size_t i) noexcept;
+const T& operator[](std::size_t i) const noexcept;
+
+T* begin() noexcept;               // for range-based loops
+const T* begin() const noexcept;
+T* end() noexcept;
+const T* end() const noexcept;
+
+static constexpr std::size_t size();
+constexpr bool operator==(const array&) const = default;
 ```
 
-#### ✅ Features
-
-| Property              | Supported |
-|-----------------------|-----------|
-| `operator[]`          | ✅         |
-| `begin()`/`end()`     | ✅         |
-| POD-like              | ✅         |
-| Max size (16KB total) | ✅         |
-| Bounds checking       | ❌         |
-
-#### 🔐 Compile-Time Guard
-
+#### 💡 Example
 ```c++
-inline constexpr std::uint16_t max_pod_array_bytes = 16 * 1024;
-
-template<typename T, std::uint16_t N>
-requires pod_like<T> && (sizeof(T) * N <= max_pod_array_bytes)
+jh::pod::array<int, 3> a = {{1, 2, 3}};
 ```
 
-> 💡 **Tip:** When using small, static `pod::array<T, N>`, prefer `constexpr` instead of `const`.
+---
+
+### 🔹 `jh::pod::bitflags<N>`
+
+Low-overhead fixed-size bitfield, for embedded flags or mapped memory buffers. Works like `std::bitset`, but without heap or safety checks.
+
+#### ⚙️ Requirements
+- `N` must be divisible by 8
+- `N <= 32,768` (max 4 KB)
+
+#### 📚 Variants
+- Native backend (`N` = 8, 16, 32, 64): stored in `uint{N}_t` (`.bits`)
+- Byte-array backend (`N` = others): stored in `uint8_t[]` (`.data`)
+
+> Although Realizations are placed in `namespace jh::pod::detail`, you can always manipulate underlying data
+> by interacting with `.bits` or `.data`.  
+> Do NOT call `reinterpret_cast` to `&.bits` as this disrupts the library-defined little-endian. 
+
+#### 🧩 Core Methods
+```c++
+void set(uint16_t bit) noexcept;
+void clear(uint16_t bit) noexcept;
+void flip(uint16_t bit) noexcept;
+bool has(uint16_t bit) const noexcept;
+
+void set_all() noexcept;
+void reset_all() noexcept;
+void flip_all() noexcept;
+
+uint16_t count() const noexcept;
+
+bitflags<N> operator|, &, ^, ~;
+bool operator==(const bitflags<N>&) const = default;
+```
+
+#### 🧩 Serialization
+```c++
+jh::pod::array<uint8_t, N / 8> to_bytes(bitflags<N>);   // get a snapshot
+bitflags<N> from_bytes(jh::pod::array<uint8_t, N / 8>); // from snapshot
+```
+
+#### 💡 Example
+```c++
+jh::pod::bitflags<16> f{};
+f.set(3);
+if (f.has(3)) { ... }
+```
+
+#### 📌 Endianness Design
+
+`bitflags<N>` uses two internal layouts depending on `N`:
+
+- For `N = 8, 16, 32, 64`:  
+  → Internally stored as `.bits` (a native unsigned integer)  
+  → Follows the **platform's byte order**
+- For all other values:  
+  → Internally stored as `.data[N / 8]` (a byte array)  
+  → Stores bits in **explicit little-endian order**, one byte at a time
+
+---
+
+#### 📤 Snapshot Format
+
+The functions:
+
+```c++
+pod::array<uint8_t, N / 8> to_bytes(bitflags<N>);
+bitflags<N> from_bytes(pod::array<uint8_t, N / 8>);
+```
+
+create or consume **snapshots** of the bitflags state.
+
+- The snapshot is a **copy of the internal content**, but in a separate buffer
+- Snapshots always use **little-endian byte order**, regardless of platform or internal layout
+- Safe for serialization, MMAP, and cross-platform transfer
+
+---
+
+#### Notes
+
+- You can always use the public API (`set()`, `has()`, `clear()`, etc.) — it works uniformly for all `N`
+- If you need to **manually access the raw bits**:
+  - Use `.bits` when `N = 8, 16, 32, 64`  
+    → Fast, native access, but **platform endianness**
+  - Use `.data[]` when `N` is any other value  
+    → Each byte is stored in **defined little-endian order**
+
+> **Do not reinterpret-cast** `.bits` or `.data[]` — this may lead to undefined behavior and is never portable
+
+---
+
+### 🔹 `jh::pod::bytes_view`
+
+A low-level, read-only, POD-safe wrapper over raw memory regions. Designed for binary parsing, protocol headers, and typed deserialization of mapped memory.
+
+#### ⚙️ Requirements
+- The memory being pointed to must remain valid externally.
+- Type `T` for interpretation must satisfy:
+  - `trivial_bytes<T>` (for `.from`, `.at`, `.fetch`)
+  - `pod_like<T>` (for `.clone`)
+
+#### 🧩 Members
+```c++
+const std::byte* data;
+uint64_t len;
+```
+
+#### 🧩 Core Functions
+
+```c++
+template<trivial_bytes T>
+static bytes_view from(const T& obj);
+
+template<trivial_bytes T>
+static bytes_view from(const T* arr, uint64_t size); // size in elements, not bytes
+
+template<trivial_bytes T>
+const T& at(uint64_t offset = 0) const;    // unsafe, will NOT check bounding
+
+template<trivial_bytes T>
+const T* fetch(uint64_t offset = 0) const; // if extending the size, will return nullptr
+
+template<pod_like T>
+T clone() const;                           // Only pod-like can be cloned
+
+bool operator==(const bytes_view&) const noexcept;   // compared by content
+```
+
+#### 💡 Example
+```c++
+struct Packet { uint32_t id; uint8_t flags; };
+JH_ASSERT_POD_LIKE(Packet);
+
+Packet pkt{123, 0b0101};
+auto view = jh::pod::bytes_view::from(pkt);
+Packet copy = view.clone<Packet>();
+```
+
+#### 🧠 Design Intent
+
+- `.from(...)` creates a byte-level view over object or array memory.
+- `.at<T>()` and `.fetch<T>()` reinterpret contents as typed structs (with optional offset).
+- `.clone<T>()` **copies** content into a stack-allocated object (`T must be pod_like`).
+
+#### ⚠️ Safety Note
+
+- This system assumes **byte-for-byte memory equivalence** — it does not handle endian correction.
+- You are responsible for ensuring **alignment**, **lifetime**, and **byte order** are valid.
+
+#### ⚠️ Why `bytes_view` Does Not Provide `copy_to(...)`
+
+Unlike `string_view`, which offers `copy_to(char*)` as a convenience method for short strings:
+
+- `bytes_view` is **not null-terminated**, and its memory **may alias structured objects**.
+- The `.clone<T>()` method supports **safe object copying only if `T` is `pod_like`**, ensuring correct semantics.
+- A general-purpose `copy_to` would invite unsafe use in the presence of:
+  - Misaligned structures
+  - Dangling backing memory
+  - Incorrect size assumptions
+
+> If you need to copy raw bytes manually, the internal layout is transparent:
 > ```c++
-> constexpr jh::pod::array<int, 3> v = {1, 2, 3}; // Compile-time guaranteed
+> std::memcpy(dst, view.data, view.len);
 > ```
-> This allows full compile-time layout resolution and `.rodata` optimization.
 
+This gives you full control without exposing risky default behavior.
+
+---
+
+### 🔹 `jh::pod::span<T>`
+
+A POD-safe `std::span<T>` replacement — zero-overhead, raw-pointer-based view over typed memory.
+
+#### ⚙️ Requirements
+
+- `T` must be `pod_like`
+- Used only for **contiguous memory blocks** (like `T[]`, `.data()`, or raw pointer)
+- Not designed for non-contiguous iterators or virtual ranges
+
+#### 🧩 Members
+```c++
+T* data;
+uint64_t len;
+```
+
+#### 🧩 Core Methods
+```c++
+T& operator[](uint64_t i) const noexcept;
+T* begin() const noexcept;
+T* end() const noexcept;
+uint64_t size() const noexcept;
+bool empty() const noexcept;
+
+span sub(uint64_t offset, uint64_t count = 0) const noexcept;
+span first(uint64_t count) const noexcept;
+span last(uint64_t count) const noexcept;
+bool operator==(const span&) const = default; // compared by address
+```
+
+#### 🛠️ Helpers
+```c++
+template<typename T, std::size_t N>
+span<T> to_span(T (&arr)[N]);
+
+template<detail::LinearContainer C>
+span<T> to_span(C& container);              // requires: .data() → T*, .size() → uint64_t
+```
+
+#### 💡 Example
+```c++
+int buffer[4] = {1, 2, 3, 4};
+auto s = jh::pod::to_span(buffer);
+auto tail = s.last(2); // → span to {3, 4}
+```
+
+#### 📌 Notes
+- For packed or heterogeneous binary data, prefer `bytes_view`.
+- This span is for **array-like memory only**.
+- You cannot use this with `std::list`, `std::set`, or custom containers without `.data()`/`.size()` methods.
 
 ---
 
 ### 🔹 `jh::pod::string_view`
 
-> A lightweight, non-owning, POD-safe string reference type — ideal for syntax parsing, token analysis, and zero-copy view access.
+A non-owning, null-unsafe, raw `const char* + size` string view. Fully POD and binary-safe.
 
-`jh::pod::string_view` is a **POD-compliant**, **non-owning string view**, representing a `(char*, length)` pair.  
-It is designed for high-performance use in scenarios where **string copying is too expensive**, and memory layout must remain **flat, compact, and trivially copyable**.
-
-Unlike `std::string` or even `std::string_view`, this view is designed to be:
-
-- 🧱 **Plain Old Data (POD)** — trivially copyable, standard layout, safe in `.data` or `mmap`
-- 💨 **Zero-overhead** — no dynamic checks, no destructor, no memory allocation
-- 🚀 **Ideal for use with `pod_stack<T>`**, parsers, and DSL engines
-- 🧠 **Interoperable** with `jh::immutable_str`, `std::string`, and raw `char*`
-
-#### ✅ Fields
-
+#### 🧩 Members
 ```c++
 const char* data;
-std::uint64_t len;
+uint64_t len;
+
+char operator[](uint64_t i) const noexcept;
+const char* begin() const noexcept;
+const char* end() const noexcept;
+uint64_t size() const noexcept;
+bool empty() const noexcept;
+
+bool operator==(const string_view&) const noexcept; // compared by content
+bool starts_with(const string_view& prefix) const noexcept;
+bool ends_with(const string_view& suffix) const noexcept;
+uint64_t find(char ch) const noexcept;
+
+string_view sub(uint64_t offset, uint64_t len = 0) const noexcept;
+uint64_t hash() const noexcept;
+void copy_to(char* buffer, uint64_t max_len) const noexcept;
 ```
 
-> ⚠️ `pod::string_view` does **not** manage or check the lifetime of `data`.  
-> You must ensure the backing memory remains valid for the lifetime of the view.
-
----
-
-#### 🔍 Core Methods
-
-| Method                                | Description                                        |
-|---------------------------------------|----------------------------------------------------|
-| `operator[](i)`                       | Returns character at index `i` (⚠️ unchecked)      |
-| `size()` / `empty()`                  | Length and zero-check                              |
-| `begin()` / `end()`                   | Raw pointer range for iteration                    |
-| `sub(offset, length = 0)`             | Creates a subview; `length=0` means till end       |
-| `compare(rhs)`                        | Lexicographical compare (ASCII `memcmp` style)     |
-| `starts_with(rhs)` / `ends_with(rhs)` | Prefix/suffix match, ASCII                         |
-| `find(ch)`                            | Index of first occurrence, or `-1`                 |
-| `hash()`                              | FNV-1a 64-bit hash (compile-time optimized)        |
-| `copy_to(buf, max_len)`               | Null-terminated debug copy into buffer (⚠️ unsafe) |
-
----
-
-#### 📌 Lifetime & Safety Rules
-
-⚠️ This is a **non-owning, unsafe-by-default** view.  
-Use only when the **underlying buffer is guaranteed alive** — such as:
-- Static literals (`static const char*`)
-- `immutable_str`
-- `std::string` with known scope
-- `arena`, `pool`, or other stable backing
-
-`pod::string_view` **does not own memory**.  
-It behaves like a C pointer — fast, but unsafe if misused.
-
-| Source                     | Safe? | Notes                                                 |
-|----------------------------|-------|-------------------------------------------------------|
-| `std::string`              | ✅     | Only if string outlives the view                      |
-| `const char*` (manual)     | ✅     | Must be stable and null-free                          |
-| `std::string_view`         | ✅     | If tied to long-lived memory                          |
-| **Returned from function** | ❌     | ⚠️ May dangle — only return views if source is static |
-| `"literal"` (inline)       | ⚠️    | Technically safe (static), but not recommended        |
-| `jh::immutable_str`        | ✅     | Safest — use `.pod_view()` to extract                 |
-
----
-
-#### ✅ Example: Safe Usage
-
+#### 💡 Example
 ```c++
-std::string buffer = "hello world";
-pod::string_view view = { buffer.c_str(), buffer.size() }; // ✅ safe if buffer lives
+jh::pod::string_view name{"abc", 3};
+if (name.starts_with("a")) ...
 ```
-
-Or:
-
-```c++
-auto imm = jh::make_atomic("hello");
-pod::string_view view = imm->pod_view(); // ✅ guaranteed non-dangling
-```
-
----
-
-#### ⚠️ Example: Unsafe (Dangling)
-
-```c++
-pod::string_view view = {"inline", 6}; // ❌ literal — technically safe, but misleading
-return {"tmp", 3};                     // ❌ dangling view from temporary
-```
-
----
-
-#### ✅ Best Use Cases
-
-- ✅ SQL / DSL parsing
-- ✅ Syntax token view in interpreters
-- ✅ Cache keys with memory-pool backing
-- ✅ Line-by-line log parsing
-- ✅ High-frequency `emplace_back()` into `jh::pod_stack<pod::string_view>`
-
----
-
-### 🧠 Tip: Use With `immutable_str` for Safety
-
-If you need a safe, non-dangling source of immutable string data:
-
-```c++
-auto imm = jh::make_atomic("SELECT * FROM table;");
-auto tok = imm->pod_view().sub(7, 1); // ✅ extracts "F"
-```
-
----
-
-#### 📐 Size & ABI
-
-- Always **16 bytes** on 64-bit platforms
-- Perfectly aligned for use in:
-
-  - `pod_stack<string_view>`
-  - `data_sink<string_view>`
-  - Embedded POD containers
-
-> 💡 Designed for serialization, placement-new, and safe copying via `memcpy`.
-
----
-
-#### 📛 Reminder
-
-> **Do not** return `pod::string_view` unless you're certain the data outlives the view.  
-> It's a view, not a value.
 
 ---
 
 ### 🔹 `jh::pod::optional<T>`
 
-> A layout-stable, trivially copyable alternative to `std::optional<T>`  
-> for use in POD-only memory systems and compile-time optimized containers.
+Minimal and binary-safe `optional<T>` for POD values — doesn't construct/destruct `T`.
 
-```c++
-pod::optional<int> x;
-x.store(42);
-if (x.has()) return x.ref();
-```
+#### ⚙️ Requirements
+- `T` must be `pod_like`
 
-- ✅ Fully POD: no constructor, destructor, or heap
-- ✅ Memory-safe: `memcpy`/`zero_init` compatible
-- ✅ Ideal for use with `pod_stack`, `runtime_arr`, or serialization buffers
-- 🚫 Does **not** support default value construction — you must `.store()` manually
-- ⚠️ Accessors (`ref()` / `get()`) are unchecked — always check `.has()`
-
-#### ✅ Fields
-
+#### 🧩 Members
 ```c++
 std::byte storage[sizeof(T)];
 bool has_value;
+
+void store(const T&) noexcept;
+void clear() noexcept;
+
+T* get() noexcept;
+const T* get() const noexcept;
+
+T& ref() noexcept;
+const T& ref() const noexcept;
+
+bool has() const noexcept;
+bool empty() const noexcept;
 ```
 
-- `storage` holds raw value bits
-- `has_value` indicates presence of value
-- No constructors, no lifetime management — your code **must** handle state
-
-#### ✅ Methods
-
-| Method                | Description                                      |
-|-----------------------|--------------------------------------------------|
-| `.store(const T&)`    | Copies a value into internal storage             |
-| `.clear()`            | Marks the value as empty (no destructor called)  |
-| `.has()` / `.empty()` | Checks if value is set or not                    |
-| `.get()`              | Returns raw pointer (unchecked!) to stored value |
-| `.ref()`              | Returns reference to stored value (unchecked)    |
-
-#### ⚠️ Layout & ABI
-
-| Property               | Value                          |
-|------------------------|--------------------------------|
-| `sizeof(optional<T>)`  | `sizeof(T) + 1` (plus padding) |
-| `alignof(optional<T>)` | `alignof(T)`                   |
-
-Example:
-
+#### 🧩 Factory
 ```c++
-static_assert(sizeof(pod::optional<std::uint32_t>) == 8);
-static_assert(alignof(pod::optional<std::uint32_t>) == 4);
+jh::pod::make_optional<T>(value);
 ```
+
+#### 💡 Example
+```c++
+auto opt = jh::pod::make_optional<int>(123);
+if (opt.has()) {
+    int v = opt.ref();
+}
+```
+
 
 ---
 
-#### ✅ Best Use Cases
+## 📊 STL Optimization with `pod_like` Types
 
-- ✅ Low-level systems where `std::optional` introduces unwanted constructors
-- ✅ POD containers (`pod_stack<T>`, `runtime_arr<T>`)
-- ✅ SIMD-friendly or cache-sensitive systems that demand fixed layout
-- ✅ High-performance token streams or sparse table entries
+Modern compilers (Clang, GCC, MSVC) aggressively optimize STL containers like `std::vector<T>` when `T` satisfies `pod_like<T>`. At `-O2` and above:
 
----
+- Construction, assignment, and destruction use `memcpy`
+- No runtime type dispatch or heap penalties
+- STL containers achieve equivalent performance to handwritten buffers
 
-#### 🧠 Constructor-Free Semantics
+### ✅ Recommendation:
 
-Unlike `std::optional`, `pod::optional` is **zero-initialized POD** — no construction occurs at runtime:
+> **Use `jh::pod` types to define layout. Use STL containers to manage structure.**
 
-```c++
-pod::optional<MyT> x;        // contains nothing
-x.store(value);              // manually stored
-x.ref();                     // returns T& (unsafe if empty)
-```
+| Use Case                   | Recommended Tool              |
+|----------------------------|-------------------------------|
+| Low-level layout control   | ✅ `JH_POD_STRUCT(...)`        |
+| Fixed field validation     | ✅ `JH_ASSERT_POD_LIKE(...)`   |
+| General container usage    | ✅ `std::vector`, `std::array` |
+| Compile-time small buffers | ⚠️ `pod::array<T, N>`         |
+| Runtime growable buffers   | ❌ Don't hand-roll, use STL    |
 
-If you want to construct inline:
+### ⚠️ Clarification:
 
-```c++
-auto o = pod::make_optional(42);
-```
-
----
-
-#### 🔐 Safety Contract
-
-- 🧠 **Must** call `.has()` before accessing `.ref()` or `.get()`
-- 🚫 Does **not** call `T` constructor — memory is raw
-- 🚫 No structured bindings / monadic access (`?`, `.value()`, etc.)
-- ✅ Optimized for zero-overhead memory placement and copying
-
----
-
-#### ✅ Factory Function
-
-```c++
-auto o = jh::pod::make_optional(value);
-```
-
-Creates a filled optional without triggering default constructor. Internally:
-
-```c++
-optional<T> o;
-o.store(value);
-return o;
-```
-
-> 🔒 Use `pod::optional<T>` only when you need **full layout control and compile-time guarantees**.  
-> If you're modeling nullable logic in normal business logic — use `std::optional`.
-
----
-
-## 🧪 Validation Examples
-
-```c++
-JH_POD_STRUCT(Vec3,
-    float x;
-    float y;
-    float z;
-);
-
-static_assert(jh::pod::pod_like<Vec3>);
-static_assert(jh::pod::pod_like<jh::pod::pair<int, int>>);
-static_assert(jh::pod::pod_like<jh::pod::array<std::uint8_t, 32>>);
-```
+> Types like `pod::array`, `pod::bitflags`, `pod::string_view` are not containers.  
+> They are **data buffers** — layout primitives used to embed data, not manage it.
 
 ---
 
@@ -523,50 +557,55 @@ static_assert(jh::pod::pod_like<jh::pod::array<std::uint8_t, 32>>);
 | Raw, fixed array buffer (≤ 16KB) | `jh::pod::array<T, N>`  |
 | Dynamic data / heap use          | ❌ Not supported here    |
 
----
+**On Equality Semantics and Copy Behavior :**
 
-### 📛 Byte Order Disclaimer
+> `bytes_view` and `string_view` use **content-based equality**, while `span` uses **address-based equality**.
 
-> 📢 **Endian Disclaimer:**
+This distinction is intentional and reflects their **typical usage patterns** and **performance expectations**:
 
-The `jh::pod` system assumes **platform-local byte order** throughout.
+- 🔹 `bytes_view` and `string_view` are designed for **small, read-only, copy-safe memory slices**, making content comparison practical and semantically meaningful.
+- 🔹 `span`, on the other hand, often points to **large or heap-allocated memory regions**, where byte-by-byte equality is costly and often meaningless.  
+  For such cases, **pointer equality** (i.e., `data` and `len`) reflects intended semantics more accurately.
 
-- No automatic endian conversion is provided
-- No annotations for field-level endianness
-- No runtime checks for host/target mismatch
+> ✅ If your `span<T>` is known to be small and copy-safe, you can always manually compare `data` and `len`, or the contents directly.
 
-> ⚠️ **If you're building cross-platform serialization or network protocols, you are responsible for defining and
-applying the appropriate byte order transformations manually.**
 
 ---
 
-### 📐 Alignment Disclaimer
+## ↔️ Byte Order Disclaimer
 
-The `jh::pod` module assumes **platform-default alignment rules** unless explicitly overridden.
+> The `jh::pod` system assumes **platform-local byte order** throughout.
+> You must apply endian transforms manually for cross-platform/network use.
 
-- `pod::array<T, N>` uses `alignas(T)` — safe for raw memory operations
-- `pod::string_view` is always 16 bytes on 64-bit systems — naturally aligned
-- `pod::pair<T1, T2>` alignment depends on member types — use `alignas(...)` on the wrapper struct if needed
-- `pod::tuple<Ts...>` does **not** provide alignment guarantees — due to monostate stripping and hardcoded layout
+---
 
-> 🧠 **If your application depends on explicit alignment (e.g. SIMD, memory mapping, cache line control), use `alignas(...)` on your own wrapper structs.**
+## 📊 Alignment Disclaimer
 
-Example:
+- `pod::array<T, N>` uses `alignas(T)`
+- `pod::tuple` does **not** guarantee alignment
+- Apply `alignas(...)` manually on wrappers if needed
 
-```c++
-struct alignas(64) AlignedVec {
-    jh::pod::array<float, 16> data;
-};
-```
+---
 
-> 🚫 The `jh::pod` system does **not enforce alignment** — this is by design, to avoid hidden layout surprises.
+## 🧬 `pod_like` and Compiler Optimizations
+
+For `pod_like<T>` types, the compiler enables:
+
+| Feature                     | Enabled |
+|-----------------------------|---------|
+| RVO / NRVO                  | ✅       |
+| `constexpr` construction    | ✅       |
+| Layout-compatible `memcpy`  | ✅       |
+| Assignment = raw copy       | ✅       |
+| Constructors/destructors    | ❌ None  |
+
+> For POD-safe types, **`std::move()` is unnecessary** — the compiler will optimize copies via `memcpy` or in-place construction.
 
 ---
 
 > 🚀 Build fast. Stay safe. Go POD.
 
-📌 **For detailed module information, refer to [`pod.h`](../include/jh/pod.h).**  
-📌 **For documentation of jh::pod_stack, see [`pod_stack.md`](pod_stack.md).**  
-📌 **Function-specific documentation is available directly in modern IDEs.**
+📌 **For full implementation details, see [`pod.h`](../include/jh/pod.h)**  
+📌 **IDE IntelliSense and tooling support most functions inline**
 
 🚀 **Enjoy coding with JH Toolkit!**

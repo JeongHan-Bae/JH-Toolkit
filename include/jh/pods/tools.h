@@ -23,6 +23,7 @@
 #pragma once
 
 #include "pod_like.h"
+#include "../utils/typed.h"
 
 #ifdef JH_POD_STRUCT
 // User manually defined the macro before us — this is a hard conflict
@@ -95,7 +96,7 @@ namespace jh::pod {
      * @brief POD-compatible fixed-size tuple type, suitable for raw memory and algorithmic bridging.
      *
      * @tparam T1-T8 Up to 8 type parameters.
-     *         All types must satisfy `jh::pod::pod_like`. Unused parameters must default to `std::monostate`.
+     *         All types must satisfy `jh::pod::pod_like`. Unused parameters must default to `typed::monostate`.
      *
      * This struct provides a tuple-like container with fixed fields `_0` to `_7`,
      * while guaranteeing POD layout and layout stability. It is intended for:
@@ -112,20 +113,20 @@ namespace jh::pod {
      *          explicit `struct` types with named members when possible. This type exists
      *          primarily to aid in `std::tuple` migration or interfacing with generic algorithms.
      */
-    template<typename T1, typename T2,
-        typename T3 = std::monostate,
-        typename T4 = std::monostate,
-        typename T5 = std::monostate,
-        typename T6 = std::monostate,
-        typename T7 = std::monostate,
-        typename T8 = std::monostate>
-        requires pod_like<T1> && pod_like<T2>
-                 && (std::is_same_v<T3, std::monostate> || pod_like<T3>)
-                 && (std::is_same_v<T4, std::monostate> || pod_like<T4>)
-                 && (std::is_same_v<T5, std::monostate> || pod_like<T5>)
-                 && (std::is_same_v<T6, std::monostate> || pod_like<T6>)
-                 && (std::is_same_v<T7, std::monostate> || pod_like<T7>)
-                 && (std::is_same_v<T8, std::monostate> || pod_like<T8>)
+    template<pod_like T1, pod_like T2,
+        typename T3 = typed::monostate,
+        typename T4 = typed::monostate,
+        typename T5 = typed::monostate,
+        typename T6 = typed::monostate,
+        typename T7 = typed::monostate,
+        typename T8 = typed::monostate>
+        requires (!typed::monostate_t<T1> && !typed::monostate_t<T2>)
+                 && (typed::monostate_t<T3> || pod_like<T3>)
+                 && (typed::monostate_t<T4> || pod_like<T4>)
+                 && (typed::monostate_t<T5> || pod_like<T5>)
+                 && (typed::monostate_t<T6> || pod_like<T6>)
+                 && (typed::monostate_t<T7> || pod_like<T7>)
+                 && (typed::monostate_t<T8> || pod_like<T8>)
     struct [[deprecated("pod::tuple is an unstable transitional type. Prefer explicit POD structs.")]] tuple {
         T1 _0;
         T2 _1;
@@ -137,35 +138,35 @@ namespace jh::pod {
         T8 _7;
 
         template<std::uint8_t V>
-            requires (V == 0 && !std::is_same_v<T1, std::monostate>) // no-op for empty
+            requires (V == 0 && !typed::monostate_t<T1>) // no-op for empty
         T1 &get() { return _0; }
 
         template<std::uint8_t V>
-            requires (V == 1 && !std::is_same_v<T1, std::monostate>) // no-op for empty
+            requires (V == 1 && !typed::monostate_t<T1>) // no-op for empty
         T2 &get() { return _1; }
 
         template<std::uint8_t V>
-            requires (V == 2 && !std::is_same_v<T3, std::monostate>) // no-op for empty
+            requires (V == 2 && !typed::monostate_t<T3>) // no-op for empty
         T3 &get() { return _2; }
 
         template<std::uint8_t V>
-            requires (V == 3 && !std::is_same_v<T4, std::monostate>) // no-op for empty
+            requires (V == 3 && !typed::monostate_t<T4>) // no-op for empty
         T4 &get() { return _3; }
 
         template<std::uint8_t V>
-            requires (V == 4 && !std::is_same_v<T5, std::monostate>) // no-op for empty
+            requires (V == 4 && !typed::monostate_t<T5>) // no-op for empty
         T5 &get() { return _4; }
 
         template<std::uint8_t V>
-            requires (V == 5 && !std::is_same_v<T6, std::monostate>) // no-op for empty
+            requires (V == 5 && !typed::monostate_t<T6>) // no-op for empty
         T6 &get() { return _5; }
 
         template<std::uint8_t V>
-            requires (V == 6 && !std::is_same_v<T7, std::monostate>) // no-op for empty
+            requires (V == 6 && !typed::monostate_t<T7>) // no-op for empty
         T7 &get() { return _6; }
 
         template<std::uint8_t V>
-            requires (V == 7 && !std::is_same_v<T8, std::monostate>) // no-op for empty
+            requires (V == 7 && !typed::monostate_t<T8>) // no-op for empty
         T8 &get() { return _7; }
 
         constexpr bool operator==(const tuple &) const = default;

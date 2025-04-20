@@ -7,7 +7,7 @@
 #include <cstring>  // NOLINT std::memset
 #include <future>
 #include <iostream>
-#include "jh/data_sink.h"
+#include <deque>
 
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
@@ -175,9 +175,7 @@ namespace jh::radix_impl {
 
 
 #if defined(__aarch64__) || defined(_M_ARM64)
-
-    template<std::uint32_t BLOCK_SIZE>
-    void fast_emplace_back(data_sink<std::uint64_t, BLOCK_SIZE> *buckets, const std::uint64_t *vals,
+    void fast_emplace_back(std::deque<std::uint64_t> *buckets, const std::uint64_t *vals,
                            const std::uint64_t count) {
         for (std::uint64_t i = 0; i < count; i += 4) {
             const uint64x2_t v0 = vld1q_u64(vals + i);
@@ -189,8 +187,7 @@ namespace jh::radix_impl {
         }
     }
 #else
-    template<std::uint32_t BLOCK_SIZE>
-    inline void fast_emplace_back(data_sink<std::uint64_t, BLOCK_SIZE>* buckets,
+    inline void fast_emplace_back(std::deque<std::uint64_t>* buckets,
                                   const std::uint64_t* vals, const std::uint64_t count) {
         for (std::uint64_t i = 0; i < count; ++i) {
             buckets[vals[i] & 0xFFFF].emplace_back(vals[i]);
@@ -201,7 +198,7 @@ namespace jh::radix_impl {
     template<std::uint32_t BLOCK_SIZE>
     void radix_sort_uint32_reverse(std::uint32_t *input, const std::uint64_t n, const bool descending) {
         constexpr std::uint64_t BASE = 65536; // 2^16
-        std::array<jh::data_sink<std::uint32_t, BLOCK_SIZE>, BASE> buckets;
+        std::array<std::deque<std::uint32_t>, BASE> buckets;
 
         // Only two 2 ^ 16 vals, first handle the Higher can save time (not low -> high, so-called reverse)
         std::uint64_t i = 0;
@@ -246,8 +243,8 @@ namespace jh::radix_impl {
     template<std::uint32_t BLOCK_SIZE>
     void radix_sort_uint64_t_4_rounds(std::uint64_t *input, const std::uint64_t n, const bool descending) {
         constexpr std::uint64_t BASE = 65536; // 2^16
-        std::array<data_sink<std::uint64_t, BLOCK_SIZE>, BASE> buckets;
-        std::array<data_sink<std::uint64_t, BLOCK_SIZE>, BASE> temp;
+        std::array<std::deque<std::uint64_t>, BASE> buckets;
+        std::array<std::deque<std::uint64_t>, BASE> temp;
 
         std::uint64_t i = 0;
         for (; i + 32 <= n; i += 32) {
@@ -259,7 +256,7 @@ namespace jh::radix_impl {
         }
         auto clear_task = std::async(std::launch::async, [&] {
             for (std::uint64_t b = 0; b < BASE; ++b) {
-                temp[b].clear_reserve();
+                temp[b].clear();
             }
         });
         clear_task.get();
@@ -273,7 +270,7 @@ namespace jh::radix_impl {
         }
         clear_task = std::async(std::launch::async, [&] {
             for (std::uint64_t b = 0; b < BASE; ++b) {
-                temp[b].clear_reserve();
+                temp[b].clear();
             }
         });
         clear_task.get();

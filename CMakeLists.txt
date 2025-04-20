@@ -6,47 +6,153 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)  # Ensure standardized installation directories
 
-set(ENABLE_BENCHMARK OFF CACHE BOOL "Enable benchmark tests")
+set(PROJECT_VERSION 1.3.0)
 
-# Define the INTERFACE library for header-only components
-add_library(jh-toolkit INTERFACE
-        include/jh/)
-target_include_directories(jh-toolkit INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-)
+# Register custom build type
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel;FastDebug" CACHE STRING "" FORCE)
+set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING "Choose the type of build." FORCE)
 
-# Define the STATIC library for compiled components (e.g., immutable_str.cpp)
-add_library(jh-toolkit-impl STATIC src/immutable_str.cpp)
-target_include_directories(jh-toolkit-impl PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-)
-target_link_libraries(jh-toolkit-impl PUBLIC jh-toolkit)
+if (NOT CMAKE_BUILD_TYPE MATCHES "^(Debug|Release|RelWithDebInfo|MinSizeRel|FastDebug)$")
+    message(FATAL_ERROR "Unknown build type: ${CMAKE_BUILD_TYPE}")
+endif ()
 
-# Install target libraries
-install(TARGETS jh-toolkit jh-toolkit-impl
-        EXPORT jh-toolkitTargets
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+# Optional: Define optimization flags globally for FastDebug
+if (CMAKE_BUILD_TYPE STREQUAL "FastDebug")
+    message(STATUS ">>> FastDebug mode enabled")
 
-# Install header files
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    # defined for logging
+    set(CMAKE_CXX_FLAGS_FASTDEBUG "-O2 -g" CACHE STRING "" FORCE)
+    set(CMAKE_C_FLAGS_FASTDEBUG "-O2 -g" CACHE STRING "" FORCE)
 
-# Generate and install CMake package configuration files
-install(EXPORT jh-toolkitTargets
-        FILE jh-toolkitTargets.cmake
-        NAMESPACE jh::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/jh-toolkit
-)
+    # Actually apply the flags (target-based or global)
+    add_compile_options(-O2 -g)
+endif ()
+
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Applying extra CPU optimizations for Release build.")
+
+    add_compile_options(
+            -march=native
+            -ftree-vectorize
+            -funroll-loops
+            -fno-omit-frame-pointer
+    )
+endif ()
+
+string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_UPPER)
+message(STATUS "${CMAKE_BUILD_TYPE} CXX flags: ${CMAKE_CXX_FLAGS_${BUILD_TYPE_UPPER}}")
+
+set(TAR "ALL" CACHE STRING "Comma-separated list of targets to build (e.g. POD,...,ALL)")
+string(TOUPPER "${TAR}" TAR_UPPER)
+string(REPLACE "," ";" TAR_LIST "${TAR_UPPER}")
+function(tar_enabled result_name target_name)
+    if ("${target_name}" IN_LIST TAR_LIST)
+        set(${result_name} TRUE PARENT_SCOPE)
+    else ()
+        set(${result_name} FALSE PARENT_SCOPE)
+    endif ()
+endfunction()
+
+# Targets tracking
+tar_enabled(ENABLE_POD "POD")
+tar_enabled(ENABLE_ALL "ALL")
+
+if (CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ENABLE_POD AND NOT ENABLE_ALL)
+    message(FATAL_ERROR "Nothing selected for build. Use -DTAR=POD,ALL,...")
+endif ()
+
+# Check if we are building just the POD
+if (ENABLE_POD)
+    if (CMAKE_BUILD_TYPE STREQUAL "Release")
+        message(STATUS ">>> Building POD module")
+    endif ()
+    add_library(jh-toolkit-pod INTERFACE)
+
+    target_include_directories(jh-toolkit-pod INTERFACE
+            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+
+    # Install forwarding header 'pod' (no extension, so must use FILES)
+    # Install aggregator header 'pod.h'
+    install(FILES
+            ${CMAKE_SOURCE_DIR}/include/jh/pod
+            ${CMAKE_SOURCE_DIR}/include/jh/pod.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh
+    )
+
+    # Install header directory 'pods/'
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/jh/pods
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh
+    )
+
+    # Install depending headers in directory 'utils/'
+    install(FILES
+            ${CMAKE_SOURCE_DIR}/include/jh/utils/hash_fn.h
+            ${CMAKE_SOURCE_DIR}/include/jh/utils/platform.h
+            ${CMAKE_SOURCE_DIR}/include/jh/utils/typed.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/utils
+    )
+
+    # Install the INTERFACE target
+    install(TARGETS jh-toolkit-pod EXPORT jh-toolkitTargets)
+
+    # Install CMake config files
+    install(EXPORT jh-toolkitTargets
+            FILE jh-toolkitTargets.cmake
+            NAMESPACE jh::
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/jh-toolkit
+    )
+endif ()
+if (ENABLE_ALL)
+    if (CMAKE_BUILD_TYPE STREQUAL "Release")
+        message(STATUS ">>> Building main implementation (ALL)")
+    endif ()
+    # Define the INTERFACE library for header-only components
+    add_library(jh-toolkit INTERFACE
+            include/jh/)
+    target_include_directories(jh-toolkit INTERFACE
+            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+
+    # Define the STATIC library for compiled components (e.g., immutable_str.cpp)
+    file(GLOB JH_TOOLKIT_SOURCES CONFIGURE_DEPENDS
+            "${CMAKE_SOURCE_DIR}/src/*.cpp"
+    )
+
+    add_library(jh-toolkit-impl STATIC ${JH_TOOLKIT_SOURCES})
+    target_include_directories(jh-toolkit-impl PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+    target_link_libraries(jh-toolkit-impl PUBLIC jh-toolkit)
+
+    # Install target libraries
+    install(TARGETS jh-toolkit jh-toolkit-impl
+            EXPORT jh-toolkitTargets
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+
+    # Install header files
+    install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+    # Generate and install CMake package configuration files
+    install(EXPORT jh-toolkitTargets
+            FILE jh-toolkitTargets.cmake
+            NAMESPACE jh::
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/jh-toolkit
+    )
+
+endif ()
 
 # Manually written CMake configuration file (for find_package)
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/jh-toolkit-config-version.cmake"
-        VERSION 1.3.0
+        VERSION PROJECT_VERSION
         COMPATIBILITY SameMajorVersion
 )
 
@@ -63,21 +169,16 @@ install(FILES
 )
 
 # Enable tests and examples only in Debug mode
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    option(LOW_MEMORY_BENCHMARK
-            "Disable benchmark sessions for high-memory consuming structs (for low-memory environments)" OFF)
-    if(LOW_MEMORY_BENCHMARK)
-        add_compile_definitions(JH_DISABLE_HIGH_ALLOC_BENCHMARK=1)
-    endif()
+if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "FastDebug")
     enable_testing()
     add_subdirectory(tests)
     add_subdirectory(examples)
 
-    message(WARNING "Install is disabled in Debug mode. Use Release or RelWithDebInfo instead.")
+    message(WARNING "Install is disabled in Debug or FastDebug mode. Use Release or RelWithDebInfo instead.")
     add_custom_target(disable-install ALL
             COMMENT "Install disabled in Debug mode"
     )
     function(install)
         message(FATAL_ERROR "Install is explicitly disabled in Debug mode.")
     endfunction()
-endif()
+endif ()

@@ -17,7 +17,6 @@
 
 #include "jh/immutable_str.h"
 
-#include <cctype>       // for std::isspace
 #include <algorithm>    // for std::max
 
 namespace jh {
@@ -30,7 +29,7 @@ namespace jh {
         if (std::strlen(sv.data()) != sv.size()) {
             throw std::logic_error("jh::immutable_str does not support string views containing embedded null characters.");
         }
-        init_from_string(sv.data());
+        init_from_string(sv.data(), sv.size());
     }
 
     const char *immutable_str::c_str() const noexcept {
@@ -60,8 +59,9 @@ namespace jh {
         return hash_.value();
     }
 
-    void immutable_str::init_from_string(const char *input_str) {
-        if (!input_str) {
+    void immutable_str::init_from_string(const char *input_str,
+        std::uint64_t input_len){
+        if (!input_str) [[unlikely]] {
             // Initialize an empty string if input is null
             size_ = 0;
             auto data_array_ = std::make_unique<char[]>(1);
@@ -71,16 +71,18 @@ namespace jh {
         }
 
         const char *start = input_str;
-        const char *end = input_str + std::strlen(input_str) - 1;
+        if (input_len == static_cast<std::size_t>(-1)) {
+            input_len = std::strlen(input_str);  // fallback only if not known
+        }
+
+        const char *end = input_str + input_len - 1;
 
         // If auto_trim is enabled, remove leading and trailing whitespace
-        if (auto_trim) {
-            while (*start && std::isspace(static_cast<unsigned char>(*start))) {
-                ++start;
-            }
+        if constexpr (auto_trim) {
+            while (*start && detail::is_space_ascii(*start)) ++start;
 
             // If the input contains only whitespace, treat it as an empty string
-            if (*start == '\0') {
+            if (*start == '\0') [[unlikely]] {
                 size_ = 0;
                 auto data_array_ = std::make_unique<char[]>(1);
                 data_array_[0] = '\0';
@@ -88,9 +90,7 @@ namespace jh {
                 return;
             }
 
-            while (end > start && std::isspace(static_cast<unsigned char>(*end))) {
-                --end;
-            }
+            while (end > start && detail::is_space_ascii(*end)) --end;
         }
 
         // Compute the final string size
@@ -102,4 +102,5 @@ namespace jh {
         data_array_[size_] = '\0';
         data_ = std::move(data_array_);
     }
+
 } // namespace jh

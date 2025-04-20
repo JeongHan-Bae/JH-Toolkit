@@ -36,7 +36,7 @@
  * - Allows sending values into the coroutine (`send()`).
  * - Provides Pythonic **iteration** using `next()`.
  * - Supports **automatic iteration & sending** with `send_ite()`.
- * - Provides utilities for converting generators to **std::vector** and **std::list**.
+ * - Provides utilities for converting generators to **std::vector** and **std::deque**.
  * - Allows for a seamless migration from **Python-based generator logic to C++20** without losing clarity.
  *
  * @version 1.3.x
@@ -47,17 +47,19 @@
 
 #include <coroutine>
 #include <functional>
-#include <list>
+#include <deque>
 #include <optional>
 #include <stdexcept>
 #include <utility>            // NOLINT for std::exchange
-#include <variant>            // NOLINT for std::monostate in g++
 #include <vector>
+#include <memory>             // NOLINT for std::unique_ptr
 
 #include "sequence.h"
 #include "iterator.h"
+#include "utils/typed.h"
 
 namespace jh {
+
     /**
      * @brief A coroutine-based generator that supports yielding values and receiving inputs.
      *
@@ -69,11 +71,11 @@ namespace jh {
      *           - Trivially copyable types (`std::array`, `std::string`, etc.)
      *
      * @tparam U The type of values that can be sent to the generator.
-     *           If left as the default (`std::monostate`), the generator does not require input values and can function as a simple iterable sequence.
+     *           If left as the default (`typed::monostate`), the generator does not require input values and can function as a simple iterable sequence.
      * @note If you need to use move-only types (e.g., `std::unique_ptr<T>`), you must
      *       customize the generator logic and buffer strategy manually — not supported by default.
      */
-    template<typename T, typename U = std::monostate>
+    template<typename T, typename U = typed::monostate>
         requires std::is_copy_constructible_v<T>
     struct generator final {
         /**
@@ -89,7 +91,7 @@ namespace jh {
          * @details
          * This defines `generator<T, U>`'s iterator type as `iterator<generator>`.
          * - The iterator is always defined, regardless of `U` (i.e., whether the generator supports `send()` or not).
-         * - However, `begin()` and `end()` are only available when `U == std::monostate` (i.e., the generator does not require `send()`).
+         * - However, `begin()` and `end()` are only available when `U == typed::monostate` (i.e., the generator does not require `send()`).
          * - This allows users to manually create iterators if needed, although we do not encourage inheritance-based customization.
          */
         using iterator = jh::iterator<generator>; // NOLINT
@@ -332,14 +334,14 @@ namespace jh {
          * @brief Returns an iterator for ranged-for loops.
          * @details
          * This method allows the generator to be used in `for(auto x : gen)`.
-         * It is only enabled when `U == std::monostate` (i.e., no `send()` required).
+         * It is only enabled when `U == typed::monostate` (i.e., no `send()` required).
          * - Since iterating over a generator inherently consumes its elements,
          * a `const` version is intentionally disallowed (`begin() const = delete`).
          * - This ensures that a generator cannot be iterated over while preserving its state.
          *
          * @return An iterator to begin iteration over the generator.
          */
-        iterator begin() requires std::is_same_v<U, std::monostate> {
+        iterator begin() requires typed::monostate_t<U> {
             return iterator{*this};
         }
 
@@ -358,11 +360,11 @@ namespace jh {
          * This iterator serves as the "past-the-end" iterator, marking the termination
          * of iteration. Unlike `begin()`, `end()` does not consume values and is safe to call
          * multiple times.
-         * Like `begin()`, `end()` is only enabled when `U == std::monostate` (i.e., no `send()` required).
+         * Like `begin()`, `end()` is only enabled when `U == typed::monostate` (i.e., no `send()` required).
          *
          * @return An iterator representing the end of the generator.
          */
-        iterator end() const requires std::is_same_v<U, std::monostate> {
+        static iterator end() requires typed::monostate_t<U> {
             return iterator{};
         }
     };
@@ -373,7 +375,7 @@ namespace jh {
      * This iterator is designed exclusively for range-based iteration over a `generator<T>`.
      * It enables standard input iterator behavior (`++`, `*`, `==`), but **should never be manually instantiated**.
      * Instead, it should be obtained via `generator::begin()` and `generator::end()`.
-     * - Only generators **without input values** (`U == std::monostate`) can provide iterators.
+     * - Only generators **without input values** (`U == typed::monostate`) can provide iterators.
      * - If a generator requires `send()`, it **cannot** be iterated using `for(auto x : gen)`,
      *   as input values must be explicitly provided at each step.
      * - If the generator is consumed or destroyed elsewhere, the iterator **becomes invalid**.
@@ -574,9 +576,10 @@ namespace jh {
         requires (!std::ranges::range<T>)
     generator<sequence_value_type<T> > make_generator(const T &seq) {
         for (const auto &elem: seq) {
-            // ✅ Use range-based for-loop
+            // Use range-based for-loop
             co_yield elem;
         }
+        co_return;
     }
 
     /**
@@ -650,13 +653,13 @@ namespace jh {
     }
 
     /**
-     * @brief Converts a generator to a std::list.
+     * @brief Converts a generator to a std::deque.
      * @param gen The generator to convert.
-     * @return A std::list containing all generated values.
+     * @return A std::deque containing all generated values.
      */
     template<typename T>
-    std::list<T> to_list(generator<T> &gen) {
-        std::list<T> result;
+    std::deque<T> to_deque(generator<T> &gen) {
+        std::deque<T> result;
         while (gen.next()) {
             result.push_back(gen.value().value());
         }
@@ -664,14 +667,14 @@ namespace jh {
     }
 
     /**
-     * @brief Converts a generator to a std::list using a single input value.
+     * @brief Converts a generator to a std::deque using a single input value.
      * @param gen The generator to convert.
      * @param input_value The input value to send at each step.
-     * @return A std::list containing all generated values.
+     * @return A std::deque containing all generated values.
      */
     template<typename T, typename U>
-    std::list<T> to_list(generator<T, U> &gen, U input_value) {
-        std::list<T> result;
+    std::deque<T> to_deque(generator<T, U> &gen, U input_value) {
+        std::deque<T> result;
         while (gen.next()) {
             if (!gen.send(input_value)) break;
             result.push_back(gen.value().value());
@@ -680,14 +683,14 @@ namespace jh {
     }
 
     /**
-     * @brief Converts a generator to a std::list using a sequence of input values.
+     * @brief Converts a generator to a std::deque using a sequence of input values.
      * @param gen The generator to convert.
      * @param inputs A range of input values to send sequentially.
-     * @return A std::list containing all generated values.
+     * @return A std::deque containing all generated values.
      */
     template<typename T, std::ranges::range R>
-    std::list<T> to_list(generator<T, std::ranges::range_value_t<R> > &gen, const R &inputs) {
-        std::list<T> result;
+    std::deque<T> to_deque(generator<T, std::ranges::range_value_t<R> > &gen, const R &inputs) {
+        std::deque<T> result;
         auto it = std::ranges::begin(inputs);
         auto end = std::ranges::end(inputs);
 
@@ -743,6 +746,7 @@ namespace jh {
             using iterator_category = std::input_iterator_tag;
             using difference_type = std::ptrdiff_t;
 
+
             iterator() = default;
 
             explicit iterator(generator_factory_t factory)
@@ -750,11 +754,11 @@ namespace jh {
                 ++(*this); // prime
             }
 
-            iterator &operator++() {
-                if (gen_ && gen_->next()) {
-                    // do nothing, value is updated
-                } else {
-                    gen_.reset();
+            iterator& operator++() {
+                if (gen_) {
+                    if (!gen_->next() || gen_->done() || !gen_->value().has_value()) {
+                        gen_.reset(); // Stop: no more values
+                    }
                 }
                 return *this;
             }
@@ -775,6 +779,19 @@ namespace jh {
                 return &**this;
             }
 
+            friend bool operator==(const iterator &lhs, const iterator &rhs) {
+                // both exhausted
+                if (!lhs.gen_ && !rhs.gen_) return true;
+                // one is exhausted, one is not
+                if (!lhs.gen_ || !rhs.gen_) return false;
+                // fallback: pointer identity
+                return lhs.gen_.get() == rhs.gen_.get();
+            }
+
+            friend bool operator!=(const iterator &lhs, const iterator &rhs) {
+                return !(lhs == rhs);
+            }
+
             // Support std::default_sentinel_t as the end
             friend bool operator==(const iterator &it, std::default_sentinel_t) {
                 return !it.gen_;
@@ -792,7 +809,7 @@ namespace jh {
             return iterator{factory_};
         }
 
-        [[nodiscard]] std::default_sentinel_t end() const noexcept {
+        [[nodiscard]] static std::default_sentinel_t end() noexcept {
             return {};
         }
 

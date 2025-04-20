@@ -20,53 +20,6 @@
 
 🚀 **JH Toolkit 1.3.0-dev - Expanding Core Features!**
 
-✅ **Updated `generator` for enhanced coroutine support.**  
-✅ **`data_sink` completed and benchmarked (with low-memory support).**  
-✅ **`radix_sort` architecture-specific optimizations done for ARM & AMD.**  
-❌ **`sequence` expansion planned but not yet implemented.**  
-🔄 **`runtime_arr` completed and benchmarked – ideal for small, fast, templated arrays (Clang) – GCC support pending.**
-
----
-
-## 📖 **Library Philosophy**
-JH Toolkit's **original template structures (`data_sink` and `runtime_arr`)** are designed for **smaller,  
-faster, and more specialized template structures**, unlike the **generic STL**.
-
-- **`data_sink` and `runtime_arr` are custom structures** optimized for speed and memory efficiency.
-- **Benchmarking is enabled for these unique structures** to fine-tune performance in `Debug` builds.
-- **General-purpose functionality is prioritized over benchmark optimizations at this stage.**
-
-Other structures (mostly inspired by other languages, such as `jh::generator`)
-are **primarily implemented for functionality**.  
-They will **not be optimized for performance until all functions are fully complete and robust**.
-
-🔹 **Benchmarks for these general-purpose structures are planned in JH Toolkit 2+.x.**
-
----
-
-This update ensures better flexibility in development while **keeping benchmarks optional** and **clearly separating Debug Mode builds**. 🚀
-
-
-## 🚀 1.2.x features
-
-### 🔥 **JH Toolkit is Now Feature-Complete!**
-
-This version includes major improvements to **immutable strings** and **object pooling**, with extensive cross-platform testing.
-
-#### 🚀 **New Features & Enhancements**
-1. **Enhanced `jh::immutable_str`**
-    - **New constructor:** Now supports construction from any type **implicitly convertible to `std::string_view`**, protected by an **explicitly provided `std::mutex`**.
-    - **Safe shared construction:** Added `safe_from(std::string_view, std::mutex&)` to ensure **lifetime safety** when using views from mutable sources.
-    - **Maintains full compatibility with LLVM `extern "C"` APIs** through the `const char*` constructor.
-
-2. **New Object Pooling System: `jh::pool<T>`**
-    - **Weak pointer-based content-aware pooling** for deduplicating objects, especially useful for **immutable types**.
-    - **Automatic cleanup** of expired objects—no need for manual tracking.
-    - **Custom hash & equality support** for optimized storage of unique instances.
-    - **Seamlessly integrates with `jh::immutable_str`**, reducing redundant allocations.
-
----
-
 ## 📌 Requirements
 
 - **C++20** (mandatory)
@@ -123,12 +76,86 @@ git clone --branch 1.2.x-LTS --depth=1 https://github.com/JeongHan-Bae/jh-toolki
 ---
 
 ### 1️⃣ Build and Install
+---
+
+#### 🔹 Full Version (Default)
 
 ```sh
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 sudo cmake --install build
 ```
+
+This installs the complete **`jh-toolkit`**:
+
+- Provides full header sets and implementation.
+- Use `jh::jh-toolkit` and `jh::jh-toolkit-impl`.
+
+Recommended on development machines or when full functionality is needed.
+
+---
+
+#### 🔸 Minimal Version (Header-only POD system)
+
+```sh
+cmake -B build-pod -DCMAKE_BUILD_TYPE=Release -DTAR=POD
+cmake --build build-pod
+sudo cmake --install build-pod
+```
+
+This installs only the **POD system**:
+
+- A lightweight, header-only C++20 template library.
+- Use `jh::jh-toolkit-pod`.
+
+Recommended for minimal deployment, embedding, or when implementation is not needed.
+
+📖 See [docs/pod.md](docs/pod.md) for usage details.
+
+---
+
+#### 🧩 Custom Build Modes for Modular Deployments
+
+You can selectively build and install specific components using:
+
+```sh
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DTAR=POD,ALL
+```
+
+- The `TAR` option accepts a comma-separated list of target modules to include.
+- Currently supported values: `POD`, `ALL`
+- Targets are **individually downloadable and usable** depending on your deployment needs.
+
+Use case examples:
+
+| Usage Context       | Suggested `TAR` Value | What It Builds                       |
+|---------------------|-----------------------|--------------------------------------|
+| Minimal runtime     | `POD`                 | Header-only POD system               |
+| Development machine | `ALL`                 | Everything: headers + implementation |
+| Shared dependency   | `POD,ALL`             | All targets available in local build |
+
+> ✅ `TAR=POD,ALL` makes all targets available without restricting modularity.  
+> This allows dependent projects to only link what they need.
+
+---
+
+#### 📦 Installed Targets by Build Mode
+
+| Build Mode           | CMake Targets Available                 | Description                               |
+|----------------------|-----------------------------------------|-------------------------------------------|
+| `TAR=ALL` (default)  | `jh::jh-toolkit`, `jh::jh-toolkit-impl` | Full header set + implementation          |
+| `TAR=POD`            | `jh::jh-toolkit-pod`                    | Header-only POD module                    |
+| `TAR=POD,ALL`        | All above targets                       | Maximum availability, optional usage      |
+
+All modes are compatible with:
+
+```cmake
+find_package(jh-toolkit REQUIRED)
+```
+
+Then link only the targets your project needs.
+
+---
 
 ### 2️⃣ Verify Installation
 
@@ -168,62 +195,115 @@ target_link_libraries(my_project PRIVATE jh::jh-toolkit) # For header-only modul
 target_link_libraries(my_project PRIVATE jh::jh-toolkit-impl) # For compiled components
 ```
 
+---
 
 ### ⚙️ Debug Build Setup
 
+Build and test the project using standard `Debug` or performance-friendly `FastDebug` modes:
+
 ```sh
 cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug
-cmake --build build-debug
 ```
-
-- 🧪 Tests and benchmarks are built **alongside** regular targets.
-- ⚠️ Do **not** use `ctest` for benchmarks — they are **intentionally slow**.
-- `ENABLE_BENCHMARK` is **off by default** in debug builds.
-- ✅ Run benchmarks with:
-
+**or**
 ```sh
-cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug -DENABLE_BENCHMARK=ON
+cmake -B build-debug -DCMAKE_BUILD_TYPE=FastDebug
+```
+**then**
+```sh
 cmake --build build-debug
-./build-debug/tests/test_benchmark
+ctest --test-dir build-debug --output-on-failure
 ```
 
 ---
 
-### 💾 Low-Memory Debug Mode
+#### 🧪 Fast, CI-friendly Testing
 
-For VMs or CI runners with tight memory:
-
-```sh
-cmake -B build-debug-lowmem \
-      -DCMAKE_BUILD_TYPE=Debug \
-      -DENABLE_BENCHMARK=ON \
-      -DLOW_MEMORY_BENCHMARK=ON
-
-cmake --build build-debug-lowmem
-./build-debug-lowmem/tests/test_benchmark
-```
-
-🔹 Disables memory-heavy benchmarks (like `std::list`) to prevent OOM.  
-🔹 Ideal for environments with **<2GB RAM** or **shared runners**.
+- All unit tests are registered with `ctest`.
+- Most modules are mature and run limited randomized iterations (e.g., 128 rounds).
+- Suitable for rapid regression checks and automation pipelines.
 
 ---
 
-### ✅ Running Tests (Debug Mode)
+#### 🛠️ FastDebug vs Debug
 
-```sh
-ctest --test-dir build-debug
-```
-> Run Benchmarks separately with `./build-debug/tests/test_benchmark` or only if you understand the implications.
+| Mode          | Optimization | Debug Info | Use Case                                             |
+|---------------|--------------|------------|------------------------------------------------------|
+| **Debug**     | `-O0`        | ✅ `-g`     | Traditional debug builds; full symbolic debugging    |
+| **FastDebug** | `-O2`        | ✅ `-g`     | Faster test execution with minimal optimization bias |
 
+---
+
+#### 🚫 What FastDebug *Does Not* Do
+
+FastDebug **only** applies `-O2 -g` and intentionally avoids more aggressive compiler behaviors:
+
+- ❌ No `-march=native`
+- ❌ No auto-vectorization (`-ftree-vectorize`)
+- ❌ No loop unrolling (`-funroll-loops`)
+- ❌ No SIMD-only code paths
+
+This ensures consistent runtime behavior and portability across CI runners or developer machines.
+
+> ✅ **FastDebug mode not only speeds up testing, but also helps identify bugs that only appear under compiler optimizations (e.g., undefined behavior, aliasing issues, optimization-elided side effects).**
 
 ---
 
 ### 📌 Notes
 
-- Benchmarks focus on **performance-oriented containers** like `data_sink`, `runtime_arr`, and `pod_stack`.
-- Functional modules like `generator`, `pool`, and `immutable_str` are tested for **behavioral correctness** — not micro-optimized (yet).
-- Benchmarking, Debugging and Examples are off in release builds.
-- Install is forbidden in Debug Mode to prevent accidental system changes.
+- 🧪 All modules are covered by unit tests for **behavioral correctness**.
+  - Modules like `generator` and `pool` are stable but **not yet micro-optimized**.
+  - Core utility types such as `immutable_str` and `runtime_arr` are **micro-optimized** and designed for practical performance without sacrificing safety or clarity.
+- 🧩 Modules like `data_sink` and `pod_stack` were previously benchmarked
+  but are now deprecated due to consistently poor performance under optimization.  
+  They have been **removed from test coverage and performance tracking**.
+
+---
+
+### ⚠️ Deprecated Experimental Modules
+
+- The previously benchmarked **`data_sink`** and **`pod_stack`** have been moved to the `/experimental` directory:
+  - While they performed well under **Clang `-O0`/`-O1`**, they **underperformed STL by 10–20% at `-O2`**.
+  - On **GCC**, performance dropped further due to missed optimization opportunities.
+  - These modules are no longer maintained, and **no benchmark results will be provided going forward**.
+- All `/experimental` modules:
+  - Are **not part of the public API**.
+  - May be removed or changed **without notice**.
+  - Have **no performance or stability guarantees**.
+
+---
+
+### ⚙️ On Lightweight Benchmarking
+
+Some core modules include **lightweight, embedded benchmarks** in their test suites to validate real-world performance without requiring a full benchmarking framework.
+
+- 🧪 Modules with benchmarks:
+  - `immutable_str`: A fully immutable, thread-safe string type optimized for hashing and interning.
+  - `runtime_arr`: A fixed-size, non-resizable heap array with raw-layout speed and STL compatibility.
+- 🧪 Modules **without active benchmarks**:
+  - `generator`, `pool`: Stable but not micro-optimized yet.
+  - `data_sink`, `pod_stack`: Deprecated and removed from performance consideration.
+
+#### 📈 Results Overview
+
+- Benchmarks demonstrate that optimized modules are typically **comparable to STL** in performance.
+- In specific cases, custom structures even **outperform STL** by reducing allocation or indirection overhead.
+- Overhead remains **predictable and minimal** across compilers and optimization levels.
+
+#### 🧪 Running Benchmarks
+
+- 🚀 Run test binaries directly to view timing output (no need for `ctest`).
+- 📚 Module documentation includes brief benchmark context and insights.
+
+> ❗ No separate `benchmark/` directory or `tests/benchmark.cpp` exists; new performance testing will be added only when necessary.
+
+---
+
+
+### 🛠 Build Behavior
+
+- 🔧 Benchmarks, examples, and debugging tools are **disabled in Release builds**.
+- 🚫 Install is **disabled in Debug builds** to prevent accidental system changes.
+- 🔁 Randomized test rounds are capped (e.g. 128 iterations) for long-verified modules — ensuring reasonable CI duration without sacrificing coverage.
 
 ---
 
@@ -231,60 +311,37 @@ ctest --test-dir build-debug
 
 ### 📦 Template-Based Modules
 
-Modern C++ templates designed for **performance**, **type safety**, and **zero-cost abstraction**.
+Modern C++20 header-only components focused on **zero-cost abstraction**, **type safety**, and **performance-conscious design**.
 
-#### 🚀 Performance-Oriented Templates
-Optimized for **tight loops**, **memory locality**, and **zero overhead reset/fill**.
+#### 🧰 Core Utility Modules
 
-- [`runtime_arr<T>`](docs/runtime_arr.md) — Fixed-size flat buffer; bit-packed `bool` specialization; efficient for PODs and inner-loop algorithms.
-- [`pod_stack<T>`](docs/pod_stack.md) — Append/rollback stack for PODs; perfect for non-heap scoped memory reuse.
-- [`data_sink<T>`](docs/data_sink.md) — Append-only FIFO for low-latency pipelines; excellent for algorithms or cases where input size is not known in advance.
+- [`pod`](docs/pod.md) — A lightweight system of POD-like value types (`pod::pair`, `array`, `optional`, `bitflags`, etc.), optimized for serialization and placement-new.
+- [`sequence`](docs/sequence.md) — Minimal C++20 concept for forward-iterable sequences; foundation for `view` operations.
+- [`iterator`](docs/iterator.md) — Iterator detection, `iterator_t<>` alias, and validation concepts (`input_iterator`, etc.).
+- [`views`](docs/views.md) — Lazy, allocation-free range adapters: `enumerate`, `zip`, and more; compatible with all `sequence`s.
 
-#### 🛠️ Functional Utilities & Object Sharing
-Lightweight templates for **lifetime control**, **memory deduplication**, and **pool-based sharing**.
+#### 🔁 Functional Utilities
 
-- [`generator<T, U = std::monostate>`](docs/generator.md) — Coroutine-based lazy generator with `send()` support; usable with `range-for` and interactive iteration.
-- [`sim_pool<T, Hash, Eq>`](docs/sim_pool.md) — Type-stable content-aware object pool using `weak_ptr` + `shared_mutex`; supports custom hash/equality functions.
-- [`pool<T>`](docs/pool.md) — Auto-specialized wrapper over `sim_pool`; detects `.hash()` + `operator==()` and deduplicates immutable types by content.
-
-> 💡 Philosophy: Use `shared_ptr` + weak-pool strategy for **thread-safe**, **immutable** object sharing. We recommend `.hash()`-based caching on immutable types over repetitive `std::hash<T>`. Pool entries expire automatically when no longer referenced.
-
-> All JH template structures are **behavior-safe**, not thread-safe by default.
-> - Type constraints (like `T: pod_like`) ensure correctness by concept.
-> - Thread safety should be **explicitly handled** via `shared_ptr`-based pooling or external locking.
-> - We strongly recommend immutability for all pooled/shared objects.
+- [`generator`](docs/generator.md) — Coroutine-based generator/stream-style interfaces.
+- [`pool`](docs/pool.md) / [`sim_pool`](docs/sim_pool.md) — Shared pointer-based object pools with automatic deduplication.
+- [`immutable_str`](docs/immutable_str.md) — ABI-stable, thread-safe immutable strings with `std::string_view` interop.
 
 ---
 
-### 🧱 Non-Template Value Types
+### 🧱 Value Types
 
-Robust C++ objects designed to be **immutable**, **final**, and **safe by design**.
+Finalized C++ types intended for **immutable**, **compact**, and **semantically clear** ownership.
 
-- [`immutable_str`](docs/immutable_str.md) — Truly immutable string with `std::string_view`, C-string, and hash-friendly access; thread-safe and `final`.
-    - `immutable_str` disallows copy/move; instances are allocated once and never modified.
-    - For shared access, use `jh::atomic_str_ptr` (`std::shared_ptr<immutable_str>`).
-
----
-
-###  🧩 Concept & Trait Definitions
-
-Modern **C++20 concepts** for compile-time validation and expressive template constraints.
-
-- [`iterator<T>`](docs/iterator.md) — Extracts `iterator_t<T>` type trait; validates STL/custom iterators via concepts like `input_iterator`, `random_access_iterator`, etc.
-- [`sequence`](docs/sequence.md) — A concept for validating range-compatible containers; works with STL and custom iterable types.
-- [`pod_like<T>`](docs/pod.md) — Ensures a type is trivially constructible, copyable, destructible, and standard layout.
-    - Includes macros: `JH_POD_STRUCT(...)` and `JH_ASSERT_POD_LIKE(...)` for enforcing and validating PODs.
+- [`runtime_arr`](docs/runtime_arr.md) — Fixed-size, move-only runtime buffer; STL-compatible, allocator-aware, with `reset_all()` for reuse.
 
 ---
 
 ### 🔗 Quick Links to Module Docs
 
-- [`data_sink`](docs/data_sink.md)
 - [`generator`](docs/generator.md)
 - [`immutable_str`](docs/immutable_str.md)
 - [`iterator`](docs/iterator.md)
 - [`pod`](docs/pod.md)
-- [`pod_stack`](docs/pod_stack.md)
 - [`pool`](docs/pool.md)
 - [`runtime_arr`](docs/runtime_arr.md)
 - [`sequence`](docs/sequence.md)
