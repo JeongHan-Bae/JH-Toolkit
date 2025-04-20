@@ -4,82 +4,104 @@ on:
   push:
     branches:
       - main
+      - '*dev'
+      - 'dev*'
   pull_request:
     branches:
       - main
-  schedule:
-    - cron: '0 0 * * *'  # Runs daily at midnight UTC
-  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   extract-dependencies:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Required to commit and push changes
+      contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          persist-credentials: false  # Prevents overwriting SSH configuration
-          ref: main # Branch to check out
+          persist-credentials: false
+          ref: ${{ github.ref_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'  # Installs the latest Python 3.x version
+          python-version: '3.x'
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
-          pip install -r requirements.txt || echo "No dependencies to install"
+          pip install -r requirements.txt || echo "No Python dependencies"
 
-      - name: Generate dependencies.json using Python script
+      - name: Generate dependencies.json
         run: python .github/workflows/generate_dependencies.py
+
+      - name: Check if dependencies.json changed
+        id: check_diff
+        run: |
+          if git diff --quiet dependencies.json; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if author is allowed to update
+        id: check_author
+        run: |
+          if [[ "${{ github.actor }}" == "JeongHan-Bae" ]]; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+          else
+            echo "Not authorized to commit. Actor is ${{ github.actor }}."
+            echo "authorized=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if should trigger update
+        id: check_trigger
+        run: |
+          if [[ "${GITHUB_REF##refs/heads/}" == "main" ]]; then
+            echo "triggered=true" >> $GITHUB_OUTPUT
+          elif echo "${{ github.event.head_commit.message }}" | grep -q -- "-UpdateDependencies"; then
+            echo "triggered=true" >> $GITHUB_OUTPUT
+          else
+            echo "Not main and no -UpdateDependencies flag in commit."
+            echo "triggered=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Exit if not triggered, not changed, or unauthorized
+        if: >
+          steps.check_trigger.outputs.triggered != 'true' ||
+          steps.check_diff.outputs.changed != 'true' ||
+          steps.check_author.outputs.authorized != 'true'
+        run: |
+          echo "Skipping update due to unmet conditions (trigger, change, or authorization)."
+          exit 0
+
+      - name: Extract project version from dependencies.json
+        id: version
+        run: |
+          version=$(jq -r '.project.version' dependencies.json)
+          echo "project_version=$version" >> $GITHUB_OUTPUT
 
       - name: Set up SSH Signing Key
         run: |
-          # Create SSH directory if it does not exist
           mkdir -p ~/.ssh
-
-          # Retrieve the private key from GitHub Secrets
           echo "${{ secrets.SSH_SIGNING_KEY }}" > ~/.ssh/id_ed25519_signing
-
-          # Secure the private key
           chmod 600 ~/.ssh/id_ed25519_signing
-
-          # Add GitHub to known hosts to avoid SSH verification issues
           ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-
-          # Start ssh-agent and add the private key for signing
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/id_ed25519_signing
 
       - name: Configure Git for Signed Commits
         run: |
-          # Enable SSH key-based commit signing
           git config --global gpg.format ssh
-          git config --global user.signingkey ~/.ssh/id_ed25519_signing  # Using private key
-
-          # Force Git to sign all commits
+          git config --global user.signingkey ~/.ssh/id_ed25519_signing
           git config --global commit.gpgsign true
-
-          # Configure Git identity
           git config --global user.name "JeongHan-Bae"
           git config --global user.email "mastropseudo@gmail.com"
 
-      - name: Debug Dependencies File
-        run: |
-          # Ensure dependencies.json exists before attempting to commit
-          ls -lah dependencies.json || echo "dependencies.json not found"
-
       - name: Commit and push dependencies.json
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub token for authentication
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Add dependencies.json to Git
           git add dependencies.json
-
-          # Create a signed commit (will not fail if no changes)
-          git commit -S -m "Auto-update dependencies.json" || echo "No changes to commit"
-
-          # Push changes back to the repository
+          git commit -S -m "Auto-update dependencies.json [version: ${{ steps.version.outputs.project_version }}]" || echo "No commit needed"
           git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git || echo "No changes to push"
