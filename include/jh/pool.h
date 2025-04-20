@@ -49,6 +49,7 @@
 
 #include <concepts>         // NOLINT for concepts
 #include <cstdint>          // for std::uint64_t
+#include <utility>          // for std::ignore
 #include "sim_pool.h"
 
 namespace jh {
@@ -103,6 +104,8 @@ namespace jh {
     struct weak_ptr_hash {
         std::size_t operator()(const std::weak_ptr<T> &ptr) const noexcept {
             if (const auto sp = ptr.lock()) {
+                // Pre-touch hash once to ensure consistent hash during insert()
+                std::ignore = sp->hash(); // ensures atomic hash() before insert
                 return sp->hash();
             }
             return 0;
