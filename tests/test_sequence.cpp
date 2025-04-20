@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "jh/sequence.h"
+#include "jh/pods/array.h"
 
 namespace test {
     struct NonTemplateSequence {
@@ -35,7 +36,9 @@ namespace test {
     struct MutableIterSequence {
         std::vector<int> data{7, 8, 9};
         auto begin() { return data.begin(); }
+        void begin() const = delete;
         auto end() { return data.end(); }
+        void end() const = delete;
     };
     struct NoBeginEnd {}; // ❌ No `begin()` / `end()`
 
@@ -113,4 +116,16 @@ TEST_CASE("Custom ConstIterSequence") {
 // ❌ Custom Sequence with Mutable Iterators (Should NOT be a sequence)
 TEST_CASE("Mutable Iterator Sequence") {
     REQUIRE_FALSE(jh::is_sequence<test::MutableIterSequence>);
+}
+
+
+TEST_CASE("Sequence to Range") {
+    constexpr jh::pod::array<int, 3> vec = {1, 2, 3}; // sequence, not a range
+    auto range_ = jh::to_range(vec);
+    auto it = range_.begin();
+
+    std::ranges::for_each(range_, [&](const int a) {
+                    REQUIRE(a == *it);
+                    ++it;
+                });
 }

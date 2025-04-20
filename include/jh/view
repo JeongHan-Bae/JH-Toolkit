@@ -1,0 +1,11 @@
+/**
+ * @file view
+ * @brief Forwarding header for jh::view
+ *
+ * This header exists to provide a modern include style (`#include <jh/view>`),
+ * forwarding to `jh/view.h`. It contains no additional code.
+ */
+
+#pragma once
+
+#include "view.h"

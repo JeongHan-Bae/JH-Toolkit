@@ -61,7 +61,7 @@
 
 #pragma once
 
-#include <atomic>
+#include <atomic>           // NOLINT for std::atomic
 #include <cstdint>          // for std::uint64_t
 #include <algorithm>        // for std::copy_if
 #include <vector>           // for std::vector

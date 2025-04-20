@@ -11,11 +11,10 @@ test_cmake_file = project_root / "tests/CMakeLists.txt"
 # Function to extract the project version from CMakeLists.txt
 def extract_project_version(cmake_path):
     """
-    Extracts the project version from write_basic_package_version_file(...) in CMakeLists.txt.
+    Extracts the project version from set(PROJECT_VERSION x.y.z) in CMakeLists.txt.
     """
     version_pattern = re.compile(
-        r'write_basic_package_version_file\s*\(\s*["\']?.*?["\']?\s*VERSION\s+([\d.]+)',
-        re.DOTALL
+        r'set\s*\(\s*PROJECT_VERSION\s+([\d.]+)\s*\)', re.IGNORECASE
     )
 
     try:
@@ -23,7 +22,7 @@ def extract_project_version(cmake_path):
             content = _f.read()
             match = version_pattern.search(content)
             if match:
-                return match.group(1)  # Extracts X.Y.Z version number
+                return match.group(1)  # Extracts version number like 1.3.0
     except FileNotFoundError:
         print(f"Warning: {cmake_path} not found.")
 

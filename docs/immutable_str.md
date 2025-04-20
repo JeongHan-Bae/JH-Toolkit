@@ -1,400 +1,368 @@
-### **JH Toolkit: Immutable String API Documentation**
+# 🧱 JH Toolkit: `immutable_str` API Documentation
 
-📌 **Version:** 1.2  
+📌 **Version:** 1.3  
 📅 **Date:** 2025  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 [![Back to README](https://img.shields.io/badge/%20Back%20to%20README-blue?style=for-the-badge)](../README.md)
 
-## **Overview**
+---
 
-The `jh::immutable_str` class provides a **truly immutable string** in C++, ensuring that **once created, it cannot be
-modified**.  
-It is specifically designed to address the limitations of `const std::string`, such as:
-
-- **Unintended modifications** via `const_cast`.
-- **Reallocation overhead** due to copy-on-write or implicit resizing.
-- **Thread safety concerns** in shared string usage.
-
-### **Why `final`?**
-
-The `jh::immutable_str` class is marked as `final` because **inheritance is unnecessary and counterproductive** for an
-immutable string. The reasons are:
-
-1. **True Immutability Must Be Enforced**
-
-- Allowing subclassing could introduce unintended behaviors that break immutability, such as overriding methods to
-  expose internal modifications.
-- Declaring the class `final` ensures that **once created, the string remains unchanged at both the API and memory
-  levels**.
-
-2. **Memory Safety and Performance**
-
-- `immutable_str` is optimized for **minimal allocation and direct storage**.
-- Inheritance could introduce **virtual dispatch overhead**, which is unnecessary for a **fixed, immutable structure**.
-
-3. **No Need for Customization**
-
-- Unlike `std::string`, `immutable_str` is **not meant to be extended**—its entire purpose is to remain **immutable and
-  efficient**.
-- Any desired modifications should be handled through **composition** rather than inheritance.
-
-4. **Ensuring Consistent Hashing and Equality**
-
-- Since `immutable_str` is designed for **efficient comparisons and hashing**, subclassing could lead to **unexpected
-  behavior** when storing instances in hash-based containers.
-- Making it `final` ensures **consistent, predictable hashing and comparison behavior**.
-
-### **Key Features**
-
-- ✅ **True immutability** at the memory level, preventing unintended modifications.
-- ✅ **Memory Efficient**: Uses `std::unique_ptr<const char[]>` for compact storage.
-- ✅ **Thread safety** by design, with no modification APIs.
-- ✅ **Optimized hashing & comparison**, ideal for `std::unordered_map` and `std::unordered_set`.
-- ✅ **Configurable whitespace trimming**, enabled by default (`immutable_str::auto_trim = true`).
-- ✅ **Seamless C-string Compatibility**: Provides `c_str()`[const char*], `view()`[std::string_view()],
-  and `str()`[std::string].
-- ✅ **Pooling Support**: Compatible with `jh::pool` for efficient object pooling.
+[![License](https://img.shields.io/github/license/JeongHan-Bae/JH-Toolkit)](../LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://github.com/JeongHan-Bae/JH-Toolkit)
 
 ---
 
-## **⚠ Important Reminder: Immutable & No Implicit Copying**
+## 📌 Overview
 
-`jh::immutable_str` is designed to be **immutable** and **non-copyable**:
+`jh::immutable_str` is a truly immutable string implementation designed for C++20 projects where safety, thread correctness, and structural simplicity are paramount.
 
-- ❌ **No copy constructor / copy assignment**.
-- ❌ **No move constructor / move assignment**.
-- ❌ **No modification APIs**.
-
-If **multiple instances** of the same string are needed, use **shared storage** via `jh::atomic_str_ptr`.  
-📌 **For efficient shared use, prefer `std::shared_ptr<immutable_str>` over multiple allocations.**
+Unlike `const std::string`, which can still be modified via `const_cast` or internal hacks,
+`immutable_str` is **guaranteed immutable at the memory level**.
+It's ideal for shared string storage, hashing, and multithreaded environments.
 
 ---
 
-## **API Reference**
+## 🚀 Key Features
 
-📌 **Detailed module description can be found in `immutable_str.h`**  
-📌 **Function-specific documentation is embedded in the source code and can be viewed in modern IDEs.**
+- ✅ **True Immutability**: Cannot be modified after construction.
+- ✅ **Thread-Safe**: Safe to share across threads without locking.
+- ✅ **Compile-Time Trimming Policy**: `JH_IMMUTABLE_STR_AUTO_TRIM` is defined once at compile-time.
+- ✅ **Efficient Hashing**: Content-based hashing with transparent support for `const char*` lookup.
+- ✅ **Whitespace Trimming**: Optional, compile-time controlled.
+- ✅ **Pool-Compatible**: Works seamlessly with `jh::pool` for deduplicated string storage.
+- ✅ **Minimal Overhead**: Uses `std::unique_ptr<const char[]>` for compact and safe storage.
+- ✅ **Storage Priority**: Designed for string value holder instead of value itself, multiple viewing interfaces provided.
 
 ---
 
-### **Class: `jh::immutable_str`**
-
-📌 **Description:**  
-A **lightweight immutable string** designed for **safe and efficient storage**.
+## 🔐 Memory Safety & Immutability
 
 ```c++
-struct immutable_str;
+uint64_t size_ = 0;
+std::unique_ptr<const char[]> data_;
+mutable std::optional<std::uint64_t> hash_{std::nullopt};
+mutable std::once_flag hash_flag_;
+```
+
+These members ensure:
+
+- `data_` is **read-only**, preventing accidental modification
+- `size_` is fixed and non-mutable after construction
+- `hash_` is computed once, guarded by `hash_flag_`
+- The Entire structure is **thread-safe and mutation-resistant**
+
+### ✅ Safer Than `std::string`
+
+| Feature             | `std::string`                   | `immutable_str`                                |
+|---------------------|---------------------------------|------------------------------------------------|
+| Memory immutability | ❌ No (`const_cast` still works) | ✅ Yes (`const char[]`)                         |
+| Thread-safe reads   | ❌ No                            | ✅ Yes                                          |
+| Auto trimming       | ❌ Manual                        | ✅ Optional via macro                           |
+| Copy behavior       | ✅ Copyable                      | ❌ Must use `shared_ptr` or `unique_ptr::get()` |
+| Hidden reallocation | ✅ Yes                           | ❌ Never reallocates                            |
+
+
+## ✂️ Trimming Behavior
+
+`immutable_str` optionally trims **leading and trailing ASCII whitespace** during construction. This includes:
+- `' '`, `\t`, `\n`, `\r`, `\f`, `\v`
+
+### ⚙️ Compile-Time Config
+
+Define trimming policy before including the header:
+
+```c++
+#define JH_IMMUTABLE_STR_AUTO_TRIM false // or true (default)
+```
+
+By default uses:
+
+```c++
+#ifndef JH_IMMUTABLE_STR_AUTO_TRIM
+#define JH_IMMUTABLE_STR_AUTO_TRIM true
+#endif
+```
+
+Only one definition should exist **per project**, ensuring consistency and allowing compile-time optimization.
+
+
+---
+
+## 🧩 Interface Summary
+
+### ✅ Constructor
+
+```c++
+explicit immutable_str(const char* str);
+immutable_str(std::string_view sv, std::mutex& mtx);
+```
+
+- Automatically trims whitespace if `auto_trim == true`
+- `explicit` to avoid accidental conversions
+
+```c++
+// Recommended usage
+auto raw = get_config_value(); // Simulate a std::string which is not shared by multiple threads
+auto str = std::make_shared<jh::immutable_str>(raw.c_str()); // Or use make_atomic
 ```
 
 ---
 
-### **Constructor**
-
-#### 📌 `explicit immutable_str(const char *str)`
-
-**Description:**  
-Creates an **immutable string** from a **null-terminated C-string**.
-
-🔹 **Parameters**
-
-- `str` → A null-terminated C-string (ownership transferred).
-    - If `immutable_str::auto_trim` is `true`, leading and trailing whitespace is **automatically removed**.
-
-🔹 **Example**
+### ❌ Deleted Operations
 
 ```c++
-jh::immutable_str imm_str("  Hello World  ");  // Auto-trim enabled
-std::cout << imm_str.view();  // Output: "Hello World"
+immutable_str(const immutable_str&) = delete;
+immutable_str(immutable_str&&) = delete;
+immutable_str& operator=(const immutable_str&) = delete;
+immutable_str& operator=(immutable_str&&) = delete;
 ```
+
+- **Immutability is enforced by deleting all copy and move operations.**
+
+> Although `immutable_str` is not copyable by design (to enforce immutability and avoid implicit heap duplication), its content is safe to share via `shared_ptr` or via raw pointer access (`unique_ptr::get()`), as long as lifetime is managed correctly.
+
+📌 **Note**:
+Because the underlying buffer is `const char[]`, even multiple threads accessing the same pointer are guaranteed safe.
 
 ---
 
-### **Deleted Copy & Move Operations**
-
-To **enforce immutability**, `immutable_str` **cannot** be copied or moved:
+### 📥 Accessors
 
 ```c++
-immutable_str(const immutable_str &) = delete;
-immutable_str &operator=(const immutable_str &) = delete;
-immutable_str(immutable_str &&) = delete;
-immutable_str &operator=(immutable_str &&) = delete;
+const char* c_str() const noexcept;
+std::string_view view() const noexcept;
+std::string str() const;
+uint64_t size() const noexcept;
 ```
 
-📌 **Use `jh::atomic_str_ptr` (`std::shared_ptr<immutable_str>`) for safe shared usage.**
+- `.c_str()` → For C API compatibility
+- `.view()` → For zero-copy read access (excludes `\0`)
+- `.pod_view()` → For pod-like string_view storage when the source is still alive (does not check dangling).
+- `.str()` → Allocates and returns a new `std::string`
+- `.size()` → Returns number of characters (i.e., bytes for UTF-8)
+
+📌 `.view()` is **not cached**, as `std::string_view` is trivial to construct.  
+📌 `.pod_view()` returns a `jh::pod::string_view`, see [`pod module`](pod.md) for details.
+
+> `.pod_view()` is intended for use with `jh::pod::string_view`, allowing temporary zero-copy views with strict lifetime awareness.
 
 ---
 
-### **Access Methods**
-
-#### 📌 `const char *c_str() const noexcept`
-
-**Description:**  
-Returns a **C-string pointer** to the immutable data.
-
-🔹 **Returns**
-
-- `const char *` → The immutable string buffer.
-
-🔹 **Example**
+### 🔁 Equality & Hashing
 
 ```c++
-const char *ptr = imm_str.c_str();
-std::cout << ptr;  // Output: "Hello World"
+bool operator==(const immutable_str& other) const noexcept;
+std::uint64_t hash() const noexcept;
 ```
+
+- Efficient and thread-safe.
+- Lazy hash computation (cached once, thread-safe).
+- No comparing operators, used as storage instead of value, if you need comparing, access by `.c_str()` or `.view()`.
+
+> ℹ️ `hash()` uses `std::hash<std::string_view>` internally, which is **process-local and not stable across runs**.  
+> If you require deterministic or persistent hashes (e.g., for database keys, content hashing, or disk storage), please compute it manually via `.c_str()` and `.size()` using your preferred algorithm.
 
 ---
 
-#### 📌 `std::string str() const`
+## 🧪 Hash Container Support
 
-**Description:**  
-Converts the immutable string into a **`std::string`**.
+### ✅ Transparent Lookup
 
-🔹 **Returns**
-
-- `std::string` → A copy of the immutable string.
-
-🔹 **Example**
-
-```c++
-std::string standard_str = imm_str.str();
-```
-
----
-
-#### 📌 `std::string_view view() const noexcept`
-
-**Description:**  
-Returns a **`std::string_view`** for efficient read-only access.
-
-🔹 **Returns**
-
-- `std::string_view` → A lightweight view of the immutable string.
-
-🔹 **Example**
-
-```c++
-std::string_view sv = imm_str.view();
-```
-
----
-
-#### 📌 `uint64_t size() const noexcept`
-
-**Description:**  
-Returns the **length** of the immutable string.
-
-🔹 **Returns**
-
-- `uint64_t` → The number of characters in the string.
-
-🔹 **Example**
-
-```c++
-uint64_t len = imm_str.size();
-std::cout << "String length: " << len;
-```
-
----
-
-### **Comparison & Hashing**
-
-#### 📌 `bool operator==(const immutable_str &other) const noexcept`
-
-**Description:**  
-Checks if **two immutable strings are identical**.
-
-🔹 **Parameters**
-
-- `other` → Another `immutable_str` to compare.
-
-🔹 **Returns**
-
-- `true` → If the strings are **identical**.
-- `false` → Otherwise.
-
-🔹 **Example**
-
-```c++
-jh::immutable_str a("hello");
-jh::immutable_str b("hello");
-std::cout << (a == b);  // Output: 1 (true)
-```
-
----
-
-### **Global Configuration**
-
-#### 📌 `static inline std::atomic<bool> auto_trim = true`
-
-**Description:**  
-A **global flag** that controls whether **leading and trailing whitespace** should be automatically removed **before storing the string**.  
-**Trimming occurs only during initialization**—once an `immutable_str` is created, **its content never changes, regardless of `auto_trim`'s value**.
-
-🔹 **Values**
-- `true` (default) → **Trims** whitespace before storing.
-- `false` → **Preserves** the original string **without modification**.
-
-🔹 **Important Notes**
-- **Trimming is performed only once, during initialization.**
-- **Once an `immutable_str` instance is created, changing `auto_trim` has no effect on existing instances.**
-- **⚠ Modifying this setting at runtime is strongly discouraged**, as it may cause **inconsistent behavior across different parts of the program**.
-- **The recommended approach** is to **set `auto_trim` correctly before creating any `immutable_str` instances** to avoid unexpected behaviors.
-
-🔹 **Example Usage**
-```c++
-jh::immutable_str::auto_trim = false;  // Define behavior globally before creating instances
-
-jh::immutable_str str1("   padded   ");
-std::cout << str1.view();  // Output: "   padded   " (no trimming)
-
-jh::immutable_str::auto_trim = true;   // Change setting (NOT recommended at runtime)
-
-jh::immutable_str str2("   trimmed   ");
-std::cout << str2.view();  // Output: "trimmed"
-
-std::cout << str1.view();  // Still "   padded   ", because existing instances remain unchanged
-```
-
----
-
-## **Shared Storage: `jh::atomic_str_ptr`**
-
-📌 **For efficient shared usage, prefer `jh::atomic_str_ptr` (`std::shared_ptr<immutable_str>`)**  
-This prevents unnecessary allocations when multiple copies are needed.
-
-📌 The reason it is called "atomic" is that the pointer itself is mutable, but its assignment is atomic,
-making it suitable for multithreaded shared distribution.
-
-```c++
-using atomic_str_ptr = std::shared_ptr<immutable_str>;
-```
-
----
-
-### **Shared String Creation**
-
-#### 📌 `jh::atomic_str_ptr make_atomic(const char *str)`
-
-**Description:**  
-Creates a **shared pointer** to an `immutable_str`.
-
-🔹 **Parameters**
-
-- `str` → A null-terminated C-string.
-
-🔹 **Returns**
-
-- `atomic_str_ptr` → A **shared** immutable string.
-
-🔹 **Example**
-
-```c++
-jh::atomic_str_ptr shared_str = jh::make_atomic("Shared Example");
-```
-
-### **Shared String Creation with Mutex Protection**
-
-#### 📌 `jh::atomic_str_ptr safe_from(std::string_view sv, std::mutex &mtx)`
-
-**Description:**  
-Creates a **shared pointer** to an `immutable_str` from a `std::string_view`, ensuring safe access.
-
-🔹 **Parameters**
-- `sv` → A `std::string_view` representing the string data.
-- `mtx` → A reference to the `std::mutex` that protects the lifetime of `sv`.
-
-🔹 **Throws**
-- `std::logic_error` → If `sv` contains embedded null (`\0`) characters.
-
-🔹 **Warning**
-- Any **implicitly convertible type** to `std::string_view` (e.g., `std::string`, `char[]`) **is allowed**.
-- The caller **must ensure** that `mtx` correctly protects the lifetime of the base string (e.g., `std::string`).
-- If the base string **changes** during `immutable_str` initialization, **undefined behavior may occur**.
-
-🔹 **Warning**
-- The caller **must ensure** that `mtx` correctly protects `sv`. If an unrelated mutex is provided, **undefined behavior may occur**.
-
-🔹 **Returns**
-- `atomic_str_ptr` → A **shared** immutable string.
-
-🔹 **Example**
-```c++
-std::mutex mtx;
-std::string shared_data = "Thread-safe string"; // Implicitly convertible to string_view
-// This is valid as long as `mtx` ensures `shared_data` does not change before immutable_str is created.
-jh::atomic_str_ptr safe_str = jh::safe_from(shared_data, mtx);
-```
-
----
-
-### **Custom Hashing & Equality**
-
-To ensure correct behavior in hash containers:
-
-#### 📌 `struct atomic_str_hash`
-
-Custom **hash function** for `atomic_str_ptr`.
-
-```c++
-struct atomic_str_hash {
-    std::uint64_t operator()(const atomic_str_ptr &ptr) const noexcept;
-};
-```
-
-#### 📌 `struct atomic_str_eq`
-
-Custom **equality function** for `atomic_str_ptr`.
-
-```c++
-struct atomic_str_eq {
-    bool operator()(const atomic_str_ptr &lhs, const atomic_str_ptr &rhs) const noexcept;
-};
-```
-
-🔹 **Example**
+`atomic_str_hash` and `atomic_str_eq` support **transparent key lookup**, so you can use `const char*` string literals directly in `unordered_map` or `unordered_set`:
 
 ```c++
 std::unordered_set<jh::atomic_str_ptr, jh::atomic_str_hash, jh::atomic_str_eq> str_set;
 str_set.insert(jh::make_atomic("cached"));
+
+if (str_set.find("cached") != str_set.end()) {
+    // Lookup succeeded without constructing immutable_str
+}
 ```
+
+📌 This optimization **avoids heap allocation** during lookup!
+
 ---
 
-### **Pooling Support**
+### 📌 `nullptr` as key
 
-📌 **`immutable_str` is compatible with `jh::pool` for efficient object pooling.**  
-📌 **For detailed usage, refer to **[pool.md](pool.md)**.**
+- Allowed in lookup and hashing.
+- `nullptr` always hashes to `0` and compares unequal to all other values.
+- Use only to represent "empty" sentinel.
 
-🔹 **Header Inclusion**
-- **No need to include `<jh/pool.h>` separately** if you are only using `jh::pool<immutable_str>`,  
-  since `immutable_str.h` already includes `pool.h`.
+---
 
-🔹 **Example Usage**
+### 🧽 Whitespace Trimming
+
+Controlled by static flag:
+
 ```c++
-jh::pool<jh::immutable_str> string_pool;  // No need to include <jh/pool.h> separately
+static constexpr bool jh::immutable_str::auto_trim = JH_IMMUTABLE_STR_AUTO_TRIM;
+```
 
-jh::atomic_str_ptr pooled_str = string_pool.acquire("Pooled String");
-std::cout << pooled_str->view();  // Output: "Pooled String"
+- If enabled, trims leading/trailing **ASCII whitespace only**  
+  (space, tab, `\n`, `\r`, `\f`, `\v`) using `jh::detail::is_space_ascii(char)`.
+- `JH_IMMUTABLE_STR_AUTO_TRIM` can be set manually before including `<jh/immutable_str>` 
+   or used as a compile flag in makefiles.
+  (Single definition in one project).
+
+Example:
+
+```c++
+const char* raw = "  hello world ";
+jh::immutable_str s(raw); // auto-trims
+std::cout << s.view();    // → "hello world"
 ```
 
 ---
 
-## **Use Cases**
+## 🔄 Shared Storage (`atomic_str_ptr`)
 
-- **Thread-safe immutable storage**, eliminating unintended modifications.
-- **Efficient caching and deduplication**, reducing memory overhead.
-- **Fast comparisons and lookups**, leveraging **optimized hashing**.
-- **Seamless integration** with **C-strings, `std::string`, and `std::string_view`**.
+```c++
+using atomic_str_ptr = std::shared_ptr<immutable_str>;
+```
+> Here, 'atomic' refers to the atomicity of pointer assignment, not the content.
+
+Use when:
+
+- You need multiple references to the same string
+- You want to store in containers with shared keys
+
+Example combined with `<jh/pool>`
+
+```c++
+jh::pool<jh::immutable_str> pool_;
+auto shared = pool_.acquire("string to obtain"); // type as atomic_str_ptr
+```
+
+### 🏗️ Construction
+
+```c++
+auto shared = jh::make_atomic("immutable");
+```
+
+Or with mutex:
+
+```c++
+std::mutex mtx;
+auto safe = jh::safe_from("string view here", mtx);
+```
 
 ---
 
-## **Conclusion**
+## 📚 API Functions
 
-The `jh::immutable_str` class provides a **lightweight**, **thread-safe**, and **truly immutable** string for modern
-C++20 applications.  
-It eliminates the limitations of `std::string` while ensuring **safe, efficient, and flexible string storage**.
+### 🔨 `make_atomic(const char*)`
+
+Creates a `shared_ptr<immutable_str>` from a C-string.
+
+### 🔐 `safe_from(std::string_view, std::mutex&)`
+
+Constructs `atomic_str_ptr` from a string view protected by a mutex.
+
+- Ensures thread safety when the source is temporary or mutable.
+- Validates that no embedded null characters exist.
+
+---
+
+## 💡 Technical Notes
+
+| Behavior            | Detail                                                                 |
+|---------------------|------------------------------------------------------------------------|
+| Hash caching        | Hash is lazily computed and thread-safe (`std::once_flag`)             |
+| Trimming            | Controlled via `auto_trim` — affects both constructor & hashing        |
+| `size()` unit       | Represents **character count in bytes** (not Unicode codepoints)       |
+| `.view()` behavior  | Not cached. Constructed on demand (trivial cost)                       |
+| `.str()` behavior   | Performs a copy construction (prevents modifying the immutable source) |
+| Sorting             | No `operator<` or `<=>` provided — not usable in `std::set/map`        |
+| Inheritance         | Disallowed (`final`) — immutability must not be compromised            |
+| `nullptr` key       | Supported. Hash is 0, comparison returns false                         |
+| ABI safety          | `const char*` is stored internally — suitable for `extern "C"` APIs    |
+
+---
+
+## 🧪 Performance Benchmarks
+
+### 🔍 Summary (default constructed from c_str)
+
+| Compiler  | Optimization | Pointer Type | Type                   | Mean (ns) | Notes                            |
+|-----------|--------------|--------------|------------------------|-----------|----------------------------------|
+| **Clang** | `-O2`        | `shared_ptr` | `std::string`          | 0.267     | Extremely stable                 |
+|           |              | `shared_ptr` | `immutable_str`        | 0.265     | Slightly faster                  |
+|           |              | `unique_ptr` | `std::string`          | 18.70     | Heap allocation visible          |
+|           |              | `unique_ptr` | `immutable_str`        | 18.23     | Slightly better                  |
+|           |              | `unique_ptr` | `immutable_str` (view) | 23.52     | Mutex + validation path          |
+| **Clang** | `-O0`        | `shared_ptr` | `std::string`          | 142.00    | Debug-mode cost visible          |
+|           |              | `shared_ptr` | `immutable_str`        | 138.86    | Consistently faster              |
+|           |              | `unique_ptr` | `std::string`          | 144.02    |                                  |
+|           |              | `unique_ptr` | `immutable_str`        | 143.15    |                                  |
+|           |              | `unique_ptr` | `immutable_str` (view) | 150.17    | Mutex + string_view safety       |
+| **GCC**   | `-O2`        | `shared_ptr` | `std::string`          | 18.16     | Slower baseline than Clang       |
+|           |              | `shared_ptr` | `immutable_str`        | 26.62     | Slightly heavier                 |
+|           |              | `unique_ptr` | `std::string`          | 30.11     |                                  |
+|           |              | `unique_ptr` | `immutable_str`        | 27.85     | Slightly faster than std::string |
+|           |              | `unique_ptr` | `immutable_str` (view) | 27.19     | View overhead less than Clang    |
+| **GCC**   | `-O0`        | `shared_ptr` | `std::string`          | 39.02     | Much faster than Clang `-O0`     |
+|           |              | `shared_ptr` | `immutable_str`        | 47.78     |                                  |
+|           |              | `unique_ptr` | `std::string`          | 52.42     |                                  |
+|           |              | `unique_ptr` | `immutable_str`        | 52.36     | Almost identical                 |
+|           |              | `unique_ptr` | `immutable_str` (view) | 53.66     | Mutex handling                   |
+
+### 💡 Insights
+
+- `immutable_str` performs **as fast or faster** than `std::string` under many conditions.
+- The performance gap is **negligible** across compilers and optimization levels.
+- Compile-time trimming logic does **not** introduce overhead in practice.
+- The class is **thread-safe by design**, so extra locking is unnecessary.
+- You can safely adopt `immutable_str` in performance-critical code — both `shared_ptr` and `unique_ptr` scenarios are well-optimized.
+- View-based constructors are expectedly a bit slower due to mutex validation, but only by ~5ns.
+
+📌 In short: **`immutable_str` is cost-equivalent to `std::string` with stronger safety guarantees.**
+
+---
+## 🔧 Technical Highlights
+
+- `std::once_flag` for thread-safe lazy hash computation
+- `std::unique_ptr<const char[]>` ensures storage immutability
+- `std::string_view` used for efficient non-owning access
+- `std::optional<uint64_t>` used to cache hashes only on demand
+- `is_space_ascii(char)` replaces `std::isspace()` with constexpr performance
+
+---
+
+## 🧠 Design Philosophy
+
+> "If you want to build fast, thread-safe systems in C++, start with immutability. Then reason about sharing."
+
+- Strings should not mutate once created
+- Shared ownership only makes sense when the data is guaranteed constant
+- Compile-time configuration leads to better branch elimination and code clarity
+
+---
+
+## ✅ Summary
+
+- `immutable_str` is a **safe, minimal, and fast immutable string** for modern C++
+- Ideal for multithreaded code, config systems, ID registries, and string interning
+- Avoids the pitfalls of `std::string` mutability and reallocation
+- Offers clear APIs and performance guarantees
+
+**Use `jh::immutable_str` when string identity, safety, and performance all matter.**
+
+
+## 📦 For Developers
+
+- ✅ Designed for high-performance infrastructure
+- ✅ Friendly to LLVM and `extern "C"` interfaces
+- ✅ Clean value semantics with shared ownership when needed
+- ✅ No hidden allocation or unexpected behavior
+
+> “Once constructed, it just stays the same. That’s the whole point.”
+
+---
 
 📌 **For detailed module information, refer to `immutable_str.h`.**  
+📌 **For auto object pooling, refer to [`pool.md`](pool.md).**  
 📌 **Function-specific documentation is available directly in modern IDEs.**
 
 🚀 **Enjoy coding with JH Toolkit!**

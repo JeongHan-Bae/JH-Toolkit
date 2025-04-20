@@ -30,7 +30,7 @@
  * - Prevents unnecessary inclusion of full iterator implementations.
  * - Ensures **compatibility with STL-style iterator traits**.
  *
- * @version 1.1.x
+ * @version 1.3.x
  * @date 2025
  */
 
@@ -39,7 +39,6 @@
 #include <iterator>
 
 namespace jh {
-
     /**
      * @brief Forward declaration of the `iterator` class template.
      * @details
@@ -155,6 +154,46 @@ namespace jh {
         { *it };
     };
 
+    namespace detail {
+        // Primary template: default to empty
+        template<typename T, typename = void, typename = void>
+        struct iterator_resolver;
+
+        // Case 1: has jh::iterator<T>::type
+        template<typename T>
+        struct iterator_resolver<
+            T,
+            std::void_t<typename iterator<T>::type>, // if jh::iterator<T>::type exists
+            std::enable_if_t<true>
+        > {
+            using type = typename iterator<T>::type;
+        };
+
+        // Case 2: fallback - no jh::iterator<T>::type, but has .begin()
+        template<typename T>
+        struct iterator_resolver<
+            T,
+            std::void_t<decltype(std::declval<T &>().begin())>,
+            std::enable_if_t<!requires { typename iterator<T>::type; }>
+        > {
+            using type = decltype(std::declval<T &>().begin());
+        };
+
+        // Fallback 3: pointer or array case
+        template<typename T>
+            requires std::is_pointer_v<T>
+        struct iterator_resolver<T, void, void> {
+            using type = T;
+        };
+    }
+
+    /**
+     * @brief Extracts the iterator type from a container, supporting both STL and jh containers.
+     *
+     * @tparam Container The container type
+     * @note This works even if `jh::iterator<Container>` is not specialized.
+     */
+
     /**
      * @brief Extracts the iterator type of some container.
      *
@@ -176,5 +215,5 @@ namespace jh {
      * - Supports **STL-style containers** and **custom containers**, provided they are adapted to `jh::iterator<>`.
      */
     template<typename Container>
-    using iterator_t = typename iterator<Container>::type;
+    using iterator_t = typename detail::iterator_resolver<Container>::type;
 } // namespace jh

@@ -1,0 +1,97 @@
+name: Cross-Platform CI
+
+on:
+  push:
+    branches:
+      - '*dev'
+      - '**/*dev'
+      - 'dev*'
+      - '**/dev*'
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'examples/**'
+      - 'tests/**'
+      - '.github/workflows/**'
+
+jobs:
+
+  ubuntu-ci:
+    name: Ubuntu (gcc)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y ninja-build g++ cmake
+
+      - name: Configure (FastDebug)
+        run: cmake -B build-fastdebug -DCMAKE_BUILD_TYPE=FastDebug -G Ninja
+
+      - name: Build
+        run: cmake --build build-fastdebug -v
+
+      - name: Run tests
+        run: ctest --test-dir build-fastdebug --output-on-failure
+
+  macos-ci:
+    name: macOS (LLVM Clang)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies (LLVM Clang + CMake + Ninja)
+        run: |
+          brew install cmake ninja llvm
+
+      - name: Configure (FastDebug with LLVM Clang)
+        run: >
+          cmake -B build-fastdebug
+          -DCMAKE_BUILD_TYPE=FastDebug
+          -G Ninja
+          -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang
+          -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
+
+      - name: Build
+        run: cmake --build build-fastdebug -v
+
+      - name: Run tests
+        run: ctest --test-dir build-fastdebug --output-on-failure
+
+  windows-ci:
+    name: Windows (MSYS2 UCRT64 GCC)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Setup MSYS2 with GCC 13+
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+          msystem: UCRT64
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure (FastDebug)
+        run: >
+          cmake -B build-fastdebug
+          -DCMAKE_BUILD_TYPE=FastDebug
+          -G Ninja
+          -DCMAKE_C_COMPILER=gcc
+          -DCMAKE_CXX_COMPILER=g++
+
+      - name: Build
+        run: cmake --build build-fastdebug -v
+
+      - name: Run tests
+        run: ctest --test-dir build-fastdebug --output-on-failure

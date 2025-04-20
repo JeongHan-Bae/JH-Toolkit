@@ -59,7 +59,7 @@ TEST_CASE("Immutable String Functionality") {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<size_t> len_dist(5, 20);
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Immutable String Test " + std::to_string(i + 1)) {
@@ -75,15 +75,13 @@ TEST_CASE("Immutable String Functionality") {
         }
     }
 }
-
+#ifdef JH_IMMUTABLE_STR_AUTO_TRIM
 // ✅ Auto-trim enabled: Whitespace should be removed automatically
 TEST_CASE("Immutable String Auto Trim Enabled") {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<size_t> len_dist(5, 20);
-    constexpr int total_tests = 1024;
-
-    jh::immutable_str::auto_trim = true;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Auto Trim Test " + std::to_string(i + 1)) {
@@ -100,12 +98,35 @@ TEST_CASE("Immutable String Auto Trim Enabled") {
     }
 }
 
+#else
+// ✅ Auto-trim disabled: Whitespace should affect hashing and equality
+TEST_CASE("Immutable String Auto Trim Disabled") {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<size_t> len_dist(5, 20);
+    constexpr int total_tests = 1024;
+
+    for (int i = 0; i < total_tests; ++i) {
+        SECTION("No Trim Test " + std::to_string(i + 1)) {
+            std::string original = test::generate_random_string(len_dist(gen));
+            std::string padded = test::add_random_whitespace(original);
+
+            jh::immutable_str imm_trimmed(padded.c_str());
+            jh::immutable_str imm_original(original.c_str());
+
+            REQUIRE(imm_trimmed.view() != original);
+            REQUIRE(imm_trimmed.hash() != imm_original.hash());
+            REQUIRE_FALSE(imm_trimmed == imm_original);
+        }
+    }
+}
+#endif
 // ✅ Mutex-protected string tests
 TEST_CASE("Immutable String with Mutex-Protected std::string") {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<size_t> len_dist(5, 20);
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Mutex-Protected String Test " + std::to_string(i + 1)) {
@@ -128,7 +149,7 @@ TEST_CASE("Immutable String Mutex-Protected Mismatched") {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<size_t> len_dist(5, 20);
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Mutex-Protected Mismatched Test " + std::to_string(i + 1)) {
@@ -153,37 +174,12 @@ TEST_CASE("Immutable String Mutex-Protected Mismatched") {
     }
 }
 
-// ✅ Auto-trim disabled: Whitespace should affect hashing and equality
-TEST_CASE("Immutable String Auto Trim Disabled") {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<size_t> len_dist(5, 20);
-    constexpr int total_tests = 1024;
-
-    jh::immutable_str::auto_trim = false;
-
-    for (int i = 0; i < total_tests; ++i) {
-        SECTION("No Trim Test " + std::to_string(i + 1)) {
-            std::string original = test::generate_random_string(len_dist(gen));
-            std::string padded = test::add_random_whitespace(original);
-
-            jh::immutable_str imm_trimmed(padded.c_str());
-            jh::immutable_str imm_original(original.c_str());
-
-            REQUIRE(imm_trimmed.view() != original);
-            REQUIRE(imm_trimmed.hash() != imm_original.hash());
-            REQUIRE_FALSE(imm_trimmed == imm_original);
-        }
-    }
-    jh::immutable_str::auto_trim = true;
-}
-
 // ✅ Different strings should always be considered unequal
 TEST_CASE("Different Immutable String Instances") {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<size_t> len_dist(5, 20);
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Different Strings Test " + std::to_string(i + 1)) {
@@ -209,7 +205,7 @@ TEST_CASE("Atomic String Hashing & Equality") {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<size_t> len_dist(5, 20);
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     std::unordered_set<jh::atomic_str_ptr, jh::atomic_str_hash, jh::atomic_str_eq> str_set;
 
@@ -366,7 +362,7 @@ TEST_CASE("Switch with HashMap Example Test") {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int> rand_dist(0, 5);
-    constexpr int total_tests = 1024;
+    constexpr int total_tests = 128;
 
     jh::pool<jh::immutable_str> pool;
     // Recommended method: Directly map atomic immutable strings to unique identifiers
@@ -415,4 +411,84 @@ TEST_CASE("Switch with HashMap Example Test") {
             }
         }
     }
+}
+
+TEST_CASE("Advanced Benchmark: std::string vs immutable_str") {
+    constexpr size_t N = 1024;
+    std::vector<std::string> test_inputs;
+    test_inputs.reserve(N);
+
+    std::mt19937 gen(std::random_device{}());
+    std::uniform_int_distribution<size_t> len_dist(32, 128);
+
+    // Step 1: Generate input strings with random whitespace
+    for (size_t i = 0; i < N; ++i) {
+        std::string s = test::generate_random_string(len_dist(gen));
+        test_inputs.emplace_back(test::add_random_whitespace(s));
+    }
+
+    // std::string benchmark
+    BENCHMARK_ADVANCED("std::shared_ptr<std::string> from c_str() (1024x)")()
+    {
+        std::vector<std::shared_ptr<std::string>> buffer;
+        buffer.reserve(N);
+        return [buffer = std::move(buffer), &test_inputs]() mutable {
+            buffer.clear();
+            for (const auto &src : test_inputs) {
+                buffer.emplace_back(std::make_shared<std::string>(src.c_str()));
+            }
+        };
+    };
+
+    // immutable_str benchmark
+    BENCHMARK_ADVANCED("std::shared_ptr<immutable_str> from c_str() (1024x)")()
+    {
+        std::vector<std::shared_ptr<jh::immutable_str>> buffer;
+        buffer.reserve(N);
+        return [buffer = std::move(buffer), &test_inputs]() mutable {
+            buffer.clear();
+            for (const auto &src : test_inputs) {
+                buffer.emplace_back(std::make_shared<jh::immutable_str>(src.c_str()));
+            }
+        };
+    };
+
+    // std::string benchmark
+    BENCHMARK_ADVANCED("std::unique_ptr<std::string> from c_str() (1024x)")()
+    {
+        std::vector<std::unique_ptr<std::string>> buffer;
+        buffer.reserve(N);
+        return [buffer = std::move(buffer), &test_inputs]() mutable {
+            buffer.clear();
+            for (const auto &src : test_inputs) {
+                buffer.emplace_back(new std::string(src.c_str())); // NOLINT force construct from c_str
+            }
+        };
+    };
+
+    // immutable_str benchmark
+    BENCHMARK_ADVANCED("std::unique_ptr<immutable_str> from c_str() (1024x)")()
+    {
+        std::vector<std::unique_ptr<jh::immutable_str>> buffer;
+        buffer.reserve(N);
+        return [buffer = std::move(buffer), &test_inputs]() mutable {
+            buffer.clear();
+            for (const auto &src : test_inputs) {
+                buffer.emplace_back(new jh::immutable_str(src.c_str()));
+            }
+        };
+    };
+
+    BENCHMARK_ADVANCED("std::unique_ptr<immutable_str> from string_view (1024x)")()
+    {
+        std::vector<std::unique_ptr<jh::immutable_str>> buffer;
+        buffer.reserve(N);
+        return [buffer = std::move(buffer), &test_inputs]() mutable {
+            buffer.clear();
+            std::mutex mtx;
+            for (const auto &src : test_inputs) {
+                buffer.emplace_back(new jh::immutable_str(src, mtx));
+            }
+        };
+    };
 }

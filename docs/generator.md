@@ -1,369 +1,219 @@
-### **JH Toolkit: Generator API Documentation**
+# 🔁 JH Toolkit: `generator` API Documentation
 
-📌 **Version:** 1.1  
+📌 **Version:** 1.3  
 📅 **Date:** 2025  
-👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
+👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`  
 
 [![Back to README](https://img.shields.io/badge/%20Back%20to%20README-blue?style=for-the-badge)](../README.md)
 
+---
+
 ## **Overview**
 
-The `jh::generator<T, U>` class provides a **coroutine-based generator** inspired by Python's `yield` mechanism.  
-It allows both **iterative** and **interactive** coroutine-based generators, enabling **lazy evaluation** and *
-*on-the-fly computations** in C++20.
+The `jh::generator<T, U>` class provides a **coroutine-based generator** inspired by Python's `yield` mechanism. It allows both **iterative** and **interactive** coroutine-based generators, enabling **lazy evaluation** and **on-the-fly computations** in modern C++.
 
-### **Why `final`?**
+### 🔐 Why `final`?
 
-The `generator` class is marked as `final` because **inheritance is unnecessary and counterproductive** in this case:
-
-1. **Coroutines are not designed for polymorphism** – Unlike traditional class hierarchies, coroutine-based objects rely
-   on **co_await/co_yield mechanisms**, making virtual function overrides impractical.
-2. **Generator semantics do not require extension** – The generator's behavior is **self-contained** and does not
-   benefit from subclassing.
-3. **Performance considerations** – Avoiding virtual dispatch ensures **zero-cost abstractions**, keeping coroutine
-   execution efficient.
-
-### **Key Features**
-
-- **Coroutine-powered iteration** (`co_yield`) for **lazy sequences**.
-- **Interactive sending** (`send()` and `send_ite()`) to modify execution dynamically.
-- **Automatic conversion** to `std::vector` and `std::list`.
-- **Exception-safe coroutine management**, preventing leaks and undefined behavior.
-- **Explicit iterator support**, allowing both **manual iteration** and **range-based loops**. (`begin()` and `end()`
-  only available when `U == std::monostate`)
+- Coroutines should not support inheritance semantically.
+- Subclassing `generator` is unnecessary.
+- Marking `final` avoids accidental vtable pollution, ensuring optimal performance.
 
 ---
 
-## **⚠ Important Reminder: No Serialization, Comparison, or Internal Mutex**
+## ✨ Key Features
 
-`jh::generator<T, U>` is designed to be a **lightweight**, **performance-oriented** coroutine object.  
-It **does not** support:
-
-- **Serialization or deserialization**: Generators depend on **coroutine state**, which is not serializable.
-- **Comparison operators (`operator==`, etc.)**: Comparing coroutine execution states is **meaningless**.
-- **Built-in mutex mechanisms**: If you need **thread safety**, you **must manage your own mutex externally**.
-
-**Why no built-in mutex?**
-
-- Generators are **designed for single-threaded lazy evaluation**.
-- Adding an internal mutex would introduce **unnecessary performance overhead**.
-- Just like most STL containers, if cross-thread usage is needed, **external synchronization is required**.
-
-📌 **If you require a thread-safe coroutine structure, you should build a wrapper that explicitly manages concurrency.**
+- Coroutine-powered lazy sequences (`co_yield`).
+- Supports interactive generators (`send()` & `send_ite()`).
+- **Single-pass iteration** with optional `begin()/end()`.
+- Conversion to `std::vector` and `std::deque`.
+- Seamless interop with STL-style ranges and pipelines via `jh::to_range()`.
+- Exception-safe and RAII-compliant.
+- Move-only semantics — copy constructor and copy assignment are explicitly deleted.
 
 ---
 
-## **API Reference**
+## ⚠ Design Notes & Limitations
 
-📌 **Detailed module description can be found in `generator.h`**  
-📌 **Function-specific documentation is embedded in the source code and can be viewed in modern IDEs.**
+- 🚫 **No built-in serialization** — coroutine state is not serializable.
+- 🚫 **No internal mutex** — generators are **not thread-safe** by design.
+- 🚫 **No comparison operators** — comparing generator state is meaningless.
+- 🚫 **Copy forbidden** — `generator` instances are non-copyable to avoid coroutine ownership ambiguity. Only move semantics are supported.
+- 🚫 **No `begin() const`** — Range iteration is destructive. Constant generators are intentionally disallowed to prevent accidental consumption.
+- 🚫 Generator instances must not be `const`.  
+
+> ❗ Only generators with `U == jh::typed::monostate` can support range-based `for` iteration.  
+> For generators with `send()` input, such iteration is semantically invalid.  
+> Since iteration mutates internal state, assigning a generator to a `const` variable is semantically invalid.  
+> This is enforced via `begin() const = delete`, which will result in compile-time error when misused.  
 
 ---
 
-### **Class: `jh::generator<T, U>`**
-
-📌 **Description:**  
-A coroutine-based generator that supports both **yielding values** and **receiving inputs**.
+## 🧩 Type Parameters
 
 ```c++
-template<typename T, typename U = std::monostate>
+template<typename T, typename U = jh::typed::monostate>
 struct generator;
 ```
 
-#### **Template Parameters**
-
-- **`T`** - The type of values the generator produces.
-- **`U`** *(default: `std::monostate`)* - The type of values that can be **sent** into the generator.
+- `T` — The type of yielded values.
+- `U` — The type of sent values (optional; default is `monostate`).
 
 ---
 
-### **Constructor**
-
-#### 📌 `generator(std::coroutine_handle<promise_type> h)`
-
-**Description:**  
-Creates a `generator` object from an existing **coroutine handle**.
-
-🔹 **Parameters**
-
-- `h` - A coroutine handle that represents the execution context.
-
----
-
-### **Destructor**
-
-#### 📌 `~generator()`
-
-**Description:**  
-Destroys the coroutine handle if it exists.
-
-🔹 **Behavior**
-
-- Ensures that any active coroutine is properly destroyed.
-- If the generator is exhausted, calling this destructor is a **no-op**.
-
----
-
-### **Iteration Methods**
-
-#### 📌 `bool next()`
-
-**Description:**  
-Advances the generator **to the next value**.
-
-🔹 **Returns**
-
-- `true` → If a new value is available.
-- `false` → If the generator is **exhausted**.
-
----
-
-### **Interactive Methods**
-
-#### 📌 `bool send(U value)`
-
-**Description:**  
-Sends a value into the generator and **resumes execution**.
-
-🔹 **Parameters**
-
-- `value` → The input value sent to the generator.
-
-🔹 **Returns**
-
-- `true` → If the coroutine is still active.
-- `false` → If the generator has **finished execution**.
-
----
-
-#### 📌 `bool send_ite(U value)`
-
-**Description:**  
-Combines `next()` and `send()`, advancing the generator **and sending a value in one step**.
-
-🔹 **Parameters**
-
-- `value` → The input value sent to the generator.
-
-🔹 **Returns**
-
-- `true` → If the generator successfully advanced and accepted the value.
-- `false` → If the generator has **finished execution**.
-
----
-
-### **Value Retrieval**
-
-#### 📌 `std::optional<T> value()`
-
-**Description:**  
-Retrieves the **current value** yielded by the generator.
-
-🔹 **Returns**
-
-- `std::optional<T>` → The latest yielded value (or `nullopt` if none).
-
----
-
-#### 📌 `std::optional<U> last_sent_value()`
-
-**Description:**  
-Retrieves the **last sent value** (if any).
-
-🔹 **Returns**
-
-- `std::optional<U>` → The most recent value sent into the generator.
-
----
-
-### **Control Methods**
-
-#### 📌 `void stop()`
-
-**Description:**  
-Stops execution and **destroys the coroutine**.
-
----
-
-### **Iterator Methods**
-
-#### 📌 `iterator begin()`
-
-**Description:**  
-Returns an **iterator** to the beginning of the generator sequence, enabling **range-based for loops**.
-
-**Requirements**
-
-- Available **only when `U == std::monostate`** (i.e., no `send()` required).
-- The generator must be **mutable** (`begin() const` is explicitly deleted).
-
-🔹 **Returns**
-
-- An iterator pointing to the first value in the generator.
-
-**Usage**
-
-- Enables iteration using `for (auto x : gen)`.
-- Allows integration with STL algorithms that require iterators.
-
----
-
-#### 📌 `iterator end()`
-
-**Description:**  
-Returns an **end iterator**, which serves as a **past-the-end** marker for iteration.
-
-**Requirements**
-
-- Available **only when `U == std::monostate`** (same as `begin()`).
-- Safe to call multiple times without consuming values.
-
-🔹 **Returns**
-
-- An iterator representing the end of the sequence.
-
-**Usage**
-
-- Used as the termination condition in range-based for loops.
-- Provides compatibility with STL algorithms requiring `begin()` and `end()`.
-
----
-
-#### 📌 **Range-Based For Loop Support**
-
-**Description:**  
-Generators supporting range-based iteration can be used with the standard C++ for-each syntax.
-
-**Requirements**
-
-- Only available when `U == std::monostate`.
-- The generator **must not be declared as `const`**, as iteration modifies its internal state.
-
-**Usage**
-
-- Iteration consumes elements one-by-one.
-- The generator state is **advanced on each iteration step**.
-- Declaring a generator as `const` would prevent iteration, as `begin()` is **not available** in that case.
-
----
-
-## **Conversion Functions**
-
-### 📌 `jh::generator<T> make_generator(const T& seq)`
-
-**Description:**  
-Converts a sequence into a generator.
-
----
-
-### **Conversion to Containers**
-
-#### 📌 `std::vector<T> to_vector(generator<T>& gen)`
-
-**Description:**  
-Converts the generator into a `std::vector<T>`.
-
----
-
-#### 📌 `std::list<T> to_list(generator<T>& gen)`
-
-**Description:**  
-Converts the generator into a `std::list<T>`.
-
----
-
-## **Use Cases**
-
-- **Lazy Iteration**: Efficiently generate sequences without precomputing them.
-- **Interactive Processing**: Send values dynamically to modify computation.
-- **Stream Processing**: Work with large datasets without loading them into memory.
-
----
-
-## **Iterator Overview**
-
-### **Iterator for Coroutine-Based Generators**
-
-The `jh::iterator<jh::generator<T, U>>` class is designed **exclusively** for **range-based iteration** over
-`jh::generator<T, U>`. It provides standard **input iterator** behavior, allowing seamless integration with *
-*range-based for-loops** and **STL algorithms**.
-
-While **we strongly discourage manually instantiating this iterator**, it is not explicitly prohibited. The recommended
-way to obtain an iterator is via `generator::begin()` and `generator::end()`.
-
-Additionally, the generator provides a **type alias** for convenience:
+## 🔁 Iteration & Interaction
 
 ```c++
-using iterator = iterator<generator>;
+bool next();
+bool send(U value);
+bool send_ite(U value);
+std::optional<T> value();
+void stop(); // Immediately destroys coroutine and releases resources
 ```
 
-This allows the iterator to be accessed directly as:
+- `next()` advances the coroutine.
+- `send()` injects a value.
+- `send_ite()` combines both.
+- `value()` returns the last `co_yield`ed value.
+
+> Use `stop()` to terminate the coroutine early. After calling, all subsequent calls become no-op.
+
+> 🛡️ **Exception Safety**  
+> All coroutine exceptions (e.g., thrown during `co_yield` / `co_await`) are automatically captured via `std::exception_ptr` and re-thrown during `next()` or `send()` calls.  
+> This ensures consistent propagation and RAII-safe termination:
+> ```c++
+> try {
+>     while (gen.next()) {
+>         auto val = gen.value(); // safe
+>     }
+> } catch (const std::exception& ex) {
+>     std::cerr << "Coroutine failed: " << ex.what() << "\n";
+> }
+> ```
+
+---
+
+## 🌀 Range Loop Support
+
+Generators with `U == jh::typed::monostate` support `begin()` and `end()`:
 
 ```c++
-jh::generator<T, U>::iterator
+jh::generator<int> gen = my_generator();
+for (auto x : gen) std::cout << x << " ";
 ```
 
-Thus, the iterator can be referenced through the generator itself, making it more intuitive to use in generic code.
+> Note: Iteration **consumes** the generator. Don't use `const` generator in ranged-for.  
+> 🧠 **Why `begin()` is non-const:**  
+> Since `generator` iteration **consumes** internal state, `begin()` is only available for mutable instances.  
+> This design enforces clarity — range loops mutate the generator by design.
 
 ---
 
-### **Key Properties**
+## 📦 Conversion Utilities
 
-- **Restricted to Generators Without Input (`U == std::monostate`)**
-    - If `send()` is required, range-based iteration is **not possible** since input values must be explicitly provided.
+### ✅ To Vector
 
-- **Single-Pass, Consumable Iteration**
-    - Advancing (`++`) **consumes** elements, meaning values cannot be revisited.
-    - Works like Python iterators: each step modifies the generator's internal state.
+```c++
+std::vector<T> to_vector(generator<T>& gen);
+std::vector<T> to_vector(generator<T, U>& gen, U input);
+std::vector<T> to_vector(generator<T, U>& gen, const Range& inputs);
+```
 
-- **Safe Expiration Handling**
-    - If the generator is **destroyed** or **exhausted**, the iterator **automatically resets itself** to prevent
-      invalid memory access.
+### ✅ To Deque (Efficient Replacement for `std::list`)
 
-- **No Shared Ownership**
-    - Instead of `std::shared_ptr<G>`, this iterator holds a **non-owning** `std::optional<std::reference_wrapper<G>>`.
-    - This avoids **unintended ownership extension**, ensuring the generator is managed **only by its coroutine**.
+> ⛔ Support for `std::list` is dropped. Use `std::deque` instead.
 
----
+```c++
+std::deque<T> to_deque(generator<T>& gen);
+std::deque<T> to_deque(generator<T, U>& gen, U input);
+std::deque<T> to_deque(generator<T, U>& gen, const Range& inputs);
+```
 
-### **Usage Notes**
-
-- If a generator supports `send()`, it **cannot** be iterated using `for(auto x : gen)`.
-- If the generator is destroyed before iteration completes, the iterator will behave like `end()`.
-- Iterators should only be used **while the generator is valid**—if the generator is manually stopped (`stop()`),
-  iterators become invalid.
+> ✅ `deque` has better memory density, less pointer overhead, better large-page locality.
 
 ---
 
-### **Iterator Behavior**
+## 🌐 Generator Factory: `to_range`
 
-| Operation         | Description                                                                                                       |
-|-------------------|-------------------------------------------------------------------------------------------------------------------|
-| `operator++()`    | Advances to the next value, consuming the current one.                                                            |
-| `operator++(int)` | Post-increment, but since iteration is single-pass, behaves the same as pre-increment.                            |
-| `operator*()`     | Retrieves the current value. Throws if the iterator is exhausted.                                                 |
-| `operator->()`    | Provides pointer access to the current value.                                                                     |
-| `operator==()`    | Two iterators are equal if they reference the same generator **and** hold the same value, or if both are `end()`. |
-| `operator!=()`    | Opposite of `operator==()`.                                                                                       |
+Convert a generator factory into a **repeatable range**:
+
+```c++
+// ✅ Correct usage: capture view explicitly or use static
+constexpr auto view = std::views::iota(0, 3);
+const auto my_range = jh::to_range([view] {
+    return jh::make_generator(view);
+});
+
+for (int x : my_range) std::cout << x << " "; // 0 1 2
+for (int x : my_range) std::cout << x << " "; // 0 1 2 again
+```
+
+❗ **Invalid usage:**
+```c++
+// ❌ Temporary view leads to dangling reference
+const auto my_range = jh::to_range([] {
+    return jh::make_generator(std::views::iota(0, 3)); // dangling
+});
+```
+
+### ⚠️ Safety Notes
+
+- If your range (`std::views::iota`, etc.) is temporary, **capture it first** or store as `static`.
+- You may also use `constexpr` or `static` variables in lambdas to persist views safely.
+- ❗ Do **not** name the result `range` — use `range_`, `my_range`, etc., to avoid conflict with `range` module.
 
 ---
 
-### **Final Considerations**
+## 🧵 Integration Compatibility
 
-- **Designed for safe, idiomatic C++ iteration.**
-- **Optimized for performance with coroutine-based generators.**
-- **Ensures safety against invalid accesses when generators expire.**
-- **Avoids unnecessary complexity by enforcing a strict usage pattern.**
+The return value of `jh::to_range(...)` is compatible with:
 
-This iterator is an essential part of `jh::generator<T, U>`, enabling seamless iteration while maintaining the *
-*efficiency, safety, and integrity** of coroutine-based execution.
+- ✅ `jh::views::zip(...)`
+- ✅ `jh::views::enumerate(...)`
+- ✅ STL algorithms (`std::ranges::for_each`, `transform`, etc.)
 
-## **Conclusion**
+> 🔍 Both `zip` and `enumerate` require arguments to be either:
+> - A `std::ranges::range`, or
+> - A valid `jh::sequence` (i.e., supports `.begin()` / `.end()` in const context)
 
-The `jh::generator<T, U>` class provides an **efficient**, **type-safe**, and **flexible** coroutine-based generator for
-**C++20**, bringing **Python-style iteration and interaction** to C++.
+### ❌ Not Allowed:
+```c++
+auto gen = jh::make_generator(std::views::iota(0, 10));
+jh::views::zip(gen, some_other_sequence); // ❌ ILLEGAL: generator<T> is not a range
+```
 
-📌 **For detailed module information, refer to `generator.h`.**  
-📌 **Function-specific documentation is available directly in modern IDEs.**
+### ✅ Correct:
+```c++
+auto zipped = jh::views::zip(
+    jh::to_range([] {
+        static auto view = std::views::iota(0, 5);
+        return jh::make_generator(view);
+    }),
+    some_other_sequence
+);
+```
+See [jh::views](views.md) for views details.
 
-🚀 **Enjoy coding with JH Toolkit!**
+---
+
+## 💡 Use Cases
+
+- Lazy numeric sequences
+- On-demand token streams
+- Streaming input processing
+- Bidirectional reactive pipelines
+
+---
+
+## 📚 See Also
+
+- `jh::views::enumerate` — Adds index to any compatible range.
+- `jh::views::zip` — Zips multiple sequences together.
+- `jh::typed::monostate` — Lightweight signal type for void input.
+
+---
+
+📌 **For full reference, see `generator.h`.**  
+📌 **Detailed API is embedded inline for IDE documentation support.**
+
+🚀 Enjoy coroutine-powered iteration with **JH Toolkit**!
+
