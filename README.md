@@ -1,68 +1,197 @@
+
 # JH Toolkit
 
-### **version: 1.3.0-dev**
+### **version: 1.3.0**
 
-**A Modern C++20 Utility Library with Coroutine-based Generators, Behavior-defined Concepts, Immutable Strings, and Weak pointer-based Object Pooling.**
+**A Modern, Modular C++20 Toolkit for High-Performance Generic Programming — Featuring POD Utilities, Immutable Structures, Coroutine Generators, Concept-Driven Abstractions, and Lightweight Object Pools.**
 
 <!-- ✅ Language & Standard Support -->
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-violet.svg)](https://en.cppreference.com/w/cpp/20)
-[![Header-Only](https://img.shields.io/badge/header--only-partial-green)](#)
+[![Header-Only](https://img.shields.io/badge/header--only-partial_(most_modules)-green)](#)
 [![Coroutines](https://img.shields.io/badge/coroutines-supported-brightgreen)](https://en.cppreference.com/w/cpp/language/coroutines)
 [![Concepts](https://img.shields.io/badge/concepts-supported-brightgreen)](https://en.cppreference.com/w/cpp/language/constraints)
 
 <!-- ✅ Feature Highlights -->
-[![Object Pool](https://img.shields.io/badge/object--pooling-weak_ptr_based-brown)](#)
-[![Immutable Strings](https://img.shields.io/badge/immutable--strings-truly_immutable-brown)](#)
-[![Generators](https://img.shields.io/badge/generators-coroutine_driven-brown)](#)
+[![Object Pool](https://img.shields.io/badge/object--pooling-weak_ptr_based-brown)](docs/pool.md)
+[![Immutable Strings](https://img.shields.io/badge/immutable--strings-truly_immutable-brown)](docs/immutable_str.md)
+[![Generators](https://img.shields.io/badge/generators-coroutine_driven-brown)](docs/generator.md)
+[![POD System](https://img.shields.io/badge/pod--system-trivial_types%2C_layout_stable-brown)](docs/pod.md)
 
 ---
 
-🚀 **JH Toolkit 1.3.0-dev - Expanding Core Features!**
+## 🚀 What's New in 1.3.x
+
+JH Toolkit `1.3.x` brings enhancements focused on **STL interop**, **runtime-optimized structures**, and **modern `C++20` concept design** — all while retaining **zero-overhead abstractions**.
+
+- ✨ **`runtime_arr<T>`**  
+  A fixed-size, heap-allocated array where **size is known at runtime**.  
+  Designed to offer **raw-layout performance** and STL-like usability without dynamic resizing.  
+  When initialized with primitive or POD types, `runtime_arr` avoids unnecessary heap operations and performs faster than `std::vector` in many **fully-initialized** scenarios (e.g., when compared to `std::vector(N)`).
+
+- 🔁 **`sequence`** + **`views`**  
+  `sequence` now supports `.to_range()` to expose **`std::ranges::input_range`-compatible views**, enabling smooth STL interop.  
+  A new module `jh::views` introduces allocation-free range adaptors like `enumerate`, `zip`, and more — **based on `sequence` rather than `range`**, ensuring type safety without RTTI.
+
+- 🌀 **`generator<T>`**  
+  Added support for **generator factories from callable objects**, including lambdas that return a `co_yield` generator.  
+  This allows simple coroutine-based logic to integrate with pipelines via `to_range()` — provided the generator is of the **non-`send`** (pure `co_yield`) kind.
+
+- 🔒 **`immutable_str`**  
+  Improved hash interop, transparent pointer compatibility, and ABI-safe layout.  
+  Now supports **transparent key lookup** for hash tables:
+
+  ```c++
+  std::unordered_set<jh::atomic_str_ptr, jh::atomic_str_hash, jh::atomic_str_eq> pool;
+  pool.insert(jh::make_atomic("cached"));
+
+  if (pool.find("cached") != pool.end()) {
+      // ✅ No need to construct immutable_str for lookup
+  }
+  ```
+
+> These updates make `1.3.x` the most robust and STL-aligned version yet — ideal for performance-focused, modern C++ development across Linux, macOS, and Windows.
+
+
+---
 
 ## 📌 Requirements
 
 - **C++20** (mandatory)
 - **CMake 3.14+** (for library usage)
-- **CMake 3.20+** (for library compilation and installation)
-- **Git** (required for debugging mode compilation)
-- **A modern C++20 compiler** (GCC 10+, Clang 10+)
-  > **GCC(MinGW)**, **Clang** are tested and supported in every release.
-  > **MSVC is not supported** due to its limited support for C++20 features. We do not plan to downgrade to match MSVC's capabilities, so users should use GCC or Clang instead.
-  > For **Windows ARM64**, native support for MinGW is limited. We recommend using **GCC within WSL2** to achieve near-native performance.
-  
-Ensure your project enables **C++20**, otherwise `jh-toolkit` will not compile:
+- **CMake 3.20+** (for full compilation and installation)
+- **Git** (required for Debug mode builds)
+- **A modern C++20 compiler**
+
+> ✅ CI-tested and recommended toolchains:
+
+| Platform    | Recommended Compiler                                                    | Notes                                                                                  |
+|-------------|-------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| **Linux**   | **GCC 12+**                                                             | CI uses `ubuntu-latest` with GCC 12                                                    |
+| **macOS**   | **Apple Clang 16+** (Xcode 15.3+)<br>or **LLVM Clang 16+** via Homebrew | Use Homebrew LLVM if your Xcode version is older                                       |
+| **Windows** | **MSYS2 UCRT64 (GCC 13+)**                                              | Older `mingw64` may lack support for `std::ranges`; use `ucrt64` to ensure correctness |
+
+---
+
+### 🧠 Compiler Compatibility Notes
+
+- `jh-toolkit` depends on full support for:
+  - `std::ranges::subrange`, `views`
+  - `concepts`, `requires` constraints
+  - coroutine features (`co_yield`, `co_return`)
+  - aggregate initialization across POD inheritance
+- ✅ Minimum supported versions:
+  - GCC 11+
+  - Clang 15+
+- ✅ CI-tested:
+  - GCC 12+
+  - LLVM Clang 15+ (macOS)
+  - MSYS2 UCRT64 GCC 13+ (Windows)
+
+---
+
+### ❌ Not Supported
+
+- **MSVC (Microsoft Visual C++)**  
+  Compilation with MSVC is **explicitly prohibited**.  
+  Any MSVC toolchain will trigger a hard error via [`include/jh/utils/platform.h`](include/jh/utils/platform.h):
+
+  > 🛑 Why?
+  > - Incomplete support for C++20 `concepts`, `ranges`, and coroutine semantics
+  > - Unstable `SFINAE` and template constraints
+  > - ABI and STL inconsistencies across versions
+
+  ✅ Alternatives:
+  - **MSYS2 (UCRT64) with GCC**
+  - **WSL2 + Ubuntu GCC**
+  - **MINGW-Clang for Windows**
+
+---
+
+### 🚫 32-bit Platforms
+
+- JH Toolkit **does not support** 32-bit platforms (e.g., x86, ARMv7).
+- A hard `static_assert(sizeof(std::size_t) == 8)` check will **prevent compilation** on such targets.
+- This guarantees ABI consistency and avoids silent miscompilation from fake `-m64` flags or macro spoofing.
+
+---
+
+### ⚠️ Windows ARM64 Note
+
+- Native Windows ARM64 toolchains (e.g., MSYS2 `mingw64` or `clang64` for ARM64) are **not fully supported**.
+- They often lack required `std::ranges` and concept resolution features.
+- ✅ Recommended:
+  - Use **WSL2 + Ubuntu + GCC** for reliable ARM64 builds on Windows
+  - Or cross-compile from a known-good x86_64 Linux system
+
+---
+
+### 📦 MinGW Compatibility
+
+> - Older `mingw64` toolchains (e.g., GitHub runners, system MinGW) **lack full support** for `std::ranges`, `concepts`, and coroutine semantics.
+> - ✅ However, **`jh::pod` modules** are fully supported even on older MinGW variants.
+> - ✅ If you're only using `jh-toolkit` as a **header-only POD utility**, then any modern C++20-capable MinGW will work.
+
+✅ Toolchains bundled with modern environments like **CLion**, **MSYS2**, or **VSCode + MSYS2** typically ship with **GCC 12+ or 13+**, and are fully compatible.
+
+> 🛠 For full module support (`generator`, `immutable_str`, `views`, `pool`, etc.), we recommend:
+
+```bash
+pacman -Syu
+pacman -S --needed mingw-w64-ucrt-x86_64-toolchain
+```
+
+---
+
+### 🛠 Enabling C++20
+
+Ensure your project explicitly enables **C++20**, otherwise `jh-toolkit` will not compile:
+
 ```cmake
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 ```
 
-> ⚠️ **Not Designed for Embedded or 32-bit Platforms**  
-> JH Toolkit is designed for **modern 64-bit systems** (x86_64, ARM64). All container internals use  
-> `uint64_t` for `size_`, and STL compatibility **requires `size()` to match `uint64_t` semantics**.  
-> As a result, **embedded targets or 32-bit builds are not supported**.
+---
 
-> 📱 **Mobile (Android/iOS) and Cross-Compiling Notes**  
-> When targeting **mobile platforms**, we strongly recommend **project-local integration** (e.g., `add_subdirectory(jh-toolkit)`)  
-> instead of precompiled `install` + `find_package()`.
->
-> This avoids **ABI mismatch issues** when pulling desktop-compiled binaries into mobile toolchains  
-> (e.g., NDK, Xcode, etc.), and allows tight control over architecture-specific builds.
+### 📱 Mobile & Embedded Targets
 
-> 🧰 **CMake < 3.20 Systems**  
-> If your system does not support `CMake 3.20+`, you can still:
-> - Include the source directly in your CMake tree.
-> - Use `#include "jh/header"` instead of `#include <jh/header>`.
-> - Manually link `.cpp` sources for non-header-only modules.
+> ❌ JH Toolkit is **not intended for embedded systems or constrained environments**.
+> Internals are 64-bit optimized and assume modern system-level allocators and CPU alignment.
 
-> ✅ Local embedding works well on modern Linux/macOS desktops, CI runners, or mobile SDKs —  
-> just **not embedded** or **resource-constrained systems**.
+> ✅ For Android/iOS, use `add_subdirectory(jh-toolkit)` for tight ABI control — do not preinstall or `find_package()`.
+
+> 📦 You may embed source directly and limit to `jh::pod` for ultra-minimal use cases.
+
+---
+
+### 🧰 Older CMake (< 3.20)
+
+If you can't use `CMake 3.20+`, you can still:
+
+- Include source directly in your CMake tree
+- Use `#include "jh/..."`
+- Link individual `.cpp` manually (non-header-only modules)
+
+---
+
+✅ Local embedding works reliably on:
+
+- Linux/macOS desktops
+- CI runners
+- Mobile cross-compilation
+
+🚫 Not recommended for:
+
+- 32-bit builds
+- Bare-metal / embedded
+- MSVC-based platforms
 
 ---
 
 ## 📥 Installation
 
-#### 🔸 **Option 1: Latest Development Version (1.2+ - Ongoing Updates)**
+#### 🔸 **Option 1: Latest Stable Version (1.3+ Ongoing)**
 ```sh
 git clone https://github.com/JeongHan-Bae/jh-toolkit.git
 ```
@@ -76,7 +205,6 @@ git clone --branch 1.2.x-LTS --depth=1 https://github.com/JeongHan-Bae/jh-toolki
 ---
 
 ### 1️⃣ Build and Install
----
 
 #### 🔹 Full Version (Default)
 
@@ -253,22 +381,6 @@ This ensures consistent runtime behavior and portability across CI runners or de
 - 🧪 All modules are covered by unit tests for **behavioral correctness**.
   - Modules like `generator` and `pool` are stable but **not yet micro-optimized**.
   - Core utility types such as `immutable_str` and `runtime_arr` are **micro-optimized** and designed for practical performance without sacrificing safety or clarity.
-- 🧩 Modules like `data_sink` and `pod_stack` were previously benchmarked
-  but are now deprecated due to consistently poor performance under optimization.  
-  They have been **removed from test coverage and performance tracking**.
-
----
-
-### ⚠️ Deprecated Experimental Modules
-
-- The previously benchmarked **`data_sink`** and **`pod_stack`** have been moved to the `/experimental` directory:
-  - While they performed well under **Clang `-O0`/`-O1`**, they **underperformed STL by 10–20% at `-O2`**.
-  - On **GCC**, performance dropped further due to missed optimization opportunities.
-  - These modules are no longer maintained, and **no benchmark results will be provided going forward**.
-- All `/experimental` modules:
-  - Are **not part of the public API**.
-  - May be removed or changed **without notice**.
-  - Have **no performance or stability guarantees**.
 
 ---
 
@@ -281,7 +393,6 @@ Some core modules include **lightweight, embedded benchmarks** in their test sui
   - `runtime_arr`: A fixed-size, non-resizable heap array with raw-layout speed and STL compatibility.
 - 🧪 Modules **without active benchmarks**:
   - `generator`, `pool`: Stable but not micro-optimized yet.
-  - `data_sink`, `pod_stack`: Deprecated and removed from performance consideration.
 
 #### 📈 Results Overview
 
