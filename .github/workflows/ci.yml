@@ -37,20 +37,24 @@ jobs:
       - name: Run tests
         run: ctest --test-dir build-fastdebug --output-on-failure
 
-
   macos-ci:
-    name: macOS (clang)
+    name: macOS (LLVM Clang)
     runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Dependencies
+      - name: Install Dependencies (LLVM Clang + CMake + Ninja)
         run: |
-          brew install ninja cmake
+          brew install cmake ninja llvm
 
-      - name: Configure (FastDebug)
-        run: cmake -B build-fastdebug -DCMAKE_BUILD_TYPE=FastDebug -G Ninja
+      - name: Configure (FastDebug with LLVM Clang)
+        run: >
+          cmake -B build-fastdebug
+          -DCMAKE_BUILD_TYPE=FastDebug
+          -G Ninja
+          -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang
+          -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
 
       - name: Build
         run: cmake --build build-fastdebug -v
@@ -58,36 +62,36 @@ jobs:
       - name: Run tests
         run: ctest --test-dir build-fastdebug --output-on-failure
 
-
   windows-ci:
-    name: Windows (mingw)
+    name: Windows (MSYS2 UCRT64 GCC)
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
     steps:
+      - name: Setup MSYS2 with GCC 13+
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+          msystem: UCRT64
+
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Dependencies
-        shell: pwsh
-        run: |
-          choco install -y ninja || echo "ninja may already be installed"
-          choco install -y cmake || echo "cmake may already be installed"
-          choco install -y mingw || echo "mingw may already be installed"
-
-      - name: Check Tools
-        shell: pwsh
-        run: |
-          cmake --version
-          g++ --version
-          ninja --version
-
       - name: Configure (FastDebug)
-        shell: bash
-        run: cmake -B build-fastdebug -DCMAKE_BUILD_TYPE=FastDebug -G Ninja
+        run: >
+          cmake -B build-fastdebug
+          -DCMAKE_BUILD_TYPE=FastDebug
+          -G Ninja
+          -DCMAKE_C_COMPILER=gcc
+          -DCMAKE_CXX_COMPILER=g++
 
       - name: Build
-        shell: bash
         run: cmake --build build-fastdebug -v
 
       - name: Run tests
-        shell: bash
         run: ctest --test-dir build-fastdebug --output-on-failure

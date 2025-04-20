@@ -213,7 +213,7 @@ namespace jh::pod {
             }
 
             [[nodiscard]] static constexpr bitflags_uint max() noexcept {
-                return bitflags_uint(~T{});
+                return static_cast<bitflags_uint>(~T{});
             }
 
             constexpr bool operator==(const bitflags_uint &rhs) const noexcept = default;
@@ -393,7 +393,7 @@ namespace jh::pod {
     template<std::uint16_t N>
     constexpr bitflags<N> from_bytes(array<std::uint8_t, N / 8> arr) {
         if constexpr (is_native_bitflags<N>) {
-            return bitflags<N>{bytes_to_uint<N / 8>(arr)};
+            return static_cast<bitflags<N>>(detail::bitflags_uint{.bits = bytes_to_uint<N / 8>(arr)});
         } else {
             return {arr.data}; // pod types -> safe copy
         }
