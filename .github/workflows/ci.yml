@@ -15,55 +15,79 @@ on:
       - '.github/workflows/**'
 
 jobs:
-  build-and-test:
-    name: ${{ matrix.os }} (${{ matrix.compiler }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
-        include:
-          - os: ubuntu-latest
-            compiler: gcc
-            generator: Ninja
-          - os: macos-latest
-            compiler: clang
-            generator: Ninja
-          - os: windows-latest
-            compiler: mingw
-            generator: Ninja
 
+  ubuntu-ci:
+    name: Ubuntu (gcc)
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install Dependencies
         run: |
           sudo apt update
           sudo apt install -y ninja-build g++ cmake
 
-      - name: Install Dependencies (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew install ninja cmake
-
-      - name: Install Dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          choco install -y ninja cmake mingw
-
       - name: Configure (FastDebug)
-        run: >
-          cmake -B build-fastdebug
-          -DCMAKE_BUILD_TYPE=FastDebug
-          -G "${{ matrix.generator }}"
-        shell: bash
+        run: cmake -B build-fastdebug -DCMAKE_BUILD_TYPE=FastDebug -G Ninja
 
       - name: Build
         run: cmake --build build-fastdebug -v
-        shell: bash
 
       - name: Run tests
         run: ctest --test-dir build-fastdebug --output-on-failure
+
+
+  macos-ci:
+    name: macOS (clang)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        run: |
+          brew install ninja cmake
+
+      - name: Configure (FastDebug)
+        run: cmake -B build-fastdebug -DCMAKE_BUILD_TYPE=FastDebug -G Ninja
+
+      - name: Build
+        run: cmake --build build-fastdebug -v
+
+      - name: Run tests
+        run: ctest --test-dir build-fastdebug --output-on-failure
+
+
+  windows-ci:
+    name: Windows (mingw)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        shell: pwsh
+        run: |
+          choco install -y ninja || echo "ninja may already be installed"
+          choco install -y cmake || echo "cmake may already be installed"
+          choco install -y mingw || echo "mingw may already be installed"
+
+      - name: Check Tools
+        shell: pwsh
+        run: |
+          cmake --version
+          g++ --version
+          ninja --version
+
+      - name: Configure (FastDebug)
         shell: bash
+        run: cmake -B build-fastdebug -DCMAKE_BUILD_TYPE=FastDebug -G Ninja
+
+      - name: Build
+        shell: bash
+        run: cmake --build build-fastdebug -v
+
+      - name: Run tests
+        shell: bash
+        run: ctest --test-dir build-fastdebug --output-on-failure

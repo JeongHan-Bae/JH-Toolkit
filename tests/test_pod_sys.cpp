@@ -80,7 +80,7 @@ TEST_CASE("JH POD Containers Sequence Check") {
 }
 
 TEST_CASE("pod::array basic construction and access") {
-    pod::array a = {{1, 2, 3, 4}};
+    pod::array<int, 4> a = {{1, 2, 3, 4}};
     REQUIRE(a.size() == 4);
     REQUIRE(a[0] == 1);
     REQUIRE(a[3] == 4);
@@ -90,7 +90,7 @@ TEST_CASE("pod::array basic construction and access") {
 }
 
 TEST_CASE("pod::array supports range-based iteration") {
-    pod::array chars = {{'a', 'b', 'c'}};
+    pod::array<char, 3> chars = {{'a', 'b', 'c'}};
 
     std::string s;
     for (const char ch: chars) {
@@ -101,9 +101,9 @@ TEST_CASE("pod::array supports range-based iteration") {
 }
 
 TEST_CASE("pod::array equality comparison works") {
-    pod::array a = {{1, 2, 3}};
-    pod::array b = {{1, 2, 3}};
-    pod::array c = {{1, 2, 4}};
+    pod::array<int, 3> a = {{1, 2, 3}};
+    pod::array<int, 3> b = {{1, 2, 3}};
+    pod::array<int, 3> c = {{1, 2, 4}};
 
     REQUIRE(a == b);
     REQUIRE_FALSE(a == c);
@@ -186,7 +186,7 @@ TEST_CASE("bytes_view basic reinterpret and comparison") {
     }
 
     SECTION("clone to pod::array<int, N>") {
-        pod::array arr = {{10, 20, 30}};
+        pod::array<int, 3> arr = {10, 20, 30};
         auto view = pod::bytes_view::from(arr.data, pod::array<int, 3>::size());
 
         auto clone = view.clone<pod::array<int, 3> >();
@@ -215,7 +215,7 @@ TEST_CASE("bytes_view basic reinterpret and comparison") {
 
         std::array<std::byte, 2> too_small{};
         auto view = pod::bytes_view{too_small.data(), too_small.size()};
-        auto [a, b] = view.clone<PodTest>();
+        const auto [a, b] = view.clone<PodTest>();
 
         REQUIRE(a == 0);
         REQUIRE(b == 0.0f);
@@ -360,7 +360,7 @@ TEST_CASE("pod::span works with pod::array") {
     for (std::uint16_t i = 0; i < N; ++i)
         arr[i] = i * 2;
 
-    span s = {arr.data, array<int, N>::size()};
+    span<int> s = {arr.data, array<int, N>::size()};
 
     SECTION("Basic span properties") {
         REQUIRE(s.size() == N);
@@ -394,10 +394,10 @@ TEST_CASE("pod::span works with pod::array") {
     }
 
     SECTION("Equality comparison") {
-        span same = {arr.data, array<int, N>::size()};
+        span<int> same = {arr.data, array<int, N>::size()};
         REQUIRE(s == same);
 
-        span shorty = {arr.data, N - 1};
+        span<int> shorty = {arr.data, N - 1};
         REQUIRE(s != shorty);
     }
 }
@@ -408,21 +408,21 @@ TEST_CASE("pod::to_span from array and containers") {
 
     SECTION("T[N] raw array") {
         int raw[5] = {1, 2, 3, 4, 5};
-        auto s = to_span(raw);
+        auto s = to_span<int>(raw);
         REQUIRE(s.size() == 5);
         REQUIRE(s[2] == 3);
     }
 
     SECTION("const T[N] raw array") {
         constexpr int raw[3] = {10, 20, 30};
-        auto s = to_span(raw);
+        auto s = to_span<int>(raw);
         REQUIRE(s.size() == 3);
         REQUIRE(s[1] == 20);
     }
 
     SECTION("pod::array<T, N>") {
         array<std::uint16_t, 4> a = {{11, 22, 33, 44}};
-        auto s = to_span(a.data);
+        auto s = to_span<std::uint16_t>(a.data);
         REQUIRE(s.size() == 4);
         REQUIRE(s[3] == 44);
     }

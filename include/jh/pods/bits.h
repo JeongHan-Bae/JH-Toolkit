@@ -200,7 +200,10 @@ namespace jh::pod {
                 return *this;
             }
 
-            constexpr bitflags_uint operator~() const noexcept { return bitflags_uint{~bits}; }
+            constexpr bitflags_uint operator~() const noexcept {
+                return static_cast<bitflags_uint>(~bits);
+            }
+
 
             /// @brief Inverts all bits in-place.
             constexpr void flip_all() noexcept { bits = ~bits; }
