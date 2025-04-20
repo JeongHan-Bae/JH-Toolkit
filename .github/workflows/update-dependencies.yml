@@ -6,9 +6,6 @@ on:
       - main
       - '*dev'
       - 'dev*'
-  pull_request:
-    branches:
-      - main
 
 jobs:
   extract-dependencies:
