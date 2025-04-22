@@ -19,6 +19,8 @@
   - [`pod::tuple`](#-jhpodtuplets-transitional)
   - [`pod::array`](#-jhpodarrayt-n)
   - [`pod::bitflags`](#-jhpodbitflagsn)
+  - [`pod::bytes_view`](#-jhpodbytes_view)
+  - [`pod::span`](#-jhpodspant)
   - [`pod::string_view`](#-jhpodstring_view)
   - [`pod::optional`](#-jhpodoptionalt)
 - [📊 STL Optimization with pod_like Types](#-stl-optimization-with-pod_like-types)

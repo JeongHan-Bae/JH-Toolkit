@@ -196,9 +196,9 @@ If you can't use `CMake 3.20+`, you can still:
 git clone https://github.com/JeongHan-Bae/jh-toolkit.git
 ```
 
-#### 🔹 **Option 2: Latest LTS Release (1.2.3+)**
+#### 🔹 **Option 2: Latest LTS Release (1.3.0+)**
 ```sh
-git clone --branch 1.2.x-LTS --depth=1 https://github.com/JeongHan-Bae/jh-toolkit.git
+git clone --branch 1.3.x-LTS --depth=1 https://github.com/JeongHan-Bae/jh-toolkit.git
 ```
 👉 Or download from: **[JH Toolkit Latest LTS Release](https://github.com/JeongHan-Bae/JH-Toolkit/releases/latest)**
 

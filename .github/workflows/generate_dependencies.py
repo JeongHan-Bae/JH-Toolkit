@@ -60,9 +60,9 @@ def extract_fetch_content_dependencies(test_cmake_path):
                 _dependencies.append({
                     "name": dep_name,
                     "platforms": ["Ubuntu", "macOS", "Windows"],
-                    "install": "Debug mode only, automatically fetched via CMake FetchContent",
+                    "install": "Fetched automatically via CMake FetchContent in Debug and FastDebug builds",
                     "version": dep_info["version"],
-                    "condition": "CMAKE_BUILD_TYPE=Debug",
+                    "condition": "CMAKE_BUILD_TYPE=Debug or FastDebug",
                     "fetch_method": "FetchContent from GitHub",
                     "repository": dep_info["repo"]
                 })
@@ -94,7 +94,7 @@ dependencies_data = {
                         {
                             "name": "C++20 Standard Library",
                             "platforms": ["Ubuntu", "macOS", "Windows"],
-                            "install": "Already included in modern compilers (g++-10+, clang++-10+, MSVC 19.28+)",
+                            "install": "Requires modern C++20-compatible compilers: GCC 12+, Clang 15+. MSVC is not supported.",
                             "version": "C++20"
                         }
                     ] + dependencies

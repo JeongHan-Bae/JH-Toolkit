@@ -5,6 +5,7 @@
 /bin/
 /lib/
 /obj/
+/dist/
 /CMakeFiles/
 cmake-build-*/
 /CMakeCache.txt
@@ -22,6 +23,8 @@ compile_commands.json
 *.exe
 *.exp
 *.pdb
+*.tar.gz
+*.tgz
 
 # Editor-specific files
 .idea/
