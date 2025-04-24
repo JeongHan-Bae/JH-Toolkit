@@ -21,6 +21,7 @@
 #include <iostream>
 #include <cstring>
 #include <numeric>
+#include <iomanip> // for std::setw
 
 namespace example {
 
@@ -130,6 +131,57 @@ namespace example {
         const pod::string_view sv{buffer.data, std::strlen(message)};
         std::cout << "String view over buffer: " << std::string_view(sv.data, sv.len) << "\n";
     }
+    /**
+     * @brief Demonstrates matrix-style reinterpretation from flat array using bytes_view::fetch
+     */
+    void matrix_view_usage() {
+        std::cout << "\n\U0001F539 pod::array as flat matrix view:\n";
+
+        constexpr std::size_t Rows = 3;
+        constexpr std::size_t Cols = 4;
+
+        // Flat storage: 3 rows * 4 cols
+        pod::array<int, Rows * Cols> flat{};
+        std::iota(flat.begin(), flat.end(), 1); // Fill with 1..12
+
+        const auto view = pod::bytes_view::from(flat);
+
+        std::cout << "Matrix as rows:\n";
+
+        for (std::size_t row = 0; row < Rows; ++row) {
+            const auto* r = view.fetch<pod::array<int, Cols>>(row * sizeof(pod::array<int, Cols>));
+            if (r != nullptr) {
+                for (int val : *r) {
+                    std::cout << std::setw(2) << val << " ";
+                }
+                std::cout << "\n";
+            }
+        }
+    }
+    /**
+     * @brief Demonstrates full reinterpretation of flat array into array<array<int, Cols>, Rows>
+     */
+    void matrix_structured_view_usage() {
+        std::cout << "\n\U0001F539 pod::array as structured matrix view (array<array<>>):\n";
+
+        constexpr std::size_t Rows = 3;
+        constexpr std::size_t Cols = 4;
+
+        pod::array<int, Rows * Cols> flat{};
+        std::iota(flat.begin(), flat.end(), 1); // Fill 1..12
+
+        const auto view = pod::bytes_view::from(flat);
+        const auto* matrix = view.fetch<pod::array<pod::array<int, Cols>, Rows>>();
+
+        if (matrix != nullptr) {
+            for (const jh::pod::pod_like auto& row : *matrix) {
+                for (int val : row) {
+                    std::cout << std::setw(2) << val << " ";
+                }
+                std::cout << "\n";
+            }
+        }
+    }
 
 } // namespace example
 
@@ -144,5 +196,7 @@ int main() {
     example::span_usage();
     example::string_view_usage();
     example::array_string_buffer_usage();
+    example::matrix_view_usage();
+    example::matrix_structured_view_usage();
     return 0;
 }

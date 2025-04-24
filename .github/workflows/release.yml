@@ -1,0 +1,158 @@
+name: Release Conan Packages
+
+on:
+  release:
+    types: [ published ]
+env:
+  pack_version: 1.3.1
+
+jobs:
+
+  pod-package:
+    name: POD Package (Header-Only)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Python & Conan
+        run: |
+          pip install conan
+
+      - name: Set Conan Remote
+        run: conan remote add github "https://conan.pkg.github.com/${{ github.repository_owner }}" --insert
+        env:
+          CONAN_LOGIN_USERNAME: ${{ github.actor }}
+          CONAN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create + Upload POD
+        run: |
+          conan create tools/conan/conanfile-pod.py --user jh --channel stable
+          conan upload jh-toolkit-pod/${{ pack_version }}@jh/stable --remote=github --all --confirm
+        env:
+          CONAN_LOGIN_USERNAME: ${{ github.actor }}
+          CONAN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  linux-x86_64:
+    name: Full Package - Linux x86_64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install tools
+        run: sudo apt update && sudo apt install -y ninja-build g++ cmake
+
+      - name: Install Conan
+        run: pip install conan
+
+      - name: Set Conan Remote
+        run: conan remote add github "https://conan.pkg.github.com/${{ github.repository_owner }}" --insert
+        env:
+          CONAN_LOGIN_USERNAME: ${{ github.actor }}
+          CONAN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create + Upload (Linux x86_64)
+        run: |
+          conan create tools/conan/conanfile-all.py --user jh --channel stable
+          conan upload jh-toolkit/${{ pack_version }}@jh/stable --remote=github --all --confirm
+        env:
+          CONAN_LOGIN_USERNAME: ${{ github.actor }}
+          CONAN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  macos-arm64:
+    name: Full Package - macOS ARM
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install tools
+        run: brew install cmake ninja llvm
+
+      - name: Install Conan
+        run: pip install conan
+
+      - name: Set Conan Remote
+        run: conan remote add github "https://conan.pkg.github.com/${{ github.repository_owner }}" --insert
+        env:
+          CONAN_LOGIN_USERNAME: ${{ github.actor }}
+          CONAN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create + Upload (macOS ARM)
+        run: |
+          export CC=/opt/homebrew/opt/llvm/bin/clang
+          export CXX=/opt/homebrew/opt/llvm/bin/clang++
+          conan create tools/conan/conanfile-all.py --user jh --channel stable
+          conan upload jh-toolkit/${{ pack_version }}@jh/stable --remote=github --all --confirm
+        env:
+          CONAN_LOGIN_USERNAME: ${{ github.actor }}
+          CONAN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  windows-x86_64:
+    name: Full Package - Windows MSYS2 UCRT64
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            python-pip
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Conan
+        run: pip install conan
+
+      - name: Set Conan Remote
+        run: conan remote add github "https://conan.pkg.github.com/${{ github.repository_owner }}" --insert
+        env:
+          CONAN_LOGIN_USERNAME: ${{ github.actor }}
+          CONAN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create + Upload (Windows)
+        run: |
+          conan create tools/conan/conanfile-all.py --user jh --channel stable
+          conan upload jh-toolkit/${{ pack_version }}@jh/stable --remote=github --all --confirm
+        env:
+          CONAN_LOGIN_USERNAME: ${{ github.actor }}
+          CONAN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  # Linux ARM optional job using docker cross-build
+  linux-arm64:
+    name: Full Package - Linux ARM64 (Cross)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Docker & Conan
+        run: |
+          sudo apt update && sudo apt install -y docker.io python3-pip
+          pip install conan
+
+      - name: Cross-Build using Docker (experimental)
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/src -w /src arm64v8/ubuntu bash -c "
+            apt update && apt install -y build-essential cmake ninja-build python3-pip &&
+            pip install conan &&
+            conan profile detect &&
+            conan remote add github https://conan.pkg.github.com/${{ github.repository_owner }} --insert &&
+            conan create tools/conan/conanfile-all.py --user jh --channel stable &&
+            conan upload jh-toolkit/${{ pack_version }}@jh/stable --remote=github --all --confirm
+          "

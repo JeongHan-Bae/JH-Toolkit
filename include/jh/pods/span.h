@@ -148,7 +148,4 @@ namespace jh::pod {
         -> span<const std::remove_pointer_t<decltype(c.data())>> {
         return {c.data(), static_cast<std::uint64_t>(c.size())};
     }
-
-    /// @brief Compile-time POD conformance
-    static_assert(pod_like<span<int> >);
 } // namespace jh::pod

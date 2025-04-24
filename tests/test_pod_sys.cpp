@@ -543,3 +543,102 @@ TEST_CASE("pod::array<pod::string_view> comparison") {
 
     REQUIRE(a1 == a2);  // different memories but same semantics
 }
+
+TEST_CASE("bytes_view hash reflects exact byte content") {
+    using jh::pod::bytes_view;
+    using jh::pod::array;
+    using jh::utils::hash_fn::c_hash;
+
+    SECTION("Equal content produces same hash") {
+        array<std::uint32_t, 4> a = {1, 2, 3, 4};
+        std::array<std::uint32_t, 4> b = {1, 2, 3, 4};
+
+        auto va = bytes_view::from(a);
+        auto vb = bytes_view::from(b.data(), b.size());
+
+        REQUIRE(va == vb);
+        REQUIRE(va.hash() == vb.hash());
+    }
+
+    SECTION("Different content produces different hash") {
+        array<std::uint32_t, 4> a = {1, 2, 3, 4};
+        array<std::uint32_t, 4> c = {4, 3, 2, 1};
+
+        auto va = bytes_view::from(a);
+        auto vc = bytes_view::from(c);
+
+        REQUIRE(va != vc);
+        REQUIRE(va.hash() != vc.hash());
+    }
+
+    SECTION("Same layout different values changes hash") {
+        struct P {
+            std::uint32_t x;
+        };
+
+        P p1{0x11223344};
+        P p2{0x55667788};
+
+        auto h1 = bytes_view::from(p1).hash();
+        auto h2 = bytes_view::from(p2).hash();
+
+        REQUIRE(h1 != h2);
+    }
+
+    SECTION("pod::string_view vs bytes_view with same content") {
+        using jh::pod::string_view;
+
+        constexpr char raw[] = "hash_check_test";
+        string_view sv{raw, sizeof(raw) - 1};
+        auto bv = bytes_view::from(raw, sizeof(raw) - 1);
+
+        REQUIRE(sv.size() == bv.len);
+        REQUIRE(std::memcmp(sv.data, bv.data, sv.size()) == 0);
+        REQUIRE(sv.hash() == bv.hash());
+    }
+}
+
+TEST_CASE("string_view hash reflects exact character content") {
+    using jh::pod::string_view;
+    using jh::utils::hash_fn::c_hash;
+
+    static constexpr char content1[] = "alpha_test";
+    static constexpr char content2[] = "alpha_test";  // same content, different instance
+    static constexpr char content3[] = "beta_test";
+
+    const string_view sv1{content1, std::strlen(content1)};
+    const string_view sv2{content2, std::strlen(content2)};
+    const string_view sv3{content3, std::strlen(content3)};
+
+    SECTION("Equal content produces same hash") {
+        REQUIRE(sv1 == sv2);
+        REQUIRE(sv1.hash() == sv2.hash());
+    }
+
+    SECTION("Different content produces different hash") {
+        REQUIRE(sv1 != sv3);
+        REQUIRE(sv1.hash() != sv3.hash());
+    }
+
+    SECTION("Hash consistency across methods") {
+        auto h1 = sv1.hash(c_hash::fnv1a64);
+        auto h2 = sv1.hash(c_hash::djb2);
+        auto h3 = sv1.hash(c_hash::sdbm);
+        auto h4 = sv1.hash(c_hash::fnv1_64);
+
+        REQUIRE(h1 != -1);
+        REQUIRE(h2 != -1);
+        REQUIRE(h3 != -1);
+        REQUIRE(h4 != -1);
+
+        // Same view, multiple algorithms must differ
+        REQUIRE(h1 != h2);
+        REQUIRE(h2 != h3);
+        REQUIRE(h3 != h4);
+    }
+
+    SECTION("string_view vs bytes_view from same buffer") {
+        auto bv = jh::pod::bytes_view::from(content1, sizeof(content1) - 1);
+        REQUIRE(sv1.hash() == bv.hash());
+    }
+}
