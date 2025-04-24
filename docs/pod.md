@@ -361,6 +361,10 @@ JH_ASSERT_POD_LIKE(Packet);
 Packet pkt{123, 0b0101};
 auto view = jh::pod::bytes_view::from(pkt);
 Packet copy = view.clone<Packet>();
+
+// since v1.3.1
+[[nodiscard]] constexpr std::uint64_t
+hash(jh::utils::hash_fn::c_hash hash_method = jh::utils::hash_fn::c_hash::fnv1a64) const noexcept;
 ```
 
 #### 🧠 Design Intent
@@ -368,6 +372,8 @@ Packet copy = view.clone<Packet>();
 - `.from(...)` creates a byte-level view over object or array memory.
 - `.at<T>()` and `.fetch<T>()` reinterpret contents as typed structs (with optional offset).
 - `.clone<T>()` **copies** content into a stack-allocated object (`T must be pod_like`).
+- `.hash(hash_method)` computes a 64-bit hash of the byte content — based only on **raw data and length**, not on any type semantics.  
+  Returns `-1` if `data == nullptr`, or if an invalid `c_hash` enum is passed.
 
 #### ⚠️ Safety Note
 
@@ -468,8 +474,11 @@ bool ends_with(const string_view& suffix) const noexcept;
 uint64_t find(char ch) const noexcept;
 
 string_view sub(uint64_t offset, uint64_t len = 0) const noexcept;
-uint64_t hash() const noexcept;
 void copy_to(char* buffer, uint64_t max_len) const noexcept;
+
+// updated by v1.3.1
+[[nodiscard]] constexpr std::uint64_t
+hash(jh::utils::hash_fn::c_hash hash_method = jh::utils::hash_fn::c_hash::fnv1a64) const noexcept;
 ```
 
 #### 💡 Example
@@ -477,6 +486,12 @@ void copy_to(char* buffer, uint64_t max_len) const noexcept;
 jh::pod::string_view name{"abc", 3};
 if (name.starts_with("a")) ...
 ```
+
+#### 🧠 Design Intent
+
+- `string_view` is intended for fast, POD-safe, non-owning string slices.
+- `.hash(hash_method)` computes a stable 64-bit hash based on string **content and length**, not null-termination.  
+  Returns `-1` if `data == nullptr`, or if an invalid `c_hash` enum is used.
 
 ---
 

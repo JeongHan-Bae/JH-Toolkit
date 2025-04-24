@@ -37,12 +37,14 @@
 
 
 #pragma once
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>   // NOLINT for std::addressof
 #include <cstring> // for memcmp, memcpy
 
 #include "pod_like.h"
+#include "jh/utils/hash_fn.h"
 
 namespace jh::pod {
 
@@ -84,7 +86,7 @@ namespace jh::pod {
      *
      * Which is exactly what `jh::pod::pod_like<T>` ensures.
      */
-    struct bytes_view {
+    struct bytes_view final {
         const std::byte *data;  ///< Pointer to the start of the byte range
         std::uint64_t len;      ///< Number of bytes in the view
 
@@ -119,7 +121,7 @@ namespace jh::pod {
          * @note The `size` refers to element count, not byte count.
          */
         template<trivial_bytes T>
-        static constexpr bytes_view from(const T* arr, const std::uint64_t size) noexcept {
+        static constexpr bytes_view from(const T *arr, const std::uint64_t size) noexcept {
             return {
                     reinterpret_cast<const std::byte *>(arr),
                     sizeof(T) * size
@@ -177,12 +179,32 @@ namespace jh::pod {
             return at<T>(0);
         }
 
+        /**
+         * @brief Hash the byte view content using a selectable non-cryptographic algorithm.
+         *
+         * Computes a stable 64-bit hash from the byte contents of this view, using
+         * one of the selectable hash strategies in `jh::utils::hash_fn::c_hash`.
+         *
+         * @param hash_method Hash algorithm to use (default: FNV-1a 64-bit).
+         * @return 64-bit hash of the byte content, or `-1` if `data == nullptr`.
+         *
+         * @note This hash is not cryptographically secure.
+         * @note Returns `-1` as a sentinel if the view has null data.
+         * @note The result only depends on byte content and length, not on any type semantics.
+         */
+        [[nodiscard]] constexpr std::uint64_t
+        hash(jh::utils::hash_fn::c_hash hash_method = jh::utils::hash_fn::c_hash::fnv1a64) const noexcept {
+            if (!data) return static_cast<std::uint64_t>(-1);
+            return jh::utils::hash_fn::hash(
+                    hash_method,
+                    reinterpret_cast<const char *>(data),
+                    len
+            );
+        }
+
         /// @brief Compare two views for byte-wise equality.
         constexpr bool operator==(const bytes_view &rhs) const noexcept {
             return len == rhs.len && std::memcmp(data, rhs.data, len) == 0;
         }
     };
-
-    /// bytes_view is POD-like and safe to use in trivially copyable containers
-    static_assert(pod_like<bytes_view>);
 } // namespace jh::pod

@@ -1,7 +1,7 @@
 
 # JH Toolkit
 
-### **version: 1.3.0**
+### **version: 1.3.1**
 
 **A Modern, Modular C++20 Toolkit for High-Performance Generic Programming — Featuring POD Utilities, Immutable Structures, Coroutine Generators, Concept-Driven Abstractions, and Lightweight Object Pools.**
 
@@ -20,38 +20,38 @@
 
 ---
 
-## 🚀 What's New in 1.3.x
+## 🚀 What's New in 1.3.1
 
-JH Toolkit `1.3.x` brings enhancements focused on **STL interop**, **runtime-optimized structures**, and **modern `C++20` concept design** — all while retaining **zero-overhead abstractions**.
+JH Toolkit `1.3.1` introduces targeted enhancements to the **POD system**, along with early preparations for **Conan packaging via GitHub**.
 
-- ✨ **`runtime_arr<T>`**  
-  A fixed-size, heap-allocated array where **size is known at runtime**.  
-  Designed to offer **raw-layout performance** and STL-like usability without dynamic resizing.  
-  When initialized with primitive or POD types, `runtime_arr` avoids unnecessary heap operations and performs faster than `std::vector` in many **fully-initialized** scenarios (e.g., when compared to `std::vector(N)`).
+### 🔹 POD Hash Support Updates
 
-- 🔁 **`sequence`** + **`views`**  
-  `sequence` now supports `.to_range()` to expose **`std::ranges::input_range`-compatible views**, enabling smooth STL interop.  
-  A new module `jh::views` introduces allocation-free range adaptors like `enumerate`, `zip`, and more — **based on `sequence` rather than `range`**, ensuring type safety without RTTI.
+- ✅ `pod::string_view`: Now supports **selectable hash algorithms** via `hash(jh::utils::hash_fn::c_hash)`, while keeping API and default behavior unchanged (`fnv1a64`).
+- 🆕 `pod::bytes_view`: Adds a `.hash(...)` method with the same selectable hash algorithm support.
 
-- 🌀 **`generator<T>`**  
-  Added support for **generator factories from callable objects**, including lambdas that return a `co_yield` generator.  
-  This allows simple coroutine-based logic to integrate with pipelines via `to_range()` — provided the generator is of the **non-`send`** (pure `co_yield`) kind.
+#### 🧩 Available Algorithms (`c_hash`)
+```cpp
+enum class c_hash : std::uint8_t {
+    fnv1a64 = 0,  // default
+    fnv1_64 = 1,
+    djb2    = 2,
+    sdbm    = 3
+};
+```
 
-- 🔒 **`immutable_str`**  
-  Improved hash interop, transparent pointer compatibility, and ABI-safe layout.  
-  Now supports **transparent key lookup** for hash tables:
+- The hash value is computed **purely from raw byte content**, ignoring type semantics.
+- If `data == nullptr` or an invalid enum is provided, the return value is `-1`.
 
-  ```c++
-  std::unordered_set<jh::atomic_str_ptr, jh::atomic_str_hash, jh::atomic_str_eq> pool;
-  pool.insert(jh::make_atomic("cached"));
+> 💡 These changes make hash computation more flexible while maintaining full backward compatibility.
 
-  if (pool.find("cached") != pool.end()) {
-      // ✅ No need to construct immutable_str for lookup
-  }
-  ```
+---
 
-> These updates make `1.3.x` the most robust and STL-aligned version yet — ideal for performance-focused, modern C++ development across Linux, macOS, and Windows.
+### 📦 Conan Packaging (Planned)
 
+Initial setup for a **Conan-based package** is underway:
+
+- Will support `conan install jh-toolkit/...` from GitHub Packages
+- Makes `jh-toolkit` easier to consume in modern C++ build systems
 
 ---
 
