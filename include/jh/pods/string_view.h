@@ -50,7 +50,7 @@ namespace jh::pod {
      * and provides basic comparison, slicing, hashing, and utility access
      * — all without breaking POD rules.
      */
-    struct string_view final{
+    struct string_view final {
         const char *data;       ///< Pointer to string data (not null-terminated)
         std::uint64_t len;      ///< Number of valid bytes in the view
 
@@ -135,13 +135,23 @@ namespace jh::pod {
         }
 
         /**
-         * @brief FNV-1a 64-bit hash of view content.
-         * @note Not cryptographic. Use only for mapping, bucketing, IDs.
-         * @return 64-bit stable hash of the bytes (or -1 if null).
+         * @brief Hash the byte view content using a selectable non-cryptographic algorithm.
+         *
+         * Provides stable 64-bit hashing over the view contents, using a selectable
+         * algorithm from `jh::utils::hash_fn::c_hash`. Suitable for use in hashing,
+         * lookup tables, unique identifiers, etc.
+         *
+         * @param hash_method Algorithm to use for hashing (default: FNV-1a 64-bit).
+         * @return 64-bit hash of the view data, or `-1` if `data == nullptr`.
+         *
+         * @note This is not a cryptographic hash. Do not use it for security-related logic.
+         * @note If `data` is null, the return value is `-1` as a sentinel.
+         * @note The hash is based only on the byte contents and length, not on type information.
          */
-        [[nodiscard]] constexpr std::uint64_t hash() const noexcept {
+        [[nodiscard]] constexpr std::uint64_t
+        hash(jh::utils::hash_fn::c_hash hash_method = jh::utils::hash_fn::c_hash::fnv1a64) const noexcept {
             if (!data) return static_cast<std::uint64_t>(-1);
-            return utils::hash_fn::fnv1a64(data, len);
+            return utils::hash_fn::hash(hash_method, data, len);
         }
 
         /**

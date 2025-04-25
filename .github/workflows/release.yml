@@ -1,0 +1,131 @@
+name: Release Conan Packages
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+env:
+  pack_version: 1.3.1
+
+jobs:
+
+  pod-package:
+    name: POD Package (Header-Only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Conan
+        run: |
+          pipx install conan
+          pipx ensurepath
+          conan profile detect
+
+      - name: Prepare POD Package Source
+        run: |
+          cp CMakeLists.txt tools/conan/
+          cp -r include tools/conan/
+          cp -r cmake tools/conan/
+
+      - name: Create POD Package
+        run: |
+          conan create tools/conan/conanfile-pod.py --user jh --channel stable
+
+      - name: Archive POD Package
+        run: |
+          mkdir -p dist
+          pkg_dir=$(find ~/.conan2/p -type d -name "p" | grep jh-to | head -n 1)
+          tar -czf dist/jh-toolkit-pod-${{ env.pack_version }}.tar.gz -C "$pkg_dir" .
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/jh-toolkit-pod-${{ env.pack_version }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  linux-x86_64:
+    name: Full Package - Linux x86_64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Conan + Tools
+        run: |
+          sudo apt update
+          sudo apt install -y ninja-build g++ cmake
+          pipx install conan
+          pipx ensurepath
+          conan profile detect
+
+      - name: Prepare Full Package Source
+        run: |
+          cp CMakeLists.txt tools/conan/
+          cp -r include tools/conan/
+          cp -r cmake tools/conan/
+          cp -r src tools/conan/
+
+      - name: Create Full Linux Package
+        run: |
+          conan create tools/conan/conanfile-all.py --user jh --channel stable
+
+      - name: Archive Linux Package
+        run: |
+          mkdir -p dist
+          pkg_dir=$(find ~/.conan2/p -type d -name "p" | grep jh-to | head -n 1)
+          tar -czf dist/jh-toolkit-linux-x86_64-${{ env.pack_version }}.tar.gz -C "$pkg_dir" .
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/jh-toolkit-linux-x86_64-${{ env.pack_version }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  macos-arm64:
+    name: Full Package - macOS ARM64
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Tools
+        run: |
+          brew install cmake ninja llvm pipx
+          pipx install conan
+          pipx ensurepath
+          conan profile detect
+
+      - name: Prepare Full Package Source
+        run: |
+          cp CMakeLists.txt tools/conan/
+          cp -r include tools/conan/
+          cp -r cmake tools/conan/
+          cp -r src tools/conan/
+
+      - name: Create Full macOS Package
+        run: |
+          export CC=/opt/homebrew/opt/llvm/bin/clang
+          export CXX=/opt/homebrew/opt/llvm/bin/clang++
+          conan create tools/conan/conanfile-all.py --user jh --channel stable
+
+      - name: Archive macOS Package
+        run: |
+          mkdir -p dist
+          pkg_dir=$(find ~/.conan2/p -type d -name "p" | grep jh-to | head -n 1)
+          tar -czf dist/jh-toolkit-macos-arm64-${{ env.pack_version }}.tar.gz -C "$pkg_dir" .
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/jh-toolkit-macos-arm64-${{ env.pack_version }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

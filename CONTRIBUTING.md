@@ -41,6 +41,23 @@ set(PROJECT_VERSION 1.3.0)
 
 This version is propagated automatically to packaging tools, `find_package`, and `write_basic_package_version_file`.
 
+### 🔁 GitHub Release CI Version (`pack_version`)
+
+The **GitHub Actions Release Workflow** (`.github/workflows/release.yml`) uses a top-level environment variable to define the version for Conan packaging:
+
+```yaml
+env:
+  pack_version: 1.3.1
+```
+
+### ✅ Version Bump Checklist
+
+When publishing a new release, ensure all version declarations are synchronized:
+
+- [ ] `CMakeLists.txt` — `set(PROJECT_VERSION X.Y.Z)`
+- [ ] `README.md` — `### version: X.Y.Z`
+- [ ] `.github/workflows/release.yml` — `pack_version: X.Y.Z`
+
 ---
 
 ## 🧪 Testing, CI, and Workflow Rules
