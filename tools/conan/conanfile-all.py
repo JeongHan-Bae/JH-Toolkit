@@ -1,15 +1,15 @@
 from conan import ConanFile
 from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
+import os
 
 class JHToolkitFull(ConanFile):
     name = "jh-toolkit"
-    version = "1.3.1"
+    version = os.getenv("pack_version", "dev")
     license = "Apache-2.0"
     url = "https://github.com/JeongHan-Bae/jh-toolkit"
     description = "Full modular toolkit for modern C++20 generic programming"
     settings = "os", "arch", "compiler", "build_type"
-    exports_sources = "CMakeLists.txt", "include/*", "src/*"
-    generators = "CMakeDeps", "CMakeToolchain"
+    exports_sources = "CMakeLists.txt", "include/*", "src/*", "cmake/*"
 
     def layout(self):
         cmake_layout(self)

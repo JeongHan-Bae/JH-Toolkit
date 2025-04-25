@@ -1,15 +1,15 @@
 from conan import ConanFile
 from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
+import os
 
 class JHToolkitPOD(ConanFile):
     name = "jh-toolkit-pod"
-    version = "1.3.1"
+    version = os.getenv("pack_version", "dev")
     license = "Apache-2.0"
     url = "https://github.com/JeongHan-Bae/jh-toolkit"
     description = "Header-only POD system from JH Toolkit"
     settings = "os", "arch", "compiler", "build_type"
-    exports_sources = "CMakeLists.txt", "include/*"
-    generators = "CMakeDeps", "CMakeToolchain"
+    exports_sources = "CMakeLists.txt", "include/*", "cmake/*"
     no_copy_source = True
 
     def layout(self):
