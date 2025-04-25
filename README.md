@@ -20,10 +20,10 @@ Structures, Coroutine Generators, Concept-Driven Abstractions, and Lightweight O
 
 ---
 
-## 🚀 Highlights of v1.3.1 (LTS-Compatible)
+## 🚀 Highlights of v1.3.1 (CI-Stable / LTS-Compatible)
 
 JH Toolkit `1.3.1` introduces targeted enhancements to the **POD system**, along with early preparations for **Conan
-packaging via GitHub**.
+packaging via GitHub CI**.
 
 ### 🔹 POD Hash Support Updates
 
@@ -49,18 +49,62 @@ enum class c_hash : std::uint8_t {
 
 ---
 
-+ ### 📦 Conan Packaging (Initial Release)
+### 📦 Conan Packaging via GitHub Releases
 
-Initial Conan support is now available via GitHub Packages:
+Conan packages are now distributed **as `.tar.gz` archives** attached to **GitHub Release Assets**.
 
-- `jh-toolkit-pod/1.3.1@jh/stable` (header-only)
-- `jh-toolkit/1.3.1@jh/stable` (full build)
+**Available (v1.3.1):**
 
-Just add the GitHub remote:
+- 🧩 `jh-toolkit-pod` — Header-only (platform independent)
+- 🛠️ `jh-toolkit` — Full builds for:
+  - Linux x86_64
+  - macOS ARM64
+
+---
+
+### ⚠️ Notes
+
+- ✅ **Conan 2.x is used**, with modern profile support and CMake toolchains.
+- 📦 **GitHub Packages is _not_ used**, as it does **not support Conan 2.x**.
+  - Conan 1.x is still supported, but only under **organization-owned repositories**.
+  - This limits its functionality and long-term maintainability.
+- ⛔ **We do not use Conan 1.x** due to lack of features and security limitations.
+- ❌ **Windows builds are excluded**, since Conan 2.x on MSYS2/UCRT64 incorrectly injects MSVC dependencies.
+- 🚫 **Linux ARM64 builds are skipped in CI**, due to lack of native runner or fully working QEMU + Docker setup on GitHub-hosted agents.
+
+### 📦 Conan `.tar.gz` Archive — Notes on Usage & Dependencies
+
+> ⚙️ **All `.tar.gz` packages are compiled and archived via GitHub CI** during each tagged release.  
+> They’re ideal for CI/CD environments or machines matching the same OS + compiler configuration.
+
+#### 📋 Package Dependency Matrix
+
+| Package Name              | Platform Dependent | Compiler Dependent | Description                               |
+|---------------------------|--------------------|--------------------|-------------------------------------------|
+| `jh-toolkit-pod`          | ❌                  | ❌                  | Header-only, platform-agnostic POD module |
+| `jh-toolkit-linux-x86_64` | ✅                  | ✅ (GCC 12+)        | Built on `ubuntu-latest`, GCC toolchain   |
+| `jh-toolkit-macos-arm64`  | ✅                  | ✅ (Clang 16+)      | Built on `macos-latest`, Homebrew LLVM    |
+
+#### 🧠 Why Use These Archives?
+
+- ✅ Fast setup for automation and testing pipelines
+- ✅ Consistent behavior across CI and release environments
+- ✅ Perfect for **pre-baked CI runners**, **offline machines**, or **mirrored artifacts**
+
+#### ⚠️ Manual Conan Cache Extraction
 
 ```bash
-conan remote add github "https://conan.pkg.github.com/JeongHan-Bae"
+# Download from GitHub Releases
+wget https://github.com/JeongHan-Bae/JH-Toolkit/releases/download/JH-Toolkit-1.3.1/jh-toolkit-linux-x86_64-1.3.1.tar.gz
+
+# Inject into local Conan 2.x cache
+mkdir -p ~/.conan2/p/jh-toolkit
+tar -xzf jh-toolkit-linux-x86_64-1.3.1.tar.gz -C ~/.conan2/p/jh-toolkit
 ```
+
+> 🔍 Inspect cache layout using `conan list` or `conan cache path`
+
+If your environment **differs from our CI presets**, you can still [build from source 📥](#-installation) — always tailored to your toolchain.
 
 ---
 
@@ -168,9 +212,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 ### 📱 Mobile & Embedded Targets
 
 > ❌ JH Toolkit is **not intended for embedded systems or constrained environments**.
-> Internals are 64-bit optimized and assume modern system-level allocators and CPU alignment.
+> Internals are optimized for 64-bit environments with modern allocators and cache alignment.
 
-> ✅ For Android/iOS, use `add_subdirectory(jh-toolkit)` for tight ABI control — do not preinstall or `find_package()`.
+> ✅ For Android/iOS, use `add_subdirectory(jh-toolkit)` for tight ABI control — avoid using `find_package()` for mobile builds; prefer manual inclusion.
 
 > 📦 You may embed source directly and limit to `jh::pod` for ultra-minimal use cases.
 
