@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)  # Ensure standardized installation directories
 
-set(PROJECT_VERSION 1.3.1)
+set(PROJECT_VERSION 1.3.2)
 
 # Register custom build type
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel;FastDebug" CACHE STRING "" FORCE)
@@ -30,13 +30,50 @@ endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
     message(STATUS "Applying extra CPU optimizations for Release build.")
+    # Detect architecture-specific -march option
+    set(EXTRA_OPT_FLAGS "")
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+        if (NOT CMAKE_CROSSCOMPILING)
+            include(CheckCXXCompilerFlag)
+            check_cxx_compiler_flag("-march=native" HAS_MARCH_NATIVE)
+            if (HAS_MARCH_NATIVE)
+                set(EXTRA_OPT_FLAGS "-march=native")
+            endif ()
+        else ()
+            message(STATUS "Cross-compiling for processor: ${CMAKE_SYSTEM_PROCESSOR}")
+            if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64)$")
+                set(EXTRA_OPT_FLAGS "-march=x86-64-v3")
+            elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+                set(EXTRA_OPT_FLAGS "-march=armv8-a")
+            elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^armv7")
+                set(EXTRA_OPT_FLAGS "-march=armv7-a")
+            else ()
+                message(WARNING "Unknown target architecture: ${CMAKE_SYSTEM_PROCESSOR}, no -march set")
+            endif ()
+        endif ()
 
-    add_compile_options(
-            -march=native
-            -ftree-vectorize
-            -funroll-loops
-            -fno-omit-frame-pointer
-    )
+        message(STATUS "Applied -march flag: ${EXTRA_OPT_FLAGS}")
+
+        # Apply optimization flags based on build type
+        if (CMAKE_BUILD_TYPE STREQUAL "Release")
+            add_compile_options(
+                    ${EXTRA_OPT_FLAGS}
+                    -O3
+                    -ftree-vectorize
+                    -funroll-loops
+                    -fno-omit-frame-pointer
+                    -Wall -Wextra -Wpedantic
+            )
+            message(STATUS "Release build: enabled aggressive optimization")
+        elseif (CMAKE_BUILD_TYPE STREQUAL "Debug")
+            add_compile_options(
+                    -O2
+                    -Wall -Wextra -Wpedantic
+            )
+            message(STATUS "Debug build: light optimization with warnings")
+        endif ()
+    endif ()
+
 endif ()
 
 string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_UPPER)
@@ -91,6 +128,7 @@ if (ENABLE_POD)
             ${CMAKE_SOURCE_DIR}/include/jh/utils/hash_fn.h
             ${CMAKE_SOURCE_DIR}/include/jh/utils/platform.h
             ${CMAKE_SOURCE_DIR}/include/jh/utils/typed.h
+            ${CMAKE_SOURCE_DIR}/include/jh/utils/base64.h
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/utils
     )
 

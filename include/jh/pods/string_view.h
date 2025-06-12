@@ -54,24 +54,32 @@ namespace jh::pod {
         const char *data;       ///< Pointer to string data (not null-terminated)
         std::uint64_t len;      ///< Number of valid bytes in the view
 
+        using value_type = char;
+        using size_type [[maybe_unused]] = std::uint64_t;
+        using difference_type [[maybe_unused]] = std::ptrdiff_t;
+        using reference [[maybe_unused]] = value_type &;
+        using const_reference [[maybe_unused]] = const value_type &;
+        using pointer [[maybe_unused]] = value_type *;
+        using const_pointer [[maybe_unused]] = const value_type *;
+
         // === Iteration & Size ===
 
         /// @brief Index access (no bounds checking).
-        constexpr char operator[](const std::uint64_t index) const noexcept {
+        constexpr const_reference operator[](const std::uint64_t index) const noexcept {
             return data[index];
         }
 
         /// @brief Pointer to the beginning of data.
-        [[nodiscard]] constexpr const char *begin() const noexcept { return data; }
+        [[nodiscard]] constexpr const_pointer begin() const noexcept { return data; }
 
         /** @brief Pointer to end of data (`data + len`).
          *
          * @note This is not null-terminated. Use `len` for bounds.
          */
-        [[nodiscard]] constexpr const char *end() const noexcept { return data + len; }
+        [[nodiscard]] constexpr const_pointer end() const noexcept { return data + len; }
 
         /// @brief View length in bytes.
-        [[nodiscard]] constexpr std::uint64_t size() const noexcept { return len; }
+        [[nodiscard]] constexpr size_type size() const noexcept { return len; }
 
         /// @brief Whether the view is empty (`len == 0`).
         [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }

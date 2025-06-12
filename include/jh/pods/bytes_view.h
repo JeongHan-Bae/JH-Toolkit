@@ -1,5 +1,5 @@
 /**
-* Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
+ * Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,8 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>   // NOLINT for std::addressof
+#include <memory>
+#include <new>     // NOLINT for std::launder
 #include <cstring> // for memcmp, memcpy
 
 #include "pod_like.h"
@@ -90,6 +91,14 @@ namespace jh::pod {
         const std::byte *data;  ///< Pointer to the start of the byte range
         std::uint64_t len;      ///< Number of bytes in the view
 
+        using value_type = std::byte;
+        using size_type [[maybe_unused]] = std::uint64_t;
+        using difference_type [[maybe_unused]] = std::ptrdiff_t;
+        using reference [[maybe_unused]] = value_type &;
+        using const_reference [[maybe_unused]] = const value_type &;
+        using pointer [[maybe_unused]] = value_type *;
+        using const_pointer [[maybe_unused]] = const value_type *;
+
         /**
          * @brief Construct a view from any trivially laid-out object.
          *
@@ -129,6 +138,17 @@ namespace jh::pod {
         }
 
         /**
+         * @brief Returns the number of bytes in the view.
+         *
+         * This reflects the total size (in bytes) of the memory region being viewed.
+         * Equivalent to the `len` field, and useful for compatibility with STL-like
+         * interfaces or when treating the view as a byte-range container.
+         *
+         * @return The length of the view in bytes (as `uint16_t`).
+         */
+        [[nodiscard]] constexpr size_type size() const noexcept { return len; }
+
+        /**
          * @brief Reinterpret the view at offset as a reference to `T`.
          *
          * No bounds checking; unsafe if offset is invalid.
@@ -139,7 +159,7 @@ namespace jh::pod {
          */
         template<trivial_bytes T>
         constexpr const T &at(const std::uint64_t offset = 0) const noexcept {
-            return *reinterpret_cast<const T *>(data + offset);
+            return *std::launder(reinterpret_cast<const T *>(data + offset));
         }
 
         /**
@@ -154,7 +174,7 @@ namespace jh::pod {
         template<trivial_bytes T>
         constexpr const T *fetch(const std::uint64_t offset = 0) const noexcept {
             return offset + sizeof(T) <= len
-                   ? reinterpret_cast<const T *>(data + offset)
+                   ? std::launder(reinterpret_cast<const T *>(data + offset))
                    : nullptr;
         }
 

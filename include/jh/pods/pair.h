@@ -1,5 +1,5 @@
 /**
-* Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
+ * Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,6 +45,9 @@ namespace jh::pod {
     struct pair final{
         T1 first;
         T2 second;
+
+        using first_type [[maybe_unused]] = T1;
+        using second_type [[maybe_unused]] = T2;
 
         constexpr bool operator==(const pair &) const = default;
     };
