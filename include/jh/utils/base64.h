@@ -1,8 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
 #include <string>
 #include <vector>
+#include <iterator>
+#include <algorithm>
 #include "../pods/array.h"
 #include "../pods/string_view.h"
 #include "../pods/bytes_view.h"
