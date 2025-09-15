@@ -1,6 +1,6 @@
 # JH Toolkit
 
-### **version: 1.3.1**
+### **version: 1.3.2**
 
 **A Modern, Modular C++20 Toolkit for High-Performance Generic Programming — Featuring POD Utilities, Immutable
 Structures, Coroutine Generators, Concept-Driven Abstractions, and Lightweight Object Pools.**
@@ -19,33 +19,61 @@ Structures, Coroutine Generators, Concept-Driven Abstractions, and Lightweight O
 [![POD System](https://img.shields.io/badge/pod--system-trivial_types%2C_layout_stable-brown)](docs/pod.md)
 
 ---
+## 🚀 Highlights of v1.3.2 (CI-Stable / LTS-Compatible)
 
-## 🚀 Highlights of v1.3.1 (CI-Stable / LTS-Compatible)
+This release refines **POD utilities**, improves **pool stability**, and updates documentation across the toolkit.
+It also fixes CI hash instability issues by enforcing LLVM Clang 20 with `libc++`.
 
-JH Toolkit `1.3.1` introduces targeted enhancements to the **POD system**, along with early preparations for **Conan
-packaging via GitHub CI**.
+### 🔹 POD System Enhancements
 
-### 🔹 POD Hash Support Updates
+* 🆕 All STL-style POD containers (`pod::span`, `pod::array`, `pod::pair`) now provide **std-compatible type aliases** (e.g. `element_type`, `size_type`), and `pod::string_view` likewise exposes a pseudo-`value_type = char` for seamless interop with `std::string_view`.
+* 🆕 `pod::optional<T>`: clarified ABI (`sizeof == sizeof(T) + 1`), added `value_or` and `nullopt` printing.
+* 🆕 `pod::string_view`: enriched API docs; clarified **content-based equality** vs `span`'s address-based equality.
+* 🆕 Added **`stringify` utilities** (`operator<<`) for all POD wrappers (`array`, `pair`, `optional`, `bitflags`, `bytes_view`, `span`, `string_view`).
 
-- ✅ `pod::string_view`: Now supports **selectable hash algorithms** via `hash(jh::utils::hash_fn::c_hash)`, while
-  keeping API and default behavior unchanged (`fnv1a64`).
-- 🆕 `pod::bytes_view`: Adds a `.hash(...)` method with the same selectable hash algorithm support.
+  * Designed for **human-readable debugging**.
+  * Distinct from **serialization**, which uses `bytes_view + base64`.
+* 📝 Full POD system API docs updated → see [`docs/pod.md`](docs/pod.md).
 
-#### 🧩 Available Algorithms (`c_hash`)
+### 🔹 Pool & String Improvements
 
-```cpp
-enum class c_hash : std::uint8_t {
-    fnv1a64 = 0,  // default
-    fnv1_64 = 1,
-    djb2    = 2,
-    sdbm    = 3
-};
-```
+* 🛠️ `sim_pool`: refined allocation policy to avoid repeated **thrashing near capacity limits**,
+  making pooling behavior smoother under high churn.
+* 🛠️ `immutable_str`: now uses **transparent template deduction** for more stable interop with `std::string_view`,
+  reducing implicit copy overhead in generic code.
+* ✅ Both modules preserve the **same public API**, ensuring compatibility with 1.3.x clients.
 
-- The hash value is computed **purely from raw byte content**, ignoring type semantics.
-- If `data == nullptr` or an invalid enum is provided, the return value is `-1`.
+### 🔹 CI & Compiler Fixes
 
-> 💡 These changes make hash computation more flexible while maintaining full backward compatibility.
+* 🛠️ Explicitly force GitHub CI to use **LLVM Clang 20 + libc++**.
+
+  * Fixes unstable `std::hash` exports seen in intermediate Clang versions.
+  * Local (Clang ≥20.1.3) and old CI builds (15) were stable → issue traced to mid-upgrade CI env.
+
+### 🔹 CMake Build Optimization
+
+* ⚡ Build system no longer defaults to **`-march=native`**.
+* ✅ Instead, applies **portable SIMD-aware `-march` flags** based on platform when cross-compiling (e.g., Docker builds):
+
+  * `x86_64 / amd64` → `-march=x86-64-v3`
+  * `aarch64 / arm64` → `-march=armv8-a`
+  * `armv7` → `-march=armv7-a` (**fallback only, not officially supported**)
+* 🛠 Ensures **safe SIMD optimizations** even in **same-architecture cross-compilation** (e.g., x86→x86, arm→arm).
+* ⚠️ **Heterogeneous cross-compilation is not recommended**:
+
+  * May introduce significant runtime overhead
+  * SIMD optimizations may be ineffective or counterproductive
+* 📌 **Note on `armv7`**: This flag is included only as a *CMake fallback* for toolchains that default to ARMv7.
+  The JH Toolkit does **not support 32-bit platforms** — actual builds will fail the `static_assert(sizeof(size_t) == 8)` check.
+  This fallback exists solely to provide a valid SIMD flag during toolchain detection.
+
+### 🔹 Documentation Updates
+
+* 📚 `sim_pool` and `immutable_str`:
+  updated file headers → `@version 1.2.x → 1.3.x`.
+* 📚 Updated module docs for POD (`docs/pod.md`) and object pools.
+  Clarified migration guidance (`tuple` → `JH_POD_STRUCT`).
+* 📖 `README.md` updated to 1.3.2 with new highlights.
 
 ---
 
@@ -53,7 +81,7 @@ enum class c_hash : std::uint8_t {
 
 Conan packages are now distributed **as `.tar.gz` archives** attached to **GitHub Release Assets**.
 
-**Available (v1.3.1):**
+**Available (v1.3.2):**
 
 - 🧩 `jh-toolkit-pod` — Header-only (platform independent)
 - 🛠️ `jh-toolkit` — Full builds for:
@@ -95,11 +123,11 @@ Conan packages are now distributed **as `.tar.gz` archives** attached to **GitHu
 
 ```bash
 # Download from GitHub Releases
-wget https://github.com/JeongHan-Bae/JH-Toolkit/releases/download/JH-Toolkit-1.3.1/jh-toolkit-linux-x86_64-1.3.1.tar.gz
+wget https://github.com/JeongHan-Bae/JH-Toolkit/releases/download/JH-Toolkit-1.3.2/jh-toolkit-linux-x86_64-1.3.2.tar.gz
 
 # Inject into local Conan 2.x cache
 mkdir -p ~/.conan2/p/jh-toolkit
-tar -xzf jh-toolkit-linux-x86_64-1.3.1.tar.gz -C ~/.conan2/p/jh-toolkit
+tar -xzf jh-toolkit-linux-x86_64-1.3.2.tar.gz -C ~/.conan2/p/jh-toolkit
 ```
 
 > 🔍 Inspect cache layout using `conan list` or `conan cache path`
