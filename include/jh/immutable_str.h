@@ -80,12 +80,13 @@
 #include <string_view>      // for std::string_view
 #include <cstdint>          // for std::uint64_t
 #include <optional>         // for std::optional
+#include <type_traits>      // for std::remove_cvref_t
 #include "pool.h"
 #include "pods/string_view.h"
 
 namespace jh::detail {
     constexpr bool is_space_ascii(const char ch) {
-        return ch == ' '  || ch == '\t' || ch == '\n' ||
+        return ch == ' ' || ch == '\t' || ch == '\n' ||
                ch == '\v' || ch == '\f' || ch == '\r';
     }
 }
@@ -249,8 +250,24 @@ namespace jh {
     using atomic_str_ptr = std::shared_ptr<immutable_str>;
     using weak_str_ptr [[maybe_unused]] = std::weak_ptr<immutable_str>;
 
+    /**
+     * @brief Concept for immutable string compatible types.
+     *
+     * @details
+     * This concept is satisfied by:
+     * - `atomic_str_ptr` (and its cv/ref-qualified variants)
+     * - `const char*`
+     * - string literals (e.g. `"hello"`, decayed to `const char*`)
+     *
+     * It is used to constrain templates (e.g., custom hash/equality) so that they
+     * only accept types safely comparable to `immutable_str` content.
+     *
+     * @tparam U Candidate type to check.
+     */
     template<typename U>
-    concept is_immutable_str = std::same_as<U, atomic_str_ptr> || std::same_as<U, const char *>;
+    concept is_immutable_str =
+    std::same_as<std::remove_cvref_t<U>, atomic_str_ptr> ||
+    std::same_as<std::decay_t<U>, const char*>;
 
     /**
      * @brief Custom hash function for `atomic_str_ptr`.
@@ -272,9 +289,9 @@ namespace jh {
     struct atomic_str_hash {
         using is_transparent = void; ///< Enables `find(const char*)` in hash-based containers.
         template<typename U>
-            requires is_immutable_str<U>
+        requires is_immutable_str<U>
         std::uint64_t operator()(const U &value) const noexcept {
-            if constexpr (std::same_as<U, atomic_str_ptr>) {
+            if constexpr (std::same_as<std::remove_cvref_t<U>, atomic_str_ptr>) {
                 return value ? value->hash() : 0;
             } else {
                 if (value == nullptr) {
@@ -319,15 +336,17 @@ namespace jh {
         using is_transparent = void; ///< Enables `find(const char*)` in hash-based containers.
 
         template<typename U, typename V>
-            requires (is_immutable_str<U> && is_immutable_str<V>)
+        requires (is_immutable_str<U> && is_immutable_str<V>)
         bool operator()(const U &lhs, const V &rhs) const noexcept {
-            if constexpr (std::same_as<U, atomic_str_ptr> && std::same_as<V, atomic_str_ptr>) {
+            if constexpr (std::same_as<std::remove_cvref_t<U>, atomic_str_ptr> &&
+                          std::same_as<std::remove_cvref_t<V>, atomic_str_ptr>) {
                 return lhs && rhs && *lhs == *rhs;
             } else {
                 if (lhs == nullptr || rhs == nullptr) return false; // nullptr are considered as not eq
                 std::string_view lhs_view, rhs_view;
 
-                if constexpr (std::same_as<U, atomic_str_ptr> && std::same_as<V, const char *>) {
+                if constexpr (std::same_as<std::remove_cvref_t<U>, atomic_str_ptr> &&
+                              std::same_as<std::decay_t<V>, const char *>) {
                     lhs_view = lhs->view();
                     if constexpr (immutable_str::auto_trim) {
                         const auto &[leading, size_] = trim(rhs);
