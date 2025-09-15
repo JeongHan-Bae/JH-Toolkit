@@ -155,17 +155,7 @@ namespace jh {
          */
         void cleanup() {
             std::lock_guard<std::shared_mutex> lock(pool_mutex_);
-            // Step 1: Collect valid weak_ptrs using STL algorithms
-            std::vector<std::weak_ptr<T>> valid_elements;
-            valid_elements.reserve(pool_.size());
-
-            std::copy_if(pool_.begin(), pool_.end(), std::back_inserter(valid_elements),
-                         [](const std::weak_ptr<T> &w_ptr) { return !w_ptr.expired(); });
-
-            // Step 2: Safely replace `pool_` inside the lock
-            pool_.clear();
-            pool_.insert(std::make_move_iterator(valid_elements.begin()),
-                         std::make_move_iterator(valid_elements.end()));
+            cleanup_nolock();
         }
 
         /**
@@ -179,23 +169,18 @@ namespace jh {
          */
         void cleanup_shrink() {
             std::lock_guard<std::shared_mutex> lock(pool_mutex_);
-            // Step 1: Collect valid weak_ptrs using STL algorithms
-            std::vector<std::weak_ptr<T>> valid_elements;
-            valid_elements.reserve(pool_.size());
+            cleanup_nolock();
 
-            std::copy_if(pool_.begin(), pool_.end(), std::back_inserter(valid_elements),
-                         [](const std::weak_ptr<T> &w_ptr) { return !w_ptr.expired(); });
+            auto current_size     = pool_.size();
+            auto current_reserved = reserved_size_.load();
 
-            // Step 2: Safely replace `pool_` inside the lock
-            pool_.clear();
-            pool_.insert(std::make_move_iterator(valid_elements.begin()),
-                         std::make_move_iterator(valid_elements.end()));
-            auto current_size = pool_.size();
-            if (const auto current_reserved = reserved_size_.load(); current_size <= current_reserved / 4) {
+            const auto low_watermark =
+                    static_cast<std::uint64_t>(static_cast<double>(current_reserved) * LOW_WATERMARK_RATIO);
+
+            if (current_size <= low_watermark) {
                 reserved_size_.store(std::max(current_reserved / 2, MIN_RESERVED_SIZE));
             }
         }
-
 
         /**
          * @brief Gets the current number of elements in the pool.
@@ -255,21 +240,58 @@ namespace jh {
             return obj;
         }
 
+        // Internal cleanup without locking
+        void cleanup_nolock() {
+            // Step 1: Collect valid weak_ptrs using STL algorithms
+            std::vector<std::weak_ptr<T>> valid_elements;
+            valid_elements.reserve(pool_.size());
+
+            std::copy_if(pool_.begin(), pool_.end(), std::back_inserter(valid_elements),
+                         [](const std::weak_ptr<T> &w_ptr) { return !w_ptr.expired(); });
+
+            // Step 2: Safely replace `pool_` inside the lock
+            pool_.clear();
+            pool_.insert(std::make_move_iterator(valid_elements.begin()),
+                         std::make_move_iterator(valid_elements.end()));
+        }
+
+        static constexpr double HIGH_WATERMARK_RATIO = 0.875; ///< Expand if usage exceeds 87.5%
+        static constexpr double LOW_WATERMARK_RATIO  = 0.25;  ///< Shrink if usage falls below 25%
+
         /**
          * @brief Expands or shrinks the pool's reserved size based on usage.
          *
          * @details
-         * - **Expansion:** If `pool_` exceeds `reserved_size_`, the limit is doubled (`*2`).
-         * - **Contraction:** If `pool_` is **less than 1/4ZZ** of `reserved_size_`, it is halved (`/2`).
-         * - The **minimum reserved size is MIN_RESERVED_SIZE**, ensuring that `reserved_size_` never shrinks too small.
+         * - **Expansion**:
+         *   - If the pool size reaches the reserved limit, or
+         *   - If the pool size after cleanup still exceeds `HIGH_WATERMARK_RATIO * reserved_size_`
+         *     (to prevent frequent re-expansion shortly after cleanup),
+         *   then the reserved size is doubled (`*2`).
+         *
+         * - **Contraction**:
+         *   - If the pool size falls below `LOW_WATERMARK_RATIO * reserved_size_`,
+         *     the reserved size is halved (`/2`).
+         *
+         * - The reserved size will never shrink below `MIN_RESERVED_SIZE`.
          */
         void expand_and_cleanup() {
-            cleanup();
+            std::lock_guard<std::shared_mutex> lock(pool_mutex_);
+            cleanup_nolock();
 
-            if (pool_.size() >= reserved_size_.load()) {
-                reserved_size_.store(reserved_size_.load() * 2); // Expand when full.
-            } else if (pool_.size() <= reserved_size_.load() / 4) {
-                reserved_size_.store(std::max(reserved_size_.load() / 2, MIN_RESERVED_SIZE)); // Shrink when underused.
+            auto current_size     = pool_.size();
+            auto current_reserved = reserved_size_.load();
+
+            const auto high_watermark =
+                    static_cast<std::uint64_t>(static_cast<double >(current_reserved) * HIGH_WATERMARK_RATIO);
+            const auto low_watermark =
+                    static_cast<std::uint64_t>(static_cast<double >(current_reserved) * LOW_WATERMARK_RATIO);
+
+            if (current_size >= current_reserved || current_size >= high_watermark) {
+                // Expand if size exceeds the limit or crosses the high watermark.
+                reserved_size_.store(current_reserved * 2);
+            } else if (current_size <= low_watermark) {
+                // Shrink if size falls below the low watermark.
+                reserved_size_.store(std::max(current_reserved / 2, MIN_RESERVED_SIZE));
             }
         }
     };
