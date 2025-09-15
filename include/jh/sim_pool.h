@@ -55,7 +55,7 @@
  * **For automatic pooling of types that already implement `operator==` and `T::hash()`**,
  * consider using `jh::pool<T>` by including `<jh/pool.h>`.
  *
- * @version 1.2.x
+ * @version 1.3.x
  * @date 2025
  */
 

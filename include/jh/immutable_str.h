@@ -62,7 +62,7 @@
  * - **Constructing**: Supports construction from [C-strings] and [`std::string_view` with mutex protection].
  * - **Pooling Support**: Compatible with `jh::pool` for efficient object pooling.
  *
- * @version 1.2.x
+ * @version 1.3.x
  * @date 2025
  */
 
