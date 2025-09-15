@@ -1,5 +1,5 @@
 /**
-* Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
+ * Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,6 +50,8 @@ namespace jh::pod {
         std::byte storage[sizeof(T)];
         bool has_value;
 
+        using value_type [[maybe_unused]] = T;
+
         /// @brief Default constructor (empty state). Value must be assigned manually.
         constexpr optional() noexcept = default;
 
@@ -99,6 +101,16 @@ namespace jh::pod {
          * @brief Returns a const reference to the stored value.
          */
         [[nodiscard]] const T &ref() const noexcept { return *get(); }
+
+        /**
+         * @brief Returns stored value if present; otherwise returns fallback.
+         * @param fallback A fallback value to return if empty.
+         * @return Copy of stored or fallback value.
+         */
+        [[nodiscard]] T value_or(T fallback) const noexcept {
+            return has_value ? ref() : fallback;
+        }
+
     };
 
     /**

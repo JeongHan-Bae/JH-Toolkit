@@ -61,7 +61,8 @@ namespace jh::views {
     public:
         zip_view(const R1 &a, const R2 &b)
             : a_(a), b_(b),
-              size_(std::min(std::ranges::size(a), std::ranges::size(b))) {
+              size_(std::min(static_cast<uint64_t>(std::ranges::size(a)),
+                             static_cast<uint64_t>(std::ranges::size(b)))) {
         }
 
         class iterator {

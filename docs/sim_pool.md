@@ -1,6 +1,6 @@
 # 📦 JH Toolkit: `sim_pool` Simple Object Pool API Documentation
 
-📌 **Version:** 1.2  
+📌 **Version:** 1.3  
 📅 **Date:** 2025  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
@@ -14,24 +14,39 @@ The `jh::sim_pool<T, Hash, Eq>` class is a **generic weak pointer-based object p
 It is particularly useful for scenarios where objects are frequently created and destroyed, ensuring **deduplication and automatic cleanup** of expired instances.
 
 ### **Key Features**
+
 ✅ **Automatic Object Pooling**
-- Prevents redundant `std::shared_ptr<T>` allocations by **storing only one instance of semantically identical objects**.
+
+* Prevents redundant `std::shared_ptr<T>` allocations by **storing only one instance of semantically identical objects**.
 
 ✅ **Dynamic Memory Management**
-- **Expands dynamically** when full and **shrinks automatically** when underutilized.
-- Uses `std::atomic<std::uint64_t>` for **efficient, lock-free size tracking**.
+
+* **Expands dynamically** when full and **shrinks automatically** when underutilized.
+* Uses `std::atomic<std::uint64_t>` for **efficient, lock-free size tracking**.
+* Introduces **high/low watermark ratios** (87.5% / 25%) to prevent jittery expand/shrink decisions.
+
+  > 🆕 *Watermark Ratios Added in **v1.3.2***
 
 ✅ **Thread-Safe Implementation**
-- Uses `std::shared_mutex` for **safe concurrent access**.
-- `acquire()` and `cleanup()`(`cleanup_shrink()`) operations are **lock-protected**.
+
+* Uses `std::shared_mutex` for **safe concurrent access**.
+* `acquire()` and `cleanup()`(`cleanup_shrink()`) operations are **lock-protected**.
+* Cleanup, resize decisions, and size checks are now consistently performed under a **single lightweight lock**.
+
+  > 🆕 *Improved in **v1.3.2***
 
 ✅ **Custom Hashing and Equality Support**
-- **Uses content-based hashing** (`Hash`) and equality (`Eq`) instead of pointer-based lookup.
-- Allows **custom pool policies** for managing objects based on their content.
+
+* **Uses content-based hashing** (`Hash`) and equality (`Eq`) instead of pointer-based lookup.
+* Allows **custom pool policies** for managing objects based on their content.
 
 ✅ **Automatic Expiration Handling**
-- Once all shared references are gone, the object **expires and will be removed upon the next cleanup cycle**.
 
+* Once all shared references are gone, the object **expires and will be removed upon the next cleanup cycle**.
+* Public `cleanup`, `cleanup_shrink`, and internal `expand_and_cleanup` now share a **unified design** for consistency.
+
+  > 🆕 *Refactored in **v1.3.2***
+  
 ---
 
 ## **2. When Should You Use `sim_pool<T, Hash, Eq>`?**

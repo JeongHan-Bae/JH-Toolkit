@@ -285,6 +285,40 @@ TEST_CASE("pod::optional basic behavior") {
     }
 }
 
+TEST_CASE("pod::optional value_or behavior") {
+    using pod::optional;
+
+    SECTION("Returns fallback when empty") {
+        optional<int> o{};
+        REQUIRE_FALSE(o.has());
+        REQUIRE(o.value_or(99) == 99);
+    }
+
+    SECTION("Returns stored value when present") {
+        optional<int> o{};
+        o.store(123);
+        REQUIRE(o.has());
+        REQUIRE(o.value_or(999) == 123); // fallback ignored
+    }
+
+    SECTION("Works with trivial struct") {
+        struct S {
+            int x;
+            float y;
+        };
+        static_assert(pod::pod_like<S>);
+
+        optional<S> o{};
+        S def{5, 3.5f};
+        REQUIRE(o.value_or(def).x == 5);
+        REQUIRE(o.value_or(def).y == 3.5f);
+
+        o.store({42, 1.0f});
+        REQUIRE(o.value_or(def).x == 42);
+        REQUIRE(o.value_or(def).y == 1.0f);
+    }
+}
+
 TEST_CASE("pod::array of optional<T> usage") {
     using pod::array;
     using pod::optional;
@@ -640,5 +674,123 @@ TEST_CASE("string_view hash reflects exact character content") {
     SECTION("string_view vs bytes_view from same buffer") {
         auto bv = jh::pod::bytes_view::from(content1, sizeof(content1) - 1);
         REQUIRE(sv1.hash() == bv.hash());
+    }
+}
+
+namespace user_override {
+
+    std::ostream &operator<<(std::ostream &os, const jh::pod::array<int, 3> &) {
+        os << "user_defined_override";
+        return os;
+    }
+
+} // namespace user_override
+
+TEST_CASE("User-defined operator<< overrides default inline", "[ostream_override]") {
+    std::ostringstream os1, os2;
+
+    SECTION("user override active") {
+        using user_override::operator<<;
+        jh::pod::array<int, 3> a{};
+        os1 << a;
+        REQUIRE(os1.str() == "user_defined_override");
+    }
+
+    SECTION("default inline remains active when no override") {
+        jh::pod::array<int, 5> b{};
+        os2 << b;
+        REQUIRE(os2.str() == "[0, 0, 0, 0, 0]");
+    }
+}
+
+TEST_CASE("pod::ostream << overloads for built-in and custom POD types", "[ostream]") {
+    using jh::pod::array;
+    using jh::pod::pair;
+    using jh::pod::optional;
+    using jh::pod::bitflags;
+    using jh::pod::bytes_view;
+    using jh::pod::span;
+    using jh::pod::string_view;
+    using jh::typed::monostate;
+
+    SECTION("array<T, N> general printable") {
+        array<int, 3> a = {1, 2, 3};
+        std::ostringstream oss;
+        oss << a;
+        REQUIRE(oss.str() == "[1, 2, 3]");
+    }
+
+    SECTION("array<char, N> as escaped JSON string") {
+        array<char, 6> s = {"hello"};
+        std::ostringstream oss;
+        oss << s;
+        REQUIRE(oss.str() == "\"hello\"");
+    }
+
+    SECTION("pair<T1, T2>") {
+        pair<int, float> p = {42, 3.14f};
+        std::ostringstream oss;
+        oss << p;
+        REQUIRE(oss.str() == "{42, 3.14}");
+    }
+
+    SECTION("optional<T> with and without value") {
+        std::ostringstream oss1, oss2;
+        optional<int> o1{};
+        o1.store(7);
+        optional<int> o2{};
+        oss1 << o1;
+        oss2 << o2;
+        REQUIRE(oss1.str() == "7");
+        REQUIRE(oss2.str() == "nullopt");
+    }
+
+    SECTION("bitflags<N> output in hex format") {
+        std::ostringstream oss;
+        bitflags<8> f{};
+        f.set(0); f.set(3); f.set(7);  // binary: 10001001 → hex: 0x'89
+        oss << std::hex << f;
+        REQUIRE(oss.str() == "0x'89'");
+    }
+
+    SECTION("bitflags<N> output in binary format") {
+        std::ostringstream oss;
+        bitflags<8> f{};
+        f.set(1); f.set(2);
+        oss << std::dec << f;
+        REQUIRE(oss.str() == "0b'00000110'");
+    }
+
+    SECTION("bytes_view outputs base64") {
+        std::ostringstream oss;
+        const uint8_t raw[] = {0x48, 0x65, 0x6c, 0x6c, 0x6f};  // "Hello"
+        bytes_view bv = bytes_view::from(raw, 5);
+        oss << bv;
+        REQUIRE(oss.str().starts_with("base64'"));
+        REQUIRE(oss.str().ends_with("'"));
+    }
+
+    SECTION("span<T> prints container-like output") {
+        array<int, 4> arr = {1, 2, 3, 4};
+        span<int> sp{arr.data, std::size(arr)};
+        std::ostringstream oss;
+        oss << sp;
+        REQUIRE(oss.str().starts_with("span<"));
+        REQUIRE(oss.str().find("[1, 2, 3, 4]") != std::string::npos);
+    }
+
+    SECTION("string_view outputs quoted content") {
+        constexpr char raw[] = "pod_string";
+        string_view sv{raw, strlen(raw)};
+        std::ostringstream oss;
+        oss << sv;
+        REQUIRE(oss.str() == "string_view\"pod_string\"");
+    }
+
+    SECTION("typed::monostate prints as null") {
+        monostate m{};
+        std::ostringstream oss;
+        oss << m;
+        REQUIRE(oss.str() == "null");
     }
 }

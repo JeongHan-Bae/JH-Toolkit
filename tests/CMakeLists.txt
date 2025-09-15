@@ -20,6 +20,7 @@ add_executable(test_pool test_pool.cpp)
 add_executable(test_runtime_arr test_runtime_arr.cpp)
 add_executable(test_view test_view.cpp)
 add_executable(test_pods test_pod_sys.cpp)
+add_executable(test_base64 test_base64.cpp)
 
 # Ensure Catch2 is linked properly
 target_link_libraries(test_generator PRIVATE jh-toolkit Catch2::Catch2WithMain)
@@ -29,6 +30,7 @@ target_link_libraries(test_pool PRIVATE jh-toolkit Catch2::Catch2WithMain)
 target_link_libraries(test_runtime_arr PRIVATE jh-toolkit Catch2::Catch2WithMain)
 target_link_libraries(test_view PRIVATE jh-toolkit Catch2::Catch2WithMain)
 target_link_libraries(test_pods PRIVATE jh-toolkit Catch2::Catch2WithMain)
+target_link_libraries(test_base64 PRIVATE jh-toolkit Catch2::Catch2WithMain)
 
 # Ensure test executables can find Catch2 headers
 target_include_directories(test_generator PRIVATE ${CMAKE_SOURCE_DIR}/tests)
@@ -38,6 +40,7 @@ target_include_directories(test_pool PRIVATE ${CMAKE_SOURCE_DIR}/tests)
 target_include_directories(test_runtime_arr PRIVATE ${CMAKE_SOURCE_DIR}/tests)
 target_include_directories(test_view PRIVATE ${CMAKE_SOURCE_DIR}/tests)
 target_include_directories(test_pods PRIVATE ${CMAKE_SOURCE_DIR}/tests)
+target_include_directories(test_base64 PRIVATE ${CMAKE_SOURCE_DIR}/tests)
 
 # Register tests with CTest
 add_test(NAME generator_test COMMAND test_generator)
@@ -47,3 +50,4 @@ add_test(NAME sim_pool_test COMMAND test_pool)
 add_test(NAME runtime_arr_test COMMAND test_runtime_arr)
 add_test(NAME view_test COMMAND test_view)
 add_test(NAME pod_test COMMAND test_pods)
+add_test(NAME base64_test COMMAND test_base64)

@@ -44,6 +44,7 @@
 
 #include <cstdint>   // for uint64_t
 #include <concepts>  // NOLINT for std::convertible_to<>
+#include <type_traits>
 
 #include "pod_like.h"
 
@@ -70,19 +71,28 @@ namespace jh::pod {
         T *data;           ///< Pointer to the first element
         std::uint64_t len; ///< Number of elements
 
+        using element_type [[maybe_unused]] = T;
+        using value_type = std::remove_cv_t<T>;
+        using size_type [[maybe_unused]] = std::uint64_t;
+        using difference_type [[maybe_unused]] = std::ptrdiff_t;
+        using reference [[maybe_unused]] = value_type &;
+        using const_reference [[maybe_unused]] = const value_type &;
+        using pointer [[maybe_unused]] = value_type *;
+        using const_pointer [[maybe_unused]] = const value_type *;
+
         /// @brief Access an element by index (no bounds check).
-        constexpr T &operator[](std::uint64_t index) const noexcept {
+        constexpr const_reference operator[](std::uint64_t index) const noexcept {
             return data[index];
         }
 
         /// @brief Pointer to the first element.
-        [[nodiscard]] constexpr T *begin() const noexcept { return data; }
+        [[nodiscard]] constexpr const_pointer begin() const noexcept { return data; }
 
         /// @brief Pointer to one-past-the-end.
-        [[nodiscard]] constexpr T *end() const noexcept { return data + len; }
+        [[nodiscard]] constexpr const_pointer end() const noexcept { return data + len; }
 
         /// @brief Number of elements in view.
-        [[nodiscard]] constexpr std::uint64_t size() const noexcept { return len; }
+        [[nodiscard]] constexpr size_type size() const noexcept { return len; }
 
         /// @brief Whether the view is empty.
         [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }
@@ -124,13 +134,13 @@ namespace jh::pod {
     };
 
     /// @brief Create span from a raw array (T[N]).
-    template<typename T, std::size_t N>
+    template<typename T, std::uint64_t N>
     [[nodiscard]] constexpr span<T> to_span(T (&arr)[N]) noexcept {
         return {arr, static_cast<std::uint64_t>(N)};
     }
 
     /// @brief Create span from a const raw array (const T[N]).
-    template<typename T, std::size_t N>
+    template<typename T, std::uint64_t N>
     [[nodiscard]] constexpr span<const T> to_span(const T (&arr)[N]) noexcept {
         return {arr, static_cast<std::uint64_t>(N)};
     }
@@ -144,7 +154,7 @@ namespace jh::pod {
 
     /// @brief Const overload for containers.
     template<detail::LinearContainer C>
-    [[nodiscard]] constexpr auto to_span(const C &c) noexcept
+    [[maybe_unused]] [[nodiscard]] constexpr auto to_span(const C &c) noexcept
         -> span<const std::remove_pointer_t<decltype(c.data())>> {
         return {c.data(), static_cast<std::uint64_t>(c.size())};
     }

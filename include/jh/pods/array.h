@@ -24,6 +24,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
 #include "pod_like.h"
 
 namespace jh::pod {
@@ -54,20 +55,31 @@ namespace jh::pod {
      *
      * @warning Do not use this for large arrays or heap-like buffers.
      */
-    template<pod_like T, std::uint16_t N>
-    requires (sizeof(T) * N <= max_pod_array_bytes)
-    struct alignas(alignof(T)) array final{
+    template<pod_like T, std::uint16_t N> requires (sizeof(T) * N <= max_pod_array_bytes)
+    struct alignas(alignof(T)) array final {
         T data[N];
 
-        constexpr T &operator[](std::size_t i) noexcept { return data[i]; }
-        constexpr const T &operator[](std::size_t i) const noexcept { return data[i]; }
+        using value_type = T;
+        using size_type [[maybe_unused]] = std::uint16_t;
+        using difference_type [[maybe_unused]] = std::ptrdiff_t;
+        using reference [[maybe_unused]] = value_type &;
+        using const_reference [[maybe_unused]] = const value_type &;
+        using pointer [[maybe_unused]] = value_type *;
+        using const_pointer [[maybe_unused]] = const value_type *;
 
-        constexpr T *begin() noexcept { return data; }
-        [[nodiscard]] constexpr const T *begin() const noexcept { return data; }
-        constexpr T *end() noexcept { return data + N; }
-        [[nodiscard]] constexpr const T *end() const noexcept { return data + N; }
+        constexpr reference operator[](std::size_t i) noexcept { return data[i]; }
 
-        [[nodiscard]] static constexpr std::size_t size() noexcept { return N; }
+        constexpr const_reference operator[](std::size_t i) const noexcept { return data[i]; }
+
+        constexpr pointer begin() noexcept { return data; }
+
+        [[nodiscard]] constexpr const_pointer begin() const noexcept { return data; }
+
+        constexpr pointer end() noexcept { return data + N; }
+
+        [[nodiscard]] constexpr const_pointer end() const noexcept { return data + N; }
+
+        [[nodiscard]] static constexpr size_type size() noexcept { return N; }
 
         constexpr bool operator==(const array &) const = default;
     };

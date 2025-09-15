@@ -206,7 +206,7 @@ namespace jh::pod {
 
 
             /// @brief Inverts all bits in-place.
-            constexpr void flip_all() noexcept { bits = ~bits; }
+            [[maybe_unused]] constexpr void flip_all() noexcept { bits = ~bits; }
 
             [[nodiscard]] constexpr std::uint16_t count() const noexcept {
                 return popcount(bits);
@@ -237,7 +237,7 @@ namespace jh::pod {
                 data[bit / 8] &= ~static_cast<std::uint8_t>(1 << (bit % 8));
             }
 
-            constexpr void flip(const std::uint16_t bit) noexcept {
+            [[maybe_unused]] constexpr void flip(const std::uint16_t bit) noexcept {
                 data[bit / 8] ^= static_cast<std::uint8_t>(1 << (bit % 8));
             }
 
@@ -245,8 +245,8 @@ namespace jh::pod {
                 return (data[bit / 8] & static_cast<std::uint8_t>(1 << (bit % 8))) != 0;
             }
 
-            constexpr void set_all() noexcept { *this = max(); }
-            constexpr void reset_all() noexcept { clear(); }
+            [[maybe_unused]] constexpr void set_all() noexcept { *this = max(); }
+            [[maybe_unused]] constexpr void reset_all() noexcept { clear(); }
 
             constexpr bitflags_bytes operator|(const bitflags_bytes &rhs) const noexcept {
                 bitflags_bytes out = *this;
@@ -289,7 +289,7 @@ namespace jh::pod {
             }
 
             /// @brief Inverts all bits in-place.
-            constexpr void flip_all() noexcept {
+            [[maybe_unused]] constexpr void flip_all() noexcept {
                 for (std::uint16_t i = 0; i < NUM_BYTES; ++i)
                     data[i] = static_cast<std::uint8_t>(~data[i]);
             }
