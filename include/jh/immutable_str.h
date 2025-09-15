@@ -289,9 +289,9 @@ namespace jh {
                     while (trailing > leading && detail::is_space_ascii(value[trailing - 1])) {
                         --trailing;
                     }
-                    return std::hash<std::string_view>{}({value + leading, trailing - leading});
+                    return std::hash<std::string_view>{}(std::string_view{value + leading, trailing - leading});
                 }
-                return std::hash<std::string_view>{}(value);  // NOLINT if !auto_trim
+                return std::hash<std::string_view>{}(std::string_view{value});  // NOLINT if !auto_trim
             }
         }
     };
