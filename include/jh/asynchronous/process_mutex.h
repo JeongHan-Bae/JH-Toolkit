@@ -173,7 +173,7 @@ namespace jh::sync {
     private:
 #if IS_WINDOWS
         HANDLE handle_{}; ///< OS handle for Windows
-        static constexpr auto full_name_ = jh::str_template::cstr{"Global\\"} + Path;
+        static constexpr auto full_name_ = jh::str_template::cstr{"Global\\"} + S;
 #else
         sem_t* sem_{}; ///< POSIX semaphore handle
         static constexpr auto full_name_ = jh::str_template::cstr{"/"} + S;

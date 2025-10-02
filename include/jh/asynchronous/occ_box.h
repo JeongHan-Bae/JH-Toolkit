@@ -934,13 +934,17 @@ namespace jh::async {
     }
 
     /**
+     * @brief Apply functions to multiple <code>occ_box</code>es atomically.
+     *
      * <h3>Choosing between copy-based and shared_ptr-based apply_to</h3>
+     *
      * <ul>
      *   <li><strong>Copy-based</strong>
      *     <ul>
      *       <li>Each box value is deep-copied before applying the function.</li>
      *       <li>Best suited for small or trivially copyable types.</li>
      *       <li>Ensures that modifications are isolated until commit.</li>
+     *       <li>Functions must be of type <code>void(T&)</code>.</li>
      *     </ul>
      *   </li>
      *
@@ -951,6 +955,8 @@ namespace jh::async {
      *       <li>Best for large or complex types where deep copies are expensive.</li>
      *       <li>When mixing small and large objects in one transaction,
      *           prefer the shared_ptr-based version for consistency and speed.</li>
+     *       <li>Functions must be of type
+     *           <code>std::shared_ptr&lt;T&gt;(const std::shared_ptr&lt;T&gt;&)</code>.</li>
      *     </ul>
      *   </li>
      * </ul>
@@ -959,58 +965,30 @@ namespace jh::async {
      * Both styles are mutually exclusive for a single transaction.
      * Attempting to mix them will fail at compile time.
      * </p>
-     */
-    template<typename... Boxes, typename... Funcs>
-    bool apply_to(std::tuple<Boxes &...> boxes, std::tuple<Funcs...> &&funcs);
-
-    /**
-     * @brief Apply functions to multiple <code>occ_box</code>es atomically (copy-based).
      *
-     * <h4>Semantics</h4>
-     * <ul>
-     *   <li>Each function must be of type <code>void(T&)</code>.</li>
-     *   <li>A deep copy of each box's value is created before applying the function.</li>
-     *   <li>All updates are committed together using a multi-CAS; if any conflict occurs, commit fails.</li>
-     * </ul>
+     * @tparam Boxes   The set of occ_box types
+     * @tparam Funcs   The set of functions (one per box)
+     *
+     * @param boxes    Tuple of references to occ_boxes
+     * @param funcs    Tuple of functions to apply
      *
      * @return <code>true</code> if commit succeeds, <code>false</code> otherwise.
-     *
-     * @warning All functions must match the same style (copy-based).
-     *          Mixing with shared_ptr-based functions is not allowed.
      */
     template<typename... Boxes, typename... Funcs>
     requires ((sizeof...(Boxes) == sizeof...(Funcs)) &&
               (detail::funcs_match_boxes<std::tuple<Boxes...>, std::tuple<Funcs...>>(
-                      std::index_sequence_for<Boxes...>{})))
-    bool apply_to(std::tuple<Boxes & ...> boxes, std::tuple<Funcs...> &&funcs) {
-        return detail::apply_to_impl(boxes, std::move(funcs), std::index_sequence_for<Boxes...>{});
-    }
-
-    /**
-     * @brief Apply functions to multiple <code>occ_box</code>es atomically (shared_ptr-based).
-     *
-     * <h4>Semantics</h4>
-     * <ul>
-     *   <li>Each function must be of type
-     *       <code>std::shared_ptr&lt;T&gt;(const std::shared_ptr&lt;T&gt;&)</code>.</li>
-     *   <li>No deep copy of the old value is performed; the function directly returns
-     *       a new <code>shared_ptr</code> for replacement.</li>
-     *   <li>All updates are committed together using a multi-CAS; if any conflict occurs, commit fails.</li>
-     * </ul>
-     *
-     * @return <code>true</code> if commit succeeds, <code>false</code> otherwise.
-     *
-     * @warning All functions must match the same style (shared_ptr-based).
-     *          Mixing with copy-based functions is not allowed.
-     */
-    template<typename... Boxes, typename... Funcs>
-    requires ((sizeof...(Boxes) == sizeof...(Funcs)) &&
-              detail::funcs_match_boxes_t_ptrs<std::tuple<Boxes...>, std::tuple<Funcs...>>(
-                      std::index_sequence_for<Boxes...>{}) &&
-              (!detail::funcs_match_boxes<std::tuple<Boxes...>, std::tuple<Funcs...>>(
-                      std::index_sequence_for<Boxes...>{})))
+                      std::index_sequence_for<Boxes...>{}) ||
+               detail::funcs_match_boxes_t_ptrs<std::tuple<Boxes...>, std::tuple<Funcs...>>(
+                       std::index_sequence_for<Boxes...>{})))
     bool apply_to(std::tuple<Boxes &...> boxes, std::tuple<Funcs...> &&funcs) {
-        return detail::apply_to_ptr_impl(boxes, std::move(funcs), std::index_sequence_for<Boxes...>{});
+        if constexpr (detail::funcs_match_boxes<std::tuple<Boxes...>, std::tuple<Funcs...>>(
+                std::index_sequence_for<Boxes...>{})) {
+            // Copy-based
+            return detail::apply_to_impl(boxes, std::move(funcs), std::index_sequence_for<Boxes...>{});
+        } else {
+            // Shared_ptr-based
+            return detail::apply_to_ptr_impl(boxes, std::move(funcs), std::index_sequence_for<Boxes...>{});
+        }
     }
 
 #endif

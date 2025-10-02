@@ -399,15 +399,32 @@ namespace jh::async {
 #if IS_WINDOWS
             STARTUPINFO si{ sizeof(si) };
             PROCESS_INFORMATION pi{};
-            std::filesystem::path exe;
-                if constexpr (IsBinary) {
-                    exe = std::filesystem::path(Path.val()).concat(".exe");
-                } else {
-                    exe = std::filesystem::path(Path.val());
-                }
-            if (!CreateProcess(exe.string().c_str(), nullptr, nullptr, nullptr,
-                               FALSE, 0, nullptr, nullptr, &si, &pi)) {
-                throw std::runtime_error("CreateProcess failed for " + exe.string());
+
+            // Ensure consistent semantics with POSIX: always launch from current directory
+            std::filesystem::path exe = std::filesystem::path(".") / Path.val();
+            if constexpr (IsBinary) {
+                        exe.concat(".exe");
+            }
+
+            // Windows requires a mutable command line buffer for lpCommandLine
+            std::string cmdline = exe.string();
+
+            if (!CreateProcess(
+                        exe.string().c_str(),   // lpApplicationName
+                        cmdline.data(),         // lpCommandLine (argv[0])
+                        nullptr,                // lpProcessAttributes
+                        nullptr,                // lpThreadAttributes
+                        FALSE,                  // bInheritHandles
+                        0,                      // dwCreationFlags
+                        nullptr,                // lpEnvironment
+                        nullptr,                // lpCurrentDirectory
+                        &si, &pi))
+            {
+                        DWORD err = GetLastError();
+                        throw std::runtime_error(
+                                    "CreateProcess failed for " + exe.string() +
+                                    " (error=" + std::to_string(err) + ")"
+                        );
             }
             return handle{pi};
 #elif IS_POSIX
