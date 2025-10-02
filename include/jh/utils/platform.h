@@ -113,6 +113,12 @@ static_assert(sizeof(std::size_t) == 8,
 #  define IS_POSIX 0
 #endif
 
+#if defined(_POSIX_TIMEOUTS) && (_POSIX_TIMEOUTS >= 200112L)
+#  define HAS_POSIX_1B 1
+#else
+#  define HAS_POSIX_1B 0
+#endif
+
 #if defined(__x86_64__) || defined(_M_X64)
 #define IS_AMD64 1
 #else
@@ -135,7 +141,7 @@ static_assert(sizeof(std::size_t) == 8,
 #define IS_X86_FAMILY (IS_X86 || IS_AMD64)
 
 // Toolchain on Windows
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(_WIN64)
 #  define IS_WINDOWS 1
 
 #  if defined(__MINGW32__) || defined(__MINGW64__)
@@ -175,6 +181,8 @@ static_assert(sizeof(std::size_t) == 8,
 #else
 #  define IS_APPLE 0
 #endif
+
+#define IS_DARWIN IS_APPLE
 
 #if defined(__FreeBSD__)
 # define IS_FREEBSD 1
