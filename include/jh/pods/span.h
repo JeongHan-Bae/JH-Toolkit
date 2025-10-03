@@ -1,4 +1,5 @@
 /**
+ * \verbatim
  * Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,32 +13,26 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * \endverbatim
  */
-
 /**
  * @file span.h (pods)
- * @author JeongHan-Bae <mastropseudo@gmail.com>
- * @brief POD-safe minimal span implementation for viewing contiguous memory blocks.
+ * @brief POD-safe minimal span for contiguous memory.
  *
- * This header defines `jh::pod::span<T>` — a non-owning view into a typed memory range,
- * designed for high-performance, POD-only systems such as `pod_vector`, `arena`, or `mmap`.
+ * <h3>Design Goals:</h3>
+ * <ul>
+ *   <li>Fully POD (<code>T* + uint64_t</code>)</li>
+ *   <li>No dynamic allocation, no STL dependencies</li>
+ *   <li>Iteration, slicing, and indexing support</li>
+ *   <li>Suitable for arena allocators, mmap, and raw containers</li>
+ * </ul>
  *
- * ## Design Goals:
- * - Fully POD (`T* + uint64_t`)
- * - No dynamic allocation, no STL
- * - Iteration + slicing (`begin`, `end`, `sub`, `operator[]`)
- * - Suitable for view-only use cases in high-performance subsystems
- *
- * @note This type assumes lifetime of the memory is managed externally.
- *       It should be treated as read/write *view* into pre-allocated or static memory.
- *
- *       This span is strictly intended for viewing contiguous, array-like memory.
- *       If your data represents a packed or heterogeneous layout (e.g., binary blob,
- *       protocol packet, or non-uniform struct), use `bytes_view` instead.
- *
- *       Additionally, this span only supports direct memory access — containers
- *       must expose `.data()` convertible to `T*` and `.size()` convertible to `uint64_t`.
- *       Iterator-based ranges or virtualized containers are not supported by design.
+ * @note Unlike <code>std::span</code>, this type is limited to POD-compatible
+ *       contiguous memory. It does not support iterator ranges, polymorphic
+ *       containers, or allocator-aware semantics.
+ * @note Lifetime of underlying memory must be managed externally.
+ * @note Functions rely on <code>reinterpret_cast</code> and therefore cannot
+ *       be used in <code>consteval</code> contexts.
  */
 
 #pragma once
@@ -50,6 +45,15 @@
 
 namespace jh::pod {
     namespace detail {
+        /**
+         * @brief Concept for linear containers exposing <code>.data()</code> and <code>.size()</code>.
+         *
+         * Requires that:
+         * <ul>
+         *   <li><code>c.data()</code> is convertible to a pointer type</li>
+         *   <li><code>c.size()</code> is convertible to <code>uint64_t</code></li>
+         * </ul>
+         */
         template<typename C, typename T = std::remove_pointer_t<decltype(std::declval<C>().data())> >
         concept LinearContainer =
                 requires(const C &c)
@@ -59,26 +63,41 @@ namespace jh::pod {
                 };
     }
 
-
     /**
-     * @brief Typed, non-owning view over a contiguous memory block.
+     * @brief Non-owning typed view over a contiguous memory block.
      *
-     * `span<T>` behaves like a stripped-down `std::span<T>`, but remains fully POD.
-     * This is ideal for viewing regions in arena allocators, mmaps, or in-place structs.
+     * Behaves like a stripped-down <code>std::span</code>, but remains fully POD
+     * (<code>T* + uint64_t</code>).
+     *
+     * <h4>Differences from std::span:</h4>
+     * <ul>
+     *   <li>No bounds-checked <code>.at()</code></li>
+     *   <li>No dynamic extent; always runtime-sized</li>
+     *   <li>No interop with iterator-only containers</li>
+     * </ul>
+     *
+     * <h4>Usage Model:</h4>
+     * <ul>
+     *   <li>Provides indexing (<code>operator[]</code>)</li>
+     *   <li>Range iteration via <code>begin()</code>/<code>end()</code></li>
+     *   <li>Slicing via <code>sub()</code>, <code>first()</code>, <code>last()</code></li>
+     * </ul>
+     *
+     * @tparam T Element type. Must satisfy <code>pod_like</code>.
      */
     template<pod_like T>
     struct span final {
-        T *data;           ///< Pointer to the first element
-        std::uint64_t len; ///< Number of elements
+        T *data;           ///< @brief Pointer to the first element.
+        std::uint64_t len; ///< @brief Number of elements.
 
-        using element_type [[maybe_unused]] = T;
-        using value_type = std::remove_cv_t<T>;
-        using size_type [[maybe_unused]] = std::uint64_t;
-        using difference_type [[maybe_unused]] = std::ptrdiff_t;
-        using reference [[maybe_unused]] = value_type &;
-        using const_reference [[maybe_unused]] = const value_type &;
-        using pointer [[maybe_unused]] = value_type *;
-        using const_pointer [[maybe_unused]] = const value_type *;
+        using element_type = T;                                   ///< @brief Element type (alias of <code>T</code>).
+        using value_type = std::remove_cv_t<T>;                   ///< @brief Value type without const/volatile.
+        using size_type = std::uint64_t;                          ///< @brief Size type (64-bit).
+        using difference_type [[maybe_unused]] = std::ptrdiff_t;  ///< @brief Signed difference type.
+        using reference = value_type &;                           ///< @brief Reference to element.
+        using const_reference = const value_type &;               ///< @brief Const reference to element.
+        using pointer = value_type *;                             ///< @brief Pointer to element.
+        using const_pointer = const value_type *;                 ///< @brief Const pointer to element.
 
         /// @brief Access an element by index (no bounds check).
         constexpr const_reference operator[](std::uint64_t index) const noexcept {
@@ -98,10 +117,10 @@ namespace jh::pod {
         [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }
 
         /**
-         * @brief Creates a sub-span from `offset`, with optional `count` elements.
+         * @brief Creates a sub-span from <code>offset</code>, with optional <code>count</code> elements.
          *
-         * If count == 0 (default), the view extends to end.
-         * If offset > len, returns empty span.
+         * If <code>count == 0</code> (default), the view extends to end.
+         * If <code>offset &gt; len</code>, returns empty span.
          */
         [[nodiscard]] constexpr span sub(const std::uint64_t offset,
                                          const std::uint64_t count = 0) const noexcept {
@@ -111,41 +130,46 @@ namespace jh::pod {
             return {data + offset, real_len};
         }
 
-        /**
-         * @brief Returns the first `count` elements as a new span.
-         * If `count >= len`, returns a full span.
-         */
+        /// @brief Returns the first <code>count</code> elements as a new span.
         [[nodiscard]] constexpr span first(const std::uint64_t count) const noexcept {
             if (!count) return {nullptr, 0};
             return {data, (len > count ? count : len)};
         }
 
-        /**
-         * @brief Returns the last `count` elements as a new span.
-         * If `count >= len`, returns a full span.
-         */
+        /// @brief Returns the last <code>count</code> elements as a new span.
         [[nodiscard]] constexpr span last(const std::uint64_t count) const noexcept {
             if (!count) return {nullptr, 0};
             if (count >= len) return *this;
             return {data + len - count, count};
         }
 
+        /**
+         * @brief Equality comparison between two spans.
+         *
+         * Two spans are considered equal if they reference the <b>same sequence object</b>
+         * (i.e. identical pointer and identical length).
+         * This does <b>not</b> compare the element values.
+         *
+         * @note Implemented with <code>= default</code>, which checks <code>data</code> and <code>len</code>.
+         * If you need value-wise comparison, use algorithms such as
+         * <code>std::equal(lhs.begin(), lhs.end(), rhs.begin())</code>.
+         */
         constexpr bool operator==(const span &rhs) const = default;
     };
 
-    /// @brief Create span from a raw array (T[N]).
+    /// @brief Create span from a raw array (<code>T[N]</code>).
     template<typename T, std::uint64_t N>
     [[nodiscard]] constexpr span<T> to_span(T (&arr)[N]) noexcept {
         return {arr, static_cast<std::uint64_t>(N)};
     }
 
-    /// @brief Create span from a const raw array (const T[N]).
+    /// @brief Create span from a const raw array (<code>const T[N]</code>).
     template<typename T, std::uint64_t N>
     [[nodiscard]] constexpr span<const T> to_span(const T (&arr)[N]) noexcept {
         return {arr, static_cast<std::uint64_t>(N)};
     }
 
-    /// @brief Create span from an object with .data() and .size() methods.
+    /// @brief Create span from an object with <code>.data()</code> and <code>.size()</code>.
     template<detail::LinearContainer C>
     [[nodiscard]] constexpr auto to_span(C &c) noexcept
         -> span<std::remove_pointer_t<decltype(c.data())> > {
@@ -154,7 +178,7 @@ namespace jh::pod {
 
     /// @brief Const overload for containers.
     template<detail::LinearContainer C>
-    [[maybe_unused]] [[nodiscard]] constexpr auto to_span(const C &c) noexcept
+    [[nodiscard]] constexpr auto to_span(const C &c) noexcept
         -> span<const std::remove_pointer_t<decltype(c.data())>> {
         return {c.data(), static_cast<std::uint64_t>(c.size())};
     }

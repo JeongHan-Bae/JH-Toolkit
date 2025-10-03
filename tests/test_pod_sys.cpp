@@ -60,7 +60,9 @@ TEST_CASE("JH PODS Recognition") {
                            decltype(jh::pod::uint_to_bytes<std::uint8_t>(42)) >);
     STATIC_REQUIRE(std::is_same_v<std::uint32_t,
                            decltype(jh::pod::bytes_to_uint<4>(jh::pod::array<std::uint8_t, 4>{})) >);
-
+    STATIC_REQUIRE(std::is_same_v<jh::pod::pair<int, double>::first_type, int>);
+    STATIC_REQUIRE(std::is_same_v<jh::pod::pair<int, double>::second_type, double>);
+    STATIC_REQUIRE(std::is_same_v<jh::pod::span<int>::element_type, int>);
 }
 
 TEST_CASE("JH_POD_STRUCT generated struct is pod_like") {
@@ -138,6 +140,12 @@ TEST_CASE("bitflags basic API (native uint backend)") {
 
     f.reset_all();
     REQUIRE(f.count() == 0);
+
+    f.flip_all();         // invert all bits
+    REQUIRE(f.count() == 32);
+
+    f.flip_all();         // invert back
+    REQUIRE(f.count() == 0);
 }
 
 TEST_CASE("bitflags to_bytes and from_bytes roundtrip") {
@@ -157,6 +165,29 @@ TEST_CASE("bitflags to_bytes and from_bytes roundtrip") {
     REQUIRE(restored == f);
 }
 
+TEST_CASE("bitflags full API (bytes backend)") {
+    using F = jh::pod::bitflags<24>; // non-native, uses byte-array backend
+    F f{};
+    REQUIRE(f.count() == 0);
+
+    f.set(0);
+    f.set(23);
+    REQUIRE(f.has(0));
+    REQUIRE(f.has(23));
+
+    f.flip(0);
+    REQUIRE_FALSE(f.has(0));
+
+    f.set_all();
+    REQUIRE(f.count() == 24);
+
+    f.reset_all();
+    REQUIRE(f.count() == 0);
+
+    f.flip_all();
+    REQUIRE(f.count() == 24);
+}
+
 TEST_CASE("bytes_view basic reinterpret and comparison") {
     SECTION("from std::array and compare views") {
         std::array<std::uint8_t, 4> a = {1, 2, 3, 4};
@@ -169,6 +200,7 @@ TEST_CASE("bytes_view basic reinterpret and comparison") {
 
         REQUIRE(va == vb);
         REQUIRE_FALSE(va == vc);
+        REQUIRE(va != vc);
     }
 
     SECTION("reinterpret as struct using at<T>()") {
@@ -384,6 +416,61 @@ TEST_CASE("pod::array of optional<T> usage") {
     }
 }
 
+TEST_CASE("pod::optional equality semantics") {
+    using pod::optional;
+    using pod::make_optional;
+
+    SECTION("default vs value-initialized 0") {
+        optional<int> def{};              // Default constructed: has_value = false, storage is 0-initialized
+        auto val0 = make_optional(0);     // Stored value 0: has_value = true, storage contains all zeroes
+
+        REQUIRE(def != val0);             // Different states: one empty, one holding a value
+        val0.clear();                     // Clear: has_value = false
+        REQUIRE(def == val0);             // Both empty, considered equal regardless of storage content
+    }
+
+    SECTION("different stored values are not equal") {
+        auto a = make_optional(234);
+        auto b = make_optional(16);
+        REQUIRE(a != b);                  // Both have values, raw storage differs
+    }
+
+    SECTION("same stored values are equal") {
+        auto a = make_optional(16);
+        auto b = make_optional(16);
+        REQUIRE(a == b);                  // Both have values, raw storage identical
+    }
+
+    SECTION("clear makes them equal") {
+        auto a = make_optional(234);
+        auto b = make_optional(16);
+        REQUIRE(a != b);                  // Initially different values
+
+        a.clear();
+        b.clear();
+        REQUIRE(a == b);                  // After clear: both empty, considered equal
+    }
+}
+
+TEST_CASE("pod::array of optional equality semantics") {
+    using pod::array;
+    using pod::optional;
+    using pod::make_optional;
+
+    SECTION("cleared optional equals default optional inside array") {
+        array<optional<int>, 2> arr1{make_optional(16), make_optional(16)};
+        array<optional<int>, 2> arr2{};
+
+        arr1[0].clear();   // has_value = false, storage still contains "16"
+        arr1[1].clear();
+        // arr2[0] is default constructed: has_value = false, storage 0-initialized
+
+        REQUIRE(arr1 == arr2); // Equality only depends on has_value and raw storage when present.
+        // Since both are empty, they compare equal even if storage differs.
+    }
+}
+
+
 TEST_CASE("pod::span works with pod::array") {
     using pod::span;
     using pod::array;
@@ -547,6 +634,27 @@ TEST_CASE("pod::string_view basic usage", "[string_view]") {
         sv.copy_to(buffer, sizeof(buffer));
         REQUIRE(std::strcmp(buffer, "hello_pod_world") == 0);
     }
+}
+
+TEST_CASE("string_view from_literal correctness") {
+    using jh::pod::string_view;
+    // case 1: simple literal
+    constexpr auto sv = string_view::from_literal("hello");
+    static_assert(sv.size() == 5, "string_view size from literal should be strlen(literal)");
+
+    REQUIRE(sv.size() == 5);
+    REQUIRE(sv == string_view{"hello", std::strlen("hello")});
+
+    // case 2: empty string literal
+    constexpr auto sv_empty = string_view::from_literal("");
+    static_assert(sv_empty.empty());
+    REQUIRE(sv_empty.empty());
+    REQUIRE(sv_empty == string_view{"", std::strlen("")});
+
+    // case 3: longer literal
+    constexpr auto sv_long = string_view::from_literal("hello_pod_world");
+    REQUIRE(sv_long.size() == std::strlen("hello_pod_world"));
+    REQUIRE(sv_long == string_view{"hello_pod_world", std::strlen("hello_pod_world")});
 }
 
 TEST_CASE("pod::array<pod::string_view> comparison") {
@@ -748,7 +856,9 @@ TEST_CASE("pod::ostream << overloads for built-in and custom POD types", "[ostre
     SECTION("bitflags<N> output in hex format") {
         std::ostringstream oss;
         bitflags<8> f{};
-        f.set(0); f.set(3); f.set(7);  // binary: 10001001 → hex: 0x'89
+        f.set(0);
+        f.set(3);
+        f.set(7);  // binary: 10001001 → hex: 0x'89
         oss << std::hex << f;
         REQUIRE(oss.str() == "0x'89'");
     }
@@ -756,7 +866,8 @@ TEST_CASE("pod::ostream << overloads for built-in and custom POD types", "[ostre
     SECTION("bitflags<N> output in binary format") {
         std::ostringstream oss;
         bitflags<8> f{};
-        f.set(1); f.set(2);
+        f.set(1);
+        f.set(2);
         oss << std::dec << f;
         REQUIRE(oss.str() == "0b'00000110'");
     }
