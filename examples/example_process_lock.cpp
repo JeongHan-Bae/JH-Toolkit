@@ -1,6 +1,6 @@
 /**
  * @file example_process_lock.cpp
- * @brief Demonstration of cross-process synchronization using <code>jh::sync::process_mutex</code>
+ * @brief Demonstration of cross-process synchronization using <code>jh::async::process_mutex</code>
  *        and <code>jh::async::process_launcher</code>.
  */
 
@@ -15,7 +15,7 @@ static EnsureOutput ensure_output_setup;
 #endif
 
 /// @brief Privileged mutex type that allows explicit unlinking.
-using priv_mutex_t = jh::sync::process_mutex<"demo_mutex", true>;
+using priv_mutex_t = jh::async::process_mutex<"demo_mutex", true>;
 
 int main() {
     try {

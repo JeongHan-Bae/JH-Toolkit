@@ -21,7 +21,7 @@
  *
  * <h3>Overview</h3>
  * <p>
- * <code>jh::sync::process_mutex</code> is a cross-platform, process-wide synchronization primitive
+ * <code>jh::async::process_mutex</code> is a cross-platform, process-wide synchronization primitive
  * identified by a <strong>compile-time string literal</strong>. Each unique literal corresponds to a unique
  * OS-level named semaphore.
  * </p>
@@ -130,14 +130,14 @@
 #if !IS_WINDOWS
 #include <sys/stat.h>
 
-namespace jh::sync::detail {
+namespace jh::async::detail {
     static constexpr mode_t process_mutex_permissions =
             JH_PROCESS_MUTEX_SHARED ? static_cast<mode_t>(0666) : static_cast<mode_t>(0644);
 }
 #endif
 
 
-namespace jh::sync {
+namespace jh::async {
 
     namespace detail {
         /// Check if a character is valid in a mutex name (alnum, '_', '-', '.').
@@ -415,4 +415,4 @@ namespace jh::sync {
         }
     };
 
-} // namespace jh::sync
+} // namespace jh::async

@@ -30,7 +30,7 @@ namespace test {
 
 }
 
-using mutex_t = jh::sync::process_mutex<"test_mutex">;
+using mutex_t = jh::async::process_mutex<"test_mutex">;
 
 // ---- Single-process tests ----
 TEST_CASE("process_mutex basic lock/unlock") {
@@ -50,7 +50,7 @@ TEST_CASE("process_mutex basic lock/unlock") {
         REQUIRE(acquired == false);  // timeout, could not acquire
         m.unlock();
     }
-    jh::sync::process_mutex<"test_mutex", true>::unlink();
+    jh::async::process_mutex<"test_mutex", true>::unlink();
 }
 
 // ---- Cross-process tests ----
@@ -64,7 +64,7 @@ using reader_launcher = jh::async::process_launcher<"../examples/process_lock/re
  * used by writer/reader. It is declared with HighPriv=true so this test
  * can call unlink() to clean up the semaphore afterwards.
  */
-using priv_mutex_t = jh::sync::process_mutex<"demo_mutex", true>;
+using priv_mutex_t = jh::async::process_mutex<"demo_mutex", true>;
 
 TEST_CASE("process_launcher runs writer and reader") {
     // Launch writer & reader
