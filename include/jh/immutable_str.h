@@ -371,10 +371,10 @@ namespace jh {
         static std::pair<uint64_t, uint64_t> trim(const char *str) noexcept {
             std::uint64_t leading = 0, trailing = std::strlen(str);
 
-            while (leading < trailing && std::isspace(static_cast<unsigned char>(str[leading]))) {
+            while (leading < trailing && detail::is_space_ascii(static_cast<unsigned char>(str[leading]))) {
                 ++leading;
             }
-            while (trailing > leading && std::isspace(static_cast<unsigned char>(str[trailing - 1]))) {
+            while (trailing > leading && detail::is_space_ascii(static_cast<unsigned char>(str[trailing - 1]))) {
                 --trailing;
             }
             return {leading, trailing - leading};

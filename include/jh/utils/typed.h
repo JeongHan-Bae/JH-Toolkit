@@ -1,5 +1,6 @@
 /**
-* Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
+ * \verbatim
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,22 +13,47 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * \endverbatim
  */
-
 /**
  * @file typed.h (utils)
- * @author JeongHan-Bae <mastropseudo@gmail.com>
- * @brief Lightweight monostate type and related traits.
+ * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @brief Trivial placeholder type <code>monostate</code> and its traits.
  *
- * Provides `jh::typed::monostate`, a trivial type used in place of `std::monostate`
- * without depending on `std::variant`. Includes basic type traits and concept support.
+ * Provides <code>jh::typed::monostate</code>, a strict POD type equivalent in
+ * spirit to <code>std::monostate</code>, but lightweight and header-only
+ * (no dependency on <code>&lt;variant&gt;</code> or other STL headers).
+ *
+ * <h3>Components:</h3>
+ * <ul>
+ *   <li><code>monostate</code> — trivial empty type with equality operators.</li>
+ *   <li><code>is_monostate&lt;T&gt;</code> — type trait for detection.</li>
+ *   <li><code>monostate_t&lt;T&gt;</code> — concept form for SFINAE/constraints.</li>
+ * </ul>
+ *
+ * <h3>Design Goals:</h3>
+ * <ul>
+ *   <li>POD compliance: trivially copyable, trivially constructible, standard layout.</li>
+ *   <li>Minimal dependency footprint, no heavy STL headers required.</li>
+ *   <li>Use as a safe placeholder in POD containers (e.g. unused <code>tuple</code> slots).</li>
+ * </ul>
+ *
+ * <h3>Notes:</h3>
+ * <ul>
+ *   <li>Represents only "no value"; not interchangeable with <code>nullopt</code> or nullable types.</li>
+ *   <li>Has no runtime state, equality is always <code>true</code>.</li>
+ * </ul>
+ *
+ * @version <pre>1.3.x</pre>
+ * @date <pre>2025</pre>
  */
-
 
 #pragma once
 #include <type_traits>
 
 namespace jh::typed {
+
+    /// @brief Trivial empty type representing "no value".
     struct monostate final {
         constexpr bool operator==(monostate) const noexcept { return true; }
         constexpr bool operator!=(monostate) const noexcept { return false; }
@@ -37,16 +63,14 @@ namespace jh::typed {
     static_assert(std::is_trivially_constructible_v<monostate>);
     static_assert(std::is_standard_layout_v<monostate>);
 
-    // Type trait for detection
-    template<typename T> // NOLINT for general T
-    struct is_monostate : std::false_type {
-    };
+    /// @brief Type trait: checks whether T is <code>monostate</code>.
+    template<typename T>
+    struct is_monostate : std::false_type {};
 
     template<>
-    struct is_monostate<monostate> : std::true_type {
-    };
+    struct is_monostate<monostate> : std::true_type {};
 
-    // Concept for use in templates
+    /// @brief Concept: satisfied only if T is <code>monostate</code>.
     template<typename T>
     concept monostate_t = is_monostate<T>::value;
 }

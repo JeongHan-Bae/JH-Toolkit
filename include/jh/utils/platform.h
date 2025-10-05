@@ -1,5 +1,6 @@
 /**
- * Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
+ * \verbatim
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,42 +13,50 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * \endverbatim
  */
-
 /**
  * @file platform.h
- * @author JeongHan-Bae <mastropseudo@gmail.com>
+ * @author JeongHan-Bae <pre>&lt;mastropseudo&#64;gmail.com&gt;</pre>
  * @brief Base platform checks and macros for all modules.
  *
+ * <p>
  * Enforces 64-bit targets and excludes unsupported compilers (MSVC).
  * Provides compiler, architecture, OS, and endianness detection macros.
+ * </p>
  *
+ * <p>
  * This header is implicitly included in most internal components to guard
  * against undefined behavior on unsupported platforms or toolchains.
+ * </p>
  *
- * Marcos > constexpr: better and leaner for compilation and branch optimization.
- * @note Macro Design Philosophy:
+ * <p><strong>Macros &gt; constexpr:</strong> better and leaner for compilation and branch optimization.</p>
  *
- * This header defines a minimal and precise set of `IS_*` macros
+ * <h4>Macro Design Philosophy</h4>
+ * <p>
+ * This header defines a minimal and precise set of <code>IS_*</code> macros
  * to identify platform, compiler, architecture, and endianness traits.
+ * </p>
  *
- * All macros are:
- *   - Purely semantic (e.g., `IS_LINUX == 1` means target is Linux)
- *   - Zero-side-effect (no redefinitions, no overrides)
- *   - Safe for co-existence (as long as the same macro has the same meaning)
+ * <ul>
+ *   <li>Purely semantic (e.g., <code>IS_LINUX == 1</code> means target is Linux)</li>
+ *   <li>Zero-side-effect (no redefinitions, no overrides)</li>
+ *   <li>Safe for co-existence (as long as the same macro has the same meaning)</li>
+ * </ul>
  *
- * ⚠️ These macros are intentionally simple:
- *   - No namespace pollution
- *   - No extra logic or branching
- *   - No dependency on other libraries
+ * <p><strong>⚠️ These macros are intentionally simple:</strong></p>
+ * <ul>
+ *   <li>No namespace pollution</li>
+ *   <li>No extra logic or branching</li>
+ *   <li>No dependency on other libraries</li>
+ * </ul>
  *
- * ✅ This avoids undefined behavior even when included alongside
- *    other headers or libraries that define the same macros consistently.
+ * <p>✅ This avoids undefined behavior even when included alongside
+ * other headers or libraries that define the same macros consistently.</p>
  *
- * 📌 Rule: If another library defines the same `IS_XXX` macro
- *         **with the same meaning**, it's harmless.
+ * <p>📌 Rule: If another library defines the same <code>IS_XXX</code> macro
+ * with the same meaning, it's harmless.</p>
  */
-
 
 #pragma once
 
@@ -113,6 +122,12 @@ static_assert(sizeof(std::size_t) == 8,
 #  define IS_POSIX 0
 #endif
 
+#if defined(_POSIX_TIMEOUTS) && (_POSIX_TIMEOUTS >= 200112L)
+#  define HAS_POSIX_1B 1
+#else
+#  define HAS_POSIX_1B 0
+#endif
+
 #if defined(__x86_64__) || defined(_M_X64)
 #define IS_AMD64 1
 #else
@@ -135,7 +150,7 @@ static_assert(sizeof(std::size_t) == 8,
 #define IS_X86_FAMILY (IS_X86 || IS_AMD64)
 
 // Toolchain on Windows
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(_WIN64)
 #  define IS_WINDOWS 1
 
 #  if defined(__MINGW32__) || defined(__MINGW64__)
@@ -175,6 +190,8 @@ static_assert(sizeof(std::size_t) == 8,
 #else
 #  define IS_APPLE 0
 #endif
+
+#define IS_DARWIN IS_APPLE
 
 #if defined(__FreeBSD__)
 # define IS_FREEBSD 1

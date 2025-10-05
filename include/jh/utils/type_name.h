@@ -1,6 +1,6 @@
 /**
  * \verbatim
- * Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
  */
 /**
  * @file type_name.h (utils)
+ * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief Compile-time type name extraction using compiler-specific macros.
  *
  * This header provides <code>jh::utils::type_name&lt;T&gt;()</code>, which extracts
@@ -45,6 +46,9 @@
  *
  * @note Falls back to <code>"unknown"</code> if compiler is unsupported.
  * @note Not suitable for serialization or program logic.
+ *
+ * @version <pre>1.3.x</pre>
+ * @date <pre>2025</pre>
  */
 
 

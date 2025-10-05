@@ -1,4 +1,5 @@
 /**
+ * \verbatim
  * Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,58 +13,63 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * \endverbatim
  */
-
 /**
  * @file pair.h (utils)
- * @author JeongHan-Bae <mastropseudo@gmail.com>
- * @brief Provides utilities for constructing pair-like objects with either value or reference semantics.
+ * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @brief Hybrid pair-like utilities with automatic POD/reference dispatching.
  *
- * @details
- * This header defines a hybrid `make_pair` utility for composing pair-like objects:
- * - If both inputs are POD-like, returns `jh::pod::pair<T1, T2>` (by value)
- * - Otherwise returns `jh::utils::ref_pair<T1, T2>` (pair of references)
+ * <h3>Overview</h3>
+ * <p>
+ * This header defines <code>jh::pair&lt;T1, T2, Ref = false&gt;</code>, an
+ * <b>automatic allocator</b> that selects the most suitable pair-like type at compile time:
+ * <ul>
+ *   <li><code>jh::pod::pair&lt;A, B&gt;</code> — for POD-like types (by value)</li>
+ *   <li><code>jh::utils::val_pair&lt;A, B&gt;</code> — for non-POD types (by value)</li>
+ *   <li><code>jh::utils::ref_pair&lt;T1, T2&gt;</code> — for reference pairs (non-owning)</li>
+ * </ul>
+ * </p>
  *
- * Design goal:
- * - Enable efficient and expressive structural bindings via `const auto& [a, b]`
- * - Avoid unnecessary copies for complex types
- * - Preserve exact semantics of original references for non-trivial types
+ * <h3>Automatic Type Resolution</h3>
+ * <p>
+ * <code>jh::pair</code> automatically determines whether to store elements
+ * by value or by reference based on:
+ * <ul>
+ *   <li>Compile-time POD detection (<code>jh::pod::pod_like&lt;T&gt;</code>)</li>
+ *   <li>Explicit reference mode (<code>Ref = true</code>)</li>
+ * </ul>
+ * This mechanism ensures layout safety and ABI stability without using RTTI
+ * or runtime polymorphism.
+ * </p>
  *
- * This utility is intended to support view pipelines such as `zip()` or `enumerate()`
- * where lazily created pair-like values are destructured by the user.
+ * <h3>Design Goals</h3>
+ * <ul>
+ *   <li>Support seamless structured binding (<code>const auto& [a, b]</code>).</li>
+ *   <li>Eliminate unnecessary copies for non-trivial types.</li>
+ *   <li>Guarantee POD semantics when possible for low-level operations.</li>
+ *   <li>Provide compile-time dispatch instead of runtime virtual dispatch.</li>
+ * </ul>
  *
- * The returned type is intentionally transparent: user code should treat it like
- * any `pair` and avoid templating over it.
+ * <h3>Usage Guidelines</h3>
+ * <ul>
+ *   <li><code>make_pair(a, b)</code> — create pair with reference semantics (fast, non-owning).</li>
+ *   <li><code>make_pair_cp(a, b)</code> — create pair with guaranteed copy semantics.</li>
+ *   <li><code>make_val_pair(a, b)</code> — create pair with move or value semantics.</li>
+ *   <li>Treat <code>jh::pair</code> as an opaque type suitable for structured binding.</li>
+ *   <li>Do <b>not</b> pattern-match or specialize its concrete type.</li>
+ * </ul>
  *
- * ❗️Important usage note:
- * - You are strongly discouraged from pattern-matching the result of `make_pair`/`make_pair_cp` via template specialization or type traits.
- * - This utility is designed **specifically** for automatic packing/unpacking (typically via structured binding).
- *   Use `const auto& [a, b] = make_pair(...);` — this is the intended idiom.
+ * <h4>Type Deduction Notes</h4>
+ * <p>
+ * <code>make_val_pair()</code> performs perfect forwarding but never coerces types.
+ * For example, string literals deduce as <code>const char*</code>,
+ * not <code>std::string</code>; use explicit construction when needed.
+ * </p>
  *
- * - If you need to implement templated logic or persistent storage based on the pair-like result,
- *   you should explicitly use `jh::pod::pair`, `jh::utils::ref_pair`, or `jh::utils::val_pair` as appropriate for your use case.
- *
- * Note:
- * `make_val_pair()` uses template argument deduction.
- * It does NOT perform implicit conversion to target types.
- * You must explicitly construct complex types like `std::string` or `std::vector<int>` when needed.
- *
- * Additional guidance:
- *
- * - `jh::pair<T1, T2>` is not a class, but a type-dispatching alias.
- *   It resolves to one of three concrete types, depending on POD-ness and `Ref`.
- *
- * - Default behavior assumes values are to be owned. If you need references,
- *   use `make_pair()` for structure binding.
- *
- * - Use `make_pair_cp()` only when you know copying is necessary to avoid dangling references.
- *
- * - If you know exactly which pair type you want, use the corresponding class directly.
- *
- * - Avoid using `make_val_pair(...)` with types like `"string literal"` unless you explicitly
- *   wrap them (e.g., `std::string("literal")`) to ensure correct deduction.
+ * @version <pre>1.3.x</pre>
+ * @date <pre>2025</pre>
  */
-
 
 #pragma once
 
@@ -72,37 +78,71 @@
 
 namespace jh::utils {
     /**
-     * @brief A lightweight pair of references.
+     * @brief Lightweight reference-based pair structure.
      *
-     * Used internally by `make_pair` to represent non-POD pair-like structures
-     * without incurring value copies.
+     * <p>
+     * <code>jh::utils::ref_pair&lt;T1, T2&gt;</code> represents a non-owning pair
+     * holding two references. It is primarily used internally by
+     * <code>jh::make_pair()</code> for non-POD types to avoid value copies.
+     * </p>
+     * <ul>
+     *   <li>Zero-copy: stores only references, no ownership.</li>
+     *   <li>Supports transparent structured binding via <code>const auto&amp; [a, b]</code>.</li>
+     *   <li>Cannot bind temporaries — construction from rvalues is deleted.</li>
+     *   <li>Suitable for short-lived pipelines like <code>zip()</code> or <code>enumerate()</code>.</li>
+     * </ul>
      *
-     * Not intended for long-term storage or ownership
-     *
-     * This type supports transparent structure binding via `const auto& [a, b]`.
-     * Not intended for storage or long-lived ownership.
+     * @note The referenced objects must outlive the pair instance.
+     * @note Used automatically by <code>jh::make_pair()</code> when non-POD types are detected.
      *
      * @tparam T1 First element type (as reference)
      * @tparam T2 Second element type (as reference)
      */
     template<typename T1, typename T2>
     struct ref_pair final {
+        /// @brief Reference to the first element.
         T1 &first;
+
+        /// @brief Reference to the second element.
         T2 &second;
 
-        constexpr ref_pair(T1 &a, T2 &b) : first(a), second(b) {
-        }
-        // Prevent construction from rvalue references
+        /// @brief Alias for the first element type.
+        using first_type = T1;
+
+        /// @brief Alias for the second element type.
+        using second_type = T2;
+
+        /// @brief Construct a reference pair from two existing lvalues.
+        constexpr ref_pair(T1 &a, T2 &b) : first(a), second(b) {}
+
+        /// @brief Deleted constructor to prevent binding to temporaries.
         ref_pair(T1&&, T2&&) = delete;
 
+        /// @brief Default copy constructor (shallow reference copy).
         constexpr ref_pair(const ref_pair &) = default;
 
+        /// @brief Default equality operator.
         constexpr bool operator==(const ref_pair &other) const = default;
     };
 
     template<typename T1, typename T2>
     ref_pair(T1 &, T2 &) -> ref_pair<T1, T2>;
 
+    /**
+     * @brief Access an element of a <code>ref_pair</code> by index.
+     *
+     * <p>
+     * Provides <code>std::get&lt;I&gt;</code>-style access for structured bindings
+     * and tuple-like compatibility.
+     * </p>
+     * @tparam I Element index (0 for <code>first</code>, 1 for <code>second</code>)
+     * @tparam T1 Type of the first referenced element
+     * @tparam T2 Type of the second referenced element
+     * @param p Reference pair to access
+     * @return Reference to the corresponding element
+     *
+     * @note Only indices <b>0</b> and <b>1</b> are valid; other values trigger a static assertion.
+     */
     template <std::size_t I, typename T1, typename T2>
     constexpr decltype(auto) get(const ref_pair<T1, T2>& p) {
         if constexpr (I == 0) return p.first;
@@ -111,76 +151,109 @@ namespace jh::utils {
     }
 
     /**
-     * @brief A value-owning, perfectly forwarding pair.
+     * @brief Value-owning, perfectly forwarding pair.
      *
-     * This struct provides a minimal, predictable alternative to `std::pair`,
-     * optimized for explicit structural composition and perfect forwarding.
-     *
-     * Intended as a simpler alternative to std::pair
-     *
-     * Unlike `std::pair`, this type avoids unnecessary constructors or overhead
-     * associated with allocator-aware or tuple integration.
-     *
-     * @tparam T1 First element type
-     * @tparam T2 Second element type
+     * <p>
+     * Minimal and predictable alternative to <code>std::pair</code>, providing
+     * full structural binding and move/copy semantics without allocator or tuple overhead.
+     * </p>
+     * <p>
+     * Designed for explicit composition and efficient transfer of ownership
+     * within pipelines or view results.
+     * </p>
+     * @tparam T1 Type of the first element
+     * @tparam T2 Type of the second element
      */
     template<typename T1, typename T2>
     struct val_pair final {
+        using first_type = T1;   ///< Alias for first element type.
+        using second_type = T2;  ///< Alias for second element type.
+
         static_assert(std::is_copy_constructible_v<T1> || std::is_move_constructible_v<T1>,
                       "val_pair<T1, T2>: T1 must be move- or copy-constructible");
         static_assert(std::is_copy_constructible_v<T2> || std::is_move_constructible_v<T2>,
                       "val_pair<T1, T2>: T2 must be move- or copy-constructible");
 
-        T1 first;
-        T2 second;
+        T1 first;   ///< First stored element.
+        T2 second;  ///< Second stored element.
 
+        /// @brief Default constructor.
         constexpr val_pair() = default;
 
+        /**
+         * @brief Constructs both elements with perfect forwarding.
+         *
+         * @param a First element
+         * @param b Second element
+         */
         template<typename U1, typename U2>
         constexpr val_pair(U1 &&a, U2 &&b)
-            noexcept(std::is_nothrow_constructible_v<T1, U1 &&> &&
-                     std::is_nothrow_constructible_v<T2, U2 &&>)
-            requires std::is_constructible_v<T1, U1 &&> &&
-                     std::is_constructible_v<T2, U2 &&>
-            : first(std::forward<U1>(a)), second(std::forward<U2>(b)) {
-        }
+        noexcept(std::is_nothrow_constructible_v<T1, U1 &&> &&
+                 std::is_nothrow_constructible_v<T2, U2 &&>)
+        requires std::is_constructible_v<T1, U1 &&> &&
+                 std::is_constructible_v<T2, U2 &&>
+                : first(std::forward<U1>(a)), second(std::forward<U2>(b)) {}
 
+        /// @brief Copy constructor.
         constexpr val_pair(const val_pair &) = default;
 
+        /// @brief Move constructor.
         constexpr val_pair(val_pair &&) = default;
 
+        /// @brief Equality comparison.
         constexpr bool operator==(const val_pair &) const = default;
     };
 
     /**
-     * @brief Constructs a value-owning pair from arbitrary types with perfect forwarding.
+     * @brief Constructs a value-owning pair with perfect forwarding.
      *
-     * This is the explicit constructor-style builder for `val_pair<A, B>`, intended for
-     * use when move semantics are acceptable or desired.
+     * <p>
+     * Explicit factory for <code>val_pair&lt;A, B&gt;</code>, used when move semantics
+     * are acceptable or required. Creates a value-owning structure rather than references.
+     * </p>
+     * <p>
+     * Unlike <code>make_pair_cp()</code>, this allows construction from move-only types.
+     * </p>
+     * <h4>Notes:</h4>
+     * <ul>
+     *   <li>Deduces exact input types (e.g., string literals become <code>const char*</code>).</li>
+     *   <li>Wrap literals explicitly if conversion to owning types like
+     *       <code>std::string</code> is intended.</li>
+     * </ul>
      *
-     * Unlike `make_pair_cp()`, this allows moves and non-copyable types.
-     *
-     * @warning Deduces exact input types. If you pass a string literal, it will deduce
-     *          `const char*`, not `std::string`. You must explicitly wrap such inputs.
-     *
-     * Incorrect:
-     *     jh::pair<int, std::string> p = make_val_pair(42, "Hello"); // Error Compiling (Deduces const char*)
-     *
-     * Correct:
-     *     jh::pair<int, std::string> p = make_val_pair(42, std::string("Hello"));
-     *
-     * @tparam T1 First argument type
-     * @tparam T2 Second argument type
+     * @tparam T1 Type of first argument
+     * @tparam T2 Type of second argument
      * @param a First argument
      * @param b Second argument
-     * @return `val_pair<A, B>` (value-owning)
+     * @return <code>val_pair&lt;A, B&gt;</code> — owning pair constructed via perfect forwarding.
      */
     template<typename T1, typename T2>
-    [[nodiscard]] constexpr auto make_val_pair(T1 &&a, T2 &&b) {
-        return val_pair<std::decay_t<T1>, std::decay_t<T2> >{
-            std::forward<T1>(a), std::forward<T2>(b)
+    [[maybe_unused]] [[nodiscard]] constexpr auto make_val_pair(T1 &&a, T2 &&b) {
+        return val_pair<std::decay_t<T1>, std::decay_t<T2>>{
+                std::forward<T1>(a), std::forward<T2>(b)
         };
     }
+
+    /**
+     * @brief Element accessor for <code>val_pair</code>.
+     *
+     * <p>
+     * Enables structured binding and tuple-style element access via <code>std::get&lt;I&gt;</code>.
+     * </p>
+     *
+     * @tparam I Element index (0 for <code>first</code>, 1 for <code>second</code>)
+     * @tparam T1 Type of first element
+     * @tparam T2 Type of second element
+     * @param p The <code>val_pair</code> to access
+     * @return Reference to the requested element
+     */
+    template <std::size_t I, typename T1, typename T2>
+    constexpr decltype(auto) get(const val_pair<T1, T2>& p) noexcept {
+        if constexpr (I == 0) return (p.first);
+        else static_assert(I == 1, "val_pair only has two elements");
+        return (p.second);
+    }
+
 } // namespace jh::utils
 
 namespace jh::detail {
@@ -220,89 +293,152 @@ namespace jh::detail {
 
 namespace jh {
     /**
-     * @brief Type alias that resolves to a pair-like type depending on the input types and mode.
+     * @brief Automatic allocator for pair-like types.
      *
-     * This is not a concrete class, but a type-dispatching alias that resolves to one of:
-     *   - `jh::pod::pair<A, B>`     if both T1 and T2 are POD-like
-     *   - `jh::utils::val_pair<A, B>` if not POD and Ref == false
-     *   - `jh::utils::ref_pair<T1, T2>` if not POD and Ref == true
+     * <h4>Description:</h4>
+     * <p>
+     * <code>jh::pair&lt;T1, T2, Ref&gt;</code> is a type-level allocator that automatically selects
+     * the appropriate pair representation based on type traits:
+     * </p>
+     * <ul>
+     *   <li><code>jh::pod::pair&lt;A, B&gt;</code> — when both <code>T1</code> and <code>T2</code> are POD-like</li>
+     *   <li><code>jh::utils::val_pair&lt;A, B&gt;</code> — when non-POD and <code>Ref == false</code></li>
+     *   <li><code>jh::utils::ref_pair&lt;T1, T2&gt;</code> — when non-POD and <code>Ref == true</code></li>
+     * </ul>
      *
-     * By default, this alias selects a value-owning structure when appropriate.
-     * For manual control, use the concrete types (`utils::val_pair`, `utils::ref_pair`, `pod::pair`) directly.
+     * <h4>Usage Notes:</h4>
+     * <ul>
+     *   <li>Acts as an automatic allocator (type dispatcher), not a concrete class.</li>
+     *   <li>Ideal for structural binding and <code>auto</code>-deduced return types.</li>
+     *   <li>Do not use as a persistent storage type — use explicit
+     *       <code>jh::pod::pair</code>, <code>jh::utils::val_pair</code>, or
+     *       <code>jh::utils::ref_pair</code> for clarity.</li>
+     *   <li>Default mode (<code>Ref = false</code>) produces value-owning semantics.</li>
+     * </ul>
      *
-     * @note This alias is suitable for structured binding and auto-return idioms,
-     *       but should not be used as a generic templated pair type (due to its non-uniform identity).
+     * @note Although declared as a template alias, it behaves like a dynamic type router at compile time.
+     *       Users may treat <code>jh::pair&lt;...&gt;</code> as a unified API surface for all pair types.
      *
-     * @tparam T1 First element type
-     * @tparam T2 Second element type
-     * @tparam Ref Whether to return a reference pair (only used if not POD)
+     * @see jh::utils::val_pair, jh::utils::ref_pair, jh::pod::pair
      */
     template<typename T1, typename T2, bool Ref = false>
     using pair = typename detail::pair_selector<T1, T2, Ref>::type;
 
-
     /**
-     * @brief Creates a pair-like object optimized for structural binding.
+     * @brief Creates a pair-like object optimized for structural binding and zero-overhead semantics.
      *
-     * This function is designed for use in view pipelines (`zip`, `enumerate`, etc.)
-     * where performance and reference semantics are important.
+     * <h4>Description:</h4>
+     * <p>
+     * This function constructs a pair-like object for use in view pipelines
+     * (<code>zip</code>, <code>enumerate</code>, etc.), selecting between
+     * POD and reference storage automatically:
+     * </p>
+     * <ul>
+     *   <li>If both <code>T1</code> and <code>T2</code> are POD-like, returns <code>jh::pod::pair&lt;A, B&gt;</code> by value.</li>
+     *   <li>If either type is non-POD, returns <code>jh::utils::ref_pair&lt;T1, T2&gt;</code> by reference.</li>
+     * </ul>
      *
-     * If both `T1` and `T2` are POD-like, a `pod::pair` is returned by value.
-     * Otherwise, returns `utils::ref_pair<T1, T2>` — a lightweight pair of references.
+     * <h4>Design Rationale:</h4>
+     * <ul>
+     *   <li>Aims to minimize runtime cost — POD copies are trivial, while non-POD types are referenced to avoid overhead.</li>
+     *   <li>Optimized for structured binding idioms (e.g. <code>const auto&amp; [a, b]</code>).</li>
+     *   <li>Behaves as a unified front-end for POD and non-POD pairing.</li>
+     * </ul>
      *
-     * @warning If any of the referenced values are temporary or non-owned, dangling references will occur.
-     *          Only use this when both `a` and `b` are owned by the caller.
+     * <h4>Warnings:</h4>
+     * <ul>
+     *   <li>If any referenced object is temporary or non-owned, the resulting <code>ref_pair</code> will dangle.</li>
+     *   <li>Use <code>make_pair_cp()</code> if you need copy semantics for safety.</li>
+     * </ul>
      *
-     * @tparam T1 Type of first value (deduced by reference)
-     * @tparam T2 Type of second value
+     * @tparam T1 Type of first element (deduced)
+     * @tparam T2 Type of second element (deduced)
      * @param a First element
      * @param b Second element
-     * @return Either `pod::pair<A, B>` (by value) or `utils::ref_pair<T1, T2>` (by reference)
+     * @return Automatically selected:
+     *         <code>jh::pod::pair&lt;A, B&gt;</code> (by value) or
+     *         <code>jh::utils::ref_pair&lt;T1, T2&gt;</code> (by reference)
+     *
+     * @see jh::make_pair_cp, jh::utils::ref_pair, jh::pod::pair
      */
     template<typename T1, typename T2>
     [[nodiscard]] constexpr auto make_pair(T1 a, T2 b) {
-        return pair<T1, T2, true>{a, b}; // Pair of POD or references
+        return pair<T1, T2, true>{a, b}; // POD: by value; non-POD: by reference
     }
 
     /**
      * @brief Constructs a copy-owning pair-like object.
      *
-     * This function guarantees that both elements are copied (not moved),
-     * which is critical when move construction may alter the original structure.
+     * <h4>Description:</h4>
+     * <p>
+     * This variant of <code>make_pair</code> always performs a <b>copy</b> of both elements,
+     * ensuring that the resulting pair owns its data. It is designed for situations
+     * where move operations may alter or invalidate the source values.
+     * </p>
      *
-     * If both values are POD-like, returns a `pod::pair<A, B>`.
-     * Otherwise, returns a `val_pair<A, B>`, which stores both values internally.
+     * <h4>Behavior:</h4>
+     * <ul>
+     *   <li>If both <code>T1</code> and <code>T2</code> are POD-like, returns <code>jh::pod::pair&lt;A, B&gt;</code> (by value).</li>
+     *   <li>Otherwise returns <code>jh::utils::val_pair&lt;A, B&gt;</code>, a value-owning structure.</li>
+     * </ul>
      *
-     * @note This function always performs a copy. If move semantics are desired,
-     *       use `make_val_pair()` instead.
+     * <h4>Design Rationale:</h4>
+     * <ul>
+     *   <li>Guarantees copy semantics — never returns references.</li>
+     *   <li>Ensures stability for pipelines where moves could break state.</li>
+     *   <li>Acts as a "safe" counterpart to <code>make_pair()</code>.</li>
+     * </ul>
      *
-     * @warning Do not use this with temporaries unless copying is explicitly intended.
+     * <h4>Warnings:</h4>
+     * <ul>
+     *   <li>Copying may incur overhead for non-trivial types.</li>
+     *   <li>Do not use with temporaries unless explicit copying is intended.</li>
+     * </ul>
      *
-     * @tparam T1 First value type (copy-constructible)
-     * @tparam T2 Second value type (copy-constructible)
-     * @param a First value
-     * @param b Second value
-     * @return Resolved to `jh::pod::pair<A, B>` or `jh::utils::val_pair<A, B>`, depending on POD-ness.
+     * @tparam T1 First element type (must be copy-constructible)
+     * @tparam T2 Second element type (must be copy-constructible)
+     * @param a First element
+     * @param b Second element
+     * @return Automatically selected:
+     *         <code>jh::pod::pair&lt;A, B&gt;</code> or
+     *         <code>jh::utils::val_pair&lt;A, B&gt;</code>, depending on POD-ness
+     *
+     * @see jh::make_pair, jh::make_val_pair, jh::pod::pair, jh::utils::val_pair
      */
     template<typename T1, typename T2>
-        requires (std::is_copy_constructible_v<T1> && std::is_copy_constructible_v<T2>)
+    requires (std::is_copy_constructible_v<T1> && std::is_copy_constructible_v<T2>)
     [[nodiscard]] constexpr auto make_pair_cp(T1 &a, T2 &b) {
         static_assert(detail::is_safe_reference_source<T1> && detail::is_safe_reference_source<T2>,
-                      "make_pair(): Avoid binding to temporary values");
-        return pair<T1, T2>{a, b}; // Pair of values, copy constructed
+                      "make_pair_cp(): Avoid binding to temporary values");
+        return pair<T1, T2>{a, b}; // Always copies; never references
     }
 
 
     /**
-     * @brief Concept for types that behave like a `pair` with `first` and `second` members.
+     * @brief Concept defining pair-like types.
      *
-     * A type is considered `pair_like` if:
-     *   - It exposes `.first` and `.second` members
-     *   - Both members are either copy-constructible or move-constructible
+     * <h4>Description:</h4>
+     * <p>
+     * A type satisfies <code>pair_like</code> if it behaves structurally like a pair:
+     * it exposes public members <code>.first</code> and <code>.second</code>, and
+     * both elements are either copy-constructible or move-constructible.
+     * </p>
      *
-     * This concept is used internally to constrain view pipelines or generic destructuring logic.
+     * <h4>Usage:</h4>
+     * <ul>
+     *   <li>Used internally in view pipelines (e.g., <code>zip</code>, <code>enumerate</code>).</li>
+     *   <li>Enables generic destructuring with structured bindings.</li>
+     *   <li>Useful for concepts and SFINAE-based checks for pair-like behavior.</li>
+     * </ul>
      *
-     * @tparam T Type to be checked
+     * <h4>Requirements:</h4>
+     * <ul>
+     *   <li><code>T</code> must have public members <code>first</code> and <code>second</code>.</li>
+     *   <li>Each member must be copy- or move-constructible.</li>
+     * </ul>
+     *
+     * @tparam T Type to be checked.
+     * @see jh::utils::ref_pair, jh::utils::val_pair, jh::pod::pair
      */
     template<typename T>
     concept pair_like = requires(T t)
@@ -311,28 +447,28 @@ namespace jh {
                             t.second;
                         } &&
                         (
-                            std::copy_constructible<decltype(std::declval<T>().first)> ||
-                            std::move_constructible<decltype(std::declval<T>().first)>
+                                std::copy_constructible<decltype(std::declval<T>().first)> ||
+                                std::move_constructible<decltype(std::declval<T>().first)>
                         ) &&
                         (
-                            std::copy_constructible<decltype(std::declval<T>().second)> ||
-                            std::move_constructible<decltype(std::declval<T>().second)>
+                                std::copy_constructible<decltype(std::declval<T>().second)> ||
+                                std::move_constructible<decltype(std::declval<T>().second)>
                         );
 
-    /// @brief Helper alias for `pair_like` concept
+    /**
+     * @brief Boolean helper for <code>pair_like</code> concept.
+     *
+     * <h4>Usage:</h4>
+     * <p>
+     * Provides a convenient constant expression form of the <code>pair_like</code> concept
+     * for use in static assertions and conditional expressions.
+     * </p>
+     *
+     * @tparam T Type to test.
+     * @return <code>true</code> if <code>T</code> satisfies <code>pair_like</code>.
+     */
     template<typename T>
-    constexpr bool is_pair_like_v = pair_like<T>;
-
+    [[maybe_unused]] constexpr bool is_pair_like_v = pair_like<T>;
 
 } // namespace jh
 
-/**
- * User-facing notes:
- *
- * - `make_pair()` is optimized for structural binding with `const auto& [a, b]`.
- * - POD types are returned by value (`pod::pair`), ensuring optimal storage.
- * - Non-POD types are returned as references (`ref_pair<T1, T2>`).
- * - For owned value-pairs, use `make_pair_cp()` or `make_val_pair()`.
- * - All results are compatible with structured bindings.
- * - Do not template-match the return types — treat them as opaque `pair`-like.
- */

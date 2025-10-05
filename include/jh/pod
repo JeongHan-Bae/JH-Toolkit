@@ -1,9 +1,16 @@
 /**
  * @file pod
- * @brief Forwarding header for jh::pod
+ * @brief Forwarding header for <code>jh::pod</code>.
  *
- * This header exists to provide a modern include style (`#include <jh/pod>`),
- * forwarding to `jh/pod.h`. It contains no additional code.
+ * <p>
+ * This header provides a modern include style:
+ * </p>
+ * <pre><code>#include &lt;jh/pod&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it simply forwards to <code>jh/pod.h</code>.
+ * It contains no additional code.
+ * </p>
  */
 
 #pragma once
