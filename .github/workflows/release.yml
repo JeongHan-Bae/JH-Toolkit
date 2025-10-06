@@ -7,14 +7,27 @@ on:
 permissions:
   contents: write
 
-env:
-  pack_version: 1.3.1
-
 jobs:
+  get-version:
+    name: Get Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get Project Version from CMakeLists.txt
+        id: get_version
+        run: |
+          VERSION=$(python .github/workflows/generate_dependencies.py --get-version)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
 
   pod-package:
     name: POD Package (Header-Only)
     runs-on: ubuntu-latest
+    needs: get-version
+    env:
+      PACK_VERSION: ${{ needs.get-version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,18 +53,21 @@ jobs:
         run: |
           mkdir -p dist
           pkg_dir=$(find ~/.conan2/p -type d -name "p" | grep jh-to | head -n 1)
-          tar -czf dist/jh-toolkit-pod-${{ env.pack_version }}.tar.gz -C "$pkg_dir" .
+          tar -czf dist/jh-toolkit-pod-${{ env.PACK_VERSION }}.tar.gz -C "$pkg_dir" .
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/jh-toolkit-pod-${{ env.pack_version }}.tar.gz
+          files: dist/jh-toolkit-pod-${{ env.PACK_VERSION }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   linux-x86_64:
     name: Full Package - Linux x86_64
     runs-on: ubuntu-latest
+    needs: get-version
+    env:
+      PACK_VERSION: ${{ needs.get-version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -80,18 +96,21 @@ jobs:
         run: |
           mkdir -p dist
           pkg_dir=$(find ~/.conan2/p -type d -name "p" | grep jh-to | head -n 1)
-          tar -czf dist/jh-toolkit-linux-x86_64-${{ env.pack_version }}.tar.gz -C "$pkg_dir" .
+          tar -czf dist/jh-toolkit-linux-x86_64-${{ env.PACK_VERSION }}.tar.gz -C "$pkg_dir" .
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/jh-toolkit-linux-x86_64-${{ env.pack_version }}.tar.gz
+          files: dist/jh-toolkit-linux-x86_64-${{ env.PACK_VERSION }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   macos-arm64:
     name: Full Package - macOS ARM64
     runs-on: macos-latest
+    needs: get-version
+    env:
+      PACK_VERSION: ${{ needs.get-version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -121,11 +140,11 @@ jobs:
         run: |
           mkdir -p dist
           pkg_dir=$(find ~/.conan2/p -type d -name "p" | grep jh-to | head -n 1)
-          tar -czf dist/jh-toolkit-macos-arm64-${{ env.pack_version }}.tar.gz -C "$pkg_dir" .
+          tar -czf dist/jh-toolkit-macos-arm64-${{ env.PACK_VERSION }}.tar.gz -C "$pkg_dir" .
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/jh-toolkit-macos-arm64-${{ env.pack_version }}.tar.gz
+          files: dist/jh-toolkit-macos-arm64-${{ env.PACK_VERSION }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
