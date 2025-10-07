@@ -1,4 +1,5 @@
 #define CATCH_CONFIG_MAIN
+
 #include <catch2/catch_all.hpp>
 #include <vector>
 #include <list>
@@ -15,37 +16,142 @@
 namespace test {
     struct NonTemplateSequence {
         std::vector<int> data{1, 2, 3};
+
         [[nodiscard]] auto begin() const { return data.begin(); }
+
         [[nodiscard]] auto end() const { return data.end(); }
     };
 
     template<typename T>
     struct TemplateSequence {
         std::vector<T> data;
+
         TemplateSequence(std::initializer_list<T> init) : data(init) {}
+
         [[nodiscard]] auto begin() const { return data.begin(); }
+
         [[nodiscard]] auto end() const { return data.end(); }
     };
 
     struct ConstIterSequence {
         std::vector<int> data{4, 5, 6};
+
         [[nodiscard]] auto begin() const -> std::vector<int>::const_iterator { return data.begin(); }
+
         [[nodiscard]] auto end() const -> std::vector<int>::const_iterator { return data.end(); }
     };
 
     struct MutableIterSequence {
         std::vector<int> data{7, 8, 9};
+
         auto begin() { return data.begin(); }
+
         void begin() const = delete;
+
         auto end() { return data.end(); }
+
         void end() const = delete;
     };
-    struct NoBeginEnd {}; // ❌ No `begin()` / `end()`
+
+    struct NoBeginEnd {
+    }; // ❌ No `begin()` / `end()`
 
     struct FakeSequence { // ❌ Has `begin()` / `end()` but they are not iterators
         [[nodiscard]] static int begin() { return 42; }
+
         [[nodiscard]] static int end() { return 99; }
     };
+
+    // ---------------------------------------------------------------
+    // Mock iterator types for testing
+    // ---------------------------------------------------------------
+    template<typename T>
+    struct DummyInputIter {
+        using value_type = T;
+        using reference = T &;
+        using pointer = T *;
+        using difference_type = std::ptrdiff_t;
+        using iterator_category = std::input_iterator_tag;
+
+        T *ptr;
+
+        DummyInputIter(T *p = nullptr) : ptr(p) {}
+
+        reference operator*() const { return *ptr; }
+
+        DummyInputIter &operator++() {
+            ++ptr;
+            return *this;
+        }
+
+        DummyInputIter operator++(int) {
+            DummyInputIter tmp(*this);
+            ++ptr;
+            return tmp;
+        }
+
+        bool operator==(const DummyInputIter &o) const { return ptr == o.ptr; }
+
+        bool operator!=(const DummyInputIter &o) const { return ptr != o.ptr; }
+    };
+
+    template<typename T>
+    struct DummyRAIter {
+        using value_type = T;
+        using reference = T &;
+        using pointer = T *;
+        using difference_type = std::ptrdiff_t;
+        using iterator_category = std::random_access_iterator_tag;
+
+        T *p;
+
+        DummyRAIter(T *x = nullptr) : p(x) {}
+
+        reference operator*() const { return *p; }
+
+        DummyRAIter &operator++() {
+            ++p;
+            return *this;
+        }
+
+        DummyRAIter operator++(int) {
+            DummyRAIter tmp(*this);
+            ++p;
+            return tmp;
+        }
+
+        DummyRAIter &operator--() {
+            --p;
+            return *this;
+        }
+
+        DummyRAIter operator--(int) {
+            DummyRAIter tmp(*this);
+            --p;
+            return tmp;
+        }
+
+        DummyRAIter operator+(std::ptrdiff_t n) const { return DummyRAIter(p + n); }
+
+        DummyRAIter operator-(std::ptrdiff_t n) const { return DummyRAIter(p - n); }
+
+        reference operator[](std::ptrdiff_t n) const { return p[n]; }
+
+        bool operator==(const DummyRAIter &o) const { return p == o.p; }
+
+        bool operator!=(const DummyRAIter &o) const { return p != o.p; }
+
+        bool operator<(const DummyRAIter &o) const { return p < o.p; }
+
+        bool operator>(const DummyRAIter &o) const { return p > o.p; }
+
+        bool operator<=(const DummyRAIter &o) const { return p <= o.p; }
+
+        bool operator>=(const DummyRAIter &o) const { return p >= o.p; }
+    };
+
+    struct NotIterator {
+    }; // intentionally invalid
 }
 
 // ✅ Recognizing STL Sequences
@@ -75,7 +181,7 @@ TEST_CASE("Extracting Sequence Value Types") {
 TEST_CASE("Non-Sequences Should Fail") {
     REQUIRE_FALSE(jh::is_sequence<int>);
     REQUIRE_FALSE(jh::is_sequence<double>);
-    REQUIRE_FALSE(jh::is_sequence<char*>);
+    REQUIRE_FALSE(jh::is_sequence<char *>);
     REQUIRE_FALSE(jh::is_sequence<std::tuple<int, double, std::string>>);
     REQUIRE_FALSE(jh::is_sequence<std::optional<int>>);
     REQUIRE_FALSE(jh::is_sequence<test::NoBeginEnd>);
@@ -125,7 +231,223 @@ TEST_CASE("Sequence to Range") {
     auto it = range_.begin();
 
     std::ranges::for_each(range_, [&](const int a) {
-                    REQUIRE(a == *it);
-                    ++it;
-                });
+        REQUIRE(a == *it);
+        ++it;
+    });
+}
+
+TEST_CASE("Iterator Concept: is_iterator recognition") {
+    REQUIRE(jh::is_iterator<int *>);
+    REQUIRE(jh::is_iterator<const double *>);
+    REQUIRE(jh::is_iterator<std::vector<int>::iterator>);
+    REQUIRE(jh::is_iterator<std::list<float>::iterator>);
+    REQUIRE(jh::is_iterator<std::set<std::string>::iterator>);
+    REQUIRE(jh::is_iterator<test::DummyInputIter < int>>);
+    REQUIRE_FALSE(jh::is_iterator<int>);
+    REQUIRE_FALSE(jh::is_iterator<test::NotIterator>);
+}
+
+TEST_CASE("Iterator Concept: input_iterator") {
+    REQUIRE(jh::input_iterator<int *>);
+    REQUIRE(jh::input_iterator<std::vector<int>::iterator>);
+    REQUIRE(jh::input_iterator<test::DummyInputIter < int>>);
+    REQUIRE_FALSE(jh::input_iterator<int>);
+    REQUIRE_FALSE(jh::input_iterator<test::NotIterator>);
+}
+
+TEST_CASE("Iterator Concept: output_iterator") {
+    REQUIRE(jh::output_iterator<int *, int>);
+    REQUIRE(jh::output_iterator<test::DummyInputIter < int>, int >);
+    REQUIRE_FALSE(jh::output_iterator<const int *, int>);
+}
+
+TEST_CASE("Iterator Concept: forward_iterator") {
+    REQUIRE(jh::forward_iterator<std::vector<int>::iterator>);
+    REQUIRE(jh::forward_iterator<int *>);
+    REQUIRE_FALSE(jh::forward_iterator<int>);
+    REQUIRE_FALSE(jh::forward_iterator<test::NotIterator>);
+}
+
+TEST_CASE("Iterator Concept: bidirectional_iterator") {
+    REQUIRE(jh::bidirectional_iterator<std::list<int>::iterator>);
+    REQUIRE(jh::bidirectional_iterator<std::set<int>::iterator>);
+    REQUIRE(jh::bidirectional_iterator<test::DummyRAIter < int>>);
+    REQUIRE_FALSE(jh::bidirectional_iterator<test::DummyInputIter < int>>);
+    REQUIRE_FALSE(jh::bidirectional_iterator<int>);
+}
+
+TEST_CASE("Iterator Concept: random_access_iterator") {
+    REQUIRE(jh::random_access_iterator<int *>);
+    REQUIRE(jh::random_access_iterator<std::vector<int>::iterator>);
+    REQUIRE(jh::random_access_iterator<test::DummyRAIter < int>>);
+    REQUIRE_FALSE(jh::random_access_iterator<std::list<int>::iterator>);
+    REQUIRE_FALSE(jh::random_access_iterator<test::DummyInputIter < int>>);
+}
+
+TEST_CASE("Iterator deduction via jh::iterator_t") {
+    using it_vec = jh::iterator_t<std::vector<int>>;
+    using it_arr = jh::iterator_t<int[5]>;
+    using it_ptr = jh::iterator_t<int *>;
+    using it_set = jh::iterator_t<std::set<int>>;
+
+    STATIC_REQUIRE(std::is_same_v<it_vec, std::vector<int>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<it_arr, int *>);
+    STATIC_REQUIRE(std::is_same_v<it_ptr, int *>);
+    STATIC_REQUIRE(std::is_same_v<it_set, std::set<int>::iterator>);
+}
+
+TEST_CASE("Iterator deduces from array, pointer, and sequence-like") {
+    int arr[3] = {1, 2, 3};
+    using it_arr = jh::iterator_t<decltype(arr)>;
+    STATIC_REQUIRE(std::is_same_v<it_arr, int *>);
+    STATIC_REQUIRE(jh::is_iterator<it_arr>);
+
+    std::vector<int> v = {1, 2, 3};
+    using it_vec = jh::iterator_t<decltype(v)>;
+    STATIC_REQUIRE(std::is_same_v<it_vec, std::vector<int>::iterator>);
+    STATIC_REQUIRE(jh::input_iterator<it_vec>);
+}
+
+// ============================================================================
+// Iterator Edge Case / Misleading Types (should be rejected)
+// ============================================================================
+
+namespace test {
+    // Fake iterator: has operator++ and operator*, but lacks proper iterator_traits compatibility
+    struct FakeIter1 {
+        FakeIter1& operator++() { return *this; }
+        FakeIter1 operator++(int) { return *this; }
+        int operator*() const { return 42; }
+        bool operator==(const FakeIter1&) const = default;
+    };
+
+    // Fake iterator: defines value_type but no dereference
+    struct FakeIter2 {
+        using value_type = int;
+        FakeIter2& operator++() { return *this; }
+        FakeIter2 operator++(int) { return *this; }
+    };
+
+    // Fake iterator: dereference returns unrelated type
+    struct FakeIter3 {
+        using value_type = int;
+        using reference = std::string;
+        int operator++() { return 0; } // not returning iterator reference
+        std::string operator*() const { return "bad"; } // incompatible with value_type
+    };
+
+    // Fake output iterator: can assign but not increment
+    struct FakeOutputNoInc {
+        using value_type = int;
+        int storage{};
+        int& operator*() { return storage; }
+        void operator=(int v) { storage = v; }
+        // missing operator++
+    };
+
+    // Fake output iterator: increment works, but assignment fails
+    struct FakeOutputNoAssign {
+        FakeOutputNoAssign& operator++() { return *this; }
+        FakeOutputNoAssign operator++(int) { return *this; }
+        int operator*() const { return 42; } // not assignable
+    };
+
+    // Fake sequence: has begin()/end(), but begin() returns invalid iterator
+    struct FakeIterSequence {
+        static int begin() { return 1; }
+        static int end() { return 2; }
+    };
+
+    template <typename T, typename = void>
+    constexpr bool can_deduce_iterator_v = false;
+
+    template <typename T>
+    constexpr bool can_deduce_iterator_v<T, std::void_t<typename jh::detail::iterator_resolver<T>::type>> = true;
+
+}
+
+// ---------------------------------------------------------------------------
+// Concept rejection tests
+// ---------------------------------------------------------------------------
+
+TEST_CASE("Iterator rejection: structurally similar but invalid") {
+    using namespace test;
+
+    // ❌ FakeIter1: looks iterator-like but no valid iterator_traits
+    REQUIRE_FALSE(jh::is_iterator<FakeIter1>);
+    REQUIRE_FALSE(jh::input_iterator<FakeIter1>);
+    REQUIRE_FALSE(jh::output_iterator<FakeIter1, int>);
+
+    // ❌ FakeIter2: defines value_type but not dereferenceable
+    REQUIRE_FALSE(jh::is_iterator<FakeIter2>);
+    REQUIRE_FALSE(jh::input_iterator<FakeIter2>);
+
+    // ❌ FakeIter3: invalid type mismatch on dereference
+    REQUIRE_FALSE(jh::is_iterator<FakeIter3>);
+    REQUIRE_FALSE(jh::input_iterator<FakeIter3>);
+    REQUIRE_FALSE(jh::output_iterator<FakeIter3, int>);
+
+    // ❌ FakeOutputNoInc: no ++ operators
+    REQUIRE_FALSE(jh::output_iterator<FakeOutputNoInc, int>);
+
+    // ❌ FakeOutputNoAssign: ++ works but cannot assign
+    REQUIRE_FALSE(jh::output_iterator<FakeOutputNoAssign, int>);
+}
+
+TEST_CASE("Sequence rejection: fake begin() types") {
+    REQUIRE_FALSE(jh::is_sequence<test::FakeIterSequence>);
+}
+
+// ============================================================================
+// iterator_t deduction coverage and error safety
+// ============================================================================
+
+TEST_CASE("iterator_t deduction coverage") {
+    using namespace test;
+
+    // ✅ STL containers
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::vector<int>>, std::vector<int>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::list<double>>, std::list<double>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::deque<char>>, std::deque<char>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::set<int>>, std::set<int>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::unordered_set<std::string>>, std::unordered_set<std::string>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::map<int, int>>, std::map<int, int>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::unordered_map<std::string, int>>, std::unordered_map<std::string, int>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::forward_list<int>>, std::forward_list<int>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::array<int, 5>>, int*>); // std::array::begin returns T*
+
+    // ✅ POD arrays and pointers
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<int[3]>, int*>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<const int[3]>, const int*>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<int*>, int*>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<const double*>, const double*>);
+
+    // ✅ Custom sequence-like types
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<NonTemplateSequence>, std::vector<int>::const_iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<TemplateSequence<float>>, std::vector<float>::const_iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<ConstIterSequence>, std::vector<int>::const_iterator>);
+
+    // ✅ jh::pod::array acts like array
+    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<const jh::pod::array<int, 3>>, const int*>);
+
+    // ✅ MutableIterSequence - no const begin(), but still a begin
+    constexpr bool has_iter_mutable = requires { typename jh::iterator_t<test::MutableIterSequence>; };
+    STATIC_REQUIRE(has_iter_mutable);
+
+    // ✅ NoBeginEnd and FakeSequence - must not be deducible
+    STATIC_REQUIRE(!test::can_deduce_iterator_v<test::NoBeginEnd>);
+    STATIC_REQUIRE(!test::can_deduce_iterator_v<test::FakeSequence>);
+
+    // ✅ Builtin scalar / non-iterable types
+    STATIC_REQUIRE(!test::can_deduce_iterator_v<int>);
+    STATIC_REQUIRE(!test::can_deduce_iterator_v<void>);
+    STATIC_REQUIRE(!test::can_deduce_iterator_v<std::tuple<int, double>>);
+
+    // ✅ Cross-check jh::is_iterator consistency with iterator_t
+    STATIC_REQUIRE(jh::is_iterator<jh::iterator_t<std::vector<int>>>);
+    STATIC_REQUIRE(jh::input_iterator<jh::iterator_t<std::list<int>>>);
+    STATIC_REQUIRE(jh::bidirectional_iterator<jh::iterator_t<std::set<int>>>);
+    STATIC_REQUIRE(jh::random_access_iterator<jh::iterator_t<std::deque<int>>>);
+    STATIC_REQUIRE(jh::input_iterator<jh::iterator_t<TemplateSequence<int>>>);
+    STATIC_REQUIRE(jh::is_iterator<jh::iterator_t<jh::pod::array<int, 3>>>);
 }
