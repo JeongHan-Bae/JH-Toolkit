@@ -1,9 +1,44 @@
 /**
  * @file generator
- * @brief Forwarding header for jh::generator
+ * @brief Forwarding header for <code>jh::generator</code>.
  *
- * This header exists to provide a modern include style (`#include <jh/generator>`),
- * forwarding to `jh/generator.h`. It contains no additional code.
+ * <p>
+ * This header provides a modern include style for coroutine-based generators:
+ * </p>
+ * <pre><code>#include &lt;jh/generator&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it forwards to <code>jh/generator.h</code> and contains no additional code.
+ * </p>
+ *
+ * <h4>Migration Notice (Planned for 1.4.0+)</h4>
+ * <p>
+ * Beginning with <strong>version&nbsp;1.4.0</strong>, generator definitions will move to
+ * <code>jh/asynchronous/generator.h</code> as part of the new <code>jh::async</code> module.
+ * </p>
+ *
+ * <ul>
+ *   <li>The generator type will be renamed internally to <code>jh::async::generator</code>.</li>
+ *   <li>This forwarding header <strong>will remain available</strong> for compatibility.</li>
+ *   <li>A <code>using jh::generator = jh::async::generator;</code> alias will be provided
+ *       to preserve the existing interface and ease migration.</li>
+ * </ul>
+ *
+ * <h4>Design Rationale</h4>
+ * <p>
+ * Although the generator belongs semantically to the asynchronous subsystem,
+ * it remains a <strong>core coroutine abstraction</strong> widely used throughout
+ * the JH framework. To maintain ergonomic access and backward compatibility,
+ * the symbol <code>jh::generator</code> will continue to be available directly
+ * from the root include path (<code>&lt;jh/generator&gt;</code>).
+ * </p>
+ *
+ * <h4>Future Access Options</h4>
+ * <ul>
+ *   <li><code>#include &lt;jh/asynchronous/generator.h&gt;</code> — direct path (1.4.0+)</li>
+ *   <li><code>#include &lt;jh/async&gt;</code> — module aggregate header</li>
+ *   <li><code>#include &lt;jh/generator&gt;</code> — backward-compatible alias (maintained)</li>
+ * </ul>
  */
 
 #pragma once

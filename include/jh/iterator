@@ -1,9 +1,34 @@
 /**
  * @file iterator
- * @brief Forwarding header for jh::iterator
+ * @brief Forwarding header for <code>jh::iterator</code>.
  *
- * This header exists to provide a modern include style (`#include <jh/iterator>`),
- * forwarding to `jh/iterator.h`. It contains no additional code.
+ * <p>
+ * This header provides a modern include style for iterator concepts and utilities:
+ * </p>
+ * <pre><code>#include &lt;jh/iterator&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it forwards to <code>jh/iterator.h</code> and contains no additional code.
+ * </p>
+ *
+ * <h4>Deprecation Notice (Planned for 1.4.0+)</h4>
+ * <p>
+ * Starting from <strong>version 1.4.0</strong>, iterator definitions and concepts
+ * will be relocated under <code>jh/conceptual/iterator.h</code>.
+ * </p>
+ *
+ * <ul>
+ *   <li>This forwarding header will be <strong>removed</strong> in 1.4+.</li>
+ *   <li>Users are encouraged to include either:</li>
+ *   <ul>
+ *     <li><code>#include &lt;jh/conceptual/iterator.h&gt;</code> — direct path, or</li>
+ *     <li><code>#include &lt;jh/concepts&gt;</code> — aggregate conceptual header.</li>
+ *   </ul>
+ * </ul>
+ *
+ * <p>
+ * The current form remains fully functional for all <strong>1.3.x</strong> versions.
+ * </p>
  */
 
 #pragma once
