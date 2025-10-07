@@ -1,4 +1,5 @@
 #define CATCH_CONFIG_MAIN
+
 #include <iostream>
 #include <numeric>
 #include <random>
@@ -7,15 +8,15 @@
 #include <type_traits>
 
 // Helper template to check if a class has a given member function
-template<typename, template <typename> typename, typename = void>
+template<typename, template<typename> typename, typename = void>
 struct is_detected : std::false_type {
 };
 
-template<typename T, template <typename> typename Op>
+template<typename T, template<typename> typename Op>
 struct is_detected<T, Op, std::void_t<Op<T> > > : std::true_type {
 };
 
-template<typename T, template <typename> typename Op>
+template<typename T, template<typename> typename Op>
 inline constexpr bool is_detected_v = is_detected<T, Op>::value;
 
 // Detection templates for `begin()` and `end()`
@@ -643,11 +644,12 @@ TEST_CASE("Static Compilation Test for countdown") {
     static_assert(is_detected_v<RangeType, has_end_t>,
                   "Error: range should HAVE end()");
 
-    static_assert(std::same_as<jh::generator<int, double>::iterator, jh::iterator<jh::generator<int, double> > >,
-                  "Error: iterator should be of same type as jh::iterator<jh::generator<int, double>>");
+    static_assert(std::same_as<jh::generator<int, double>::iterator, jh::iterator_t<jh::generator<int, double> > >,
+                  "Error: iterator should be of same type as jh::iterator_t<jh::generator<int, double>>");
 
-    static_assert(std::same_as<jh::generator<int, jh::typed::monostate>::iterator, jh::iterator<jh::generator<int> > >,
-                  "Error: iterator should be of same type as jh::iterator<jh::generator<int>>");
+    static_assert(
+            std::same_as<jh::generator<int, jh::typed::monostate>::iterator, jh::iterator_t<jh::generator<int> > >,
+            "Error: iterator should be of same type as jh::iterator_t<jh::generator<int>>");
 
     static_assert(!jh::sequence<jh::generator<int> >, "jh::generator<int> should not be a sequence");
 }

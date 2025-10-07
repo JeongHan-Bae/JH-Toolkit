@@ -1,5 +1,6 @@
 /**
- * Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
+ * \verbatim
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,35 +13,71 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * \endverbatim
  */
-
-
 /**
  * @file generator.h
- * @author JeongHan-Bae <mastropseudo@gmail.com>
- * @brief A coroutine-based generator for modern C++20, inspired by Python's generator system.
+ * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @brief Coroutine-based generator system for modern C++20.
  *
- * @details
- * This module implements a coroutine-based generator using C++20 coroutines and templates.
- * It is designed to provide a Pythonic generator experience in C++ while maintaining
- * performance and type safety.
+ * <h3>Overview</h3>
+ * <p>
+ * This header defines <code>jh::generator&lt;T, U&gt;</code>, a coroutine-based generator
+ * inspired by Python's <code>Generator[T, U, R]</code> type.  
+ * It provides both value-yielding (<code>co_yield</code>) and interactive (<code>send()</code>) semantics
+ * while keeping the implementation fully type-safe, constexpr-friendly, and header-only.
+ * </p>
  *
- * ## Motivation
- * Python's generator system allows for both **iteration (yielding values)** and **interaction (sending values)**.
- * This module retains Python's **yield type** (`T`) and **input type** (`U`), similar to Python's `Generator[T, U, R]`.
- * However, unlike Python, **return type `R` is omitted**, as it is considered unnecessary in most practical engineering cases.
- * If a return value is needed, developers can use **smart pointers or references** to provide an explicit output channel.
+ * <h4>Design Motivation</h4>
+ * <p>
+ * In Python, <code>Generator[T, U, R]</code> expresses three roles:
+ * <ul>
+ *   <li><code>T</code> — values <b>yielded</b> by the generator.</li>
+ *   <li><code>U</code> — values <b>sent</b> into the generator.</li>
+ *   <li><code>R</code> — the value returned when the generator finishes.</li>
+ * </ul>
+ * However, Python's <code>R</code> is not a true return value — it is part of the coroutine
+ * exit mechanism (an exception-based control path).  
+ * In C++, such behavior can be cleanly modeled using standard exception handling (<tt>try</tt>/<tt>catch</tt>).
+ * Therefore, <b>JH's</b> <code>generator&lt;T, U&gt;</code> intentionally omits <code>R</code>
+ * to simplify design and align with idiomatic C++ coroutine semantics.
+ * </p>
  *
- * ## Key Features
- * - Supports **iterative** and **interactive** coroutine-based generators.
- * - Allows sending values into the coroutine (`send()`).
- * - Provides Pythonic **iteration** using `next()`.
- * - Supports **automatic iteration & sending** with `send_ite()`.
- * - Provides utilities for converting generators to **std::vector** and **std::deque**.
- * - Allows for a seamless migration from **Python-based generator logic to C++20** without losing clarity.
+ * <h4>Core Concepts</h4>
+ * <ul>
+ *   <li><b>Yield type (<code>T</code>)</b> — values produced by <code>co_yield</code>,
+ *       accessible via <code>generator.value()</code> as <code>std::optional&lt;T&gt;</code>.
+ *       The optional may be empty if the coroutine has completed.</li>
  *
- * @version 1.3.x
- * @date 2025
+ *   <li><b>Await type (<code>U</code>)</b> — values received by <code>co_await</code>,
+ *       corresponding to inputs provided through <code>send()</code> or <code>send_ite()</code>.</li>
+ *
+ *   <li><b>Return type (<code>R</code>)</b> — intentionally omitted.
+ *       In Python's <code>Generator[T, U, R]</code> model, <code>R</code> represents a
+ *       special termination channel, but in C++ it can be naturally handled via
+ *       <code>try</code>/<code>catch</code> and normal function return semantics.
+ *       Thus, <code>jh::generator&lt;T, U&gt;</code> omits <code>R</code> entirely.</li>
+ * </ul>
+ *
+ * <h4>Key Features</h4>
+ * <ul>
+ *   <li>Coroutine-based generator with full C++20 support.</li>
+ *   <li>Supports both iterative (<code>next()</code>) and interactive (<code>send()</code>) control.</li>
+ *   <li>Range-compatible iteration for non-input generators (<code>U == monostate</code>).</li>
+ *   <li>Conversion utilities for <code>std::vector</code>, <code>std::deque</code>, and range wrapping.</li>
+ *   <li>Designed for POD-safe, header-only use in low-overhead data pipelines.</li>
+ * </ul>
+ *
+ * <h4>Usage Notes</h4>
+ * <ul>
+ *   <li>Generators are <b>single-pass</b> — iteration consumes them.</li>
+ *   <li>Copying is disallowed (coroutine handles are unique and non-shareable).</li>
+ *   <li>Prefer POD or trivially copyable types for best performance.</li>
+ *   <li><code>U</code> defaults to <code>typed::monostate</code> (no input behavior).</li>
+ * </ul>
+ *
+ * @version <pre>1.3.x</pre>
+ * @date <pre>2025</pre>
  */
 
 #pragma once
@@ -61,47 +98,175 @@
 namespace jh {
 
     /**
-     * @brief A coroutine-based generator that supports yielding values and receiving inputs.
+     * @brief Coroutine-based generator supporting both yielding and receiving values.
      *
-     * @tparam T The value type yielded by the generator.
-     *           Must be **copy-constructible** as all values are stored internally in `std::optional<T>`.
-     *           If `T` is not copyable, the generator will fail to compile.
-     *           For best performance and layout optimization, prefer using:
-     *           - POD types (e.g., `int`, `float`, `struct { int x; float y; };`, `jh::pod::pair`, etc.)
-     *           - Trivially copyable types (`std::array`, `std::string`, etc.)
+     * @details
+     * This class implements a coroutine-driven sequence producer, conceptually equivalent to
+     * Python's <tt>Generator[T, U, None]</tt>.
+     * It provides a clear and type-safe interface for two-way coroutine communication:
+     * <ul>
+     *   <li><b>Yield</b> — values are produced via <code>co_yield</code>.</li>
+     *   <li><b>Await</b> — inputs are received via <code>co_await</code>, corresponding to <code>send()</code>.</li>
+     * </ul>
      *
-     * @tparam U The type of values that can be sent to the generator.
-     *           If left as the default (`typed::monostate`), the generator does not require input values and can function as a simple iterable sequence.
-     * @note If you need to use move-only types (e.g., `std::unique_ptr<T>`), you must
-     *       customize the generator logic and buffer strategy manually — not supported by default.
+     * A generator is a <b>consumable object</b> — each call to <code>next()</code> or
+     * <code>send()</code> advances its internal coroutine state.
+     * Once advanced, previously yielded values cannot be revisited.
+     *
+     * Values produced by <code>co_yield</code> are retrieved via <code>.value()</code>,
+     * which returns <code>std::optional&lt;T&gt;</code>.
+     * Before the first <code>next()</code> call or after completion,
+     * this optional contains <code>std::nullopt</code>.
+     *
+     * <p><strong>When consuming generator outputs:</strong></p>
+     * <ul>
+     *   <li>Use <code>.value().value()</code> when you are certain a value exists
+     *       (i.e. immediately after a successful <code>next()</code>).</li>
+     *   <li>Check <code>.value().has_value()</code> before dereferencing if unsure.</li>
+     *   <li>Convert to containers via <code>jh::to_vector()</code> or <code>jh::to_deque()</code>.</li>
+     *   <li>For repeatable iteration, wrap a <em>generator-producing function</em>
+     *       (e.g. a lambda returning a new generator) using <code>jh::to_range()</code>,
+     *       instead of passing a generator instance directly.</li>
+     * </ul>
+     *
+     * @tparam T The yielded value type (produced by <code>co_yield</code>).
+     *           Must be copy-constructible since it is stored within
+     *           <code>std::optional&lt;T&gt;</code>.
+     *           Prefer trivially copyable or POD-like types for best performance:
+     *           <ul>
+     *             <li>POD types such as <code>int</code>, <code>float</code>, <code>jh::pod::pair</code>.</li>
+     *             <li>Trivial objects such as <code>std::array</code>, <code>std::string</code>.</li>
+     *           </ul>
+     *
+     * @tparam U The input type sent to the generator (via <code>send()</code> or <code>send_ite()</code>).
+     *           Corresponds to values received by <code>co_await</code> inside the coroutine.
+     *           Defaults to <code>typed::monostate</code>, making the generator a pure output sequence.
+     *
+     * @note
+     * Move-only types (e.g. <code>std::unique_ptr&lt;T&gt;</code>) are not supported by default
+     * because the implementation relies on <code>std::optional&lt;T&gt;</code>.
+     * To support them, implement a custom buffering or ownership model.
      */
-    template<typename T, typename U = typed::monostate>
-        requires std::is_copy_constructible_v<T>
-    struct generator final {
-        /**
-         * @brief Type alias for the value type produced by the generator.
-         * @details
-         * This defines the type of values that are yielded by the generator.
-         * It enables compatibility with standard iterator traits.
-         */
-        using value_type [[maybe_unused]] = T;
+    template<typename T, typename U = typed::monostate> requires std::is_copy_constructible_v<T>
+    class generator final {
+    public:
+
+        using value_type = T; ///< @brief Type alias for the value type produced by the generator.
+
+        using send_type = U; ///< @brief Type alias for the value type sent to the generator.
 
         /**
-         * @brief Type alias for the iterator associated with the generator.
-         * @details
-         * This defines `generator<T, U>`'s iterator type as `iterator<generator>`.
-         * - The iterator is always defined, regardless of `U` (i.e., whether the generator supports `send()` or not).
-         * - However, `begin()` and `end()` are only available when `U == typed::monostate` (i.e., the generator does not require `send()`).
-         * - This allows users to manually create iterators if needed, although we do not encourage inheritance-based customization.
+         * <h4>Iterator</h4>
+         * <p>
+         * Input iterator for <code>jh::generator&lt;T, U&gt;</code>.
+         * Enables range-based iteration (<code>for(auto v : gen)</code>) when
+         * <code>U == typed::monostate</code>.
+         * Iteration is <strong>single-pass</strong>: once a value is consumed,
+         * it cannot be revisited.
+         * </p>
+         *
+         * <ul>
+         *   <li><strong>Category:</strong> <code>std::input_iterator_tag</code></li>
+         *   <li><strong>Value semantics:</strong> dereferencing yields a copy of <code>T</code>.</li>
+         *   <li><strong>Safety:</strong> dereferencing an exhausted iterator throws <code>std::runtime_error</code>.</li>
+         * </ul>
+         *
+         * <h5>Operations</h5>
+         * <ul>
+         *   <li><code>iterator(generator&amp; g)</code> — constructs an iterator bound to a generator.</li>
+         *   <li><code>operator++()</code> — advances to the next yielded value.</li>
+         *   <li><code>operator*()</code> — returns a const reference to the current value.</li>
+         *   <li><code>operator-&gt;()</code> — returns a pointer to the current value.</li>
+         *   <li><code>operator==(const iterator&amp;)</code> / <code>operator!=()</code> — compare iterator positions.</li>
+         * </ul>
+         *
+         * <p>
+         * When the generator finishes, the iterator becomes equal to <code>generator::end()</code>.
+         * Attempting to increment beyond this point is undefined.
+         * </p>
+         *
+         * <h5>Input Restrictions</h5>
+         * <p>
+         * Iteration is always supported, even when <code>U ≠ typed::monostate</code>;
+         * however, <code>begin()</code> and <code>end()</code> are deliberately omitted
+         * to prevent unintended ranged-for iteration with implicit empty input.
+         * </p>
+         *
+         * <p>
+         * For generators expecting input (<code>U</code> non-monostate),
+         * users must construct <code>iterator{gen}</code> manually to iterate,
+         * or advance the coroutine explicitly using
+         * <code>next()</code>, <code>send()</code>, or <code>send_ite()</code>.
+         * </p>
+         *
+         * <p>
+         * Within the coroutine, <code>co_await</code> may appear selectively—
+         * if no value is sent, a default-constructed <code>U{}</code> is supplied.
+         * </p>
          */
-        using iterator = jh::iterator<generator>; // NOLINT
-        // Fixes GCC issue with iterator lookup, ensuring cross-platform stability
+        struct iterator final {
+            using iterator_category [[maybe_unused]] = std::input_iterator_tag;
+            using value_type = T;
+            using difference_type [[maybe_unused]] = std::ptrdiff_t;
+            using pointer = value_type *;
+            using reference = value_type &;
+
+            std::optional<std::reference_wrapper<generator>> gen;
+            std::optional<value_type> current_value;
+            bool is_begin = false;
+
+            explicit iterator(generator &g) : gen(g), is_begin(true) {}
+
+            iterator() = default;
+
+            iterator &operator++() {
+                begin_check();
+                if (gen && gen->get().next()) current_value = gen->get().value();
+                else {
+                    gen.reset();
+                    current_value.reset();
+                }
+                return *this;
+            }
+
+            iterator operator++(int) {
+                iterator tmp = *this;
+                ++*this;
+                return tmp;
+            }
+
+            const value_type &operator*() {
+                begin_check();
+                if (!current_value) throw std::runtime_error("Dereferencing end iterator");
+                return *current_value;
+            }
+
+            const value_type *operator->() { return &**this; }
+
+            bool operator==(const iterator &other) const {
+                return (!gen && !other.gen) ||
+                       (gen && other.gen && std::addressof(gen->get()) == std::addressof(other.gen->get()));
+            }
+
+            bool operator!=(const iterator &other) const { return !(*this == other); }
+
+        private:
+            void begin_check() noexcept {
+                if (is_begin) [[unlikely]] {
+                    if (gen && gen->get().next()) current_value = gen->get().value();
+                    else gen.reset();
+                    is_begin = false;
+                }
+            }
+        };
+
         /**
          * @brief Deleted copy constructor.
          * @details
-         * Since `generator<T, U>` manages a coroutine handle (`std::coroutine_handle<promise_type>`),
+         * Since <code>generator&lt;T, U&gt;</code> manages a coroutine handle (<code>std::coroutine_handle&lt;promise_type&gt;</code>),
          * copying the generator would lead to double ownership issues.
-         * - To prevent accidental copies, the copy constructor is explicitly deleted.
+         *
+         * <p>To prevent accidental copies, the copy constructor is explicitly deleted.</p>
          */
         generator(const generator &) = delete;
 
@@ -116,26 +281,29 @@ namespace jh {
         /**
          * @brief Move constructor.
          * @details
-         * Transfers ownership of the coroutine handle from `other` to `this`.
-         * - The `other` generator is set to `nullptr` to prevent double destruction.
-         * - This ensures safe movement of generator instances.
+         * Transfers ownership of the coroutine handle from <tt>other</tt> to <tt>this</tt>.
+         * <ul>
+         *    <li>The <code>other</code> generator is set to <code>nullptr</code> to prevent double destruction.</li>
+         *    <li>This ensures safe movement of generator instances.</li>
+         * </ul>
          *
          * @param other The generator to move from.
          */
-        generator(generator &&other) noexcept : co_ro(std::exchange(other.co_ro, nullptr)) {
+        generator(generator &&other) noexcept: co_ro(std::exchange(other.co_ro, nullptr)) {
         }
 
         /**
          * @brief Move assignment operator.
          * @details
-         * Details:
-         * - First, it stops the current coroutine if it exists.
-         * - Then, it transfers ownership of the coroutine handle from `other` to `this`.
-         * - The `other` generator is set to `nullptr` to prevent double destruction.
-         * - This ensures safe assignment of generator instances.
+         * <ol>
+         *   <li>First, it stops the current coroutine if it exists.</li>
+         *   <li>Then, it transfers ownership of the coroutine handle from <tt>other</tt> to <tt>this</tt>.</li>
+         *   <li>The <code>other</code> generator is set to <code>nullptr</code> to prevent double destruction.</li>
+         *   <li>This ensures safe assignment of generator instances.</li>
+         * </ol>
          *
          * @param other The generator to move from.
-         * @return Reference to `this` generator after assignment.
+         * @return Reference to <code>this</code> generator after assignment.
          */
         generator &operator=(generator &&other) noexcept {
             if (this != &other) {
@@ -146,12 +314,65 @@ namespace jh {
         }
 
         /**
-         * @brief The promise type required for coroutine functionality.
+         * <h4>Promise Type</h4>
+         * <p>
+         * The <code>promise_type</code> defines the state and behavior of the coroutine
+         * underlying a <code>jh::generator&lt;T, U&gt;</code>.
+         * It manages yielded values, received inputs, exception propagation,
+         * and coroutine suspension control points.
+         * </p>
+         *
+         * <h5>Responsibilities</h5>
+         * <ul>
+         *   <li>Store the most recent <b>yielded value</b> (<code>T</code>) and <b>sent input</b> (<code>U</code>).</li>
+         *   <li>Provide <b>suspension points</b> for coroutine start, yield, and finalization.</li>
+         *   <li>Propagate exceptions to the generator interface via <code>std::exception_ptr</code>.</li>
+         *   <li>Transform <code>co_await</code> expressions into awaiters that access the sent value.</li>
+         * </ul>
+         *
+         * <h5>Member Variables</h5>
+         * <ul>
+         *   <li><code>std::optional&lt;T&gt; current_value</code> — latest value produced by <code>co_yield</code>.</li>
+         *   <li><code>std::optional&lt;U&gt; last_sent_value</code> — most recent input value provided by <code>send()</code>.</li>
+         *   <li><code>std::exception_ptr exception</code> — captures any uncaught exceptions raised during execution.</li>
+         * </ul>
+         *
+         * <h5>Coroutine Lifecycle Hooks</h5>
+         * <ul>
+         *   <li><code>get_return_object()</code> — constructs and returns the bound <code>generator</code> instance.</li>
+         *   <li><code>initial_suspend()</code> — always suspends before the first resumption (<code>std::suspend_always</code>).</li>
+         *   <li><code>final_suspend()</code> — always suspends upon coroutine completion, ensuring handle safety.</li>
+         *   <li><code>yield_value(T)</code> — stores the yielded value and suspends execution.</li>
+         *   <li><code>return_void()</code> — marks normal coroutine completion (no explicit return value).</li>
+         *   <li><code>unhandled_exception()</code> — catches and stores any unhandled exceptions.</li>
+         * </ul>
+         *
+         * <h5>Awaiter Mechanism</h5>
+         * <p>
+         * The inner <code>awaiter</code> structure implements <code>co_await</code> behavior.
+         * When the coroutine executes <code>co_await U{}</code>, the following occurs:
+         * </p>
+         * <ul>
+         *   <li><code>await_ready()</code> — always returns <code>false</code>, forcing suspension.</li>
+         *   <li><code>await_suspend()</code> — performs no action (passive suspension point).</li>
+         *   <li><code>await_resume()</code> — retrieves the last value sent to the coroutine,
+         *       or a default-constructed <code>U{}</code> if no value was provided.</li>
+         * </ul>
+         *
+         * <h5>Compiler Notes</h5>
+         * <p>
+         * Several functions (e.g., <code>initial_suspend()</code>, <code>final_suspend()</code>, <code>return_void()</code>)
+         * contain lines like:
+         * <pre><code>[[maybe_unused]] auto *self = this;</code></pre>
+         * These are intentional <b>anti-diagnostic placeholders</b> to prevent
+         * Clang-Tidy from incorrectly suggesting <code>static</code> conversion for methods
+         * that must remain instance-bound under coroutine semantics.
+         * </p>
          */
-        struct promise_type {
-            std::optional<T> current_value; ///< Stores the current yielded value.
+        struct promise_type final {
+            std::optional<T> current_value;   ///< Stores the current yielded value.
             std::optional<U> last_sent_value; ///< Stores the last value sent to the generator.
-            std::exception_ptr exception; ///< Stores an exception if one occurs.
+            std::exception_ptr exception;     ///< Stores an exception if one occurs.
 
             /**
              * @brief Creates and returns the generator object.
@@ -163,7 +384,7 @@ namespace jh {
 
             /**
              * @brief Suspends execution initially.
-             * @return Always returns std::suspend_always to suspend execution at the start.
+             * @return Always returns <code>std::suspend_always</code> to suspend execution at the start.
              */
             std::suspend_always initial_suspend() noexcept {
                 [[maybe_unused]] auto *self = this; // Prevents Clang-Tidy from suggesting static
@@ -172,7 +393,7 @@ namespace jh {
 
             /**
              * @brief Suspends execution at the final stage.
-             * @return Always returns std::suspend_always to suspend execution at the end.
+             * @return Always returns <code>std::suspend_always</code> to suspend execution at the end.
              */
             std::suspend_always final_suspend() noexcept {
                 [[maybe_unused]] auto *self = this; // Prevents Clang-Tidy from suggesting static
@@ -182,23 +403,33 @@ namespace jh {
             /**
              * @brief Yields a value from the generator.
              * @param value The value to yield.
-             * @return Always returns std::suspend_always to suspend execution after yielding.
+             * @return Always returns <code>std::suspend_always</code> to suspend execution after yielding.
              */
             std::suspend_always yield_value(T value) {
-                current_value = value;
+                current_value.emplace(std::forward<T>(value));
                 return {};
             }
 
             /**
-             * @brief Awaiter structure to manage `co_await` operations for receiving values.
+             * @brief Lightweight awaiter used to deliver values sent into the generator via <code>co_await</code>.
+             * <p>
+             * Acts as the bridge between <code>send()</code> and <code>co_await</code>:
+             * when the coroutine executes <code>co_await U{}</code>,
+             * this object suspends execution and later resumes it with the value
+             * passed by the most recent <code>send()</code> call.
+             * </p>
+             * <p>
+             * If no value has been sent, <code>await_resume()</code> returns a
+             * default-constructed <code>U{}</code>, allowing safe use even without input.
+             * </p>
              */
-            struct awaiter {
-                promise_type &promise; ///< Reference to the coroutine promise.
+            struct awaiter final {
+                promise_type &promise;                                       ///< Reference to the coroutine promise.
 
                 [[maybe_unused]] static bool await_ready() { return false; } ///< Always returns false to suspend.
 
                 [[maybe_unused]] static void await_suspend(std::coroutine_handle<>) {
-                } ///< No-op on suspension.
+                }                                                            ///< No-op on suspension.
 
                 /**
                  * @brief Retrieves the last sent value or a default.
@@ -210,8 +441,8 @@ namespace jh {
             };
 
             /**
-             * @brief Transforms an awaited value into an `awaiter` for coroutine execution.
-             * @return An `awaiter` object tied to this coroutine promise.
+             * @brief Transforms an awaited value into an <code>awaiter</code> for coroutine execution.
+             * @return An <code>awaiter</code> object tied to this coroutine promise.
              */
             awaiter await_transform(U) noexcept {
                 return awaiter{*this}; // Ensures Clang-Tidy does not suggest making it static
@@ -233,8 +464,29 @@ namespace jh {
         std::coroutine_handle<promise_type> co_ro; ///< Handle to the coroutine.
 
         /**
-         * @brief Constructs the generator with a coroutine handle.
-         * @param h The coroutine handle to be managed.
+         * @brief Constructs a <code>generator</code> directly from its coroutine handle.
+         * <p>
+         * This constructor is the linkage point between the coroutine's
+         * <code>promise_type</code> and its corresponding
+         * <code>jh::generator&lt;T, U&gt;</code> object.
+         * It is invoked automatically by the compiler when a coroutine function
+         * returning a generator is defined and called.
+         * </p>
+         * <p>
+         * This enables Python-like semantics for defining and using coroutine generators:
+         * <ul>
+         *   <li><code>jh::generator&lt;T, U&gt; Func(Args...) { scope_with_co_yield(); }</code> — defines a coroutine generator.</li>
+         *   <li><code>Func(args...)</code> — directly obtains a generator instance, without explicitly handling <code>std::coroutine_handle</code>.</li>
+         *   <li><code>jh::to_range([...] { Func(args...); })</code> — wraps the generator-producing function into a reusable, re-entrant range.</li>
+         * </ul>
+         * </p>
+         * <p>
+         * Thus, <code>jh::generator&lt;T, U&gt;</code> aligns closely with Python's
+         * <tt>Generator[T, U, None]</tt> semantics, making coroutine-based data pipelines
+         * natural and concise in C++.
+         * </p>
+         *
+         * @param h The coroutine handle to be managed by this generator.
          */
         explicit generator(std::coroutine_handle<promise_type> h) : co_ro(h) {
         }
@@ -246,7 +498,7 @@ namespace jh {
 
         /**
          * @brief Advances the generator to the next value.
-         * @return `true` if a new value is available, `false` if the coroutine has finished.
+         * @return <code>true</code> if a new value is available, <code>false</code> if the coroutine has finished.
          */
         bool next() {
             if (!co_ro || co_ro.done()) return false;
@@ -257,18 +509,24 @@ namespace jh {
 
         /**
          * @brief Checks if the generator has completed execution.
-         * @return `true` if the generator has finished, `false` otherwise.
+         * @return <code>true</code> if the generator has finished, <code>false</code> otherwise.
          */
-        [[nodiscard]] bool done() const {
+        [[nodiscard]] bool done() const noexcept {
             return !co_ro || co_ro.done();
         }
 
         /**
          * @brief Sends a value to the generator and resumes execution.
          * @param value The value to send.
-         * @return `true` if the coroutine is still active, `false` otherwise.
+         * @return <code>true</code> if the coroutine is still active, <code>false</code> otherwise.
+         *
+         * @note
+         * When <code>U == typed::monostate</code>, this function becomes a no-op.
+         * Since there is no <code>co_await</code> to receive input, the call does not
+         * advance the coroutine or affect its state.
+         * Use <code>next()</code> or <code>send_ite()</code> instead to progress the generator.
          */
-        bool send(U value) {
+        bool send(send_type value) {
             if (!co_ro || co_ro.done()) return false;
 
             auto &promise = co_ro.promise();
@@ -283,13 +541,19 @@ namespace jh {
         /**
          * @brief Advances the generator and sends a value in one step.
          *
-         * This function combines `next()` and `send()`, eliminating the need for a separate `next()` call.
-         * It first advances the generator, and if successful, sends the provided value to the coroutine.
+         * This function combines <code>next()</code> and <code>send()</code>,
+         * eliminating the need for a separate <code>next()</code> call.
+         * It first advances the generator, and if successful, sends the provided value.
          *
          * @param value The value to send to the generator.
-         * @return `true` if the generator successfully advances and accepts the value, `false` if the generator has finished.
+         * @return <code>true</code> if the generator successfully advances and accepts the value,
+         *         <code>false</code> if the generator has finished.
+         *
+         * @note
+         * When <code>U == typed::monostate</code>, this behaves identically to
+         * <code>next()</code>, since no input is transmitted and the send stage is inert.
          */
-        bool send_ite(U value) {
+        bool send_ite(send_type value) {
             if (!co_ro || co_ro.done()) return false;
 
             co_ro.resume(); // Advance coroutine
@@ -305,18 +569,51 @@ namespace jh {
          * @brief Retrieves the currently yielded value.
          * @return An optional containing the current value.
          *
-         * @note The returned value is a **copy** of the yielded value (`T` must be copyable).
-         *       This avoids any dangling reference or invalid lifetime issues.
+         * @note
+         * The returned value is a <strong>copy</strong> of the last yielded element.
+         * This ensures that each access is memory-safe and independent of
+         * coroutine resumption, avoiding dangling references.
+         *
+         * If your generator needs to yield pointer-like data,
+         * use a <strong>copyable smart pointer</strong> such as
+         * <code>std::shared_ptr&lt;T&gt;</code> or any equivalent
+         * reference-counted handle type.
+         *
+         * @warning
+         * <code>std::unique_ptr&lt;T&gt;</code> and other move-only types
+         * are not supported because the generator requires
+         * <code>T</code> to be copy-constructible for
+         * <code>std::optional&lt;T&gt;</code> storage.
          */
-        std::optional<T> value() {
+        std::optional<value_type> value() const noexcept {
             return co_ro.promise().current_value;
         }
 
         /**
          * @brief Retrieves the last value sent to the generator.
-         * @return An optional containing the last sent value.
+         * @return An optional containing the most recent input value transmitted via <code>send()</code> or <code>send_ite()</code>.
+         *
+         * @details
+         * This accessor returns the most recent value (<code>U</code>)
+         * that was sent into the coroutine through <code>send()</code> or <code>send_ite()</code>.
+         * The stored value is preserved until the next input or coroutine resumption.
+         * If no input has been sent yet, the returned <code>std::optional</code> is empty.
+         *
+         * <p>
+         * The returned value is a <strong>copy</strong> of the last sent element.
+         * This guarantees safety after coroutine resumption.
+         * If pointer semantics or shared ownership are required, use
+         * <strong>copyable reference-counted types</strong> such as
+         * <code>std::shared_ptr&lt;U&gt;</code> instead of move-only handles.
+         * </p>
+         *
+         * <p>
+         * When <code>U == typed::monostate</code>, the generator does not consume inputs at all.
+         * In such cases, this accessor has <strong>no semantic meaning</strong>
+         * and always yields an empty <code>std::optional</code>.
+         * </p>
          */
-        [[maybe_unused]] std::optional<U> last_sent_value() {
+        [[maybe_unused]] std::optional<send_type> last_sent_value() const noexcept {
             return co_ro.promise().last_sent_value;
         }
 
@@ -333,248 +630,143 @@ namespace jh {
         /**
          * @brief Returns an iterator for ranged-for loops.
          * @details
-         * This method allows the generator to be used in `for(auto x : gen)`.
-         * It is only enabled when `U == typed::monostate` (i.e., no `send()` required).
-         * - Since iterating over a generator inherently consumes its elements,
-         * a `const` version is intentionally disallowed (`begin() const = delete`).
-         * - This ensures that a generator cannot be iterated over while preserving its state.
+         * Enables use of the generator in a C++ range-based loop:
+         * <code>for (auto x : gen)</code>.
+         * This overload is available only when <code>U == typed::monostate</code>,
+         * meaning the generator does not expect any input values.
          *
-         * @return An iterator to begin iteration over the generator.
+         * <p>
+         * Each iteration step advances the coroutine and <strong>consumes its internal state</strong>.
+         * Unlike standard ranges, a generator cannot be treated as a view or re-iterated,
+         * because iteration directly resumes and mutates the underlying coroutine frame.
+         * </p>
+         *
+         * <p>
+         * A <code>const</code> version of <code>begin()</code> is <strong>intentionally deleted</strong>
+         * because invoking iteration on a constant generator would violate
+         * logical immutability: advancing the coroutine inherently modifies
+         * its promise object and execution context.
+         * </p>
+         *
+         * @return An iterator positioned at the beginning of the generator sequence.
+         * @see generator::end
          */
-        iterator begin() requires typed::monostate_t<U> {
+        iterator begin() requires typed::monostate_t<send_type> {
             return iterator{*this};
         }
 
         /**
-         * @brief Deleted `const` overload of `begin()`.
+         * @brief Deleted <code>const</code> overload of <code>begin()</code>.
          * @details
-         * Since a generator's iteration state is modified each time an element is consumed,
-         * allowing a `const` version would be misleading. This deletion enforces the
-         * expectation that generators are mutable objects.
+         * Generator iteration is a <strong>stateful and consuming</strong> operation.
+         * Allowing a <code>const</code> overload would incorrectly imply
+         * immutability, even though every iteration step mutates the coroutine's
+         * suspended frame.
+         *
+         * <p>
+         * This deletion enforces the invariant that <code>jh::generator&lt;T, U&gt;</code>
+         * may only be iterated when held as a mutable instance.
+         * </p>
          */
         iterator begin() const = delete;
 
         /**
-         * @brief Returns an iterator representing the end of the generator sequence.
+         * @brief Returns a sentinel iterator representing the end of the generator sequence.
          * @details
-         * This iterator serves as the "past-the-end" iterator, marking the termination
-         * of iteration. Unlike `begin()`, `end()` does not consume values and is safe to call
-         * multiple times.
-         * Like `begin()`, `end()` is only enabled when `U == typed::monostate` (i.e., no `send()` required).
+         * This function provides the canonical <strong>past-the-end sentinel</strong>
+         * for use in range-based iteration.
+         * Unlike <code>begin()</code>, calling <code>end()</code> never resumes or interacts
+         * with the underlying coroutine; it simply returns a default-constructed
+         * <code>iterator</code> object used to mark the termination of iteration.
          *
-         * @return An iterator representing the end of the generator.
+         * <p>
+         * Because it performs no coroutine access, <code>end()</code> is
+         * <strong>idempotent</strong> — it can be safely invoked multiple times
+         * without affecting the generator state.
+         * </p>
+         *
+         * <p>
+         * This overload is available only when <code>U == typed::monostate</code>,
+         * meaning the generator is purely output-driven and does not require
+         * input through <code>send()</code>.
+         * </p>
+         *
+         * @return A default-constructed iterator serving as the logical end sentinel.
+         * @see generator::begin
          */
-        static iterator end() requires typed::monostate_t<U> {
+        static iterator end() requires typed::monostate_t<send_type> {
             return iterator{};
         }
+
     };
 
     /**
-     * @brief Iterator for coroutine-based generators.
+     * @brief Specialization of <code>jh::iterator<></code> for <code>jh::generator</code>.
      * @details
-     * This iterator is designed exclusively for range-based iteration over a `generator<T>`.
-     * It enables standard input iterator behavior (`++`, `*`, `==`), but **should never be manually instantiated**.
-     * Instead, it should be obtained via `generator::begin()` and `generator::end()`.
-     * - Only generators **without input values** (`U == typed::monostate`) can provide iterators.
-     * - If a generator requires `send()`, it **cannot** be iterated using `for(auto x : gen)`,
-     *   as input values must be explicitly provided at each step.
-     * - If the generator is consumed or destroyed elsewhere, the iterator **becomes invalid**.
-     * - Instead of using `std::shared_ptr<G>`, this iterator holds a `std::optional<std::reference_wrapper<G>>`.
-     * This prevents unintended ownership extension, as the generator is managed by its coroutine.
-     * If the generator reaches its end or is destroyed, the iterator safely resets itself.
+     * Provides a mapping between <code>jh::generator&lt;T, U&gt;</code> and its
+     * internal iterator type <code>generator&lt;T, U&gt;::iterator</code>.
      *
-     * @tparam T The generator value_type.
-     * @tparam U The generator send_type.
+     * <p>
+     * This specialization is used by the <code>jh::iterator_t&lt;Container&gt;</code>
+     * deduction system to support <strong>duck-typed iterator resolution</strong>.
+     * It allows generic code such as:
+     * </p>
+     * <pre><code>
+     * using it_t = jh::iterator_t&lt;jh::generator&lt;int&gt;&gt;;
+     * </code></pre>
+     * to correctly deduce <code>jh::generator&lt;int&gt;::iterator</code>
+     * as the valid iterator type.
+     *
+     * <p>
+     * This integration ensures that <code>jh::generator</code> participates fully
+     * in the generic <code>iterator_t&lt;&gt;</code> deduction model,
+     * alongside STL containers and other user-defined structures.
+     * </p>
+     *
+     * @tparam T The generator's yielded value type.
+     * @tparam U The generator's input (sent) value type.
+     * @see jh::iterator_t
+     * @see jh::generator
      */
     template<typename T, typename U>
-    struct iterator<generator<T, U> > {
-        using iterator_category [[maybe_unused]] = std::input_iterator_tag;
-        using value_type = T;
-        using type = iterator;
-        using difference_type [[maybe_unused]] = std::ptrdiff_t;
-        using pointer = value_type *;
-        using reference [[maybe_unused]] = value_type &;
-
-        std::optional<std::reference_wrapper<generator<T, U> > > gen;
-        ///< Reference to the generator (optional to handle end-state).
-
-        std::optional<value_type> current_value; ///< Stores the currently yielded value.
-
-        /**
-         * @brief Constructs an iterator bound to a generator.
-         * @details
-         * This constructor should only be called internally via `generator::begin()`.
-         * Manual construction of iterators is discouraged.
-         *
-         * @param generator The generator to iterate over.
-         */
-        explicit iterator(generator<T, U> &generator) : gen(generator), is_begin(true) {
-        }
-
-        /**
-         * @brief Constructs an end iterator.
-         * @details
-         * This constructor is only used internally by `generator::end()`, representing the past-the-end state.
-         */
-        iterator(): gen(std::nullopt), is_begin(false) {
-        }
-
-        /**
-         * @brief Advances the iterator to the next value.
-         * @details
-         * If the generator produces a new value, `current_value` is updated.
-         * If the generator is exhausted, the reference is cleared to mark iteration as complete.
-         * @return Reference to the updated iterator.
-         */
-        iterator &operator++() {
-            begin_check();
-            if (gen && gen->get().next()) {
-                current_value = gen->get().value();
-            } else {
-                current_value = std::nullopt;
-                gen.reset(); // Generator exhausted, clear reference.
-            }
-            return *this;
-        }
-
-        /**
-         * @brief Advances the iterator and returns its previous state.
-         * @details
-         * This function follows the standard input iterator convention of returning a
-         * copy of the iterator before incrementing. However, since the generator is **single-pass
-         * and consumable**, there is no actual "previous state" to return.
-         * Unlike bidirectional or random-access iterators, where the previous value remains
-         * accessible, advancing a generator **consumes the current value irreversibly**.
-         * Therefore, although `temp` is a copy of `*this` before `++`, **both `temp` and `*this`
-         * will have advanced to the next state**, making them effectively identical.
-         * This operator is still useful for compatibility with input iterator interfaces,
-         * but users should note that it does not preserve past values.
-         *
-         * @return Copy of the iterator (which, in reality, has already advanced).
-         */
-        iterator operator++(int) {
-            iterator temp = *this;
-            ++*this;
-            return temp;
-        }
-
-        /**
-         * @brief Dereferences the iterator to access the current value.
-         * @throws std::runtime_error If attempting to dereference an end iterator.
-         * @return Reference to the current value.
-         */
-        const value_type &operator*() {
-            begin_check();
-            if (!current_value)
-                throw std::runtime_error(
-                    "Attempted to dereference an end iterator. Ensure that iteration has started and is not finished.");
-            return *current_value;
-        }
-
-        /**
-         * @brief Provides pointer access to the current value.
-         * @throws std::runtime_error If attempting to access an end iterator.
-         * @return Pointer to the current value.
-         */
-        const value_type *operator->() {
-            begin_check();
-            if (!current_value) throw std::runtime_error("Dereferencing end iterator");
-            return &*current_value;
-        }
-
-        /**
-         * @brief Compares two iterators for equality.
-         * @details
-         * Two iterators are considered equal if they:
-         * - Reference the same generator instance and hold the same value, or
-         * - Are both past-the-end iterators (`gen` is `std::nullopt`).
-         * - Handling Generator Expiration:
-         *    - If the generator is exhausted or explicitly destroyed elsewhere,
-         *      `gen` is set to `std::nullopt`.
-         *    - This ensures that an iterator with a lost reference is treated **equivalently
-         *      to an end iterator**.
-         *    - As a result, once the generator is gone, all its iterators become equivalent
-         *      to `end()` and will compare equal.
-         * - This behavior ensures safe iteration without accessing invalid memory
-         * if the generator is destroyed mid-iteration.
-         *
-         * @param other The iterator to compare against.
-         * @return `true` if iterators are equal, otherwise `false`.
-         */
-        bool operator==(const iterator &other) const {
-            // Ensure both iterators are working with valid generators
-            const_cast<iterator *>(this)->check_validity();
-            const_cast<iterator *>(&other)->check_validity();
-
-            return gen.has_value() == other.gen.has_value() &&
-                   (!gen.has_value() || std::addressof(gen.value().get()) == std::addressof(other.gen.value().get())) &&
-                   current_value == other.current_value;
-        }
-
-        /**
-         * @brief Compares two iterators for inequality.
-         * @param other The iterator to compare against.
-         * @return `true` if iterators are not equal, otherwise `false`.
-         */
-        bool operator!=(const iterator &other) const {
-            return !(*this == other);
-        }
-
-    private:
-        bool is_begin; ///< Tracks whether this is the initial state of iteration.
-
-        /**
-         * @brief Ensures that iteration starts correctly.
-         * @details
-         * When iteration begins, this function ensures that the first value is
-         * retrieved immediately, avoiding an off-by-one error.
-         * If the generator is already exhausted, the iterator resets itself.
-         */
-        void begin_check() {
-            if (is_begin) {
-                if (gen && gen->get().next()) {
-                    current_value = gen->get().value();
-                } else {
-                    current_value = std::nullopt;
-                    gen.reset();
-                }
-                is_begin = false;
-            }
-        }
-
-        /**
-         * @brief Checks if the generator is still valid.
-         * @details
-         * If the generator has been destroyed or exhausted, this function resets `gen` to `std::nullopt`
-         * to prevent invalid memory access.
-         */
-        void check_validity() {
-            if (!gen.has_value()) return; // Already nullopt, nothing to do
-
-            // Access the generator safely
-            generator<T, U> *generator_ptr = std::addressof(gen.value().get());
-
-            // If generator is deallocated or exhausted, reset `gen`
-            if (!generator_ptr || generator_ptr->done()) {
-                gen.reset();
-                current_value.reset();
-            }
-        }
+    struct iterator<generator<T, U>> {
+        using type = typename generator<T, U>::iterator;
     };
 
 
-    /// @name Generator Conversion Functions
-    /// @{
-
     /**
-     * @brief Converts a sequence into a generator.
-     * @tparam T The sequence type.
-     * @param seq The sequence to convert.
-     * @return A generator yielding elements from the sequence.
+     * @brief Converts a duck-typed <strong>sequence-like</strong> object into a generator.
+     *
+     * @details
+     * This overload provides the <strong>most permissive</strong> fallback version
+     * of <code>make_generator()</code>.
+     * It accepts any type that satisfies the minimal <code>jh::sequence</code> concept:
+     * having <code>begin()</code> and <code>end()</code> returning readable iterators
+     * and supporting <code>!=</code> comparison.
+     *
+     * <p>
+     * Unlike <code>std::ranges::range</code>, a <code>jh::sequence</code> does <strong>not</strong>
+     * guarantee forwarding or lifetime semantics — only that it can be read immutably.
+     * Therefore, this overload uses <strong>const reference</strong> and avoids forwarding
+     * or move-based iteration.
+     * </p>
+     *
+     * <ul>
+     *   <li>Acts as a <strong>duck-typed fallback</strong> for legacy or lightweight containers
+     *       that behave like ranges but are not formally defined as such.</li>
+     *   <li>Preserves the minimal safety invariant: iteration must not mutate <code>seq</code>.</li>
+     *   <li>Ensures compatibility with <strong>immutable const iteration</strong>
+     *       even in non–range-conforming types.</li>
+     * </ul>
+     *
+     * @tparam SeqType The input sequence type; must satisfy <code>jh::sequence</code>
+     *         but not <code>std::ranges::range</code>.
+     * @param seq The sequence-like object to convert (read-only).
+     * @return A generator yielding elements from <code>seq</code>.
      */
-    template<sequence T>
-        requires (!std::ranges::range<T>)
-    generator<sequence_value_type<T> > make_generator(const T &seq) {
+    template<sequence SeqType>
+    requires (!std::ranges::range<SeqType>)
+    [[maybe_unused]] generator<sequence_value_type<SeqType> > make_generator(const SeqType &seq) {
         for (const auto &elem: seq) {
             // Use range-based for-loop
             co_yield elem;
@@ -583,10 +775,29 @@ namespace jh {
     }
 
     /**
-     * @brief Converts a range into a generator.
-     * @tparam R The range type.
-     * @param rng The range to convert.
-     * @return A generator yielding elements from the range.
+     * @brief Converts a standard <strong>range</strong> into a generator.
+     *
+     * @details
+     * This overload handles any type satisfying the C++20 <code>std::ranges::range</code> concept.
+     * It directly consumes the range by iteration, yielding each element via <code>co_yield</code>.
+     *
+     * <p>
+     * Because <code>range</code> guarantees valid lifetime and iterator semantics,
+     * this overload may safely take the range by <strong>universal reference</strong>
+     * and use <code>std::forward</code> to preserve value category.
+     * </p>
+     *
+     * <ul>
+     *   <li>Preserves const correctness and supports read-only iteration.</li>
+     *   <li>Allows moving temporary or view-based ranges directly into the coroutine —
+     *       the generator takes ownership of the iteration sequence.</li>
+     *   <li>Unlike the <code>sequence</code> overload, this version fully supports
+     *       <strong>forwarded rvalue ranges</strong> and <strong>lazy views</strong>.</li>
+     * </ul>
+     *
+     * @tparam R A valid <code>std::ranges::range</code> type.
+     * @param rng The range object or view to convert.
+     * @return A generator yielding elements from <code>rng</code>.
      */
     template<std::ranges::range R>
     generator<std::ranges::range_value_t<R> > make_generator(R &&rng) {
@@ -595,11 +806,24 @@ namespace jh {
         }
     }
 
-
     /**
-     * @brief Converts a generator to a std::vector.
-     * @param gen The generator to convert.
-     * @return A std::vector containing all generated values.
+     * @brief Collects all yielded values from a generator into a <code>std::vector</code>.
+     *
+     * @details
+     * This overload applies to generators that produce values but do not receive input
+     * (<code>U == typed::monostate</code>).
+     * It repeatedly advances the coroutine using <code>next()</code> until completion,
+     * copying each yielded value into a contiguous <code>std::vector</code>.
+     *
+     * <ul>
+     *   <li>Intended for output-only generators.</li>
+     *   <li>Preserves iteration order and copies each yielded element.</li>
+     *   <li>Acts as the most lightweight way to “materialize” a generator sequence.</li>
+     * </ul>
+     *
+     * @tparam T The generator's <strong>yielded value type</strong>.
+     * @param gen The generator instance to collect from.
+     * @return A <code>std::vector</code> containing all yielded elements in order.
      */
     template<typename T>
     std::vector<T> to_vector(generator<T> &gen) {
@@ -613,10 +837,25 @@ namespace jh {
     }
 
     /**
-     * @brief Converts a generator to a std::vector using a single input value.
-     * @param gen The generator to convert.
-     * @param input_value The input value to send at each step.
-     * @return A std::vector containing all generated values.
+     * @brief Collects all yielded values into a <code>std::vector</code> using a fixed input value.
+     *
+     * @details
+     * This overload supports interactive generators that expect an input type
+     * (<code>U ≠ typed::monostate</code>).
+     * It sends the same <strong>input value</strong> at every coroutine step via <code>send()</code>,
+     * producing a deterministic output sequence.
+     *
+     * <ul>
+     *   <li>Each iteration performs <code>next()</code> then <code>send(input_value)</code>.</li>
+     *   <li>Useful for constant-parameter simulations or iterative transforms.</li>
+     *   <li>If the generator terminates early, iteration stops gracefully.</li>
+     * </ul>
+     *
+     * @tparam T The yielded value type.
+     * @tparam U The input type accepted by the generator.
+     * @param gen The generator to consume.
+     * @param input_value The fixed input sent at each step.
+     * @return A <code>std::vector</code> containing all yielded values.
      */
     template<typename T, typename U>
     std::vector<T> to_vector(generator<T, U> &gen, U input_value) {
@@ -629,10 +868,41 @@ namespace jh {
     }
 
     /**
-     * @brief Converts a generator to a std::vector using a sequence of input values.
-     * @param gen The generator to convert.
-     * @param inputs A range of input values to send sequentially.
-     * @return A std::vector containing all generated values.
+     * @brief Collects all yielded values into a <code>std::vector</code> using a sequence of input values.
+     *
+     * @details
+     * This overload supports generators that consume varying inputs.
+     * It sequentially sends each element from <code>inputs</code> to the generator
+     * via <code>send()</code> and accumulates the produced values into a vector.
+     *
+     * <ul>
+     *   <li>Synchronizes one <strong>send()</strong> call per yielded element.</li>
+     *   <li>Terminates when either the input range or generator is exhausted.</li>
+     *   <li>Ensures order-preserving correspondence between inputs and outputs.</li>
+     * </ul>
+     *
+     * <p>
+     * This function formally requires <code>inputs</code> to satisfy
+     * <code>std::ranges::range</code>.
+     * However, any <strong>duck-typed sequence</strong> that conforms to the
+     * <code>jh::sequence</code> concept can be made compatible by wrapping it with
+     * <code>jh::to_range()</code>:
+     * </p>
+     *
+     * @code
+     * auto vec = jh::to_vector(gen, jh::to_range(my_sequence));
+     * @endcode
+     *
+     * <p>
+     * This design ensures that legacy containers and lightweight sequence-like types
+     * remain usable in generator pipelines without requiring full <code>std::ranges</code> compliance.
+     * </p>
+     *
+     * @tparam T The generator's output type (<code>co_yield</code> value type).
+     * @tparam R A <code>std::ranges::range</code> of input values sent to the generator.
+     * @param gen The generator to consume.
+     * @param inputs The input range providing values for each step.
+     * @return A <code>std::vector</code> containing all yielded results in sequence.
      */
     template<typename T, std::ranges::range R>
     std::vector<T> to_vector(generator<T, std::ranges::range_value_t<R> > &gen, const R &inputs) {
@@ -653,9 +923,24 @@ namespace jh {
     }
 
     /**
-     * @brief Converts a generator to a std::deque.
-     * @param gen The generator to convert.
-     * @return A std::deque containing all generated values.
+     * @brief Collects all yielded values from a generator into a <code>std::deque</code>.
+     *
+     * @details
+     * This overload applies to generators that produce values but do not receive input
+     * (<code>U == typed::monostate</code>).
+     * It repeatedly advances the coroutine using <code>next()</code> until completion,
+     * appending each yielded element into a <code>std::deque</code>.
+     *
+     * <ul>
+     *   <li>Designed for output-only generators.</li>
+     *   <li>Maintains stable iterator validity across insertions.</li>
+     *   <li>Uses the fastest STL <strong>segmented linear container</strong>,
+     *       ideal for frequent <code>push_back()</code> operations.</li>
+     * </ul>
+     *
+     * @tparam T The generator's <strong>yielded value type</strong>.
+     * @param gen The generator instance to collect from.
+     * @return A <code>std::deque</code> containing all yielded elements in order.
      */
     template<typename T>
     std::deque<T> to_deque(generator<T> &gen) {
@@ -667,13 +952,28 @@ namespace jh {
     }
 
     /**
-     * @brief Converts a generator to a std::deque using a single input value.
-     * @param gen The generator to convert.
-     * @param input_value The input value to send at each step.
-     * @return A std::deque containing all generated values.
+     * @brief Collects all yielded values into a <code>std::deque</code> using a fixed input value.
+     *
+     * @details
+     * This overload supports interactive generators that expect an input type
+     * (<code>U ≠ typed::monostate</code>).
+     * It sends the same <strong>input value</strong> at every coroutine step via <code>send()</code>,
+     * pushing each yielded element into a <code>std::deque</code>.
+     *
+     * <ul>
+     *   <li>Each iteration performs <code>next()</code> then <code>send(input_value)</code>.</li>
+     *   <li>Efficient for streaming pipelines where append cost must remain amortized O(1).</li>
+     *   <li>Deque preserves all references and pointers to existing elements upon reallocation.</li>
+     * </ul>
+     *
+     * @tparam T The yielded value type.
+     * @tparam U The input type accepted by the generator.
+     * @param gen The generator to consume.
+     * @param input_value The fixed input sent at each step.
+     * @return A <code>std::deque</code> containing all yielded values.
      */
     template<typename T, typename U>
-    std::deque<T> to_deque(generator<T, U> &gen, U input_value) {
+    [[maybe_unused]] std::deque<T> to_deque(generator<T, U> &gen, U input_value) {
         std::deque<T> result;
         while (gen.next()) {
             if (!gen.send(input_value)) break;
@@ -683,13 +983,42 @@ namespace jh {
     }
 
     /**
-     * @brief Converts a generator to a std::deque using a sequence of input values.
-     * @param gen The generator to convert.
-     * @param inputs A range of input values to send sequentially.
-     * @return A std::deque containing all generated values.
+     * @brief Collects all yielded values into a <code>std::deque</code> using a sequence of input values.
+     *
+     * @details
+     * This overload supports generators that consume varying inputs.
+     * It sequentially sends each element from <code>inputs</code> to the generator
+     * via <code>send()</code> and appends the produced values into a deque.
+     *
+     * <ul>
+     *   <li>Synchronizes one <strong>send()</strong> per yielded element.</li>
+     *   <li>Terminates when either the input range or generator is exhausted.</li>
+     *   <li>Deque is optimal for dynamic growth and stable iteration under expansion.</li>
+     * </ul>
+     *
+     * <p>
+     * The <code>inputs</code> parameter must satisfy <code>std::ranges::range</code>.
+     * Nevertheless, any <strong>duck-typed sequence</strong> that conforms to
+     * <code>jh::sequence</code> can be wrapped via <code>jh::to_range()</code>:
+     * </p>
+     *
+     * @code
+     * auto dq = jh::to_deque(gen, jh::to_range(my_sequence));
+     * @endcode
+     *
+     * <p>
+     * This allows compatibility with user-defined containers that are not formally
+     * <code>std::ranges::range</code> but still support <code>begin()</code>/<code>end()</code>.
+     * </p>
+     *
+     * @tparam T The generator's output type (<code>co_yield</code> value type).
+     * @tparam R A <code>std::ranges::range</code> of input values sent to the generator.
+     * @param gen The generator to consume.
+     * @param inputs The input range providing values for each step.
+     * @return A <code>std::deque</code> containing all yielded results in sequence.
      */
     template<typename T, std::ranges::range R>
-    std::deque<T> to_deque(generator<T, std::ranges::range_value_t<R> > &gen, const R &inputs) {
+    [[maybe_unused]] std::deque<T> to_deque(generator<T, std::ranges::range_value_t<R> > &gen, const R &inputs) {
         std::deque<T> result;
         auto it = std::ranges::begin(inputs);
         auto end = std::ranges::end(inputs);
@@ -706,26 +1035,44 @@ namespace jh {
         return result;
     }
 
-    /// @}
 
     /**
      * @brief A range-like wrapper that enables iteration over a generator factory.
      *
      * @details
-     * `generator_range<T>` allows a coroutine-based `generator<T>()` to be converted into a
-     * **repeatable, range-compatible sequence**.
-     * Unlike `generator<T>`, which is **single-use** and consumes values during iteration,
-     * `generator_range<T>` takes a **factory function** (e.g. a lambda) that creates a **new generator each time**.
-     * This makes it usable in:
-     * - `for(auto x : range)` without consuming the generator.
-     * - `std::views::zip(range1, range2)`
-     * - `jh::enumerate(...)`
-     * - Any STL-style range algorithm or pipe expression.
+     * <code>generator_range&lt;T&gt;</code> provides a <b>repeatable</b> and <b>range-compatible</b>
+     * interface for coroutine-based generators.
+     * Instead of storing a single generator instance (which would be consumed after one iteration),
+     * it holds a <strong>factory function</strong> that can produce a fresh
+     * <code>jh::generator&lt;T&gt;</code> each time.
      *
-     * @tparam T The value type produced by the generator. Must be copyable.
+     * <p>
+     * The factory must have one of the following signatures:
+     * </p>
+     * <ul>
+     *   <li><code>jh::generator&lt;T&gt; func()</code></li>
+     *   <li><code>[...]() -&gt; jh::generator&lt;T&gt; { ... }</code> (lambda expression)</li>
+     * </ul>
      *
-     * @note Requires the generator to return a **copyable type** (`T`) to support `std::optional<T>` and `operator*`.
-     *       Prefer using lightweight POD types for optimal performance.
+     * <p>
+     * This mechanism enforces <strong><code>U == typed::monostate</code></strong>,
+     * meaning the generator cannot depend on external <code>send()</code> input values.
+     * The resulting range can thus be freely iterated and reused.
+     * </p>
+     *
+     * <h4>Key Properties</h4>
+     * <ul>
+     *   <li>Each call to <code>begin()</code> constructs a new generator instance via the stored factory.</li>
+     *   <li>Fully compatible with <code>std::ranges</code> and STL algorithms.</li>
+     *   <li>Usable in <code>for(auto v : range)</code>, <code>std::views::zip(...)</code>, and similar constructs.</li>
+     *   <li>Guarantees value-type semantics — <code>T</code> must be copyable.</li>
+     * </ul>
+     *
+     * @note The factory does <strong>not</strong> accept runtime arguments.
+     * It must capture all external state through its closure (via <code>[...]</code> capture).
+     * Passing parameterized generators must be done by creating multiple distinct factories.
+     *
+     * @tparam T The yielded value type of the underlying <code>jh::generator</code>.
      *
      * @see jh::to_range
      */
@@ -735,26 +1082,26 @@ namespace jh {
         using generator_factory_t = std::function<generator<T>()>;
 
         explicit generator_range(generator_factory_t factory)
-            : factory_(std::move(factory)) {
+                : factory_(std::move(factory)) {
         }
 
-        class iterator {
+        class iterator final {
         public:
             using value_type = T;
             using reference = const T &;
             using pointer = const T *;
-            using iterator_category = std::input_iterator_tag;
-            using difference_type = std::ptrdiff_t;
+            using iterator_category [[maybe_unused]] = std::input_iterator_tag;
+            using difference_type [[maybe_unused]] = std::ptrdiff_t;
 
 
             iterator() = default;
 
             explicit iterator(generator_factory_t factory)
-                : gen_(std::make_unique<generator<T> >(factory())) {
+                    : gen_(std::make_unique<generator<T> >(factory())) {
                 ++(*this); // prime
             }
 
-            iterator& operator++() {
+            iterator &operator++() {
                 if (gen_) {
                     if (!gen_->next() || gen_->done() || !gen_->value().has_value()) {
                         gen_.reset(); // Stop: no more values
@@ -817,30 +1164,44 @@ namespace jh {
         generator_factory_t factory_;
     };
 
-    // Convenience helper
-    template<typename T>
-    generator_range<T> make_generator_range(std::function<generator<T>()> factory) {
-        return generator_range<T>(std::move(factory));
-    }
-
     /**
      * @brief Converts a generator factory (lambda or function) into a repeatable range.
      *
-     * @tparam F A callable object with signature `generator<T>()`.
-     * @param f A factory function that returns a new generator instance each time it's called.
-     * @return A repeatable, range-compatible wrapper for the generator.
+     * @details
+     * This helper transforms a callable object that returns
+     * <code>jh::generator&lt;T&gt;</code> (with <code>U == typed::monostate</code>)
+     * into a <code>jh::generator_range&lt;T&gt;</code>.
+     * The resulting object supports multiple independent iterations,
+     * since each call to <code>begin()</code> constructs a new generator instance.
      *
-     * @note This function is SFINAE-constrained to only accept factory functions that return `generator<T>`.
+     * <p>
+     * The callable must take <strong>no arguments</strong>:
+     * </p>
+     * <ul>
+     *   <li><code>jh::generator&lt;T&gt; func()</code></li>
+     *   <li><code>[=]() -&gt; jh::generator&lt;T&gt; { ... }</code></li>
+     *   <li><code>[&]() -&gt; jh::generator&lt;T&gt; { ... }</code></li>
+     *   <li><code>[+]() -&gt; jh::generator&lt;T&gt; { ... }</code></li>
+     * </ul>
+     *
+     * <p>
+     * Any captured state must be enclosed within the lambda's closure.
+     * External parameters cannot be forwarded dynamically.
+     * </p>
+     *
+     * @tparam F A callable returning <code>jh::generator&lt;T&gt;</code>.
+     * @param f A generator factory function (no arguments).
+     * @return A repeatable, range-compatible wrapper for the generator.
      *
      * @see jh::generator_range
      */
     template<typename F>
-        requires requires(F f)
-        {
-            typename std::invoke_result_t<F>;
-            requires std::is_same_v<std::remove_cvref_t<std::invoke_result_t<F> >,
+    requires requires(F f)
+    {
+        typename std::invoke_result_t<F>;
+        requires std::is_same_v<std::remove_cvref_t<std::invoke_result_t<F> >,
                 generator<typename std::invoke_result_t<F>::value_type> >;
-        }
+    }
     auto to_range(F &&f) {
         using Gen = std::remove_cvref_t<std::invoke_result_t<F> >;
         using T = typename Gen::value_type;
