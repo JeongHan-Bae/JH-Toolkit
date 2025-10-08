@@ -106,6 +106,7 @@
 #pragma once
 
 #include <iterator>
+#include <concepts>
 
 namespace jh {
     /**
@@ -337,38 +338,56 @@ namespace jh {
     };
 
     /**
-     * @brief Concept to check if a type behaves as a valid forward iterator.
+     * @brief Concept that detects types behaving as a valid forward iterator.
      *
      * @details
-     * This concept refines <code>jh::input_iterator</code> by requiring that
-     * dereferencing and post-increment operations preserve iterator identity.
-     * It ensures that the iterator can be incremented and dereferenced
-     * multiple times without invalidation — matching the semantics of a
-     * <strong>single-pass readable</strong> iterator with stable references.
+     * This concept refines <code>jh::input_iterator</code> by requiring
+     * copyability, equality comparability, and stable increment / dereference
+     * semantics. It is a <strong>duck-typed</strong> equivalent of
+     * <code>std::forward_iterator</code>, designed to validate iterator-like
+     * types without relying on <code>std::iterator_category</code> tags.
      *
-     * <h4>Requirements</h4>
-     * A type <code>I</code> satisfies <code>jh::forward_iterator</code> if:
+     * <h4>Semantic Guarantees</h4>
+     * A type <code>I</code> models <code>jh::forward_iterator</code> if:
      * <ul>
      *   <li>It satisfies <code>jh::input_iterator&lt;I&gt;</code>.</li>
-     *   <li><code>it++</code> returns the same type <code>I</code>
-     *       (post-increment produces a copy, not a proxy).</li>
+     *   <li>It is <strong>copyable</strong> — copies of <code>I</code> are
+     *       independent, and incrementing one does not affect the other.</li>
+     *   <li>It is <strong>equality comparable</strong> with itself.</li>
+     *   <li>It supports both pre- and post-increment:
+     *       <ul>
+     *         <li><code>++it</code> returns <code>I&amp;</code> (reference to self)</li>
+     *         <li><code>it++</code> yields a convertible copy of <code>I</code></li>
+     *       </ul>
+     *   </li>
      *   <li>Dereferencing yields a reference type consistent with
      *       <code>std::iterator_traits&lt;I&gt;::reference</code>.</li>
      * </ul>
      *
      * <h4>Design Notes</h4>
      * <ul>
-     *   <li>Ensures that dereferencing and incrementing operations are stable and repeatable.</li>
-     *   <li>Does not require multi-pass traversal guarantees like <code>std::forward_iterator</code>.</li>
-     *   <li>Supports both STL-compatible and duck-typed iterators with equivalent semantics.</li>
+     *   <li>Emulates the behavioral semantics of <code>std::forward_iterator</code>
+     *       without requiring <code>iterator_category</code> tags.</li>
+     *   <li>Guarantees <strong>multi-pass stability</strong>: dereferencing
+     *       and incrementing can be repeated without invalidating existing copies.</li>
+     *   <li>Fully compatible with STL-style iterators and user-defined types
+     *       that exhibit equivalent behavior ("duck typing").</li>
+     *   <li>Unlike <code>jh::input_iterator</code>, forward iterators
+     *       ensure that multiple traversals produce the same results.</li>
      * </ul>
      *
-     * @tparam I The iterator-like type being validated.
+     * @tparam I Iterator-like type to be validated.
+     *
+     * @see jh::input_iterator
+     * @see std::forward_iterator
      */
     template<typename I>
-    concept forward_iterator = input_iterator<I> && requires(I it)
-    {
-        { it++ } -> std::same_as<I>;
+    concept forward_iterator =
+    input_iterator<I> &&
+    std::copyable<I> &&
+    requires(I it) {
+        { ++it } -> std::same_as<I&>;
+        { it++ } -> std::convertible_to<I>;
         { *it } -> std::same_as<typename std::iterator_traits<I>::reference>;
     };
 
@@ -537,10 +556,9 @@ namespace jh {
         };
 
         // Case 4: array fallback (includes fixed-size and incomplete arrays)
-        template<typename ArrayType>
-        requires std::is_array_v<ArrayType>
+        template<typename ArrayType> requires std::is_array_v<ArrayType>
         struct iterator_resolver<ArrayType, void, void> {
-            using type = std::remove_extent_t<ArrayType>*; // decay array into pointer
+            using type = std::remove_extent_t<ArrayType> *; // decay array into pointer
         };
 
 

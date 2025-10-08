@@ -11,9 +11,9 @@
 using namespace jh;
 
 // concepts for static interface checks
-template<typename T>
+template <typename T>
 concept has_data = requires(T t) {
-    { t.data() };
+    { t.data() } -> std::same_as<typename T::value_type*>;
 };
 
 template<typename T>
@@ -45,6 +45,33 @@ struct test_allocator {
         ::operator delete[](p);
     }
 };
+
+template <typename T>
+concept has_as_span = requires(T t) {
+    { t.as_span() } -> std::same_as<std::span<typename T::value_type>>;
+};
+
+template <typename T>
+concept has_const_as_span = requires(const T t) {
+    { t.as_span() } -> std::same_as<std::span<const typename T::value_type>>;
+};
+
+TEST_CASE("runtime_arr static traits and API availability", "[concepts]") {
+    using jh::runtime_arr;
+    using jh::runtime_arr_helper::bool_flat_alloc;
+
+    STATIC_REQUIRE(has_data<runtime_arr<int>>);
+    STATIC_REQUIRE(has_as_span<runtime_arr<int>>);
+    STATIC_REQUIRE(has_const_as_span<runtime_arr<int>>);
+
+    STATIC_REQUIRE_FALSE(has_data<runtime_arr<bool>>);
+    STATIC_REQUIRE_FALSE(has_as_span<runtime_arr<bool>>);
+    STATIC_REQUIRE_FALSE(has_const_as_span<runtime_arr<bool>>);
+
+    STATIC_REQUIRE(has_data<runtime_arr<bool, bool_flat_alloc>>);
+    STATIC_REQUIRE(has_as_span<runtime_arr<bool, bool_flat_alloc>>);
+    STATIC_REQUIRE(has_const_as_span<runtime_arr<bool, bool_flat_alloc>>);
+}
 
 TEST_CASE("runtime_arr<int> full test", "[pod]") {
     constexpr int N = 32;
@@ -191,6 +218,36 @@ TEST_CASE("runtime_arr<tuple> structured ops", "[non-pod]") {
     }
 }
 
+TEST_CASE("runtime_arr<T> as_span() and const variant", "[span]") {
+    constexpr std::size_t N = 8;
+    jh::runtime_arr<int> arr(N);
+
+    for (std::size_t i = 0; i < N; ++i)
+        arr[i] = static_cast<int>(i * 2);
+
+    SECTION("as_span() non-const reflects underlying data") {
+        auto s = arr.as_span();
+        REQUIRE(s.size() == N);
+        for (std::size_t i = 0; i < N; ++i)
+            REQUIRE(s[i] == static_cast<int>(i * 2));
+
+        s[3] = 999;
+        REQUIRE(arr[3] == 999);
+    }
+
+    SECTION("as_span() const returns read-only view") {
+        for (std::size_t i = 0; i < N; ++i)
+            arr[i] = static_cast<int>(i * 2);
+
+        const auto& cref = arr;
+        auto s = cref.as_span();
+
+        REQUIRE(s.size() == N);
+        REQUIRE(std::is_same_v<decltype(s), std::span<const int>>);
+        REQUIRE(s[3] == 6);
+    }
+}
+
 
 TEST_CASE("runtime_arr<bool> full test", "[bool]") {
     constexpr std::size_t N = 128;
@@ -224,6 +281,35 @@ TEST_CASE("runtime_arr<bool> full test", "[bool]") {
         auto out = static_cast<std::vector<bool>>(std::move(tmp));
         REQUIRE(out == std::vector<bool>({true, false, true, true, false}));
     }
+
+    SECTION("unset and test specific bits") {
+        bits.reset_all();
+        bits.set(3);
+        bits.set(7);
+        REQUIRE(bits.test(3));
+        REQUIRE(bits.test(7));
+
+        bits.unset(3);
+        REQUIRE_FALSE(bits.test(3));
+        REQUIRE(bits.test(7));
+    }
+
+    SECTION("raw_data and raw_word_count structure") {
+        bits.reset_all();
+        constexpr std::size_t NWORDS = (N + 63) / 64;
+        auto* raw = bits.raw_data();
+        REQUIRE(raw != nullptr);
+        REQUIRE(bits.raw_word_count() == NWORDS);
+
+        bits.set(1);
+        bits.set(65);
+
+        REQUIRE((raw[0] & (1ULL << 1)) != 0);
+        REQUIRE((raw[1] & (1ULL << 1)) != 0);
+        REQUIRE(bits.test(1));
+        REQUIRE(bits.test(65));
+    }
+
 }
 
 TEST_CASE("concept checks for runtime_arr<T> and runtime_arr<bool>", "[concepts]") {
@@ -330,6 +416,77 @@ TEST_CASE("Advanced Benchmark: runtime_arr vs std::vector<MyPod> (1024x)") {
                 for (size_t i = 0; i < N; ++i) {
                     buffer.set(i, int_vals[i]);
                 }
+            };
+        };
+}
+
+TEST_CASE("runtime_arr (bit-packed) vs (byte-based)") {
+    constexpr std::size_t N = 1024;
+    std::mt19937 gen(std::random_device{}());
+    std::bernoulli_distribution dist(0.5);
+
+    std::vector<unsigned char> ref(N);
+    for (auto &b : ref){b = static_cast<unsigned char>(dist(gen) & 1);}
+
+    BENCHMARK_ADVANCED("bit-packed set() loop (1M bits)")() {
+            runtime_arr<bool> bits(N); // Prepare phase
+            return [bits = std::move(bits), &ref, &N]() mutable {
+                for (std::size_t i = 0; i < N; ++i)
+                    bits.set(i, static_cast<bool>(ref[i]));
+            };
+        };
+
+    BENCHMARK_ADVANCED("byte-based set() loop (1M bools)")() {
+            runtime_arr<bool, runtime_arr_helper::bool_flat_alloc> arr(N);
+            return [arr = std::move(arr), &ref, &N]() mutable {
+                for (std::size_t i = 0; i < N; ++i)
+                    arr[i] = static_cast<bool>(ref[i]);
+            };
+        };
+
+    BENCHMARK_ADVANCED("bit-packed read loop (1M bits)")() {
+            runtime_arr<bool> bits(N);
+            for (std::size_t i = 0; i < N; ++i)
+                bits.set(i, static_cast<bool>(ref[i]));
+
+            return [bits = std::move(bits), &N]() mutable {
+                std::size_t sum = 0;
+                for (std::size_t i = 0; i < N; ++i)
+                    sum += static_cast<bool>(bits[i]);
+                (void)sum;
+            };
+        };
+
+    BENCHMARK_ADVANCED("byte-based read loop (1M bools)")() {
+            runtime_arr<bool, runtime_arr_helper::bool_flat_alloc> arr(N);
+            for (std::size_t i = 0; i < N; ++i)
+                arr[i] = static_cast<bool>(ref[i]);
+
+            return [arr = std::move(arr), &N]() mutable {
+                std::size_t sum = 0;
+                for (std::size_t i = 0; i < N; ++i)
+                    sum += static_cast<bool>(arr[i]);
+                (void)sum;
+            };
+        };
+
+    BENCHMARK_ADVANCED("bit-packed reset_all()")() {
+            runtime_arr<bool> bits(N);
+            for (std::size_t i = 0; i < N; ++i)
+                bits.set(i, static_cast<bool>(ref[i]));
+
+            return [bits = std::move(bits)]() mutable {
+                bits.reset_all();
+            };
+        };
+
+    BENCHMARK_ADVANCED("byte-based reset_all()")() {
+            runtime_arr<bool, runtime_arr_helper::bool_flat_alloc> arr(N);
+            for (std::size_t i = 0; i < N; ++i)
+                arr[i] = static_cast<bool>(ref[i]);
+
+            return [arr = std::move(arr)]() mutable {
+                arr.reset_all();
             };
         };
 }

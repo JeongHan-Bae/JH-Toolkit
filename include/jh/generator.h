@@ -1093,8 +1093,15 @@ namespace jh {
             using iterator_category [[maybe_unused]] = std::input_iterator_tag;
             using difference_type [[maybe_unused]] = std::ptrdiff_t;
 
-
             iterator() = default;
+            iterator(const iterator&) = delete;
+            iterator& operator=(const iterator&) = delete;
+            iterator(iterator&&) noexcept = default;
+            iterator& operator=(iterator&&) noexcept = default;
+            // Copy operations are disabled because `generator_range` only supports
+            // valid iteration from `begin()`. Copying an iterator in the middle of
+            // iteration would imply duplicating the underlying `std::unique_ptr<generator<T>>`,
+            // which is semantically invalid and would break single-pass generator behavior.
 
             explicit iterator(generator_factory_t factory)
                     : gen_(std::make_unique<generator<T> >(factory())) {
