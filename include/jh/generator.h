@@ -91,9 +91,9 @@
 #include <vector>
 #include <memory>             // NOLINT for std::unique_ptr
 
-#include "sequence.h"
-#include "iterator.h"
-#include "utils/typed.h"
+#include "jh/sequence.h"
+#include "jh/iterator.h"
+#include "jh/utils/typed.h"
 
 namespace jh {
 

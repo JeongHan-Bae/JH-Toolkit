@@ -175,7 +175,7 @@ If your environment **differs from our CI presets**, you can still [build from s
 
 - **MSVC (Microsoft Visual C++)**  
   Compilation with MSVC is **explicitly prohibited**.  
-  Any MSVC toolchain will trigger a hard error via [`include/jh/utils/platform.h`](include/jh/utils/platform.h):
+  Any MSVC toolchain will trigger a hard error via [`include/jh/marcos/platform.h`](include/jh/marcos/platform.h):
 
   > 🛑 Why?
   > - Incomplete support for C++20 `concepts`, `ranges`, and coroutine semantics

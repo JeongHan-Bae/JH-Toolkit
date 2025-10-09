@@ -45,8 +45,8 @@
 #include <ranges>
 #include <cstdint>
 
-#include "../utils/pair.h"
-#include "../sequence.h"
+#include "jh/utils/pair.h"
+#include "jh/sequence.h"
 
 namespace jh::views {
     /**

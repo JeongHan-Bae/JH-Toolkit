@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file platform.h
+ * @file platform.h (marcos)
  * @author JeongHan-Bae <pre>&lt;mastropseudo&#64;gmail.com&gt;</pre>
  * @brief Base platform checks and macros for all modules.
  *

@@ -126,10 +126,16 @@ if (ENABLE_POD)
     # Install depending headers in directory 'utils/'
     install(FILES
             ${CMAKE_SOURCE_DIR}/include/jh/utils/hash_fn.h
-            ${CMAKE_SOURCE_DIR}/include/jh/utils/platform.h
             ${CMAKE_SOURCE_DIR}/include/jh/utils/typed.h
             ${CMAKE_SOURCE_DIR}/include/jh/utils/base64.h
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/utils
+    )
+
+    # Install depending headers in directory 'marcos/'
+    install(FILES
+            ${CMAKE_SOURCE_DIR}/include/jh/marcos/platform.h
+            ${CMAKE_SOURCE_DIR}/include/jh/marcos/type_name.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/marcos
     )
 
     # Install the INTERFACE target

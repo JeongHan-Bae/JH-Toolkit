@@ -42,7 +42,7 @@
 #include <cstring> // for memcmp, memcpy
 #include <type_traits>
 
-#include "../utils/hash_fn.h"
+#include "jh/utils/hash_fn.h"
 
 namespace jh::pod {
 

@@ -16,11 +16,11 @@
  * \endverbatim
  */
 /**
- * @file type_name.h (utils)
+ * @file type_name.h (marcos)
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief Compile-time type name extraction using compiler-specific macros.
  *
- * This header provides <code>jh::utils::type_name&lt;T&gt;()</code>, which extracts
+ * This header provides <code>jh::marco::type_name&lt;T&gt;()</code>, which extracts
  * the unmangled type name of <code>T</code> from <code>__PRETTY_FUNCTION__</code>
  * (Clang/GCC) without requiring RTTI.
  *
@@ -40,8 +40,8 @@
  *
  * <h3>Usage Example:</h3>
  * @code
- *   std::cout << jh::utils::type_name&lt;int&gt;();            // "int"
- *   std::cout << jh::utils::type_name&lt;array&lt;int, 4&gt;&gt;();  // "jh::pod::array&lt;int, 4&gt;"
+ *   std::cout << jh::marco::type_name&lt;int&gt;();            // "int"
+ *   std::cout << jh::marco::type_name&lt;array&lt;int, 4&gt;&gt;();  // "jh::pod::array&lt;int, 4&gt;"
  * @endcode
  *
  * @note Falls back to <code>"unknown"</code> if compiler is unsupported.
@@ -54,9 +54,9 @@
 
 #pragma once
 #include <string_view>
-#include "platform.h"
+#include "jh/marcos/platform.h"
 
-namespace jh::utils {
+namespace jh::marco {
     /**
      * @brief Extract the human-readable type name of <code>T</code> at compile time.
      *

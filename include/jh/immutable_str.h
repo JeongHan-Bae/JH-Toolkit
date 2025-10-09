@@ -81,8 +81,8 @@
 #include <cstdint>          // for std::uint64_t
 #include <optional>         // for std::optional
 #include <type_traits>      // for std::remove_cvref_t
-#include "pool.h"
-#include "pods/string_view.h"
+#include "jh/pool.h"
+#include "jh/pods/string_view.h"
 
 namespace jh::detail {
     constexpr bool is_space_ascii(const char ch) {

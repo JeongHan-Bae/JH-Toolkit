@@ -40,8 +40,8 @@
 #pragma once
 
 
-#include "../utils/pair.h"
-#include "../sequence.h" // jh::sequence
+#include "jh/utils/pair.h"
+#include "jh/sequence.h" // jh::sequence
 
 namespace jh::views {
     /**
