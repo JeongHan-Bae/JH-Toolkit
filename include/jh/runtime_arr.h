@@ -949,6 +949,14 @@ namespace jh {
         [[nodiscard]] std::span<value_type> as_span() noexcept { return {data(), size()}; }
 
         [[nodiscard]] std::span<const value_type> as_span() const noexcept { return {data(), size()}; }
+
+        [[maybe_unused]] [[maybe_unused]] static bool is_static_built(){
+#ifdef JH_IS_STATIC_BUILD
+            return true;
+#else
+            return false;
+#endif // JH_IS_STATIC_BUILD
+        }
     };
 
     /**
@@ -1213,7 +1221,7 @@ namespace jh {
         std::unique_ptr<std::uint64_t[]> storage_;
         static constexpr std::uint64_t BITS = 64;
 
-        [[nodiscard]] std::uint64_t word_count() const noexcept {
+        [[nodiscard]] inline std::uint64_t word_count() const noexcept {
             return (size_ + BITS - 1) / BITS;
         }
 
@@ -1360,10 +1368,7 @@ namespace jh {
          *       for bit manipulation.</li>
          * </ul>
          */
-        explicit runtime_arr(const std::uint64_t size)
-                : size_(size), storage_(std::make_unique<std::uint64_t[]>(word_count())) {
-            std::memset(storage_.get(), 0, word_count() * sizeof(std::uint64_t));
-        }
+        explicit runtime_arr(std::uint64_t size);
 
         /**
          * @brief Constructs a bit-packed array by moving data from a <code>std::vector&lt;bool&gt;</code>.
@@ -1383,11 +1388,7 @@ namespace jh {
          *   <li>Move-only type — copy construction and assignment are deleted.</li>
          * </ul>
          */
-        explicit runtime_arr(std::vector<bool> &&vec)
-                : runtime_arr(vec.size()) {
-            for (std::uint64_t i = 0; i < size_; ++i)
-                set(i, vec[i]);
-        }
+        explicit runtime_arr(std::vector<bool> &&vec);
 
         /**
          * @brief Constructs a bit-packed array from a range of boolean values.
@@ -1429,13 +1430,13 @@ namespace jh {
          * @brief Returns the number of elements in the array.
          * @return Number of elements currently stored.
          */
-        [[nodiscard]] size_type size() const noexcept { return size_; }
+        [[nodiscard]] size_type size() const noexcept;
 
         /**
          * @brief Checks whether the array is empty.
          * @return <code>true</code> if <code>size() == 0</code>, otherwise <code>false</code>.
          */
-        [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
+        [[nodiscard]] bool empty() const noexcept;
 
         /**
          * @brief Provides mutable access to the underlying word buffer.
@@ -1454,7 +1455,7 @@ namespace jh {
          *   <li>Users must manually interpret the bit positions when reading or writing raw words.</li>
          * </ul>
          */
-        raw_type *raw_data() noexcept { return storage_.get(); }
+        raw_type *raw_data() noexcept;
 
         /**
          * @brief Provides const access to the underlying word buffer.
@@ -1471,7 +1472,7 @@ namespace jh {
          *   <li>Replaces <code>const data()</code> from the generic <code>runtime_arr&lt;T&gt;</code> template.</li>
          * </ul>
          */
-        [[nodiscard]] const raw_type *raw_data() const noexcept { return storage_.get(); }
+        [[nodiscard]] const raw_type *raw_data() const noexcept;
 
         /**
          * @brief Returns the number of 64-bit words used internally to store all bits.
@@ -1488,7 +1489,7 @@ namespace jh {
          *   <li>Provided as a safe, constexpr-accessible alternative to manual division.</li>
          * </ul>
          */
-        [[nodiscard]] size_type raw_word_count() const noexcept { return word_count(); }
+        [[nodiscard]] size_type raw_word_count() const noexcept;
 
         /**
          * @brief Unchecked bit access (read/write).
@@ -1502,9 +1503,7 @@ namespace jh {
          * @param i Bit index within <tt>[0, size())</tt>.
          * @return Reference proxy object representing the targeted bit.
          */
-        reference operator[](const std::uint64_t i) noexcept {
-            return {storage_[i / BITS], i % BITS};
-        }
+        reference operator[](const std::uint64_t i) noexcept;
 
         /**
          * @brief Unchecked const bit access (read-only).
@@ -1517,9 +1516,7 @@ namespace jh {
          * @param i Bit index within <tt>[0, size())</tt>.
          * @return Boolean value of the bit.
          */
-        [[nodiscard]] value_type operator[](const std::uint64_t i) const noexcept {
-            return (storage_[i / BITS] >> (i % BITS)) & 1U;
-        }
+        [[nodiscard]] value_type operator[](const std::uint64_t i) const noexcept;
 
         /**
          * @brief Bounds-checked bit access (read/write).
@@ -1540,11 +1537,7 @@ namespace jh {
          * @throws std::out_of_range If <code>i &gt;= size()</code>.
          * @see operator[]()
          */
-        reference at(const std::uint64_t i) {
-            if (i >= size_)
-                throw std::out_of_range("jh::runtime_arr<bool>::at(): index out of bounds");
-            return operator[](i);
-        }
+        reference at(const std::uint64_t i);
 
         /**
          * @brief Const bounds-checked bit access (read-only).
@@ -1566,11 +1559,7 @@ namespace jh {
          * @throws std::out_of_range If <code>i &gt;= size()</code>.
          * @see operator[]()
          */
-        [[nodiscard]] value_type at(const std::uint64_t i) const {
-            if (i >= size_)
-                throw std::out_of_range("jh::runtime_arr<bool>::at(): index out of bounds");
-            return operator[](i);
-        }
+        [[nodiscard]] value_type at(const std::uint64_t i) const;
 
         /**
          * @brief Sets or clears the bit at given index.
@@ -1578,21 +1567,14 @@ namespace jh {
          * @param val Bit value to assign (true by default)
          * @throws std::out_of_range if i out of bounds
          */
-        void set(const std::uint64_t i, const bool val = true) {
-            if (i >= size_) throw std::out_of_range("set(): index out of bounds");
-            if (val) storage_[i / BITS] |= 1ULL << i % BITS;
-            else storage_[i / BITS] &= ~(1ULL << i % BITS);
-        }
+        void set(const std::uint64_t i, const bool val = true);
 
         /**
          * @brief Clears the bit at given index.
          * @param i Bit index
          * @throws std::out_of_range if i out of bounds
          */
-        void unset(const std::uint64_t i) {
-            if (i >= size_) throw std::out_of_range("unset(): index out of bounds");
-            storage_[i / BITS] &= ~(1ULL << i % BITS);
-        }
+        void unset(const std::uint64_t i);
 
         /**
          * @brief Tests if the bit at index is set.
@@ -1600,10 +1582,7 @@ namespace jh {
          * @return <code>true</code> if bit is <tt>1</tt>, <code>false</code> if <tt>0</tt>
          * @throws std::out_of_range if i out of bounds
          */
-        [[nodiscard]] value_type test(const std::uint64_t i) const {
-            if (i >= size_) throw std::out_of_range("test(): index out of bounds");
-            return storage_[i / BITS] >> i % BITS & 1;
-        }
+        [[nodiscard]] value_type test(const std::uint64_t i) const;
 
         /**
          * @brief Resets all bits in the bit-packed array to zero.
@@ -1622,11 +1601,7 @@ namespace jh {
          *   <li>Equivalent to <code>std::fill(begin(), end(), false)</code> but significantly faster.</li>
          * </ul>
          */
-        [[gnu::used]] inline void reset_all() noexcept {
-            const auto words = word_count();
-            if (words > 0)
-                std::memset(storage_.get(), 0, words * sizeof(std::uint64_t));
-        }
+        [[gnu::used]] inline void reset_all() noexcept;
 
         /**
          * @brief Move constructor — transfers ownership of the bit-packed buffer.
@@ -1647,11 +1622,7 @@ namespace jh {
          * Copying remains disabled to avoid accidental deep duplication of bit-packed data.
          * </p>
          */
-        runtime_arr(runtime_arr&& other) noexcept
-                : size_(other.size_), storage_(std::move(other.storage_)) {
-            other.size_ = 0;
-            other.storage_.reset();
-        }
+        runtime_arr(runtime_arr&& other) noexcept;
 
         /**
          * @brief Move assignment operator — transfers ownership of the bit-packed buffer.
@@ -1670,15 +1641,7 @@ namespace jh {
          * Copy assignment remains deleted to enforce unique ownership.
          * </p>
          */
-        runtime_arr& operator=(runtime_arr&& other) noexcept {
-            if (this != &other) {
-                size_ = other.size_;
-                storage_ = std::move(other.storage_);
-                other.size_ = 0;
-                other.storage_.reset();
-            }
-            return *this;
-        }
+        runtime_arr& operator=(runtime_arr&& other) noexcept;
 
 
         /**
@@ -1686,32 +1649,25 @@ namespace jh {
          *        Elements are copied bit-by-bit.
          * @note This operation consumes the array (clears and resets storage).
          */
-        explicit operator std::vector<bool>() && {
-            std::vector<bool> vec(size_);
-            for (std::uint64_t i = 0; i < size_; ++i)
-                vec[i] = static_cast<bool>((*this)[i]);
-            size_ = 0;
-            storage_.reset();
-            return vec;
-        }
+        explicit operator std::vector<bool>() &&;
 
         /// @brief Mutable begin iterator over bits.
-        iterator begin() noexcept { return {this, 0}; }
+        iterator begin() noexcept;
 
         /// @brief Mutable end iterator over bits.
-        iterator end() noexcept { return {this, size_}; }
+        iterator end() noexcept;
 
         /// @brief Const begin iterator over bits.
-        [[nodiscard]] const_iterator begin() const noexcept { return {this, 0}; }
+        [[nodiscard]] const_iterator begin() const noexcept;
 
         /// @brief Const end iterator over bits.
-        [[nodiscard]] const_iterator end() const noexcept { return {this, size_}; }
+        [[nodiscard]] const_iterator end() const noexcept;
 
         /// @brief Const begin iterator over bits.
-        [[nodiscard]] [[maybe_unused]] const_iterator cbegin() const noexcept { return begin(); }
+        [[nodiscard]] [[maybe_unused]] const_iterator cbegin() const noexcept;
 
         /// @brief Const end iterator over bits.
-        [[nodiscard]] [[maybe_unused]] const_iterator cend() const noexcept { return end(); }
+        [[nodiscard]] [[maybe_unused]] const_iterator cend() const noexcept;
 
         /**
          * @brief Deleted <code>data()</code> function — raw pointer access is not valid for bit-packed layout.
@@ -1762,6 +1718,8 @@ namespace jh {
 
         /// @brief Copy assignment deleted — bit array is non-copyable by design.
         runtime_arr& operator=(const runtime_arr&) = delete;
+
+        [[maybe_unused]] [[maybe_unused]] static bool is_static_built();
     };
 
     /**
@@ -1799,3 +1757,163 @@ namespace jh {
         using type = runtime_arr<bool>::iterator;
     };
 } // namespace jh
+
+#include "jh/marcos/header_begin.h"
+
+namespace jh {
+#if defined(JH_HEADER_NO_IMPL)
+    extern template class runtime_arr<bool, runtime_arr_helper::bool_flat_alloc>;
+#endif
+#if JH_INTERNAL_SHOULD_DEFINE
+
+    // ---- ctor ----
+    JH_INLINE runtime_arr<bool>::runtime_arr(std::uint64_t size)
+            : size_(size),
+              storage_(std::make_unique<std::uint64_t[]>(word_count())) {
+        std::memset(storage_.get(), 0, word_count() * sizeof(std::uint64_t));
+    }
+
+    JH_INLINE runtime_arr<bool>::runtime_arr(std::vector<bool>&& vec)
+            : runtime_arr(vec.size()) {
+        for (std::uint64_t i = 0; i < size_; ++i)
+            set(i, vec[i]);
+    }
+
+    // ---- accessors ----
+
+    JH_INLINE auto runtime_arr<bool>::size() const noexcept -> size_type {
+        return size_;
+    }
+
+    JH_INLINE bool runtime_arr<bool>::empty() const noexcept {
+        return size_ == 0;
+    }
+
+    JH_INLINE auto runtime_arr<bool>::raw_data() noexcept -> raw_type* {
+        return storage_.get();
+    }
+
+    [[maybe_unused]] JH_INLINE auto runtime_arr<bool>::raw_data() const noexcept -> const raw_type* {
+        return storage_.get();
+    }
+
+    JH_INLINE auto runtime_arr<bool>::raw_word_count() const noexcept -> size_type {
+        return word_count();
+    }
+
+    // ---- bit access ----
+
+    JH_INLINE auto runtime_arr<bool>::operator[](std::uint64_t i) noexcept -> reference {
+        return {storage_[i / BITS], i % BITS};
+    }
+
+    JH_INLINE auto runtime_arr<bool>::operator[](std::uint64_t i) const noexcept -> value_type {
+        return (storage_[i / BITS] >> (i % BITS)) & 1U;
+    }
+
+    JH_INLINE auto runtime_arr<bool>::at(std::uint64_t i) -> reference {
+        if (i >= size_)
+            throw std::out_of_range("jh::runtime_arr<bool>::at(): index out of bounds");
+        return operator[](i);
+    }
+
+    JH_INLINE auto runtime_arr<bool>::at(std::uint64_t i) const -> value_type {
+        if (i >= size_)
+            throw std::out_of_range("jh::runtime_arr<bool>::at(): index out of bounds");
+        return operator[](i);
+    }
+
+    // ---- modifiers ----
+
+    JH_INLINE void runtime_arr<bool>::set(std::uint64_t i, bool val) {
+        if (i >= size_) throw std::out_of_range("set(): index out of bounds");
+        if (val)
+            storage_[i / BITS] |= 1ULL << (i % BITS);
+        else
+            storage_[i / BITS] &= ~(1ULL << (i % BITS));
+    }
+
+    JH_INLINE void runtime_arr<bool>::unset(std::uint64_t i) {
+        if (i >= size_) throw std::out_of_range("unset(): index out of bounds");
+        storage_[i / BITS] &= ~(1ULL << (i % BITS));
+    }
+
+    JH_INLINE auto runtime_arr<bool>::test(std::uint64_t i) const -> value_type {
+        if (i >= size_) throw std::out_of_range("test(): index out of bounds");
+        return (storage_[i / BITS] >> (i % BITS)) & 1U;
+    }
+
+    JH_INLINE void runtime_arr<bool>::reset_all() noexcept {
+        const auto words = word_count();
+        if (words > 0)
+            std::memset(storage_.get(), 0, words * sizeof(std::uint64_t));
+    }
+
+    // ---- move-only ----
+
+    JH_INLINE runtime_arr<bool>::runtime_arr(runtime_arr&& other) noexcept
+            : size_(other.size_),
+              storage_(std::move(other.storage_)) {
+        other.size_ = 0;
+        other.storage_.reset();
+    }
+
+    JH_INLINE runtime_arr<bool>& runtime_arr<bool>::operator=(runtime_arr&& other) noexcept {
+        if (this != &other) {
+            size_ = other.size_;
+            storage_ = std::move(other.storage_);
+            other.size_ = 0;
+            other.storage_.reset();
+        }
+        return *this;
+    }
+
+    JH_INLINE runtime_arr<bool>::operator std::vector<bool>() && {
+        std::vector<bool> vec(size_);
+        for (std::uint64_t i = 0; i < size_; ++i)
+            vec[i] = static_cast<bool>((*this)[i]);
+
+        size_ = 0;
+        storage_.reset();
+        return vec;
+    }
+
+    // ---- range ----
+
+    JH_INLINE auto runtime_arr<bool>::begin() noexcept -> iterator {
+        return {this, 0};
+    }
+
+    JH_INLINE auto runtime_arr<bool>::end() noexcept -> iterator {
+        return {this, size_};
+    }
+
+    JH_INLINE auto runtime_arr<bool>::begin() const noexcept -> const_iterator {
+        return {this, 0};
+    }
+
+    JH_INLINE auto runtime_arr<bool>::end() const noexcept -> const_iterator {
+        return {this, size_};
+    }
+
+    [[maybe_unused]] JH_INLINE auto runtime_arr<bool>::cbegin() const noexcept -> const_iterator {
+        return begin();
+    }
+
+    [[maybe_unused]] JH_INLINE auto runtime_arr<bool>::cend() const noexcept -> const_iterator {
+        return end();
+    }
+
+    // ---- compile-flag ----
+
+    [[maybe_unused]] JH_INLINE bool runtime_arr<bool>::is_static_built(){
+#ifdef JH_IS_STATIC_BUILD
+        return true;
+#else
+        return false;
+#endif // JH_IS_STATIC_BUILD
+    }
+#endif // JH_INTERNAL_SHOULD_DEFINE
+}
+
+#include "jh/marcos/header_end.h"

@@ -193,6 +193,78 @@
  * <code>.h</code> / <code>.cpp</code> files.
  * </em></p>
  *
+ * <hr/>
+ * <h3>Integration with CMake and Library Packaging</h3>
+ *
+ * <p>
+ * Dual-mode headers are designed for both in-library use and external reuse
+ * through CMake targets. This section explains how to apply them in practice.
+ * </p>
+ *
+ * <ol>
+ *   <li>
+ *     <strong>Inside your own library build</strong><br/>
+ *     Define <code>JH_HEADER_IMPL_BUILD</code> before including each dual-mode
+ *     header in the single implementation translation unit (TU).
+ *     This causes strong, non-inline definitions to be generated and linked
+ *     into the static or shared library.<br/>
+ *     Other headers or source files in the same project can simply include
+ *     those headers normally (header-only mode); header guards prevent
+ *     redefinition.
+ *   </li>
+ *
+ *   <li>
+ *     <strong>When providing your library to external users</strong><br/>
+ *     In your CMake packaging, propagate
+ *     <code>JH_HEADER_NO_IMPL</code> via
+ *     <code>target_compile_definitions(... INTERFACE JH_HEADER_NO_IMPL)</code>.
+ *     This ensures that all consumers automatically include headers in
+ *     declaration-only mode when they link your exported target.<br/>
+ *     Consumers do not need to define any macros manually — simply linking to
+ *     the correct target selects the right mode.
+ *   </li>
+ *
+ *   <li>
+ *     <strong>Example CMake configuration</strong><br/>
+ *     <pre><code>
+ *     add_library(jh-toolkit INTERFACE ${INCLUDE})
+ *     </code></pre>
+ *     <pre><code>
+ *     add_library(jh-toolkit-static STATIC ${SRC})
+ *     </code></pre>
+ *     <pre><code>
+ *     target_compile_definitions(jh-toolkit-static INTERFACE JH_HEADER_NO_IMPL)
+ *     </code></pre>
+ *   </li>
+ *
+ *   <li>
+ *     <strong>Resulting usage summary</strong><br/>
+ *     <ul>
+ *       <li><code>jh::jh-toolkit</code> → header-only mode (full inline)</li>
+ *       <li><code>jh::jh-toolkit-static</code> → prebuilt static object
+ *           (declarations only)</li>
+ *     </ul>
+ *     This structure allows seamless interoperability between source inclusion
+ *     and prebuilt linking, all from a single unified header source.
+ *   </li>
+ * </ol>
+ *
+ * <hr/>
+ * <h3>Important Note</h3>
+ * <ul>
+ *   <li>These two helper headers
+ *       (<code>jh/marcos/header_begin.h</code> and
+ *       <code>jh/marcos/header_end.h</code>)
+ *       are <strong>intended to be copied directly into your own project</strong>,
+ *       rather than included from <code>jh-toolkit</code>.</li>
+ *   <li>If your project already depends on <code>jh-toolkit</code>,
+ *       you <strong>should rename the macros</strong> (e.g.
+ *       <code>MYLIB_HEADER_NO_IMPL</code>) to avoid namespace pollution or
+ *       conflicts.</li>
+ *   <li>You may freely modify or rename them, as long as you keep
+ *       the original license notice.</li>
+ * </ul>
+ *
  * @see jh/marcos/header_end.h
  */
 

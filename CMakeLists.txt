@@ -59,6 +59,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
             add_compile_options(
                     ${EXTRA_OPT_FLAGS}
                     -O3
+                    -fno-rtti
                     -ftree-vectorize
                     -funroll-loops
                     -fno-omit-frame-pointer
@@ -165,15 +166,50 @@ if (ENABLE_ALL)
             "${CMAKE_SOURCE_DIR}/src/*.cpp"
     )
 
-    add_library(jh-toolkit-impl STATIC ${JH_TOOLKIT_SOURCES})
-    target_include_directories(jh-toolkit-impl PUBLIC
+    # Build the static library (no header-only restriction during build)
+    add_library(jh-toolkit-static STATIC ${JH_TOOLKIT_SOURCES})
+    target_include_directories(jh-toolkit-static PUBLIC
             $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     )
-    target_link_libraries(jh-toolkit-impl PUBLIC jh-toolkit)
+    target_link_libraries(jh-toolkit-static PUBLIC jh-toolkit)
+
+    # When other projects link to jh-toolkit-static,
+    # they automatically get JH_HEADER_NO_IMPL defined.
+    target_compile_definitions(jh-toolkit-static
+            PRIVATE
+            JH_IS_STATIC_BUILD
+            INTERFACE
+            JH_HEADER_NO_IMPL
+    )
+
+    set_target_properties(jh-toolkit-static PROPERTIES
+            EXPORT_COMPILE_DEFINITIONS ON
+    )
+
+    # Compatibility layer for old versions
+    # It simply forwards to jh-toolkit-static
+    add_library(jh-toolkit-impl INTERFACE)
+    target_link_libraries(jh-toolkit-impl INTERFACE jh-toolkit-static)
+
+    # Make sure it uses the same include paths
+    target_include_directories(jh-toolkit-impl INTERFACE
+            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+
+    # Propagate the same header-only define
+    target_compile_definitions(jh-toolkit-impl
+            INTERFACE
+            JH_HEADER_NO_IMPL
+    )
+
+    set_target_properties(jh-toolkit-impl PROPERTIES
+            EXPORT_COMPILE_DEFINITIONS ON
+    )
 
     # Install target libraries
-    install(TARGETS jh-toolkit jh-toolkit-impl
+    install(TARGETS jh-toolkit jh-toolkit-static
             EXPORT jh-toolkitTargets
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -189,6 +225,9 @@ if (ENABLE_ALL)
             NAMESPACE jh::
             DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/jh-toolkit
     )
+
+    # Install the compatibility target as well
+    install(TARGETS jh-toolkit-impl EXPORT jh-toolkitTargets)
 
 endif ()
 

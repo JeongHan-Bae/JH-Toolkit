@@ -41,6 +41,7 @@
  * @see jh::runtime_arr
  * @see jh::runtime_arr_helper::bool_flat_alloc
  */
+#define JH_HEADER_IMPL_BUILD
 #include "jh/runtime_arr.h"
 
 // implicitly force static compilation of both conjugate forms

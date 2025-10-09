@@ -72,6 +72,7 @@
 #define JH_IMMUTABLE_STR_AUTO_TRIM true
 #endif
 
+#include <algorithm>        // for std::max
 #include <memory>           // for std::unique_ptr, std::shared_ptr
 #include <unordered_map>    // NOLINT for std::unordered_map
 #include <unordered_set>    // NOLINT for std::unordered_set
@@ -85,7 +86,7 @@
 #include "jh/pods/string_view.h"
 
 namespace jh::detail {
-    constexpr bool is_space_ascii(const char ch) {
+    constexpr bool is_space_ascii(const unsigned char ch) {
         return ch == ' ' || ch == '\t' || ch == '\n' ||
                ch == '\v' || ch == '\f' || ch == '\r';
     }
@@ -191,9 +192,7 @@ namespace jh {
          * @brief Returns a `pod::string_view` for efficient access.
          * @return A `jh::pod::string_view` to the immutable string.
          */
-        [[nodiscard]] pod::string_view pod_view() const noexcept {
-            return {this->c_str(), this->size()};
-        }
+        [[nodiscard]] pod::string_view pod_view() const noexcept;
 
         /**
          * @brief Returns the length of the string.
@@ -226,6 +225,8 @@ namespace jh {
          */
         static constexpr bool auto_trim = JH_IMMUTABLE_STR_AUTO_TRIM;
 
+        [[maybe_unused]] static bool is_static_built();
+
     private:
         uint64_t size_ = 0; ///< Length of the string
         std::unique_ptr<const char[]> data_; ///< Immutable string data
@@ -237,7 +238,18 @@ namespace jh {
          * @param input_str A null-terminated C-string.
          * @param input_len len If known else -1
          */
-        void init_from_string(const char *input_str, std::uint64_t input_len = static_cast<std::uint64_t>(-1));
+        void init_from_string(const char *input_str, std::uint64_t input_len = static_cast<std::uint64_t>(-1)) {
+#if defined(JH_IMMUTABLE_STR_AUTO_TRIM) && JH_IMMUTABLE_STR_AUTO_TRIM
+            init_from_string_trim(input_str, input_len);
+#else
+            init_from_string_no_trim(input_str, input_len);
+#endif
+        }
+
+        void init_from_string_trim(const char *input_str, std::uint64_t input_len);
+
+        void init_from_string_no_trim(const char *input_str, std::uint64_t input_len);
+
     };
 
     /**
@@ -267,7 +279,7 @@ namespace jh {
     template<typename U>
     concept is_immutable_str =
     std::same_as<std::remove_cvref_t<U>, atomic_str_ptr> ||
-    std::same_as<std::decay_t<U>, const char*>;
+    std::same_as<std::decay_t<U>, const char *>;
 
     /**
      * @brief Custom hash function for `atomic_str_ptr`.
@@ -300,10 +312,11 @@ namespace jh {
                 if constexpr (immutable_str::auto_trim) {
                     const std::uint64_t len = std::strlen(value); // Get `const char*` length
                     std::uint64_t leading = 0, trailing = len;
-                    while (leading < len && detail::is_space_ascii(value[leading])) {
+                    while (leading < len && detail::is_space_ascii(static_cast<unsigned char>(value[leading]))) {
                         ++leading;
                     }
-                    while (trailing > leading && detail::is_space_ascii(value[trailing - 1])) {
+                    while (trailing > leading &&
+                           detail::is_space_ascii(static_cast<unsigned char>(value[trailing - 1]))) {
                         --trailing;
                     }
                     return std::hash<std::string_view>{}(std::string_view{value + leading, trailing - leading});
@@ -413,4 +426,140 @@ namespace jh {
     inline atomic_str_ptr safe_from(std::string_view sv, std::mutex &mtx) {
         return std::make_shared<immutable_str>(sv, mtx);
     }
+
 } // namespace jh
+
+
+#include "jh/marcos/header_begin.h"
+
+namespace jh {
+#if JH_INTERNAL_SHOULD_DEFINE
+
+    JH_INLINE immutable_str::immutable_str(const char *str) {
+        init_from_string(str);
+    }
+
+    JH_INLINE immutable_str::immutable_str(const std::string_view sv, std::mutex &mtx) {
+        std::lock_guard lock(mtx);
+        if (std::strlen(sv.data()) != sv.size()) {
+            throw std::logic_error(
+                    "jh::immutable_str does not support string views containing embedded null characters.");
+        }
+        init_from_string(sv.data(), sv.size());
+    }
+
+    JH_INLINE const char *immutable_str::c_str() const noexcept {
+        return data_.get();
+    }
+
+    JH_INLINE std::string immutable_str::str() const {
+        return {data_.get(), size_};
+    }
+
+    JH_INLINE std::string_view immutable_str::view() const noexcept {
+        return {data_.get(), size_};
+    }
+
+    JH_INLINE pod::string_view immutable_str::pod_view() const noexcept {
+        return {this->c_str(), this->size()};
+    }
+
+    JH_INLINE uint64_t immutable_str::size() const noexcept {
+        return size_;
+    }
+
+    JH_INLINE bool immutable_str::operator==(const immutable_str &other) const noexcept {
+        return std::strcmp(data_.get(), other.data_.get()) == 0;
+    }
+
+    JH_INLINE std::uint64_t immutable_str::hash() const noexcept {
+        std::call_once(hash_flag_, [this] {
+            hash_.emplace(std::hash<std::string_view>{}(std::string_view(data_.get(), size_)));
+        });
+        return hash_.value();
+    }
+
+    JH_INLINE void immutable_str::init_from_string_trim(const char *input_str,
+                                                        std::uint64_t input_len) {
+        if (!input_str) [[unlikely]] {
+            // Initialize an empty string if input is null
+            size_ = 0;
+            auto data_array_ = std::make_unique<char[]>(1);
+            data_array_[0] = '\0';
+            data_ = std::move(data_array_);
+            return;
+        }
+
+        const char *start = input_str;
+        if (input_len == static_cast<std::size_t>(-1)) {
+            input_len = std::strlen(input_str);  // fallback only if not known
+        }
+
+        const char *end = input_str + input_len - 1;
+
+        // If auto_trim is enabled, remove leading and trailing whitespace
+
+        while (*start && detail::is_space_ascii(*start)) ++start;
+
+        // If the input contains only whitespace, treat it as an empty string
+        if (*start == '\0') [[unlikely]] {
+            size_ = 0;
+            auto data_array_ = std::make_unique<char[]>(1);
+            data_array_[0] = '\0';
+            data_ = std::move(data_array_);
+            return;
+        }
+
+        while (end > start && detail::is_space_ascii(*end)) --end;
+
+
+        // Compute the final string size
+        size_ = end - start + 1;
+
+        // Allocate memory and copy the string
+        auto data_array_ = std::make_unique<char[]>(size_ + 1);
+        std::memcpy(data_array_.get(), start, size_);
+        data_array_[size_] = '\0';
+        data_ = std::move(data_array_);
+    }
+
+    JH_INLINE void immutable_str::init_from_string_no_trim(const char *input_str,
+                                                           std::uint64_t input_len) {
+        if (!input_str) [[unlikely]] {
+            // Initialize an empty string if input is null
+            size_ = 0;
+            auto data_array_ = std::make_unique<char[]>(1);
+            data_array_[0] = '\0';
+            data_ = std::move(data_array_);
+            return;
+        }
+
+        const char *start = input_str;
+        if (input_len == static_cast<std::size_t>(-1)) {
+            input_len = std::strlen(input_str);  // fallback only if not known
+        }
+
+        const char *end = input_str + input_len - 1;
+
+        // Compute the final string size
+        size_ = end - start + 1;
+
+        // Allocate memory and copy the string
+        auto data_array_ = std::make_unique<char[]>(size_ + 1);
+        std::memcpy(data_array_.get(), start, size_);
+        data_array_[size_] = '\0';
+        data_ = std::move(data_array_);
+    }
+
+    [[maybe_unused]] JH_INLINE bool immutable_str::is_static_built(){
+#ifdef JH_IS_STATIC_BUILD
+        return true;
+#else
+        return false;
+#endif // JH_IS_STATIC_BUILD
+    }
+
+#endif // JH_INTERNAL_SHOULD_DEFINE
+}
+
+#include "jh/marcos/header_end.h"
