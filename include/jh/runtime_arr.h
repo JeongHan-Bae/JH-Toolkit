@@ -155,10 +155,27 @@
  *   <li>Optimized <code>reset_all()</code> for POD/trivially destructible types.</li>
  * </ul>
  *
-  * <h3>Performance Summary</h3>
+ * <h3>Dual-Mode Header Integration</h3>
+ * <p>
+ * This header participates in the <b>Dual-Mode Header</b> system.
+ * You do not need to modify the source code to switch build modes:
+ * </p>
+ * <ul>
+ *   <li>When linked via <code>jh-toolkit</code> → behaves as a <b>header-only</b> component.</li>
+ *   <li>When linked via <code>jh-toolkit-static</code> → uses the <b>precompiled static</b> implementation.</li>
+ * </ul>
+ * <p>
+ * The mode is resolved automatically through <code>JH_INTERNAL_SHOULD_DEFINE</code>,
+ * consistent with <code>jh::immutable_str</code</code> and other dual-mode headers
+ * (<b>currently limited to</b> <code>immutable_str</code> and <code>runtime_arr</code> in v1.3.x,
+ * but <b>future releases may extend this system</b> to additional components).
+ * </p>
+ *
+ * <h3>Performance Summary</h3>
  *
  * <p>
- * Microbenchmark results for <code>jh::runtime_arr&lt;T&gt;</code> (1024 POD elements, Apple Silicon M3, LLVM clang++ 20, 2025):
+ * Microbenchmark results for <code>jh::runtime_arr&lt;T&gt;</code>
+ * (1024 POD elements, Apple Silicon M3, LLVM clang++ 20, 2025):
  * </p>
  *
  * <table>
