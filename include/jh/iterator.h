@@ -83,12 +83,17 @@
  * <h3>Concept Summary</h3>
  * <table>
  *   <tr><th>Concept</th><th>Behavior Checked</th><th>Primary Use</th></tr>
- *   <tr><td><code>is_iterator</code></td><td>Basic iteration (<code>*it</code>, <code>++it</code>)</td><td>Type detection</td></tr>
+ *   <tr><td><code>is_iterator</code></td><td>Basic iteration (<code>*it</code>, <code>++it</code>)</td>
+ *   <td>Type detection</td></tr>
  *   <tr><td><code>input_iterator</code></td><td>Readable and comparable iteration</td><td>Sequential read</td></tr>
- *   <tr><td><code>output_iterator</code></td><td>Writable via <code>*it = value</code></td><td>Sequential write</td></tr>
- *   <tr><td><code>forward_iterator</code></td><td>Stable dereference after increment</td><td>Multi-pass read</td></tr>
- *   <tr><td><code>bidirectional_iterator</code></td><td>Supports <code>--it</code> and <code>it--</code></td><td>Reversible traversal</td></tr>
- *   <tr><td><code>random_access_iterator</code></td><td>Arithmetic and indexing operations</td><td>Contiguous access</td></tr>
+ *   <tr><td><code>output_iterator</code></td><td>Writable via <code>*it = value</code></td>
+ *   <td>Sequential write</td></tr>
+ *   <tr><td><code>forward_iterator</code></td><td>Stable dereference after increment;<br/>idempotent and copyable</td>
+ *   <td>Multi-pass read (reentrant)</td></tr>
+ *   <tr><td><code>bidirectional_iterator</code></td><td>Supports <code>--it</code> and <code>it--</code></td>
+ *   <td>Reversible traversal</td></tr>
+ *   <tr><td><code>random_access_iterator</code></td><td>Arithmetic and indexing operations</td>
+ *   <td>Contiguous access</td></tr>
  * </table>
  *
  * <h3>Purpose</h3>
@@ -285,7 +290,7 @@ namespace jh {
      * @tparam I The type being tested for input iterator behavior.
      */
     template<typename I>
-    concept input_iterator = requires(I it)
+    concept input_iterator = requires(I& it)
     {
         typename std::iterator_traits<I>::value_type;
         { *it } -> std::convertible_to<typename std::iterator_traits<I>::value_type>;
@@ -325,7 +330,7 @@ namespace jh {
      * @tparam T The value type that can be forwarded or assigned through dereference.
      */
     template<typename I, typename T>
-    concept output_iterator = requires(I it, T &&value)
+    concept output_iterator = requires(I& it, T &&value)
     {
         // Core assignability (forwarded write)
         *it = std::forward<T>(value);
@@ -385,7 +390,7 @@ namespace jh {
     concept forward_iterator =
     input_iterator<I> &&
     std::copyable<I> &&
-    requires(I it) {
+    requires(I& it) {
         { ++it } -> std::same_as<I&>;
         { it++ } -> std::convertible_to<I>;
         { *it } -> std::same_as<typename std::iterator_traits<I>::reference>;
@@ -419,7 +424,7 @@ namespace jh {
      * @tparam I The iterator-like type being validated.
      */
     template<typename I>
-    concept bidirectional_iterator = forward_iterator<I> && requires(I it)
+    concept bidirectional_iterator = forward_iterator<I> && requires(I& it)
     {
         --it;
         it--;
@@ -462,7 +467,7 @@ namespace jh {
      * @tparam I The iterator-like type being validated.
      */
     template<typename I>
-    concept random_access_iterator = bidirectional_iterator<I> && requires(I it, std::ptrdiff_t n)
+    concept random_access_iterator = bidirectional_iterator<I> && requires(I& it, std::ptrdiff_t n)
     {
         { it + n } -> std::same_as<I>;
         { it - n } -> std::same_as<I>;
@@ -508,14 +513,14 @@ namespace jh {
      * @tparam IT The candidate type being validated as an iterator.
      */
     template<typename IT>
-    concept is_iterator = requires(IT it) {
+    concept is_iterator = requires(IT& it) {
         typename std::iterator_traits<IT>::value_type;
         { ++it } -> std::same_as<IT &>;
         { it++ } -> std::same_as<IT>;
     } &&
-                          (requires(IT it) {
+                          (requires(IT& it) {
                               { *it } -> std::convertible_to<typename std::iterator_traits<IT>::reference>;
-                          } || requires(IT it) {
+                          } || requires(IT& it) {
                               { *it } -> std::convertible_to<typename std::iterator_traits<IT>::value_type>;
                           }
                           );
@@ -560,7 +565,6 @@ namespace jh {
         struct iterator_resolver<ArrayType, void, void> {
             using type = std::remove_extent_t<ArrayType> *; // decay array into pointer
         };
-
 
     }
 

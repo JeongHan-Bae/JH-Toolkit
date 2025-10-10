@@ -81,7 +81,7 @@ namespace jh {
      * @tparam T The candidate type.
      */
     template<typename T>
-    concept sequence = requires(const T t)
+    concept sequence = requires(const T& t)
     {
         { std::begin(t) } -> input_iterator;
         { std::end(t) };
@@ -128,13 +128,28 @@ namespace jh {
 
     namespace detail {
         /**
-         * @brief Internal converter from a sequence to a <code>std::ranges::subrange</code>.
-         * @tparam Seq The sequence type.
+         * @brief Converts a sequence into a range-compatible form.
+         * @details
+         * If the sequence already satisfies <code>std::ranges::range</code>,
+         * this operation is <b>idempotent</b> and returns it unchanged.
+         * Otherwise, it wraps the sequence as a <code>std::ranges::subrange</code>.
+         *
+         * @tparam Seq The sequence type satisfying <code>jh::sequence</code>.
+         * @param s The input sequence.
+         * @return Either the same range (if already a range) or a <code>std::ranges::subrange</code>.
          */
         template<sequence Seq>
         struct to_range_traits {
-            static auto convert(const Seq &s) {
-                return std::ranges::subrange(s.begin(), s.end());
+            static auto convert(Seq&& s) {
+                using S = std::remove_cvref_t<Seq>;
+                // (1) If it's already a range (e.g. std::ranges::view or STL container)
+                if constexpr (std::ranges::range<S>) {
+                    return std::forward<Seq>(s); // direct pass-through
+                }
+                // (2) Fallback: wrap as a subrange
+                else {
+                    return std::ranges::subrange(std::begin(s), std::end(s));
+                }
             }
         };
     }
@@ -142,15 +157,25 @@ namespace jh {
     /**
      * @brief Converts a sequence into a standard range object.
      * @details
-     * Produces a <code>std::ranges::subrange</code> built from <code>begin()</code> and <code>end()</code>.
-     * Designed for use in algorithms expecting standard range-compatible objects.
+     * Idempotent:
+     * if the input already models <code>std::ranges::range</code>,
+     * it is perfectly forwarded and no transformation occurs;
+     * otherwise, it is wrapped into a <code>std::ranges::subrange</code>.
+     *
+     * <p>
+     * The function accepts both mutable and immutable sequences.
+     * A type only needs to provide <code>const</code> iteration
+     * to satisfy <code>jh::sequence</code>.
+     * If the sequence supports only <code>const</code> iteration,
+     * the resulting range will naturally be <code>const</code>-qualified.
+     * </p>
      *
      * @tparam Seq The sequence type satisfying <code>jh::sequence</code>.
-     * @param s The source sequence.
-     * @return A <code>std::ranges::subrange</code> representing the sequence.
+     * @param s The input sequence.
+     * @return Either the perfectly forwarded input or a <code>std::ranges::subrange</code>.
      */
     template<sequence Seq>
-    auto to_range(const Seq &s) {
+    auto to_range(Seq&& s) {
         return detail::to_range_traits<Seq>::convert(s);
     }
 } // namespace jh
