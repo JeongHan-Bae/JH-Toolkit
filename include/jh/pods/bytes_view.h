@@ -234,11 +234,13 @@ namespace jh::pod {
          * is returned. Otherwise, this function copies the raw bytes into a local object and returns it
          * by value, effectively performing a POD copy.
          *
-         * @tparam T Must satisfy <code>pod_like</code>.
+         * @tparam T Must satisfy <code>cv_free_pod_like</code>.
+         *           Using <code>const</code> or <code>volatile</code> qualified types is disallowed,
+         *           as this function constructs a writable value of type <code>T</code>.
          * @return A value reconstructed from the view if sizes match, or a default-initialized
          *         <code>T{}</code> if size mismatch.
          */
-        template<pod_like T>
+        template<cv_free_pod_like T>
         [[nodiscard]] constexpr T clone() const noexcept {
             if (len != sizeof(T)) return T{};
             return at<T>(0);

@@ -124,34 +124,61 @@ namespace jh::pod {
     /**
      * @brief POD-compatible fixed-size tuple type, suitable for raw memory and algorithmic bridging.
      *
-     * @tparam T1-T8 Up to 8 type parameters.
-     *         All types must satisfy <code>jh::pod::pod_like</code>.
-     *         Unused parameters must default to <code>typed::monostate</code>.
+     * @tparam T1 First element type. Must satisfy <code>cv_free_pod_like&lt;T1&gt;</code>.
+     *             This parameter is <b>required</b> and cannot be <code>typed::monostate</code>.
+     * @tparam T2 Second element type. Must satisfy <code>cv_free_pod_like&lt;T2&gt;</code>.
+     *             This parameter is <b>required</b> and cannot be <code>typed::monostate</code>.
+     * @tparam ... Additional optional element type placeholders (<code>T3..T8</code>, up to 8 total).
+     *             Each must satisfy <code>cv_free_pod_like</code> or default to
+     *             <code>jh::typed::monostate</code>. Using <code>cv</code>-qualified types will
+     *             break POD layout.
      *
-     * <h3>Description:</h3>
+     * @warning Do <b>not</b> use <code>std::monostate</code> for any parameter.
+     *          The tuple system only recognizes <code>jh::typed::monostate</code> for empty slots.
+     *          Using <code>std::monostate</code> would bypass internal validation checks,
+     *          which serves no purpose and provides no semantic meaning.
+     *
+     * @details
      * This struct provides a tuple-like container with fixed fields <code>_0</code> to <code>_7</code>,
      * while guaranteeing POD layout and layout stability.
      *
-     * <h3>Intended Use Cases:</h3>
+     * Conceptually, this type serves as a <b>migration bridge</b> from <code>std::tuple</code>
+     * (a meta-level type composition system) to <b>pure POD data representations</b>.
+     * It allows existing tuple-based code to transition into a POD-compatible form
+     * when performance, reflection, or serialization require strictly plain data.
+     *
+     * <h4>Design Intent</h4>
      * <ul>
-     *   <li>Migration from <code>std::tuple&lt;Ts...&gt;</code> in performance-sensitive code</li>
-     *   <li>Use in raw memory systems (<code>pod_stack</code>, mapped buffers, etc.)</li>
-     *   <li>Scenarios where dynamic field count is not required and POD layout is mandatory</li>
+     *   <li><code>std::tuple</code> is part of a <b>complex type system</b>, not a data model.</li>
+     *   <li><code>jh::pod::tuple</code> is a <b>temporary bridge</b> for migrating
+     *       tuple-heavy systems toward <b>plain, POD-based structures</b>.</li>
+     *   <li>If your data types use <code>std::tuple</code> internally, this bridge
+     *       can help isolate and rewrite them as explicit structs.</li>
+     *   <li>The final goal is to eliminate all tuple dependencies in pure data layers.</li>
      * </ul>
      *
-     * <h3>Notes:</h3>
+     * <h4>Intended Use Cases</h4>
      * <ul>
-     *   <li>This type is API-compatible with <code>std::tuple</code> in terms of index-based access and equality.</li>
-     *   <li>It does <b>not</b> support variadic unpacking, structured bindings, or dynamic field count.</li>
+     *   <li>Gradual migration from <code>std::tuple&lt;Ts...&gt;</code> to plain POD structs.</li>
+     *   <li>Bridging tuple-based APIs into raw-memory containers (<code>pod_stack</code>, mapped buffers, etc.).</li>
+     *   <li>Temporary compatibility in data pipelines that must remain POD-safe.</li>
      * </ul>
      *
-     * <h3>Warning:</h3>
+     * @note
+     * <ul>
+     *   <li>This type is <b>layout-compatible</b> but not feature-compatible with <code>std::tuple</code>.</li>
+     *   <li>It supports only index-based access (<code>get&lt;N&gt;()</code>) and equality comparison.</li>
+     *   <li>It does <b>not</b> support variadic unpacking, structured bindings, or heterogeneous type inference.</li>
+     * </ul>
+     *
+     * @warning
      * <b><span style="color:red">unstable</span></b>:
-     * Use of this type is <b>discouraged</b> in general-purpose code.
-     * Prefer defining explicit <code>struct</code> types with named members when possible.
-     * This type exists primarily to aid in <code>std::tuple</code> migration or interfacing with generic algorithms.
+     * The existence of <code>jh::pod::tuple</code> is purely transitional.
+     * You <b>should not</b> design new systems around it.
+     * Once migration from <code>std::tuple</code> is complete,
+     * define explicit POD structs with named members to preserve type clarity and safety.
      */
-    template<pod_like T1, pod_like T2,
+    template<cv_free_pod_like T1, cv_free_pod_like T2,
         typename T3 = typed::monostate,
         typename T4 = typed::monostate,
         typename T5 = typed::monostate,
@@ -159,12 +186,12 @@ namespace jh::pod {
         typename T7 = typed::monostate,
         typename T8 = typed::monostate>
         requires (!typed::monostate_t<T1> && !typed::monostate_t<T2>)
-                 && (typed::monostate_t<T3> || pod_like<T3>)
-                 && (typed::monostate_t<T4> || pod_like<T4>)
-                 && (typed::monostate_t<T5> || pod_like<T5>)
-                 && (typed::monostate_t<T6> || pod_like<T6>)
-                 && (typed::monostate_t<T7> || pod_like<T7>)
-                 && (typed::monostate_t<T8> || pod_like<T8>)
+                 && (typed::monostate_t<T3> || cv_free_pod_like<T3>)
+                 && (typed::monostate_t<T4> || cv_free_pod_like<T4>)
+                 && (typed::monostate_t<T5> || cv_free_pod_like<T5>)
+                 && (typed::monostate_t<T6> || cv_free_pod_like<T6>)
+                 && (typed::monostate_t<T7> || cv_free_pod_like<T7>)
+                 && (typed::monostate_t<T8> || cv_free_pod_like<T8>)
     struct [[deprecated("pod::tuple is an unstable transitional type. Prefer explicit POD structs.")]] tuple {
         T1 _0;
         T2 _1;

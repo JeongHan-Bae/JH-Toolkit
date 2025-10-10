@@ -60,9 +60,12 @@ namespace jh::pod {
      *   <li>Use <code>.value_or()</code> for fallback</li>
      * </ul>
      *
-     * @tparam T Must satisfy <code>pod_like</code>.
+     * @tparam T Element type. Must satisfy <code>pod_like&lt;T&gt;</code> and be
+     *           <b>free of const/volatile qualifiers</b> (i.e. satisfy <code>cv_free_pod_like&lt;T&gt;</code>).
+     *           Using a cv-qualified type would make the optional itself non-POD due to
+     *           loss of trivial assignment and standard layout guarantees.
      */
-    template<pod_like T>
+    template<cv_free_pod_like T>
     struct alignas(alignof(T)) optional final {
         std::byte storage[sizeof(T)];  ///< Raw storage; flattens type ABI, never access directly.
         bool has_value;                ///< Presence flag (true = has value).

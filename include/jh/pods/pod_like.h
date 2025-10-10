@@ -17,7 +17,8 @@
  */
 /**
  * @file pod_like.h (pods)
- * @brief Definition of the <code>pod_like</code> concept.
+ * @brief Definition of the <code>pod_like</code> concept
+ * and its cv-free constraint variant (<code>cv_free_pod_like</code>).
  */
 
 #pragma once
@@ -43,4 +44,34 @@ namespace jh::pod {
                        std::is_trivially_constructible_v<T> &&
                        std::is_trivially_destructible_v<T> &&
                        std::is_standard_layout_v<T>;
+
+    /**
+     * @brief Concept for POD-like types that are free of <code>const</code> or <code>volatile</code> qualification.
+     *
+     * <h4>Definition</h4>
+     * Equivalent to <code>pod_like&lt;T&gt;</code>, but adds the requirement that
+     * <code>T</code> itself must not be <code>const</code>-qualified nor
+     * <code>volatile</code>-qualified.
+     *
+     * <h4>Motivation</h4>
+     * In certain templates—such as <code>pod::pair&lt;T1, T2&gt;</code>—using
+     * <code>const</code>-qualified inner types (e.g., <code>pair&lt;const int, int&gt;</code>)
+     * would violate standard layout or trivially-copyable constraints, rendering the
+     * resulting type non-POD.
+     *
+     * This concept ensures that only unqualified POD-like types are used in such contexts,
+     * while still allowing <code>const pod::pair&lt;...&gt;</code> to remain valid.
+     *
+     * <h4>Example</h4>
+     * @code
+     * static_assert(cv_free_pod_like&lt;int&gt;);
+     * static_assert(!cv_free_pod_like&lt;const int&gt;);
+     * static_assert(cv_free_pod_like&lt;pod::pair&lt;int, int&gt;&gt;);
+     * @endcode
+     */
+    template<typename T>
+    concept cv_free_pod_like =
+    pod_like<T> &&
+    !std::is_const_v<T> &&
+    !std::is_volatile_v<T>;
 }

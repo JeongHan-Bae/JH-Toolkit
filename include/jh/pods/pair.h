@@ -28,8 +28,12 @@ namespace jh::pod {
     /**
      * @brief POD-compatible aggregate of two values, equivalent in layout to a plain struct.
      *
-     * @tparam T1 First element type. Must satisfy <code>pod_like</code>.
-     * @tparam T2 Second element type. Must satisfy <code>pod_like</code>.
+     * @tparam T1 First element type. Must satisfy <code>pod_like&lt;T1&gt;</code> and be
+     *            <b>free of const/volatile qualifiers</b> (i.e. satisfy <code>cv_free_pod_like&lt;T1&gt;</code>).
+     *            Using <code>const</code> or <code>volatile</code> qualified inner members would
+     *            break POD layout and trivial assignment guarantees.
+     * @tparam T2 Second element type. Must satisfy <code>pod_like&lt;T2&gt;</code> and be
+     *            <b>free of const/volatile qualifiers</b> (i.e. satisfy <code>cv_free_pod_like&lt;T2&gt;</code>).
      *
      * This type provides the simplest form of a pair:
      * <ul>
@@ -45,7 +49,7 @@ namespace jh::pod {
      *   <li>For generic pair creation, prefer <code>jh::utils::make_pair</code>, which will
      *       automatically select <code>pod::pair</code> when both arguments are POD</li>
      */
-    template<pod_like T1, pod_like T2>
+    template<cv_free_pod_like T1, cv_free_pod_like T2>
     struct pair final{
         T1 first;   ///< First element.
         T2 second;  ///< Second element.

@@ -33,7 +33,10 @@ namespace jh::pod {
     /**
      * @brief POD-compatible fixed-size array, similar in shape to <code>std::array</code>, but simpler and fully POD.
      *
-     * @tparam T Element type. Must satisfy <code>pod_like&lt;T&gt;</code>.
+     * @tparam T Element type. Must satisfy <code>pod_like&lt;T&gt;</code> and must be
+     *           <b>free of const/volatile qualifiers</b> (i.e. satisfy <code>cv_free_pod_like&lt;T&gt;</code>).
+     *           Using <code>const T</code> or <code>volatile T</code> would make the array itself
+     *           non-POD due to loss of trivial assignment and copy semantics.
      * @tparam N Number of elements. Total memory (<code>sizeof(T) * N</code>) must not exceed 16KB.
      *
      * This structure is designed for:
@@ -60,7 +63,7 @@ namespace jh::pod {
      *
      * @warning Do not use this for large arrays or heap-like buffers.
      */
-    template<pod_like T, std::uint16_t N> requires (sizeof(T) * N <= max_pod_array_bytes)
+    template<cv_free_pod_like T, std::uint16_t N> requires (sizeof(T) * N <= max_pod_array_bytes)
     struct alignas(alignof(T)) array final {
         T data[N];                             ///< Inline contiguous storage for N elements of type T.
 
