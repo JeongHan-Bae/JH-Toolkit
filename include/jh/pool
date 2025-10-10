@@ -1,9 +1,22 @@
 /**
  * @file pool
- * @brief Forwarding header for jh::pool
+ * @brief Forwarding header for <code>jh::pool</code>.
  *
- * This header exists to provide a modern include style (`#include <jh/pool>`),
- * forwarding to `jh/pool.h`. It contains no additional code.
+ * <p>
+ * This header provides the canonical include entry for
+ * <code>jh::pool&lt;T&gt;</code> — a high-level, duck-typed wrapper
+ * around <code>jh::sim_pool</code> that automatically deduces
+ * hashing and equality semantics from user-defined types.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/pool&gt;</code></pre>
+ *
+ * <p>
+ * Internally, this file forwards to <code>jh/pool.h</code>
+ * and defines no additional symbols.
+ * </p>
+ *
+ * @see jh::sim_pool
  */
 
 #pragma once
