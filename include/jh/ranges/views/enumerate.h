@@ -4,10 +4,10 @@
 
 namespace jh::ranges::views {
 
-    template<jh::sequence Seq>
+    template<jh::concepts::sequence Seq>
     constexpr auto enumerate(
             Seq &&seq,
-            jh::sequence_difference_t<Seq> start = 0
+            jh::concepts::sequence_difference_t<Seq> start = 0
     ) {
         return zip(
                 std::views::iota(start),

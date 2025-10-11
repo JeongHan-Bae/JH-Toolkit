@@ -34,4 +34,4 @@
 
 #pragma once
 
-#include "jh/sequence.h"
+#include "jh/conceptual/sequence.h"

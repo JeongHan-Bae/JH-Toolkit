@@ -87,15 +87,15 @@
 #include <deque>
 #include <optional>
 #include <stdexcept>
-#include <utility>            // NOLINT for std::exchange
+#include <utility>   // NOLINT for std::exchange
 #include <vector>
-#include <memory>             // NOLINT for std::unique_ptr
+#include <memory>    // NOLINT for std::unique_ptr
 
-#include "jh/sequence.h"
-#include "jh/iterator.h"
+#include "jh/conceptual/sequence.h"
+#include "jh/conceptual/iterator.h"
 #include "jh/utils/typed.h"
 
-namespace jh {
+namespace jh::async {
 
     /**
      * @brief Coroutine-based generator supporting both yielding and receiving values.
@@ -699,7 +699,9 @@ namespace jh {
         }
 
     };
+}
 
+namespace jh {
     /**
      * @brief Specialization of <code>jh::iterator<></code> for <code>jh::generator</code>.
      * @details
@@ -729,10 +731,11 @@ namespace jh {
      * @see jh::generator
      */
     template<typename T, typename U>
-    struct iterator<generator<T, U>> {
-        using type = typename generator<T, U>::iterator;
+    struct iterator<jh::async::generator<T, U>> {
+        using type = typename jh::async::generator<T, U>::iterator;
     };
-
+}
+namespace jh::async {
 
     /**
      * @brief Converts a duck-typed <strong>sequence-like</strong> object into a generator.
@@ -764,9 +767,9 @@ namespace jh {
      * @param seq The sequence-like object to convert (read-only).
      * @return A generator yielding elements from <code>seq</code>.
      */
-    template<sequence SeqType>
+    template<concepts::sequence SeqType>
     requires (!std::ranges::range<SeqType>)
-    [[maybe_unused]] generator<sequence_value_type<SeqType> > make_generator(const SeqType &seq) {
+    [[maybe_unused]] generator<concepts::sequence_value_t<SeqType> > make_generator(const SeqType &seq) {
         for (const auto &elem: seq) {
             // Use range-based for-loop
             co_yield elem;
@@ -1094,10 +1097,14 @@ namespace jh {
             using difference_type [[maybe_unused]] = std::ptrdiff_t;
 
             iterator() = default;
-            iterator(const iterator&) = delete;
-            iterator& operator=(const iterator&) = delete;
-            iterator(iterator&&) noexcept = default;
-            iterator& operator=(iterator&&) noexcept = default;
+
+            iterator(const iterator &) = delete;
+
+            iterator &operator=(const iterator &) = delete;
+
+            iterator(iterator &&) noexcept = default;
+
+            iterator &operator=(iterator &&) noexcept = default;
             // Copy operations are disabled because `generator_range` only supports
             // valid iteration from `begin()`. Copying an iterator in the middle of
             // iteration would imply duplicating the underlying `std::unique_ptr<generator<T>>`,
@@ -1170,7 +1177,9 @@ namespace jh {
     private:
         generator_factory_t factory_;
     };
+}
 
+namespace jh {
     /**
      * @brief Converts a generator factory (lambda or function) into a repeatable range.
      *
@@ -1207,11 +1216,11 @@ namespace jh {
     {
         typename std::invoke_result_t<F>;
         requires std::is_same_v<std::remove_cvref_t<std::invoke_result_t<F> >,
-                generator<typename std::invoke_result_t<F>::value_type> >;
+                jh::async::generator<typename std::invoke_result_t<F>::value_type> >;
     }
     auto to_range(F &&f) {
         using Gen = std::remove_cvref_t<std::invoke_result_t<F> >;
         using T = typename Gen::value_type;
-        return generator_range<T>(std::function<Gen()>(std::forward<F>(f)));
+        return jh::async::generator_range<T>(std::function<Gen()>(std::forward<F>(f)));
     }
 } // namespace jh

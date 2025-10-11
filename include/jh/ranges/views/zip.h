@@ -16,7 +16,7 @@ namespace jh::ranges::views {
      *
      * Works seamlessly with `jh::pod::array` and any other `sequence`.
      */
-    template <jh::sequence... Seq>
+    template <jh::concepts::sequence... Seq>
     constexpr auto zip(Seq&&... seqs) {
         return jh::ranges::zip_view{
                 std::views::all(jh::to_range(seqs))...

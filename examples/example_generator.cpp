@@ -24,7 +24,7 @@
  * when building your project.
  */
 
-#include "jh/generator.h"
+#include "jh/asynchronous/generator.h"
 #include <iostream>
 #include <vector>
 #include <ranges>
@@ -41,7 +41,7 @@ namespace example {
     /**
      * @brief Generates a sequence from `[0, end)`.
      */
-    jh::generator<int> range(const int end) {
+    jh::async::generator<int> range(const int end) {
         for (int i = 0; i < end; ++i) {
             co_yield i;
         }
@@ -50,7 +50,7 @@ namespace example {
     /**
      * @brief Generates a sequence from `[start, end)`.
      */
-    jh::generator<int> range(const int start, const int end) {
+    jh::async::generator<int> range(const int start, const int end) {
         for (int i = start; i < end; ++i) {
             co_yield i;
         }
@@ -59,7 +59,7 @@ namespace example {
     /**
      * @brief Generates a sequence from `[start, end)` with a custom step size.
      */
-    jh::generator<int> range(const int start, const int end, const int step) {
+    jh::async::generator<int> range(const int start, const int end, const int step) {
         for (int i = start; i < end; i += step) {
             co_yield i;
         }
@@ -69,7 +69,7 @@ namespace example {
      * @brief Generates a countdown sequence interactively.
      * - Users can **send a step value** to decrease the countdown dynamically.
      */
-    jh::generator<int, int> countdown(int start) {
+    jh::async::generator<int, int> countdown(int start) {
         while (start > 0) {
             const int step = co_await int{};  // NOLINT Receive new step size via send()
             start -= step;
@@ -164,7 +164,7 @@ namespace example {
 
     void range_constructing() {
         std::cout << "\n\U0001F539 Constructing Generator with `std::views::iota`:\n";
-        for (auto gen = jh::make_generator(std::views::iota(0, 10)); const auto v : gen) {
+        for (auto gen = jh::async::make_generator(std::views::iota(0, 10)); const auto v : gen) {
             std::cout << v << " ";
         }
         std::cout << "\n";
@@ -174,7 +174,7 @@ namespace example {
         std::cout << "\n\U0001F539 Constructing Range with Lambda[Generator]:\n";
         constexpr auto view = std::views::iota(0, 10);
         const auto range_ = jh::to_range([view] {
-            return jh::make_generator(view);
+            return jh::async::make_generator(view);
         });
         std::cout << "First Loop:\n";
         for (const auto v : range_) {

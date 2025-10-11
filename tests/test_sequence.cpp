@@ -10,7 +10,7 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
-#include "jh/sequence.h"
+#include "jh/conceptual/sequence.h"
 #include "jh/pods/array.h"
 
 namespace test {
@@ -158,72 +158,72 @@ namespace test {
 
 // ✅ Recognizing STL Sequences
 TEST_CASE("STL Sequences Recognition") {
-    REQUIRE(jh::is_sequence<std::vector<int>>);
-    REQUIRE(jh::is_sequence<std::list<double>>);
-    REQUIRE(jh::is_sequence<std::deque<char>>);
-    REQUIRE(jh::is_sequence<std::set<float>>);
-    REQUIRE(jh::is_sequence<std::unordered_set<std::string>>);
-    REQUIRE(jh::is_sequence<std::array<int, 5>>);
-    REQUIRE(jh::is_sequence<std::forward_list<int>>);
-    REQUIRE(jh::is_sequence<std::map<int, int>>);
-    REQUIRE(jh::is_sequence<std::unordered_map<int, int>>);
+    REQUIRE(jh::concepts::is_sequence<std::vector<int>>);
+    REQUIRE(jh::concepts::is_sequence<std::list<double>>);
+    REQUIRE(jh::concepts::is_sequence<std::deque<char>>);
+    REQUIRE(jh::concepts::is_sequence<std::set<float>>);
+    REQUIRE(jh::concepts::is_sequence<std::unordered_set<std::string>>);
+    REQUIRE(jh::concepts::is_sequence<std::array<int, 5>>);
+    REQUIRE(jh::concepts::is_sequence<std::forward_list<int>>);
+    REQUIRE(jh::concepts::is_sequence<std::map<int, int>>);
+    REQUIRE(jh::concepts::is_sequence<std::unordered_map<int, int>>);
 }
 
 // ✅ Extracting Sequence Value Types
 TEST_CASE("Extracting Sequence Value Types") {
-    REQUIRE(std::is_same_v<jh::sequence_value_type<std::vector<int>>, int>);
-    REQUIRE(std::is_same_v<jh::sequence_value_type<std::array<const double, 3>>, double>);
-    REQUIRE(std::is_same_v<jh::sequence_value_type<std::deque<char>>, char>);
-    REQUIRE(std::is_same_v<jh::sequence_value_type<std::set<int>>, int>);
-    REQUIRE(std::is_same_v<jh::sequence_value_type<std::array<float, 10>>, float>);
-    REQUIRE(std::is_same_v<jh::sequence_value_type<std::map<int, double>>, std::pair<const int, double>>);
-    REQUIRE(std::is_same_v<jh::sequence_value_type<std::unordered_map<std::string, float>>, std::pair<const std::string, float>>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<std::vector<int>>, int>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<std::array<const double, 3>>, double>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<std::deque<char>>, char>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<std::set<int>>, int>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<std::array<float, 10>>, float>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<std::map<int, double>>, std::pair<const int, double>>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<std::unordered_map<std::string, float>>, std::pair<const std::string, float>>);
 }
 
 TEST_CASE("Non-Sequences Should Fail") {
-    REQUIRE_FALSE(jh::is_sequence<int>);
-    REQUIRE_FALSE(jh::is_sequence<double>);
-    REQUIRE_FALSE(jh::is_sequence<char *>);
-    REQUIRE_FALSE(jh::is_sequence<std::tuple<int, double, std::string>>);
-    REQUIRE_FALSE(jh::is_sequence<std::optional<int>>);
-    REQUIRE_FALSE(jh::is_sequence<test::NoBeginEnd>);
-    REQUIRE_FALSE(jh::is_sequence<test::FakeSequence>);
+    REQUIRE_FALSE(jh::concepts::is_sequence<int>);
+    REQUIRE_FALSE(jh::concepts::is_sequence<double>);
+    REQUIRE_FALSE(jh::concepts::is_sequence<char *>);
+    REQUIRE_FALSE(jh::concepts::is_sequence<std::tuple<int, double, std::string>>);
+    REQUIRE_FALSE(jh::concepts::is_sequence<std::optional<int>>);
+    REQUIRE_FALSE(jh::concepts::is_sequence<test::NoBeginEnd>);
+    REQUIRE_FALSE(jh::concepts::is_sequence<test::FakeSequence>);
 }
 
 // ✅ Handling `const` and `mutable`
 TEST_CASE("Handling Modifiers in Sequences") {
-    REQUIRE(jh::is_sequence<const std::vector<int>>);
-    REQUIRE(jh::is_sequence<std::list<double>>);
-    REQUIRE(jh::is_sequence<const std::deque<char>>);
+    REQUIRE(jh::concepts::is_sequence<const std::vector<int>>);
+    REQUIRE(jh::concepts::is_sequence<std::list<double>>);
+    REQUIRE(jh::concepts::is_sequence<const std::deque<char>>);
 
-    REQUIRE(std::is_same_v<jh::sequence_value_type<const std::vector<int>>, int>);
-    REQUIRE(std::is_same_v<jh::sequence_value_type<std::list<double>>, double>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<const std::vector<int>>, int>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<std::list<double>>, double>);
 }
 
 // ✅ Custom Sequence Recognition
 TEST_CASE("Custom Non-Template Sequence") {
-    REQUIRE(jh::is_sequence<test::NonTemplateSequence>);
-    REQUIRE(std::is_same_v<jh::sequence_value_type<test::NonTemplateSequence>, int>);
+    REQUIRE(jh::concepts::is_sequence<test::NonTemplateSequence>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<test::NonTemplateSequence>, int>);
 }
 
 // ✅ Custom Template Sequence Recognition
 TEST_CASE("Custom Template Sequence") {
-    REQUIRE(jh::is_sequence<test::TemplateSequence<int>>);
-    REQUIRE(jh::is_sequence<test::TemplateSequence<std::string>>);
+    REQUIRE(jh::concepts::is_sequence<test::TemplateSequence<int>>);
+    REQUIRE(jh::concepts::is_sequence<test::TemplateSequence<std::string>>);
 
-    REQUIRE(std::is_same_v<jh::sequence_value_type<test::TemplateSequence<int>>, int>);
-    REQUIRE(std::is_same_v<jh::sequence_value_type<test::TemplateSequence<std::string>>, std::string>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<test::TemplateSequence<int>>, int>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<test::TemplateSequence<std::string>>, std::string>);
 }
 
 // ✅ Custom Sequence with `const begin()`
 TEST_CASE("Custom ConstIterSequence") {
-    REQUIRE(jh::is_sequence<test::ConstIterSequence>);
-    REQUIRE(std::is_same_v<jh::sequence_value_type<test::ConstIterSequence>, int>);
+    REQUIRE(jh::concepts::is_sequence<test::ConstIterSequence>);
+    REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<test::ConstIterSequence>, int>);
 }
 
 // ❌ Custom Sequence with Mutable Iterators (Should NOT be a sequence)
 TEST_CASE("Mutable Iterator Sequence") {
-    REQUIRE_FALSE(jh::is_sequence<test::MutableIterSequence>);
+    REQUIRE_FALSE(jh::concepts::is_sequence<test::MutableIterSequence>);
 }
 
 
@@ -239,58 +239,58 @@ TEST_CASE("Sequence to Range") {
 }
 
 TEST_CASE("Iterator Concept: is_iterator recognition") {
-    REQUIRE(jh::is_iterator<int *>);
-    REQUIRE(jh::is_iterator<const double *>);
-    REQUIRE(jh::is_iterator<std::vector<int>::iterator>);
-    REQUIRE(jh::is_iterator<std::list<float>::iterator>);
-    REQUIRE(jh::is_iterator<std::set<std::string>::iterator>);
-    REQUIRE(jh::is_iterator<test::DummyInputIter < int>>);
-    REQUIRE_FALSE(jh::is_iterator<int>);
-    REQUIRE_FALSE(jh::is_iterator<test::NotIterator>);
+    REQUIRE(jh::concepts::is_iterator<int *>);
+    REQUIRE(jh::concepts::is_iterator<const double *>);
+    REQUIRE(jh::concepts::is_iterator<std::vector<int>::iterator>);
+    REQUIRE(jh::concepts::is_iterator<std::list<float>::iterator>);
+    REQUIRE(jh::concepts::is_iterator<std::set<std::string>::iterator>);
+    REQUIRE(jh::concepts::is_iterator<test::DummyInputIter < int>>);
+    REQUIRE_FALSE(jh::concepts::is_iterator<int>);
+    REQUIRE_FALSE(jh::concepts::is_iterator<test::NotIterator>);
 }
 
 TEST_CASE("Iterator Concept: input_iterator") {
-    REQUIRE(jh::input_iterator<int *>);
-    REQUIRE(jh::input_iterator<std::vector<int>::iterator>);
-    REQUIRE(jh::input_iterator<test::DummyInputIter < int>>);
-    REQUIRE_FALSE(jh::input_iterator<int>);
-    REQUIRE_FALSE(jh::input_iterator<test::NotIterator>);
+    REQUIRE(jh::concepts::input_iterator<int *>);
+    REQUIRE(jh::concepts::input_iterator<std::vector<int>::iterator>);
+    REQUIRE(jh::concepts::input_iterator<test::DummyInputIter < int>>);
+    REQUIRE_FALSE(jh::concepts::input_iterator<int>);
+    REQUIRE_FALSE(jh::concepts::input_iterator<test::NotIterator>);
 }
 
 TEST_CASE("Iterator Concept: output_iterator") {
-    REQUIRE(jh::output_iterator<int *, int>);
-    REQUIRE(jh::output_iterator<test::DummyInputIter < int>, int >);
-    REQUIRE_FALSE(jh::output_iterator<const int *, int>);
+    REQUIRE(jh::concepts::output_iterator<int *, int>);
+    REQUIRE(jh::concepts::output_iterator<test::DummyInputIter < int>, int >);
+    REQUIRE_FALSE(jh::concepts::output_iterator<const int *, int>);
 }
 
 TEST_CASE("Iterator Concept: forward_iterator") {
-    REQUIRE(jh::forward_iterator<std::vector<int>::iterator>);
-    REQUIRE(jh::forward_iterator<int *>);
-    REQUIRE_FALSE(jh::forward_iterator<int>);
-    REQUIRE_FALSE(jh::forward_iterator<test::NotIterator>);
+    REQUIRE(jh::concepts::forward_iterator<std::vector<int>::iterator>);
+    REQUIRE(jh::concepts::forward_iterator<int *>);
+    REQUIRE_FALSE(jh::concepts::forward_iterator<int>);
+    REQUIRE_FALSE(jh::concepts::forward_iterator<test::NotIterator>);
 }
 
 TEST_CASE("Iterator Concept: bidirectional_iterator") {
-    REQUIRE(jh::bidirectional_iterator<std::list<int>::iterator>);
-    REQUIRE(jh::bidirectional_iterator<std::set<int>::iterator>);
-    REQUIRE(jh::bidirectional_iterator<test::FakeDummyRAIter < int>>);
-    REQUIRE_FALSE(jh::bidirectional_iterator<test::DummyInputIter < int>>);
-    REQUIRE_FALSE(jh::bidirectional_iterator<int>);
+    REQUIRE(jh::concepts::bidirectional_iterator<std::list<int>::iterator>);
+    REQUIRE(jh::concepts::bidirectional_iterator<std::set<int>::iterator>);
+    REQUIRE(jh::concepts::bidirectional_iterator<test::FakeDummyRAIter < int>>);
+    REQUIRE_FALSE(jh::concepts::bidirectional_iterator<test::DummyInputIter < int>>);
+    REQUIRE_FALSE(jh::concepts::bidirectional_iterator<int>);
 }
 
 TEST_CASE("Iterator Concept: random_access_iterator") {
-    REQUIRE(jh::random_access_iterator<int *>);
-    REQUIRE(jh::random_access_iterator<std::vector<int>::iterator>);
-    REQUIRE_FALSE(jh::random_access_iterator<test::FakeDummyRAIter < int>>);
-    REQUIRE_FALSE(jh::random_access_iterator<std::list<int>::iterator>);
-    REQUIRE_FALSE(jh::random_access_iterator<test::DummyInputIter < int>>);
+    REQUIRE(jh::concepts::random_access_iterator<int *>);
+    REQUIRE(jh::concepts::random_access_iterator<std::vector<int>::iterator>);
+    REQUIRE_FALSE(jh::concepts::random_access_iterator<test::FakeDummyRAIter < int>>);
+    REQUIRE_FALSE(jh::concepts::random_access_iterator<std::list<int>::iterator>);
+    REQUIRE_FALSE(jh::concepts::random_access_iterator<test::DummyInputIter < int>>);
 }
 
-TEST_CASE("Iterator deduction via jh::iterator_t") {
-    using it_vec = jh::iterator_t<std::vector<int>>;
-    using it_arr = jh::iterator_t<int[5]>;
-    using it_ptr = jh::iterator_t<int *>;
-    using it_set = jh::iterator_t<std::set<int>>;
+TEST_CASE("Iterator deduction via jh::concepts::iterator_t") {
+    using it_vec = jh::concepts::iterator_t<std::vector<int>>;
+    using it_arr = jh::concepts::iterator_t<int[5]>;
+    using it_ptr = jh::concepts::iterator_t<int *>;
+    using it_set = jh::concepts::iterator_t<std::set<int>>;
 
     STATIC_REQUIRE(std::is_same_v<it_vec, std::vector<int>::iterator>);
     STATIC_REQUIRE(std::is_same_v<it_arr, int *>);
@@ -300,14 +300,14 @@ TEST_CASE("Iterator deduction via jh::iterator_t") {
 
 TEST_CASE("Iterator deduces from array, pointer, and sequence-like") {
     int arr[3] = {1, 2, 3};
-    using it_arr = jh::iterator_t<decltype(arr)>;
+    using it_arr = jh::concepts::iterator_t<decltype(arr)>;
     STATIC_REQUIRE(std::is_same_v<it_arr, int *>);
-    STATIC_REQUIRE(jh::is_iterator<it_arr>);
+    STATIC_REQUIRE(jh::concepts::is_iterator<it_arr>);
 
     std::vector<int> v = {1, 2, 3};
-    using it_vec = jh::iterator_t<decltype(v)>;
+    using it_vec = jh::concepts::iterator_t<decltype(v)>;
     STATIC_REQUIRE(std::is_same_v<it_vec, std::vector<int>::iterator>);
-    STATIC_REQUIRE(jh::input_iterator<it_vec>);
+    STATIC_REQUIRE(jh::concepts::input_iterator<it_vec>);
 }
 
 // ============================================================================
@@ -364,7 +364,7 @@ namespace test {
     constexpr bool can_deduce_iterator_v = false;
 
     template <typename T>
-    constexpr bool can_deduce_iterator_v<T, std::void_t<typename jh::detail::iterator_resolver<T>::type>> = true;
+    constexpr bool can_deduce_iterator_v<T, std::void_t<typename jh::concepts::detail::iterator_resolver<T>::type>> = true;
 
 }
 
@@ -376,28 +376,28 @@ TEST_CASE("Iterator rejection: structurally similar but invalid") {
     using namespace test;
 
     // ❌ BasicInputOrOutputIterator: basic iterator but can do nothing
-    REQUIRE(jh::is_iterator<BasicInputOrOutputIterator>);
-    REQUIRE_FALSE(jh::input_iterator<BasicInputOrOutputIterator>);
-    REQUIRE_FALSE(jh::output_iterator<BasicInputOrOutputIterator, int>);
+    REQUIRE(jh::concepts::is_iterator<BasicInputOrOutputIterator>);
+    REQUIRE_FALSE(jh::concepts::input_iterator<BasicInputOrOutputIterator>);
+    REQUIRE_FALSE(jh::concepts::output_iterator<BasicInputOrOutputIterator, int>);
 
     // ❌ FakeIter2: defines value_type but not dereferenceable
-    REQUIRE_FALSE(jh::is_iterator<FakeIter2>);
-    REQUIRE_FALSE(jh::input_iterator<FakeIter2>);
+    REQUIRE_FALSE(jh::concepts::is_iterator<FakeIter2>);
+    REQUIRE_FALSE(jh::concepts::input_iterator<FakeIter2>);
 
     // ❌ FakeIter3: invalid type mismatch on dereference
-    REQUIRE_FALSE(jh::is_iterator<FakeIter3>);
-    REQUIRE_FALSE(jh::input_iterator<FakeIter3>);
-    REQUIRE_FALSE(jh::output_iterator<FakeIter3, int>);
+    REQUIRE_FALSE(jh::concepts::is_iterator<FakeIter3>);
+    REQUIRE_FALSE(jh::concepts::input_iterator<FakeIter3>);
+    REQUIRE_FALSE(jh::concepts::output_iterator<FakeIter3, int>);
 
     // ❌ FakeOutputNoInc: no ++ operators
-    REQUIRE_FALSE(jh::output_iterator<FakeOutputNoInc, int>);
+    REQUIRE_FALSE(jh::concepts::output_iterator<FakeOutputNoInc, int>);
 
     // ❌ FakeOutputNoAssign: ++ works but cannot assign
-    REQUIRE_FALSE(jh::output_iterator<FakeOutputNoAssign, int>);
+    REQUIRE_FALSE(jh::concepts::output_iterator<FakeOutputNoAssign, int>);
 }
 
 TEST_CASE("Sequence rejection: fake begin() types") {
-    REQUIRE_FALSE(jh::is_sequence<test::FakeIterSequence>);
+    REQUIRE_FALSE(jh::concepts::is_sequence<test::FakeIterSequence>);
 }
 
 // ============================================================================
@@ -408,32 +408,32 @@ TEST_CASE("iterator_t deduction coverage") {
     using namespace test;
 
     // ✅ STL containers
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::vector<int>>, std::vector<int>::iterator>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::list<double>>, std::list<double>::iterator>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::deque<char>>, std::deque<char>::iterator>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::set<int>>, std::set<int>::iterator>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::unordered_set<std::string>>, std::unordered_set<std::string>::iterator>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::map<int, int>>, std::map<int, int>::iterator>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::unordered_map<std::string, int>>, std::unordered_map<std::string, int>::iterator>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::forward_list<int>>, std::forward_list<int>::iterator>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<std::array<int, 5>>, int*>); // std::array::begin returns T*
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::vector<int>>, std::vector<int>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::list<double>>, std::list<double>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::deque<char>>, std::deque<char>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::set<int>>, std::set<int>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::unordered_set<std::string>>, std::unordered_set<std::string>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::map<int, int>>, std::map<int, int>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::unordered_map<std::string, int>>, std::unordered_map<std::string, int>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::forward_list<int>>, std::forward_list<int>::iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::array<int, 5>>, int*>); // std::array::begin returns T*
 
     // ✅ POD arrays and pointers
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<int[3]>, int*>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<const int[3]>, const int*>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<int*>, int*>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<const double*>, const double*>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<int[3]>, int*>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<const int[3]>, const int*>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<int*>, int*>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<const double*>, const double*>);
 
     // ✅ Custom sequence-like types
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<NonTemplateSequence>, std::vector<int>::const_iterator>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<TemplateSequence<float>>, std::vector<float>::const_iterator>);
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<ConstIterSequence>, std::vector<int>::const_iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<NonTemplateSequence>, std::vector<int>::const_iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<TemplateSequence<float>>, std::vector<float>::const_iterator>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<ConstIterSequence>, std::vector<int>::const_iterator>);
 
     // ✅ jh::pod::array acts like array
-    STATIC_REQUIRE(std::is_same_v<jh::iterator_t<const jh::pod::array<int, 3>>, const int*>);
+    STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<const jh::pod::array<int, 3>>, const int*>);
 
     // ✅ MutableIterSequence - no const begin(), but still a begin
-    constexpr bool has_iter_mutable = requires { typename jh::iterator_t<test::MutableIterSequence>; };
+    constexpr bool has_iter_mutable = requires { typename jh::concepts::iterator_t<test::MutableIterSequence>; };
     STATIC_REQUIRE(has_iter_mutable);
 
     // ✅ NoBeginEnd and FakeSequence - must not be deducible
@@ -445,13 +445,13 @@ TEST_CASE("iterator_t deduction coverage") {
     STATIC_REQUIRE(!test::can_deduce_iterator_v<void>);
     STATIC_REQUIRE(!test::can_deduce_iterator_v<std::tuple<int, double>>);
 
-    // ✅ Cross-check jh::is_iterator consistency with iterator_t
-    STATIC_REQUIRE(jh::is_iterator<jh::iterator_t<std::vector<int>>>);
-    STATIC_REQUIRE(jh::input_iterator<jh::iterator_t<std::list<int>>>);
-    STATIC_REQUIRE(jh::bidirectional_iterator<jh::iterator_t<std::set<int>>>);
-    STATIC_REQUIRE(jh::random_access_iterator<jh::iterator_t<std::deque<int>>>);
-    STATIC_REQUIRE(jh::input_iterator<jh::iterator_t<TemplateSequence<int>>>);
-    STATIC_REQUIRE(jh::is_iterator<jh::iterator_t<jh::pod::array<int, 3>>>);
+    // ✅ Cross-check jh::concepts::is_iterator consistency with iterator_t
+    STATIC_REQUIRE(jh::concepts::is_iterator<jh::concepts::iterator_t<std::vector<int>>>);
+    STATIC_REQUIRE(jh::concepts::input_iterator<jh::concepts::iterator_t<std::list<int>>>);
+    STATIC_REQUIRE(jh::concepts::bidirectional_iterator<jh::concepts::iterator_t<std::set<int>>>);
+    STATIC_REQUIRE(jh::concepts::random_access_iterator<jh::concepts::iterator_t<std::deque<int>>>);
+    STATIC_REQUIRE(jh::concepts::input_iterator<jh::concepts::iterator_t<TemplateSequence<int>>>);
+    STATIC_REQUIRE(jh::concepts::is_iterator<jh::concepts::iterator_t<jh::pod::array<int, 3>>>);
 }
 
 namespace test {
@@ -561,9 +561,9 @@ struct PureRAIter {
 TEST_CASE("True-RA-Iterator deduction coverage") {
     using namespace test;
 
-    STATIC_REQUIRE(jh::is_iterator<TrueRAIter<int>>);
-    STATIC_REQUIRE(jh::input_iterator<TrueRAIter<int>>);
-    STATIC_REQUIRE(jh::forward_iterator<TrueRAIter<int>>);
-    STATIC_REQUIRE(jh::bidirectional_iterator<TrueRAIter<int>>);
-    STATIC_REQUIRE(jh::random_access_iterator<TrueRAIter<int>>);
+    STATIC_REQUIRE(jh::concepts::is_iterator<TrueRAIter<int>>);
+    STATIC_REQUIRE(jh::concepts::input_iterator<TrueRAIter<int>>);
+    STATIC_REQUIRE(jh::concepts::forward_iterator<TrueRAIter<int>>);
+    STATIC_REQUIRE(jh::concepts::bidirectional_iterator<TrueRAIter<int>>);
+    STATIC_REQUIRE(jh::concepts::random_access_iterator<TrueRAIter<int>>);
 }

@@ -30,7 +30,7 @@
  *
  * <h3>Overview</h3>
  * <ul>
- *   <li>Provides a forward declaration of <code>jh::iterator&lt;&gt;</code> for cross-module compatibility.</li>
+ *   <li>Provides a forward declaration of <code>jh::concepts::iterator&lt;&gt;</code> for cross-module compatibility.</li>
  *   <li>Defines behavior-based iterator concepts (<code>input_iterator</code>, <code>output_iterator</code>, etc.).</li>
  *   <li>Supports STL iterators, pointers, arrays, and user-defined duck-typed iterators.</li>
  * </ul>
@@ -51,10 +51,10 @@
  *   <li>
  *     <strong>Unified Deduction Model</strong>
  *     <p>
- *     The alias <code>jh::iterator_t&lt;T&gt;</code> deduces an iterator type through a layered fallback:
+ *     The alias <code>jh::concepts::iterator_t&lt;T&gt;</code> deduces an iterator type through a layered fallback:
  *     </p>
  *     <ul>
- *       <li><code>jh::iterator&lt;T&gt;::type</code> (if defined and valid)</li>
+ *       <li><code>jh::concepts::iterator&lt;T&gt;::type</code> (if defined and valid)</li>
  *       <li><code>decltype(std::declval&lt;T&amp;&gt;().begin())</code></li>
  *       <li>Array decay to pointer (<code>T[N]</code>, <code>T[]</code> → <code>T*</code>)</li>
  *       <li>Raw pointer passthrough (<code>T*</code>)</li>
@@ -119,10 +119,10 @@ namespace jh {
      * @brief Forward declaration of the <code>iterator</code> class template.
      *
      * @details
-     * <code>jh::iterator&lt;X&gt;</code> serves as a <strong>universal iterator declaration point</strong>
+     * <code>jh::concepts::iterator&lt;X&gt;</code> serves as a <strong>universal iterator declaration point</strong>
      * within the JH container ecosystem.  
      * It provides both a forward-declaration facility and an integration point
-     * for <code>jh::iterator_t</code> deduction.
+     * for <code>jh::concepts::iterator_t</code> deduction.
      *
      * <h4>Forward Declaration and Local Binding</h4>
      * Enables user-defined containers to declare their iterator type
@@ -132,7 +132,7 @@ namespace jh {
      * template&lt;typename... Args&gt;
      * class my_container {
      * public:
-     *     using iterator = jh::iterator&lt;my_container&gt;;
+     *     using iterator = jh::concepts::iterator&lt;my_container&gt;;
      *     // ...
      * };
      * @endcode
@@ -140,11 +140,11 @@ namespace jh {
      * This ensures that other headers can safely reference <code>iterator&lt;&gt;</code> 
      * without circular inclusion or incomplete-type errors.
      *
-     * <h4>Integration with <code>jh::iterator_t</code> Deduction</h4>
-     * <code>jh::iterator&lt;&gt;</code> also acts as the <strong>deduction entry point</strong> for
-     * <code>jh::iterator_t&lt;Container&gt;</code>, which automatically resolves
+     * <h4>Integration with <code>jh::concepts::iterator_t</code> Deduction</h4>
+     * <code>jh::concepts::iterator&lt;&gt;</code> also acts as the <strong>deduction entry point</strong> for
+     * <code>jh::concepts::iterator_t&lt;Container&gt;</code>, which automatically resolves
      * a container's iterator type.
-     * If a specialization of <code>jh::iterator&lt;Container&gt;</code> exists and
+     * If a specialization of <code>jh::concepts::iterator&lt;Container&gt;</code> exists and
      * defines a nested <code>type</code>, <code>iterator_t&lt;Container&gt;</code>
      * resolves to that <code>type</code>.
      *
@@ -162,37 +162,37 @@ namespace jh {
      *     };
      * }
      *
-     * using it_t = jh::iterator_t&lt;my_container&lt;int, float&gt;&gt;;  // resolves to iterator::type
+     * using it_t = jh::concepts::iterator_t&lt;my_container&lt;int, float&gt;&gt;;  // resolves to iterator::type
      * @endcode
      *
      * These two examples together illustrate a <strong>complete and valid</strong> pattern
      * for defining a container's iterator externally (unlike STL's inner-class convention),
-     * while remaining fully compatible with <code>jh::iterator_t</code> deduction.
+     * while remaining fully compatible with <code>jh::concepts::iterator_t</code> deduction.
      *  
      * It is also legal to define the iterator internally as a nested type —
      * this header does not enforce external specialization.
      *  
      * <p>
      * The <code>jh::generator&lt;T, U&gt;</code> class no longer declares an external
-     * <code>jh::iterator&lt;generator&lt;T, U&gt;&gt;</code> specialization; it now implements its
+     * <code>jh::concepts::iterator&lt;generator&lt;T, U&gt;&gt;</code> specialization; it now implements its
      * iterator internally. This header simply provides a uniform mechanism for
-     * automatic deduction via <code>jh::iterator_t&lt;Container&gt;</code>.
+     * automatic deduction via <code>jh::concepts::iterator_t&lt;Container&gt;</code>.
      * </p>
      *
      * <h4>Design Summary</h4>
      * <ul>
      *   <li>Provides a safe <strong>forward-declaration mechanism</strong> for containers.</li>
      *   <li>Acts as a <strong>type-deduction path</strong> for external generic utilities
-     *       such as <code>jh::iterator_t&lt;&gt;</code>, <code>jh::sequence</code>,
+     *       such as <code>jh::concepts::iterator_t&lt;&gt;</code>, <code>jh::sequence</code>,
      *       and related meta-based concepts.</li>
      * </ul>
      *
      * <h4>Notes</h4>
      * <ul>
-     *   <li><code>jh::iterator&lt;&gt;</code> always takes exactly <strong>one</strong> template parameter —
+     *   <li><code>jh::concepts::iterator&lt;&gt;</code> always takes exactly <strong>one</strong> template parameter —
      *       the container type.</li>
      *   <li>It should <strong>not</strong> be directly instantiated.</li>
-     *   <li>When no specialization exists, <code>jh::iterator_t&lt;Container&gt;</code>
+     *   <li>When no specialization exists, <code>jh::concepts::iterator_t&lt;Container&gt;</code>
      *       falls back to <code>decltype(Container::begin())</code> or a pointer-based iterator.</li>
      * </ul>
      *
@@ -200,7 +200,9 @@ namespace jh {
      */
     template<typename X>
     struct iterator;
+}
 
+namespace jh::concepts {
     /**
      * @brief Trait to detect whether a type declares a <code>value_type</code>.
      *
@@ -239,7 +241,7 @@ namespace jh {
      * </ul>
      *
      * @tparam T The type being tested for a nested <code>value_type</code>.
-     * @see jh::iterator_t, jh::sequence_value_type
+     * @see jh::concepts::iterator_t, jh::sequence_value_t
      */
     template<typename T, typename = void>
     struct has_value_type : std::false_type {
@@ -315,10 +317,9 @@ namespace jh {
             using type = T &;
         };
 
-        template <typename I>
-        constexpr decltype(auto) adl_iter_move(I&& it)
-        noexcept(false)
-        {
+        template<typename I>
+        constexpr decltype(auto) adl_iter_move(I &&it)
+        noexcept(false) {
             if constexpr (requires { iter_move(std::forward<I>(it)); }) {
                 return iter_move(std::forward<I>(it));
             } else if constexpr (requires { std::forward<I>(it).iter_move(); }) {
@@ -339,10 +340,12 @@ namespace jh {
         };
 
         template<typename I>
-        struct iterator_difference_impl<I, std::void_t<decltype(std::declval<const I&>() - std::declval<const I&>())>> {
-            using type = decltype(std::declval<const I&>() - std::declval<const I&>());
+        struct iterator_difference_impl<I, std::void_t<decltype(std::declval<const I &>() -
+                                                                std::declval<const I &>())>> {
+            using type = decltype(std::declval<const I &>() - std::declval<const I &>());
         };
     } // namespace detail
+
     template<typename I>
     using iterator_value_t = typename detail::iterator_value_impl<I>::type;
 
@@ -350,59 +353,53 @@ namespace jh {
     using iterator_reference_t = typename detail::iterator_reference_impl<I>::type;
 
     template<typename I>
-    using iterator_rvalue_reference_t = decltype(detail::adl_iter_move(std::declval<I&>()));
+    using iterator_rvalue_reference_t = decltype(detail::adl_iter_move(std::declval<I &>()));
 
     template<typename I>
     using iterator_difference_t = typename detail::iterator_difference_impl<I>::type;
 
 
     template<typename I>
-    concept indirectly_readable =
-    requires(I& it) {
-        typename jh::iterator_value_t<I>;
-        typename jh::iterator_reference_t<I>;
-        typename jh::iterator_rvalue_reference_t<I>;
-        requires (!std::same_as<jh::iterator_value_t<I>, void>);
-        requires (!std::same_as<jh::iterator_reference_t<I>, void>);
-        requires (!std::same_as<jh::iterator_rvalue_reference_t<I>, void>);
-        { *it } -> std::convertible_to<std::remove_cvref_t<jh::iterator_reference_t<I>>>;
-    } &&
-    requires(I&& it) {
+    concept indirectly_readable =requires(I &it) {
+        typename jh::concepts::iterator_value_t<I>;
+        typename jh::concepts::iterator_reference_t<I>;
+        typename jh::concepts::iterator_rvalue_reference_t<I>;
+        requires (!std::same_as<jh::concepts::iterator_value_t<I>, void>);
+        requires (!std::same_as<jh::concepts::iterator_reference_t<I>, void>);
+        requires (!std::same_as<jh::concepts::iterator_rvalue_reference_t<I>, void>);
+        { *it } -> std::convertible_to<std::remove_cvref_t<jh::concepts::iterator_reference_t<I>>>;
+    } && requires(I &&it) {
         detail::adl_iter_move(std::forward<I>(it));
     } &&
-    std::convertible_to<std::remove_cvref_t<jh::iterator_reference_t<I>>, jh::iterator_value_t<I>> &&
-    std::convertible_to<std::remove_cvref_t<jh::iterator_rvalue_reference_t<I>>, jh::iterator_value_t<I>>;
+                                 std::convertible_to<std::remove_cvref_t<jh::concepts::iterator_reference_t<I>>, jh::concepts::iterator_value_t<I>> &&
+                                 std::convertible_to<std::remove_cvref_t<jh::concepts::iterator_rvalue_reference_t<I>>, jh::concepts::iterator_value_t<I>>;
 
     template<typename I>
-    concept is_iterator =
-    requires(I it) {
+    concept is_iterator =requires(I it) {
         *it;
-        { ++it } -> std::same_as<I&>;
+        { ++it } -> std::same_as<I &>;
         it++;
     } &&
-    (
-            // if difference_type defined
-            (!requires { typename I::difference_type; }) ||
-            (
-                    requires { typename I::difference_type; } &&
-                    !std::same_as<typename I::difference_type, void> &&
-                    std::signed_integral<typename I::difference_type>
-            )
-    ) &&
-    (
-            // match only if both (difference_type) and (operator-) exist
-            (!requires { typename I::difference_type; } || !requires (I a, I b) { a - b; }) ||
-            (
-                    requires (I a, I b) {
-                        typename I::difference_type;
-                        { a - b } -> std::convertible_to<typename I::difference_type>;
-                    }
-            )
-    );
+                         (
+                                 // if difference_type defined
+                                 (!requires { typename I::difference_type; }) ||
+                                 (requires { typename I::difference_type; } &&
+                                  !std::same_as<typename I::difference_type, void> &&
+                                  std::signed_integral<typename I::difference_type>
+                                 )
+                         ) &&
+                         (
+                                 // match only if both (difference_type) and (operator-) exist
+                                 (!requires { typename I::difference_type; } || !requires(I a, I b) { a - b; }) ||
+                                 (requires(I a, I b) {
+                                     typename I::difference_type;
+                                     { a - b } -> std::convertible_to<typename I::difference_type>;
+                                 }
+                                 )
+                         );
 
     template<typename S, typename I>
-    concept sentinel_for =
-    requires(const S& s, const I& i) {
+    concept sentinel_for =requires(const S &s, const I &i) {
         { i == s } -> std::convertible_to<bool>;
         { s == i } -> std::convertible_to<bool>;
         { i != s } -> std::convertible_to<bool>;
@@ -414,26 +411,23 @@ namespace jh {
     concept input_iterator =
     is_iterator<I> &&
     indirectly_readable<I> &&
-    sentinel_for<S, I> &&
-    requires(I& it) {
-        { ++it } -> std::same_as<I&>;
+    sentinel_for<S, I> && requires(I &it) {
+        { ++it } -> std::same_as<I &>;
         { it++ } -> std::convertible_to<I>;
     };
 
     template<typename Out, typename T>
-    concept indirectly_writable =
-    requires(Out&& o, T&& t) {
+    concept indirectly_writable =requires(Out &&o, T &&t) {
         *o = std::forward<T>(t);
         *std::forward<Out>(o) = std::forward<T>(t);
-        const_cast<const jh::iterator_reference_t<Out>&&>(*o) = std::forward<T>(t);
-        const_cast<const jh::iterator_reference_t<Out>&&>(*std::forward<Out>(o)) = std::forward<T>(t);
+        const_cast<const jh::concepts::iterator_reference_t<Out> &&>(*o) = std::forward<T>(t);
+        const_cast<const jh::concepts::iterator_reference_t<Out> &&>(*std::forward<Out>(o)) = std::forward<T>(t);
     };
 
-    template<typename I, typename T = jh::iterator_value_t<I>>
+    template<typename I, typename T = jh::concepts::iterator_value_t<I>>
     concept output_iterator =
     is_iterator<I> &&
-    indirectly_writable<I, T> &&
-    requires(I it, T&& t) {
+    indirectly_writable<I, T> && requires(I it, T &&t) {
         *it++ = std::forward<T>(t);
     };
 
@@ -441,18 +435,16 @@ namespace jh {
     concept forward_iterator =
     input_iterator<I, S> &&
     std::copyable<I> &&
-    sentinel_for<I, I> &&
-    requires(I& it) {
-        { ++it } -> std::same_as<I&>;
+    sentinel_for<I, I> && requires(I &it) {
+        { ++it } -> std::same_as<I &>;
         { it++ } -> std::same_as<I>;
-        { *it } -> std::same_as<jh::iterator_reference_t<I>>;
+        { *it } -> std::same_as<jh::concepts::iterator_reference_t<I>>;
     };
 
     template<typename I, typename S = I>
     concept bidirectional_iterator =
-    forward_iterator<I, S> &&
-    requires(I it) {
-        { --it } -> std::same_as<I&>;
+    forward_iterator<I, S> && requires(I it) {
+        { --it } -> std::same_as<I &>;
         { it-- } -> std::convertible_to<I>;
     };
 
@@ -471,19 +463,19 @@ namespace jh {
 
     // distance calculable
     requires(const I a, const I b) {
-        typename jh::iterator_difference_t<I>;
-        requires (!std::same_as<jh::iterator_difference_t<I>, void>);
+        typename jh::concepts::iterator_difference_t<I>;
+        requires (!std::same_as<jh::concepts::iterator_difference_t<I>, void>);
         // is_iterator has proven that the implementation does not conflict with the declaration.
     } &&
 
     // offset supported
-    requires(I i, const I j, const jh::iterator_difference_t<I> n) {
-        { i += n } -> std::same_as<I&>;
-        { i -= n } -> std::same_as<I&>;
+    requires(I i, const I j, const jh::concepts::iterator_difference_t<I> n) {
+        { i += n } -> std::same_as<I &>;
+        { i -= n } -> std::same_as<I &>;
         { j + n }  -> std::same_as<I>;
         { n + j }  -> std::same_as<I>;
         { j - n }  -> std::same_as<I>;
-        { j[n] }   -> std::same_as<jh::iterator_reference_t<I>>;
+        { j[n] }   -> std::same_as<jh::concepts::iterator_reference_t<I>>;
     };
 
     namespace detail {
@@ -495,7 +487,7 @@ namespace jh {
         template<typename T>
         struct iterator_resolver<
                 T,
-                std::void_t<typename iterator<T>::type>,
+                std::void_t<typename jh::iterator<T>::type>,
                 std::enable_if_t<is_iterator<typename iterator<T>::type>>
         > {
             using type = typename iterator<T>::type;
@@ -533,7 +525,7 @@ namespace jh {
      * @brief Extracts the iterator type associated with a given container, pointer, or array.
      *
      * @details
-     * <code>jh::iterator_t&lt;Container&gt;</code> is a unified meta-type alias that deduces
+     * <code>jh::concepts::iterator_t&lt;Container&gt;</code> is a unified meta-type alias that deduces
      * the appropriate iterator type for any STL-compatible or JH-style container.
      * It performs a multi-stage deduction process via
      * <code>jh::detail::iterator_resolver</code>, providing consistent iterator inference
@@ -542,13 +534,13 @@ namespace jh {
      * <h4>Deduction Rules</h4>
      * <ol>
      *   <li><strong>Specialized Iterator Mapping</strong><br/>
-     *       If a specialization of <code>jh::iterator&lt;Container&gt;</code> exists and defines
+     *       If a specialization of <code>jh::concepts::iterator&lt;Container&gt;</code> exists and defines
      *       a nested <code>type</code> satisfying <code>jh::is_iterator</code>,
      *       that type is selected.<br/>
-     *       Example: <code>jh::iterator&lt;jh::generator&lt;T&gt;&gt;::type</code>.</li>
+     *       Example: <code>jh::concepts::iterator&lt;jh::generator&lt;T&gt;&gt;::type</code>.</li>
      *
      *   <li><strong>Member <code>begin()</code>-based Fallback</strong><br/>
-     *       If the container does not define a <code>jh::iterator&lt;&gt;</code> specialization
+     *       If the container does not define a <code>jh::concepts::iterator&lt;&gt;</code> specialization
      *       but provides a <code>begin()</code> returning a valid iterator
      *       (validated via <code>jh::is_iterator</code>),
      *       the deduced iterator type becomes
@@ -576,11 +568,11 @@ namespace jh {
      *
      * <h4>Usage Examples</h4>
      * @code
-     * using it1 = jh::iterator_t&lt;std::vector&lt;int&gt;&gt;;        // std::vector<int>::iterator
-     * using it2 = jh::iterator_t&lt;int[10]&gt;;                 // int*  (fixed-size array)
-     * using it3 = jh::iterator_t&lt;int[]&gt;;                   // int*  (incomplete array)
-     * using it4 = jh::iterator_t&lt;jh::generator&lt;int&gt;&gt;;      // jh::generator<int>::iterator
-     * using it5 = jh::iterator_t&lt;MyDuckContainer&lt;float&gt;&gt;;  // decltype(c.begin())
+     * using it1 = jh::concepts::iterator_t&lt;std::vector&lt;int&gt;&gt;;        // std::vector<int>::iterator
+     * using it2 = jh::concepts::iterator_t&lt;int[10]&gt;;                 // int*  (fixed-size array)
+     * using it3 = jh::concepts::iterator_t&lt;int[]&gt;;                   // int*  (incomplete array)
+     * using it4 = jh::concepts::iterator_t&lt;jh::generator&lt;int&gt;&gt;;      // jh::generator<int>::iterator
+     * using it5 = jh::concepts::iterator_t&lt;MyDuckContainer&lt;float&gt;&gt;;  // decltype(c.begin())
      * @endcode
      *
      * <p>

@@ -12,7 +12,7 @@
 #include <numeric>
 
 #include "jh/pod.h"
-#include "jh/sequence.h"
+#include "jh/conceptual/sequence.h"
 
 namespace pod = jh::pod;
 
@@ -74,11 +74,11 @@ TEST_CASE("Manually asserted struct is pod_like") {
 }
 
 TEST_CASE("JH POD Containers Sequence Check") {
-    STATIC_REQUIRE(jh::sequence<pod::array<int, 128>>);
-    STATIC_REQUIRE_FALSE(jh::sequence<pod::bytes_view>);
-    STATIC_REQUIRE(jh::sequence<pod::span<int>>);
-    STATIC_REQUIRE(jh::sequence<pod::string_view>);
-    STATIC_REQUIRE_FALSE(jh::sequence<pod::bitflags<64>>);
+    STATIC_REQUIRE(jh::concepts::sequence<pod::array<int, 128>>);
+    STATIC_REQUIRE_FALSE(jh::concepts::sequence<pod::bytes_view>);
+    STATIC_REQUIRE(jh::concepts::sequence<pod::span<int>>);
+    STATIC_REQUIRE(jh::concepts::sequence<pod::string_view>);
+    STATIC_REQUIRE_FALSE(jh::concepts::sequence<pod::bitflags<64>>);
 }
 
 TEST_CASE("pod::array basic construction and access") {

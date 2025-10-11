@@ -206,7 +206,7 @@
  *
  * @see jh::pod::pod_like
  * @see jh::typed::monostate
- * @see jh::iterator
+ * @see jh::concepts::iterator
  * @see jh::sequence
  *
  * @version <pre>1.3.x</pre>
@@ -222,7 +222,7 @@
 #include <cstring>
 #include <functional>
 #include <memory>
-#include "jh/iterator.h"
+#include "jh/conceptual/iterator.h"
 #include "jh/pods/pod_like.h"
 #include "jh/utils/typed.h"
 
@@ -531,7 +531,7 @@ namespace jh {
 
         /**
          * @brief Constructs a <code>runtime_arr&lt;T&gt;</code> from any valid forward iterator range.
-         * @tparam ForwardIt Iterator type satisfying <code>jh::forward_iterator</code>.
+         * @tparam ForwardIt Iterator type satisfying <code>jh::concepts::forward_iterator</code>.
          * @param first Beginning of the input range.
          * @param last End of the input range.
          *
@@ -594,7 +594,7 @@ namespace jh {
          *       supporting all standard forward-iterable containers and algorithms.</li>
          *   <li>It mirrors <code>std::vector(ForwardIt, ForwardIt)</code> semantics,
          *       but without reallocation or capacity growth.</li>
-         *   <li>Using <code>jh::forward_iterator</code> ensures that
+         *   <li>Using <code>jh::concepts::forward_iterator</code> ensures that
          *       <code>std::distance()</code> is non-destructive and efficient.</li>
          *   <li>When used with <code>std::make_move_iterator</code>,
          *       move-constructible elements are efficiently transferred without extra copies.</li>
@@ -603,7 +603,7 @@ namespace jh {
         template<typename ForwardIt>
         runtime_arr(ForwardIt first, ForwardIt last)
         requires (typed::monostate_t<Alloc> &&
-                  jh::forward_iterator<ForwardIt> &&
+                  jh::concepts::forward_iterator<ForwardIt> &&
                   std::convertible_to<typename ForwardIt::value_type, value_type> &&
                   std::is_copy_constructible_v<T>) : data_(nullptr, default_deleter) {
             const auto dist = std::distance(first, last);
@@ -972,20 +972,20 @@ namespace jh {
     };
 
     /**
-     * @brief Specialization of <code>jh::iterator&lt;&gt;</code> for <code>jh::runtime_arr</code>.
+     * @brief Specialization of <code>jh::concepts::iterator&lt;&gt;</code> for <code>jh::runtime_arr</code>.
      *
      * @details
      * Provides a mapping between <code>jh::runtime_arr&lt;T, Alloc&gt;</code> and its
      * internal iterator type <code>runtime_arr&lt;T, Alloc&gt;::iterator</code>.
      *
      * <p>
-     * This specialization is used by the <code>jh::iterator_t&lt;Container&gt;</code>
+     * This specialization is used by the <code>jh::concepts::iterator_t&lt;Container&gt;</code>
      * deduction system to support <strong>duck-typed iterator resolution</strong>.
      * It allows generic code such as:
      * </p>
      *
      * <pre><code>
-     * using it_t = jh::iterator_t&lt;jh::runtime_arr&lt;int&gt;&gt;;
+     * using it_t = jh::concepts::iterator_t&lt;jh::runtime_arr&lt;int&gt;&gt;;
      * </code></pre>
      * to correctly deduce <code>jh::runtime_arr&lt;int&gt;::iterator</code>
      * as the valid iterator type.
@@ -998,7 +998,7 @@ namespace jh {
      *
      * @tparam T Element type of the <code>runtime_arr</code>.
      * @tparam Alloc Allocator type used by the <code>runtime_arr</code>.
-     * @see jh::iterator_t
+     * @see jh::concepts::iterator_t
      * @see jh::runtime_arr
      */
     template<typename T, typename Alloc>
@@ -1410,7 +1410,7 @@ namespace jh {
 
         /**
          * @brief Constructs a bit-packed array from a range of boolean values.
-         * @tparam ForwardIt Iterator type satisfying <code>jh::forward_iterator</code>.
+         * @tparam ForwardIt Iterator type satisfying <code>jh::concepts::forward_iterator</code>.
          * @param first Iterator to the start of the range.
          * @param last Iterator to the end of the range.
          * @throws std::invalid_argument If the iterator range is invalid.
@@ -1432,7 +1432,7 @@ namespace jh {
          */
         template<typename ForwardIt>
         runtime_arr(ForwardIt first, ForwardIt last)
-        requires (jh::forward_iterator<ForwardIt> && std::convertible_to<typename ForwardIt::value_type, value_type>) {
+        requires (jh::concepts::forward_iterator<ForwardIt> && std::convertible_to<typename ForwardIt::value_type, value_type>) {
             const auto dist = std::distance(first, last);
             if (dist < 0) throw std::invalid_argument("Invalid iterator range");
             size_ = static_cast<std::uint64_t>(dist);
@@ -1741,20 +1741,20 @@ namespace jh {
     };
 
     /**
-     * @brief Specialization of <code>jh::iterator&lt;&gt;</code> for <code>jh::runtime_arr&lt;bool&gt;</code>.
+     * @brief Specialization of <code>jh::concepts::iterator&lt;&gt;</code> for <code>jh::runtime_arr&lt;bool&gt;</code>.
      *
      * @details
      * Provides a mapping between <code>jh::runtime_arr&lt;bool&gt;</code> and its
      * internal bit-level iterator type <code>runtime_arr&lt;bool&gt;::iterator</code>.
      *
      * <p>
-     * This specialization is part of the <code>jh::iterator_t&lt;&gt;</code>
+     * This specialization is part of the <code>jh::concepts::iterator_t&lt;&gt;</code>
      * deduction system, ensuring that generic iterator utilities correctly
      * resolve the iterator type for bit-packed arrays:
      * </p>
      *
      * <pre><code>
-     * using it_t = jh::iterator_t&lt;jh::runtime_arr&lt;bool&gt;&gt;;
+     * using it_t = jh::concepts::iterator_t&lt;jh::runtime_arr&lt;bool&gt;&gt;;
      * // it_t == jh::runtime_arr&lt;bool&gt;::iterator
      * </code></pre>
      *
@@ -1762,11 +1762,11 @@ namespace jh {
      * This integration enables seamless participation of
      * <code>runtime_arr&lt;bool&gt;</code> in generic algorithms,
      * range-based loops, and template-based iteration contexts
-     * that depend on <code>jh::iterator_t</code> resolution.
+     * that depend on <code>jh::concepts::iterator_t</code> resolution.
      * </p>
      *
      * @tparam None — specialization applies specifically to <code>runtime_arr&lt;bool&gt;</code>.
-     * @see jh::iterator_t
+     * @see jh::concepts::iterator_t
      * @see jh::runtime_arr&lt;bool&gt;
      * @see jh::runtime_arr&lt;bool&gt;::bit_iterator
      */

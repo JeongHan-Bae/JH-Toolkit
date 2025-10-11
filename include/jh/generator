@@ -14,13 +14,13 @@
  * <h4>Migration Notice (Planned for 1.4.0+)</h4>
  * <p>
  * Beginning with <strong>version&nbsp;1.4.0</strong>, generator definitions will move to
- * <code>jh/asynchronous/generator.h</code> as part of the new <code>jh::async</code> module.
+ * <code>jh/asynchronous/generator.h</code> as part of the new <code>jh::asynchronous</code> module.
  * </p>
  *
  * <ul>
- *   <li>The generator type will be renamed internally to <code>jh::async::generator</code>.</li>
+ *   <li>The generator type will be renamed internally to <code>jh::asynchronous::generator</code>.</li>
  *   <li>This forwarding header <strong>will remain available</strong> for compatibility.</li>
- *   <li>A <code>using jh::generator = jh::async::generator;</code> alias will be provided
+ *   <li>A <code>using jh::generator = jh::asynchronous::generator;</code> alias will be provided
  *       to preserve the existing interface and ease migration.</li>
  * </ul>
  *
@@ -43,4 +43,4 @@
 
 #pragma once
 
-#include "jh/generator.h"
+#include "jh/asynchronous/generator.h"
