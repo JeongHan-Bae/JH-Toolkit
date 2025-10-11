@@ -71,6 +71,10 @@ TEST_CASE("runtime_arr static traits and API availability", "[concepts]") {
     STATIC_REQUIRE(has_data<runtime_arr<bool, bool_flat_alloc>>);
     STATIC_REQUIRE(has_as_span<runtime_arr<bool, bool_flat_alloc>>);
     STATIC_REQUIRE(has_const_as_span<runtime_arr<bool, bool_flat_alloc>>);
+
+    STATIC_REQUIRE(jh::indirectly_writable<jh::runtime_arr<bool>::iterator, bool>);
+    STATIC_REQUIRE(jh::output_iterator<jh::runtime_arr<bool>::iterator, bool>);
+    STATIC_REQUIRE(std::output_iterator<jh::runtime_arr<bool>::iterator, bool>);
 }
 
 TEST_CASE("runtime_arr<int> full test", "[pod]") {

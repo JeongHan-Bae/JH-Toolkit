@@ -377,8 +377,8 @@ namespace jh {
          * <p><strong>Note:</strong> The content of the allocated memory is indeterminate until written to.
          * Accessing any element before explicit initialization results in undefined behavior.</p>
          */
-        explicit runtime_arr(const std::uint64_t size, uninitialized_t)
-        requires jh::pod::pod_like<T> && typed::monostate_t<Alloc> {
+        explicit runtime_arr(const std::uint64_t size, uninitialized_t)requires jh::pod::pod_like<T> &&
+                                                                                typed::monostate_t<Alloc> {
             size_ = size;
             T *ptr = static_cast<T *>(operator new[](sizeof(T) * size_));
             data_.reset(ptr);
@@ -426,8 +426,7 @@ namespace jh {
          * safe, fixed-size runtime arrays. It offers predictable initialization and deallocation
          * behavior, suitable for both POD and non-POD types.</p>
          */
-        explicit runtime_arr(std::uint64_t size)
-        requires(is_valid_allocator<Alloc>)
+        explicit runtime_arr(std::uint64_t size)requires(is_valid_allocator<Alloc>)
                 : size_(size) {
             if constexpr (typed::monostate_t<Alloc>) {
                 T *ptr = new T[size_];
@@ -464,14 +463,12 @@ namespace jh {
          *   <li>Ensures allocator lifetime and destruction safety via lambda capture semantics.</li>
          * </ul>
          */
-        explicit runtime_arr(std::uint64_t size, Alloc&& alloc)
-        requires (!typed::monostate_t<Alloc>)
-                : size_(size)
-        {
-            T* ptr = alloc.allocate(size_);
+        explicit runtime_arr(std::uint64_t size, Alloc &&alloc)
+        requires (!typed::monostate_t<Alloc>) : size_(size) {
+            T *ptr = alloc.allocate(size_);
             data_ = std::unique_ptr<T[], deleter_t>(
                     ptr,
-                    [alloc = std::forward<Alloc>(alloc), size](T* p) mutable {
+                    [alloc = std::forward<Alloc>(alloc), size](T *p) mutable {
                         alloc.deallocate(p, size);
                     }
             );
@@ -608,9 +605,7 @@ namespace jh {
         requires (typed::monostate_t<Alloc> &&
                   jh::forward_iterator<ForwardIt> &&
                   std::convertible_to<typename ForwardIt::value_type, value_type> &&
-                  std::is_copy_constructible_v<T>)
-                : data_(nullptr, default_deleter)
-        {
+                  std::is_copy_constructible_v<T>) : data_(nullptr, default_deleter) {
             const auto dist = std::distance(first, last);
             // `std::distance(first, last)` is guaranteed to be valid and non-destructive
             // for forward iterators. Single-pass input iterators (like std::istream_iterator)
@@ -620,7 +615,7 @@ namespace jh {
                 throw std::invalid_argument("Invalid iterator range");
             size_ = static_cast<std::uint64_t>(dist);
 
-            T* ptr = new T[size_];
+            T *ptr = new T[size_];
             std::copy(first, last, ptr);
             data_.reset(ptr);
         }
@@ -967,7 +962,7 @@ namespace jh {
 
         [[nodiscard]] std::span<const value_type> as_span() const noexcept { return {data(), size()}; }
 
-        [[maybe_unused]] [[maybe_unused]] static bool is_static_built(){
+        [[maybe_unused]] [[maybe_unused]] static bool is_static_built() {
 #ifdef JH_IS_STATIC_BUILD
             return true;
 #else
@@ -1064,11 +1059,11 @@ namespace jh {
          */
         struct bool_flat_alloc {
             /// @brief Allocate <code>n</code> bytes for a <code>bool</code> array (non-packed form).
-            static bool* allocate(std::uint64_t n) { return new bool[n]; }
+            static bool *allocate(std::uint64_t n) { return new bool[n]; }
 
             /// @brief Deallocate a previously allocated <code>bool</code> array.
             /// @note Parameter <code>p</code> must not be <code>const</code> — <code>delete[] const bool*</code> is undefined behavior.
-            static void deallocate(bool* p, std::uint64_t) { delete[] p; } // NOLINT
+            static void deallocate(bool *p, std::uint64_t) { delete[] p; } // NOLINT
         };
 
     } // namespace runtime_arr_helper
@@ -1265,10 +1260,16 @@ namespace jh {
                     : word_(word), mask_(1ULL << bit) {
             }
 
-            bit_ref &operator=(const bool val) {
+            bit_ref &operator=(bool val) & noexcept {
                 if (val) word_ |= mask_;
                 else word_ &= ~mask_;
                 return *this;
+            }
+
+            // declared for std::output_iterator
+            bit_ref &operator=(bool val) const && noexcept {
+                const_cast<bit_ref &>(*this) = val;
+                return const_cast<bit_ref &>(*this);
             }
 
             explicit operator bool() const {
@@ -1639,7 +1640,7 @@ namespace jh {
          * Copying remains disabled to avoid accidental deep duplication of bit-packed data.
          * </p>
          */
-        runtime_arr(runtime_arr&& other) noexcept;
+        runtime_arr(runtime_arr &&other) noexcept;
 
         /**
          * @brief Move assignment operator — transfers ownership of the bit-packed buffer.
@@ -1658,7 +1659,7 @@ namespace jh {
          * Copy assignment remains deleted to enforce unique ownership.
          * </p>
          */
-        runtime_arr& operator=(runtime_arr&& other) noexcept;
+        runtime_arr &operator=(runtime_arr &&other) noexcept;
 
 
         /**
@@ -1731,10 +1732,10 @@ namespace jh {
         [[nodiscard]] std::span<const value_type> as_span() const = delete;
 
         /// @brief Copy constructor deleted — bit array is non-copyable by design.
-        runtime_arr(const runtime_arr&) = delete;
+        runtime_arr(const runtime_arr &) = delete;
 
         /// @brief Copy assignment deleted — bit array is non-copyable by design.
-        runtime_arr& operator=(const runtime_arr&) = delete;
+        runtime_arr &operator=(const runtime_arr &) = delete;
 
         [[maybe_unused]] [[maybe_unused]] static bool is_static_built();
     };
@@ -1770,7 +1771,7 @@ namespace jh {
      * @see jh::runtime_arr&lt;bool&gt;::bit_iterator
      */
     template<>
-    struct iterator<runtime_arr<bool> > {
+    struct iterator<runtime_arr<bool>> {
         using type = runtime_arr<bool>::iterator;
     };
 } // namespace jh
@@ -1790,7 +1791,7 @@ namespace jh {
         std::memset(storage_.get(), 0, word_count() * sizeof(std::uint64_t));
     }
 
-    JH_INLINE runtime_arr<bool>::runtime_arr(std::vector<bool>&& vec)
+    JH_INLINE runtime_arr<bool>::runtime_arr(std::vector<bool> &&vec)
             : runtime_arr(vec.size()) {
         for (std::uint64_t i = 0; i < size_; ++i)
             set(i, vec[i]);
@@ -1806,11 +1807,11 @@ namespace jh {
         return size_ == 0;
     }
 
-    JH_INLINE auto runtime_arr<bool>::raw_data() noexcept -> raw_type* {
+    JH_INLINE auto runtime_arr<bool>::raw_data() noexcept -> raw_type * {
         return storage_.get();
     }
 
-    [[maybe_unused]] JH_INLINE auto runtime_arr<bool>::raw_data() const noexcept -> const raw_type* {
+    [[maybe_unused]] JH_INLINE auto runtime_arr<bool>::raw_data() const noexcept -> const raw_type * {
         return storage_.get();
     }
 
@@ -1868,14 +1869,14 @@ namespace jh {
 
     // ---- move-only ----
 
-    JH_INLINE runtime_arr<bool>::runtime_arr(runtime_arr&& other) noexcept
+    JH_INLINE runtime_arr<bool>::runtime_arr(runtime_arr &&other) noexcept
             : size_(other.size_),
               storage_(std::move(other.storage_)) {
         other.size_ = 0;
         other.storage_.reset();
     }
 
-    JH_INLINE runtime_arr<bool>& runtime_arr<bool>::operator=(runtime_arr&& other) noexcept {
+    JH_INLINE runtime_arr<bool> &runtime_arr<bool>::operator=(runtime_arr &&other) noexcept {
         if (this != &other) {
             size_ = other.size_;
             storage_ = std::move(other.storage_);
@@ -1923,13 +1924,14 @@ namespace jh {
 
     // ---- compile-flag ----
 
-    [[maybe_unused]] JH_INLINE bool runtime_arr<bool>::is_static_built(){
+    [[maybe_unused]] JH_INLINE bool runtime_arr<bool>::is_static_built() {
 #ifdef JH_IS_STATIC_BUILD
         return true;
 #else
         return false;
 #endif // JH_IS_STATIC_BUILD
     }
+
 #endif // JH_INTERNAL_SHOULD_DEFINE
 }
 

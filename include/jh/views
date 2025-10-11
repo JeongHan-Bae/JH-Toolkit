@@ -1,6 +1,6 @@
 /**
- * @file view
- * @brief Forwarding header for jh::view
+ * @file views
+ * @brief Forwarding header for jh::views
  *
  * This header exists to provide a modern include style (`#include <jh/view>`),
  * forwarding to `jh/view.h`. It contains no additional code.
@@ -8,4 +8,4 @@
 
 #pragma once
 
-#include "jh/view.h"
+#include "jh/views.h"

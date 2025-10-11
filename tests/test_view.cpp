@@ -4,8 +4,7 @@
 #include <string>
 #include <sstream>
 
-#include "jh/views/enumerate.h"
-#include "jh/views/zip.h"
+#include "jh/views.h"
 #include "jh/pod.h"
 
 TEST_CASE("jh::views::enumerate produces correct index-value pairs", "[enumerate]") {
@@ -14,7 +13,7 @@ TEST_CASE("jh::views::enumerate produces correct index-value pairs", "[enumerate
     const auto enumerated = jh::views::enumerate(chars);
     std::uint64_t index = 0;
 
-    for (const auto&[first, second] : enumerated) {
+    for (auto [first, second] : enumerated) {
         REQUIRE(first == index);
         REQUIRE(second == chars[index]);
         ++index;
@@ -29,7 +28,7 @@ TEST_CASE("jh::views::enumerate produces correct index-value ref pairs", "[enume
     const auto enumerated = jh::views::enumerate(words);
     std::uint64_t index = 0;
 
-    for (const auto&[first, second] : enumerated) {
+    for (auto [first, second] : enumerated) {
         REQUIRE(first == index);
         REQUIRE(second == words[index]);
         ++index;
@@ -65,9 +64,9 @@ TEST_CASE("jh::views::zip truncates to shorter sequence", "[zip][truncate]") {
     };
 
     std::size_t i = 0;
-    for (const auto& p : zipped) {
-        REQUIRE(p.first == expected[i].first);
-        REQUIRE(p.second == expected[i].second);
+    for (auto p : zipped) {
+        REQUIRE(p.get<0>() == expected[i].first);
+        REQUIRE(p.get<1>() == expected[i].second);
         ++i;
     }
 

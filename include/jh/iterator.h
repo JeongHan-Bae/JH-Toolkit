@@ -110,8 +110,9 @@
 
 #pragma once
 
-#include <iterator>
 #include <concepts>
+#include <type_traits>
+#include <utility>
 
 namespace jh {
     /**
@@ -255,282 +256,242 @@ namespace jh {
      * provided for readability in template metaprogramming.
      */
     template<typename T>
-    [[maybe_unused]] inline constexpr bool has_value_type_v = has_value_type<T>::value;
+    inline constexpr bool has_value_type_v = has_value_type<T>::value;
 
-    /**
-     * @brief Concept to check if a type behaves as a valid input iterator.
-     *
-     * @details
-     * This concept verifies whether a type <code>I</code> satisfies the minimal
-     * requirements of an <strong>input iterator</strong> using structural typing
-     * (duck typing).
-     * It does not require formal compliance with <code>std::input_iterator</code>;
-     * instead, it checks the presence of standard iterator-like operations.
-     *
-     * <h4>Requirements</h4>
-     * A type <code>I</code> is considered an input iterator if:
-     * <ul>
-     *   <li>It can be <strong>dereferenced</strong> (<code>*it</code> is valid).</li>
-     *   <li>It can be <strong>incremented</strong> (<code>++it</code> and <code>it++</code> are valid).</li>
-     *   <li>It supports <strong>comparison for equality</strong> (<code>==</code> and <code>!=</code>).</li>
-     *   <li><code>std::iterator_traits&lt;I&gt;::value_type</code> is well-formed
-     *       and <code>*it</code> is convertible to that type.</li>
-     *   <li>It either defines <code>value_type</code> internally, or is a
-     *       <strong>raw pointer</strong> (<code>T*</code> or <code>const T*</code>)
-     *       for which <code>std::iterator_traits</code> is valid.</li>
-     * </ul>
-     *
-     * <h4>Design Notes</h4>
-     * <ul>
-     *   <li>Allows both STL-style and user-defined iterator types.</li>
-     *   <li>Accepts raw pointers as valid iterators for primitive or POD types.</li>
-     *   <li>Performs only structural checks; no inheritance or trait registration is required.</li>
-     * </ul>
-     *
-     * @tparam I The type being tested for input iterator behavior.
-     */
+    namespace detail {
+
+        template<typename I, typename = void>
+        struct iterator_value_impl {
+            using value_type = void;
+        };
+
+        template<typename I> requires has_value_type_v<I>
+        struct iterator_value_impl<I> {
+            using value_type = typename I::value_type;
+            using ref_type = decltype(*std::declval<I &>());
+
+            static_assert(std::convertible_to<ref_type, value_type>,
+                          "iterator's operator*() must be convertible to its value_type");
+
+            using type = value_type;
+        };
+
+        template<typename I>
+        struct iterator_value_impl<I, std::void_t<decltype(*std::declval<I &>())>> {
+            using type = std::remove_cvref_t<decltype(*std::declval<I &>())>;
+        };
+
+        template<typename T>
+        struct iterator_value_impl<T *, void> {
+            using type = std::remove_cv_t<T>;
+        };
+
+        template<typename I, typename = void>
+        struct iterator_reference_impl {
+            using type = void;
+        };
+
+        template<typename I> requires requires { typename I::reference; }
+        struct iterator_reference_impl<I> {
+            using reference_type = typename I::reference;
+            using deref_type = decltype(*std::declval<I &>());
+
+            static_assert(
+                    std::convertible_to<deref_type, reference_type> ||
+                    std::convertible_to<reference_type, deref_type>,
+                    "iterator::reference must be consistent with decltype(*it)"
+            );
+
+            using type = reference_type;
+        };
+
+        template<typename I>
+        struct iterator_reference_impl<I, std::void_t<decltype(*std::declval<I &>())>> {
+            using type = decltype(*std::declval<I &>());
+        };
+
+        template<typename T>
+        struct iterator_reference_impl<T *, void> {
+            using type = T &;
+        };
+
+        template <typename I>
+        constexpr decltype(auto) adl_iter_move(I&& it)
+        noexcept(false)
+        {
+            if constexpr (requires { iter_move(std::forward<I>(it)); }) {
+                return iter_move(std::forward<I>(it));
+            } else if constexpr (requires { std::forward<I>(it).iter_move(); }) {
+                return std::forward<I>(it).iter_move();
+            } else if constexpr (requires { *std::forward<I>(it); }) {
+                if constexpr (std::is_lvalue_reference_v<decltype(*std::forward<I>(it))>)
+                    return std::move(*std::forward<I>(it));
+                else
+                    return *std::forward<I>(it);
+            } else {
+                static_assert(sizeof(I) == 0, "adl_iter_move: iterator type not readable");
+            }
+        }
+
+        template<typename I, typename = void>
+        struct iterator_difference_impl {
+            using type = void;
+        };
+
+        template<typename I>
+        struct iterator_difference_impl<I, std::void_t<decltype(std::declval<const I&>() - std::declval<const I&>())>> {
+            using type = decltype(std::declval<const I&>() - std::declval<const I&>());
+        };
+    } // namespace detail
     template<typename I>
-    concept input_iterator = requires(I& it)
-    {
-        typename std::iterator_traits<I>::value_type;
-        { *it } -> std::convertible_to<typename std::iterator_traits<I>::value_type>;
-        { ++it } -> std::same_as<I &>;
-        { it++ } -> std::same_as<I>;
-        { it == it } -> std::convertible_to<bool>;
-        { it != it } -> std::convertible_to<bool>;
-    };
+    using iterator_value_t = typename detail::iterator_value_impl<I>::type;
 
-    /**
-     * @brief Concept to check if a type behaves as a valid output iterator.
-     *
-     * @details
-     * This concept validates whether a type <code>I</code> supports
-     * <strong>forwardable write-through iteration</strong> for values of type <code>T</code>.
-     * It mirrors the semantics of the standard <code>std::output_iterator</code> concept,
-     * but avoids dependency on <code>std::indirectly_writable</code> and related STL machinery.
-     *
-     * <h4>Requirements</h4>
-     * A type <code>I</code> is considered an output iterator for <code>T</code> if:
-     * <ul>
-     *   <li>The expression <code>*i++ = std::forward&lt;T&gt;(t)</code> is valid.</li>
-     *   <li>The iterator supports increment operations (<code>++it</code> and <code>it++</code>).</li>
-     *   <li>The dereference target may be a proxy — it is <strong>not required</strong> to be a modifiable lvalue.</li>
-     *   <li>Assignments through <code>*it</code> and <code>*std::forward&lt;I&gt;(it)</code> must both be valid.</li>
-     *   <li>Assignments through <code>const_cast&lt;const std::iter_reference_t&lt;I&gt;&amp;&amp;&gt;(*it)</code> must be valid.</li>
-     * </ul>
-     *
-     * <h4>Design Notes</h4>
-     * <ul>
-     *   <li>Semantically equivalent to <code>std::output_iterator</code> (C++23 §24.4.4.2).</li>
-     *   <li>Omits <code>std::input_or_output_iterator</code> dependency to remain duck-typed and minimal.</li>
-     *   <li>Accepts STL-style, pointer-based, or coroutine-style iterators that forward values.</li>
-     * </ul>
-     *
-     * @tparam I The iterator-like type being validated.
-     * @tparam T The value type that can be forwarded or assigned through dereference.
-     */
-    template<typename I, typename T>
-    concept output_iterator = requires(I& it, T &&value)
-    {
-        // Core assignability (forwarded write)
-        *it = std::forward<T>(value);
-        *std::forward<I>(it) = std::forward<T>(value);
-        const_cast<const std::iter_reference_t<I> &&>(*it) = std::forward<T>(value);
+    template<typename I>
+    using iterator_reference_t = typename detail::iterator_reference_impl<I>::type;
 
-        // Increment operations (required for iterator semantics)
-        ++it;
+    template<typename I>
+    using iterator_rvalue_reference_t = decltype(detail::adl_iter_move(std::declval<I&>()));
+
+    template<typename I>
+    using iterator_difference_t = typename detail::iterator_difference_impl<I>::type;
+
+
+    template<typename I>
+    concept indirectly_readable =
+    requires(I& it) {
+        typename jh::iterator_value_t<I>;
+        typename jh::iterator_reference_t<I>;
+        typename jh::iterator_rvalue_reference_t<I>;
+        requires (!std::same_as<jh::iterator_value_t<I>, void>);
+        requires (!std::same_as<jh::iterator_reference_t<I>, void>);
+        requires (!std::same_as<jh::iterator_rvalue_reference_t<I>, void>);
+        { *it } -> std::convertible_to<std::remove_cvref_t<jh::iterator_reference_t<I>>>;
+    } &&
+    requires(I&& it) {
+        detail::adl_iter_move(std::forward<I>(it));
+    } &&
+    std::convertible_to<std::remove_cvref_t<jh::iterator_reference_t<I>>, jh::iterator_value_t<I>> &&
+    std::convertible_to<std::remove_cvref_t<jh::iterator_rvalue_reference_t<I>>, jh::iterator_value_t<I>>;
+
+    template<typename I>
+    concept is_iterator =
+    requires(I it) {
+        *it;
+        { ++it } -> std::same_as<I&>;
         it++;
-    };
+    } &&
+    (
+            // if difference_type defined
+            (!requires { typename I::difference_type; }) ||
+            (
+                    requires { typename I::difference_type; } &&
+                    !std::same_as<typename I::difference_type, void> &&
+                    std::signed_integral<typename I::difference_type>
+            )
+    ) &&
+    (
+            // match only if both (difference_type) and (operator-) exist
+            (!requires { typename I::difference_type; } || !requires (I a, I b) { a - b; }) ||
+            (
+                    requires (I a, I b) {
+                        typename I::difference_type;
+                        { a - b } -> std::convertible_to<typename I::difference_type>;
+                    }
+            )
+    );
 
-    /**
-     * @brief Concept that detects types behaving as a valid forward iterator.
-     *
-     * @details
-     * This concept refines <code>jh::input_iterator</code> by requiring
-     * copyability, equality comparability, and stable increment / dereference
-     * semantics. It is a <strong>duck-typed</strong> equivalent of
-     * <code>std::forward_iterator</code>, designed to validate iterator-like
-     * types without relying on <code>std::iterator_category</code> tags.
-     *
-     * <h4>Semantic Guarantees</h4>
-     * A type <code>I</code> models <code>jh::forward_iterator</code> if:
-     * <ul>
-     *   <li>It satisfies <code>jh::input_iterator&lt;I&gt;</code>.</li>
-     *   <li>It is <strong>copyable</strong> — copies of <code>I</code> are
-     *       independent, and incrementing one does not affect the other.</li>
-     *   <li>It is <strong>equality comparable</strong> with itself.</li>
-     *   <li>It supports both pre- and post-increment:
-     *       <ul>
-     *         <li><code>++it</code> returns <code>I&amp;</code> (reference to self)</li>
-     *         <li><code>it++</code> yields a convertible copy of <code>I</code></li>
-     *       </ul>
-     *   </li>
-     *   <li>Dereferencing yields a reference type consistent with
-     *       <code>std::iterator_traits&lt;I&gt;::reference</code>.</li>
-     * </ul>
-     *
-     * <h4>Design Notes</h4>
-     * <ul>
-     *   <li>Emulates the behavioral semantics of <code>std::forward_iterator</code>
-     *       without requiring <code>iterator_category</code> tags.</li>
-     *   <li>Guarantees <strong>multi-pass stability</strong>: dereferencing
-     *       and incrementing can be repeated without invalidating existing copies.</li>
-     *   <li>Fully compatible with STL-style iterators and user-defined types
-     *       that exhibit equivalent behavior ("duck typing").</li>
-     *   <li>Unlike <code>jh::input_iterator</code>, forward iterators
-     *       ensure that multiple traversals produce the same results.</li>
-     * </ul>
-     *
-     * @tparam I Iterator-like type to be validated.
-     *
-     * @see jh::input_iterator
-     * @see std::forward_iterator
-     */
-    template<typename I>
-    concept forward_iterator =
-    input_iterator<I> &&
-    std::copyable<I> &&
+    template<typename S, typename I>
+    concept sentinel_for =
+    requires(const S& s, const I& i) {
+        { i == s } -> std::convertible_to<bool>;
+        { s == i } -> std::convertible_to<bool>;
+        { i != s } -> std::convertible_to<bool>;
+        { s != i } -> std::convertible_to<bool>;
+    };
+    // Only checks mutual equality; does not check constructor or std::iterator-related properties.
+
+    template<typename I, typename S = I>
+    concept input_iterator =
+    is_iterator<I> &&
+    indirectly_readable<I> &&
+    sentinel_for<S, I> &&
     requires(I& it) {
         { ++it } -> std::same_as<I&>;
         { it++ } -> std::convertible_to<I>;
-        { *it } -> std::same_as<typename std::iterator_traits<I>::reference>;
     };
 
-    /**
-     * @brief Concept to check if a type behaves as a valid bidirectional iterator.
-     *
-     * @details
-     * This concept extends <code>jh::forward_iterator</code> by requiring
-     * that the iterator supports <strong>both forward and backward</strong>
-     * movement through increment (<code>++it</code>, <code>it++</code>)
-     * and decrement (<code>--it</code>, <code>it--</code>) operations.
-     *
-     * <h4>Requirements</h4>
-     * A type <code>I</code> satisfies <code>jh::bidirectional_iterator</code> if:
-     * <ul>
-     *   <li>It satisfies <code>jh::forward_iterator&lt;I&gt;</code>.</li>
-     *   <li>It supports pre-decrement (<code>--it</code>) and post-decrement (<code>it--</code>).</li>
-     *   <li>Both increment and decrement operations return a valid, dereferenceable iterator.</li>
-     * </ul>
-     *
-     * <h4>Design Notes</h4>
-     * <ul>
-     *   <li>Semantics are equivalent to <code>std::bidirectional_iterator</code> but
-     *       implemented in a duck-typed form without requiring full STL compliance.</li>
-     *   <li>Allows traversal in both directions while preserving iterator stability.</li>
-     *   <li>Useful for containers supporting reverse traversal (e.g., double-linked lists).</li>
-     * </ul>
-     *
-     * @tparam I The iterator-like type being validated.
-     */
-    template<typename I>
-    concept bidirectional_iterator = forward_iterator<I> && requires(I& it)
-    {
-        --it;
-        it--;
+    template<typename Out, typename T>
+    concept indirectly_writable =
+    requires(Out&& o, T&& t) {
+        *o = std::forward<T>(t);
+        *std::forward<Out>(o) = std::forward<T>(t);
+        const_cast<const jh::iterator_reference_t<Out>&&>(*o) = std::forward<T>(t);
+        const_cast<const jh::iterator_reference_t<Out>&&>(*std::forward<Out>(o)) = std::forward<T>(t);
     };
 
-    /**
-     * @brief Concept to check if a type behaves as a valid random-access iterator.
-     *
-     * @details
-     * This concept extends <code>jh::bidirectional_iterator</code> by requiring
-     * constant-time arithmetic and comparison operations, equivalent to
-     * pointer-like behavior.
-     *
-     * <h4>Requirements</h4>
-     * A type <code>I</code> satisfies <code>jh::random_access_iterator</code> if:
-     * <ul>
-     *   <li>It satisfies <code>jh::bidirectional_iterator&lt;I&gt;</code>.</li>
-     *   <li>It supports arithmetic operations with integer offsets:
-     *       <ul>
-     *         <li><code>it + n</code> and <code>it - n</code> yield a valid iterator of type <code>I</code>.</li>
-     *         <li><code>it[n]</code> is equivalent to <code>*(it + n)</code> and yields a reference.</li>
-     *       </ul>
-     *   </li>
-     *   <li>It supports ordering comparisons:
-     *       <ul>
-     *         <li><code>it &lt; it</code>, <code>it &lt;= it</code>, <code>it &gt; it</code>, <code>it &gt;= it</code></li>
-     *         <li>All return <code>bool</code>-convertible results.</li>
-     *       </ul>
-     *   </li>
-     * </ul>
-     *
-     * <h4>Design Notes</h4>
-     * <ul>
-     *   <li>Semantics are equivalent to <code>std::random_access_iterator</code> (C++20 §24.4.4.4).</li>
-     *   <li>Arithmetic guarantees constant-time offset traversal (no intermediate iteration).</li>
-     *   <li>Typically implemented by pointers (<code>T*</code>) or contiguous-memory iterators.</li>
-     *   <li>Implemented as a <strong>duck-typed</strong> concept to support both STL and user-defined iterators.</li>
-     * </ul>
-     *
-     * @tparam I The iterator-like type being validated.
-     */
-    template<typename I>
-    concept random_access_iterator = bidirectional_iterator<I> && requires(I& it, std::ptrdiff_t n)
-    {
-        { it + n } -> std::same_as<I>;
-        { it - n } -> std::same_as<I>;
-        { it[n] } -> std::same_as<typename std::iterator_traits<I>::reference>;
-        { it < it } -> std::convertible_to<bool>;
-        { it > it } -> std::convertible_to<bool>;
-        { it <= it } -> std::convertible_to<bool>;
-        { it >= it } -> std::convertible_to<bool>;
+    template<typename I, typename T = jh::iterator_value_t<I>>
+    concept output_iterator =
+    is_iterator<I> &&
+    indirectly_writable<I, T> &&
+    requires(I it, T&& t) {
+        *it++ = std::forward<T>(t);
     };
 
-    /**
-     * @brief Concept to check if a type behaves as a general-purpose iterator.
-     *
-     * @details
-     * This is the most relaxed iterator concept in the JH ecosystem.
-     * It recognizes any type that behaves like an iterator, including:
-     * <ul>
-     *   <li>Standard iterators (<code>std::vector&lt;T&gt;::iterator</code> etc.)</li>
-     *   <li>Raw pointers (<code>T*</code>)</li>
-     *   <li>User-defined duck-typed iterators compatible with <code>std::iterator_traits</code></li>
-     * </ul>
-     *
-     * <h4>Requirements</h4>
-     * A type <code>IT</code> satisfies <code>jh::is_iterator</code> if:
-     * <ul>
-     *   <li><code>std::iterator_traits&lt;IT&gt;::value_type</code> is a valid type.</li>
-     *   <li>Supports pre-increment (<code>++it</code>) and post-increment (<code>it++</code>).</li>
-     *   <li>Dereferencing (<code>*it</code>) yields either:
-     *       <ul>
-     *         <li>a reference type convertible to <code>typename std::iterator_traits&lt;IT&gt;::reference</code>, or</li>
-     *         <li>a value convertible to <code>typename std::iterator_traits&lt;IT&gt;::value_type</code>.</li>
-     *       </ul>
-     *   </li>
-     * </ul>
-     *
-     * <h4>Design Notes</h4>
-     * <ul>
-     *   <li>More permissive than <code>jh::input_iterator</code>, but still enforces dereference validity.</li>
-     *   <li>Suitable for template metaprogramming and SFINAE conditions requiring “iterator-like” semantics.</li>
-     *   <li>Accepts both reference-returning and value-returning dereference operators.</li>
-     * </ul>
-     *
-     * @tparam IT The candidate type being validated as an iterator.
-     */
-    template<typename IT>
-    concept is_iterator = requires(IT& it) {
-        typename std::iterator_traits<IT>::value_type;
-        { ++it } -> std::same_as<IT &>;
-        { it++ } -> std::same_as<IT>;
+    template<typename I, typename S = I>
+    concept forward_iterator =
+    input_iterator<I, S> &&
+    std::copyable<I> &&
+    sentinel_for<I, I> &&
+    requires(I& it) {
+        { ++it } -> std::same_as<I&>;
+        { it++ } -> std::same_as<I>;
+        { *it } -> std::same_as<jh::iterator_reference_t<I>>;
+    };
+
+    template<typename I, typename S = I>
+    concept bidirectional_iterator =
+    forward_iterator<I, S> &&
+    requires(I it) {
+        { --it } -> std::same_as<I&>;
+        { it-- } -> std::convertible_to<I>;
+    };
+
+    template<typename I, typename S = I>
+    concept random_access_iterator =
+    bidirectional_iterator<I, S> &&
+
+    // Can be compared
+    requires(const I a, const I b) {
+        { a < b }  -> std::convertible_to<bool>;
+        { a > b }  -> std::convertible_to<bool>;
+        { a <= b } -> std::convertible_to<bool>;
+        { a >= b } -> std::convertible_to<bool>;
+        // (forward) has already proven that == and != exist
     } &&
-                          (requires(IT& it) {
-                              { *it } -> std::convertible_to<typename std::iterator_traits<IT>::reference>;
-                          } || requires(IT& it) {
-                              { *it } -> std::convertible_to<typename std::iterator_traits<IT>::value_type>;
-                          }
-                          );
+
+    // distance calculable
+    requires(const I a, const I b) {
+        typename jh::iterator_difference_t<I>;
+        requires (!std::same_as<jh::iterator_difference_t<I>, void>);
+        // is_iterator has proven that the implementation does not conflict with the declaration.
+    } &&
+
+    // offset supported
+    requires(I i, const I j, const jh::iterator_difference_t<I> n) {
+        { i += n } -> std::same_as<I&>;
+        { i -= n } -> std::same_as<I&>;
+        { j + n }  -> std::same_as<I>;
+        { n + j }  -> std::same_as<I>;
+        { j - n }  -> std::same_as<I>;
+        { j[n] }   -> std::same_as<jh::iterator_reference_t<I>>;
+    };
 
     namespace detail {
         // Primary template: default to empty
         template<typename T, typename = void, typename = void>
         struct iterator_resolver;
 
-        // Case 1: has jh::iterator<T>::type and it behaves like an iterator
+        // Case 1: has (jh::iterator<T>::type) and it behaves like an iterator
         template<typename T>
         struct iterator_resolver<
                 T,

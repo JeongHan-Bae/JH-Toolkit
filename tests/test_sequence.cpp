@@ -95,8 +95,10 @@ namespace test {
         bool operator!=(const DummyInputIter &o) const { return ptr != o.ptr; }
     };
 
+    // No (ite - ite); invalid
     template<typename T>
-    struct DummyRAIter {
+    struct FakeDummyRAIter {
+
         using value_type = T;
         using reference = T &;
         using pointer = T *;
@@ -105,49 +107,49 @@ namespace test {
 
         T *p;
 
-        DummyRAIter(T *x = nullptr) : p(x) {}
+        FakeDummyRAIter(T *x = nullptr) : p(x) {}
 
         reference operator*() const { return *p; }
 
-        DummyRAIter &operator++() {
+        FakeDummyRAIter &operator++() {
             ++p;
             return *this;
         }
 
-        DummyRAIter operator++(int) {
-            DummyRAIter tmp(*this);
+        FakeDummyRAIter operator++(int) {
+            FakeDummyRAIter tmp(*this);
             ++p;
             return tmp;
         }
 
-        DummyRAIter &operator--() {
+        FakeDummyRAIter &operator--() {
             --p;
             return *this;
         }
 
-        DummyRAIter operator--(int) {
-            DummyRAIter tmp(*this);
+        FakeDummyRAIter operator--(int) {
+            FakeDummyRAIter tmp(*this);
             --p;
             return tmp;
         }
 
-        DummyRAIter operator+(std::ptrdiff_t n) const { return DummyRAIter(p + n); }
+        FakeDummyRAIter operator+(std::ptrdiff_t n) const { return FakeDummyRAIter(p + n); }
 
-        DummyRAIter operator-(std::ptrdiff_t n) const { return DummyRAIter(p - n); }
+        FakeDummyRAIter operator-(std::ptrdiff_t n) const { return FakeDummyRAIter(p - n); }
 
         reference operator[](std::ptrdiff_t n) const { return p[n]; }
 
-        bool operator==(const DummyRAIter &o) const { return p == o.p; }
+        bool operator==(const FakeDummyRAIter &o) const { return p == o.p; }
 
-        bool operator!=(const DummyRAIter &o) const { return p != o.p; }
+        bool operator!=(const FakeDummyRAIter &o) const { return p != o.p; }
 
-        bool operator<(const DummyRAIter &o) const { return p < o.p; }
+        bool operator<(const FakeDummyRAIter &o) const { return p < o.p; }
 
-        bool operator>(const DummyRAIter &o) const { return p > o.p; }
+        bool operator>(const FakeDummyRAIter &o) const { return p > o.p; }
 
-        bool operator<=(const DummyRAIter &o) const { return p <= o.p; }
+        bool operator<=(const FakeDummyRAIter &o) const { return p <= o.p; }
 
-        bool operator>=(const DummyRAIter &o) const { return p >= o.p; }
+        bool operator>=(const FakeDummyRAIter &o) const { return p >= o.p; }
     };
 
     struct NotIterator {
@@ -271,7 +273,7 @@ TEST_CASE("Iterator Concept: forward_iterator") {
 TEST_CASE("Iterator Concept: bidirectional_iterator") {
     REQUIRE(jh::bidirectional_iterator<std::list<int>::iterator>);
     REQUIRE(jh::bidirectional_iterator<std::set<int>::iterator>);
-    REQUIRE(jh::bidirectional_iterator<test::DummyRAIter < int>>);
+    REQUIRE(jh::bidirectional_iterator<test::FakeDummyRAIter < int>>);
     REQUIRE_FALSE(jh::bidirectional_iterator<test::DummyInputIter < int>>);
     REQUIRE_FALSE(jh::bidirectional_iterator<int>);
 }
@@ -279,7 +281,7 @@ TEST_CASE("Iterator Concept: bidirectional_iterator") {
 TEST_CASE("Iterator Concept: random_access_iterator") {
     REQUIRE(jh::random_access_iterator<int *>);
     REQUIRE(jh::random_access_iterator<std::vector<int>::iterator>);
-    REQUIRE(jh::random_access_iterator<test::DummyRAIter < int>>);
+    REQUIRE_FALSE(jh::random_access_iterator<test::FakeDummyRAIter < int>>);
     REQUIRE_FALSE(jh::random_access_iterator<std::list<int>::iterator>);
     REQUIRE_FALSE(jh::random_access_iterator<test::DummyInputIter < int>>);
 }
@@ -313,12 +315,12 @@ TEST_CASE("Iterator deduces from array, pointer, and sequence-like") {
 // ============================================================================
 
 namespace test {
-    // Fake iterator: has operator++ and operator*, but lacks proper iterator_traits compatibility
-    struct FakeIter1 {
-        FakeIter1& operator++() { return *this; }
-        FakeIter1 operator++(int) { return *this; }
-        int operator*() const { return 42; }
-        bool operator==(const FakeIter1&) const = default;
+    // Basic Iterator
+    struct BasicInputOrOutputIterator {
+        BasicInputOrOutputIterator& operator++() { return *this; }
+        BasicInputOrOutputIterator operator++(int) { return *this; }
+        void operator*() const {}
+        bool operator==(const BasicInputOrOutputIterator&) const = default;
     };
 
     // Fake iterator: defines value_type but no dereference
@@ -373,10 +375,10 @@ namespace test {
 TEST_CASE("Iterator rejection: structurally similar but invalid") {
     using namespace test;
 
-    // ❌ FakeIter1: looks iterator-like but no valid iterator_traits
-    REQUIRE_FALSE(jh::is_iterator<FakeIter1>);
-    REQUIRE_FALSE(jh::input_iterator<FakeIter1>);
-    REQUIRE_FALSE(jh::output_iterator<FakeIter1, int>);
+    // ❌ BasicInputOrOutputIterator: basic iterator but can do nothing
+    REQUIRE(jh::is_iterator<BasicInputOrOutputIterator>);
+    REQUIRE_FALSE(jh::input_iterator<BasicInputOrOutputIterator>);
+    REQUIRE_FALSE(jh::output_iterator<BasicInputOrOutputIterator, int>);
 
     // ❌ FakeIter2: defines value_type but not dereferenceable
     REQUIRE_FALSE(jh::is_iterator<FakeIter2>);
@@ -450,4 +452,118 @@ TEST_CASE("iterator_t deduction coverage") {
     STATIC_REQUIRE(jh::random_access_iterator<jh::iterator_t<std::deque<int>>>);
     STATIC_REQUIRE(jh::input_iterator<jh::iterator_t<TemplateSequence<int>>>);
     STATIC_REQUIRE(jh::is_iterator<jh::iterator_t<jh::pod::array<int, 3>>>);
+}
+
+namespace test {
+
+    template<typename T>
+    struct TrueRAIter {
+        using value_type = T;
+        using reference = T&;
+        using pointer = T*;
+        using difference_type = std::ptrdiff_t;
+        using iterator_category = std::random_access_iterator_tag;
+
+        T* p = nullptr;
+
+        TrueRAIter() = default;
+        explicit TrueRAIter(T* ptr) : p(ptr) {}
+
+        // Dereference
+        reference operator*() const noexcept { return *p; }
+        pointer operator->() const noexcept { return p; }
+
+        // Pre/post increment
+        TrueRAIter& operator++() noexcept {
+            ++p;
+            return *this;
+        }
+        TrueRAIter operator++(int) noexcept {
+            TrueRAIter tmp(*this);
+            ++p;
+            return tmp;
+        }
+
+        // Pre/post decrement
+        TrueRAIter& operator--() noexcept {
+            --p;
+            return *this;
+        }
+        TrueRAIter operator--(int) noexcept {
+            TrueRAIter tmp(*this);
+            --p;
+            return tmp;
+        }
+
+        // Arithmetic
+        TrueRAIter& operator+=(difference_type n) noexcept {
+            p += n;
+            return *this;
+        }
+        TrueRAIter& operator-=(difference_type n) noexcept {
+            p -= n;
+            return *this;
+        }
+        TrueRAIter operator+(difference_type n) const noexcept { return TrueRAIter(p + n); }
+        friend TrueRAIter operator+(difference_type n, const TrueRAIter& it) noexcept { return TrueRAIter(it.p + n); }
+        TrueRAIter operator-(difference_type n) const noexcept { return TrueRAIter(p - n); }
+
+        // ✅ 核心：差值操作
+        difference_type operator-(const TrueRAIter& other) const noexcept { return p - other.p; }
+
+        // Element access
+        reference operator[](difference_type n) const noexcept { return p[n]; }
+
+        // Comparison
+        bool operator==(const TrueRAIter& other) const noexcept { return p == other.p; }
+        bool operator!=(const TrueRAIter& other) const noexcept { return p != other.p; }
+        bool operator<(const TrueRAIter& other) const noexcept { return p < other.p; }
+        bool operator>(const TrueRAIter& other) const noexcept { return p > other.p; }
+        bool operator<=(const TrueRAIter& other) const noexcept { return p <= other.p; }
+        bool operator>=(const TrueRAIter& other) const noexcept { return p >= other.p; }
+    };
+
+} // namespace test
+template<typename T>
+struct PureRAIter {
+    T* p = nullptr;
+
+    PureRAIter() = default;
+    explicit PureRAIter(T* ptr) : p(ptr) {}
+
+    T& operator*() const noexcept { return *p; }
+
+    PureRAIter& operator++() noexcept { ++p; return *this; }
+    PureRAIter operator++(int) noexcept { auto tmp = *this; ++p; return tmp; }
+    PureRAIter& operator--() noexcept { --p; return *this; }
+    PureRAIter operator--(int) noexcept { auto tmp = *this; --p; return tmp; }
+
+    PureRAIter& operator+=(std::ptrdiff_t n) noexcept { p += n; return *this; }
+    PureRAIter& operator-=(std::ptrdiff_t n) noexcept { p -= n; return *this; }
+
+    PureRAIter operator+(std::ptrdiff_t n) const noexcept { return PureRAIter(p + n); }
+    friend PureRAIter operator+(std::ptrdiff_t n, const PureRAIter& it) noexcept { return PureRAIter(it.p + n); }
+    PureRAIter operator-(std::ptrdiff_t n) const noexcept { return PureRAIter(p - n); }
+
+    std::ptrdiff_t operator-(const PureRAIter& other) const noexcept { return p - other.p; }
+
+    T& operator[](std::ptrdiff_t n) const noexcept { return p[n]; }
+
+    bool operator==(const PureRAIter& o) const noexcept { return p == o.p; }
+    bool operator!=(const PureRAIter& o) const noexcept { return p != o.p; }
+    bool operator<(const PureRAIter& o) const noexcept { return p < o.p; }
+    bool operator>(const PureRAIter& o) const noexcept { return p > o.p; }
+    bool operator<=(const PureRAIter& o) const noexcept { return p <= o.p; }
+    bool operator>=(const PureRAIter& o) const noexcept { return p >= o.p; }
+};
+
+
+TEST_CASE("True-RA-Iterator deduction coverage") {
+    using namespace test;
+
+    STATIC_REQUIRE(jh::is_iterator<TrueRAIter<int>>);
+    STATIC_REQUIRE(jh::input_iterator<TrueRAIter<int>>);
+    STATIC_REQUIRE(jh::forward_iterator<TrueRAIter<int>>);
+    STATIC_REQUIRE(jh::bidirectional_iterator<TrueRAIter<int>>);
+    STATIC_REQUIRE(jh::random_access_iterator<TrueRAIter<int>>);
 }
