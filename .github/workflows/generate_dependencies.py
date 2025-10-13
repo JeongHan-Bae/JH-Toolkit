@@ -6,6 +6,7 @@ from pathlib import Path
 # Locate project root
 project_root = Path(__file__).resolve().parents[2]
 dependencies_file = project_root / "dependencies.json"
+badge_file = project_root / "version_badge.json"
 cmake_file = project_root / "CMakeLists.txt"
 test_cmake_file = project_root / "tests/CMakeLists.txt"
 
@@ -26,7 +27,8 @@ def extract_project_version(cmake_path):
 def extract_fetch_content_dependencies(test_cmake_path):
     fetch_pattern = re.compile(r'FetchContent_MakeAvailable\((\w+)\)')
     declare_pattern = re.compile(
-        r'FetchContent_Declare\(\s*(\w+)\s+GIT_REPOSITORY\s+(.+?)\s+GIT_TAG\s+([^\s)]+)', re.DOTALL
+        r'FetchContent_Declare\(\s*(\w+)\s+GIT_REPOSITORY\s+(.+?)\s+GIT_TAG\s+([^\s)]+)',
+        re.DOTALL
     )
 
     dependencies = []
@@ -63,6 +65,7 @@ def main(get_version_only=False):
         print(version)
         return
 
+    # Generate dependencies.json
     deps = extract_fetch_content_dependencies(test_cmake_file)
     data = {
         "project": {
@@ -87,12 +90,26 @@ def main(get_version_only=False):
 
     with open(dependencies_file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
+    print(f"✅ Generated {dependencies_file.name}")
 
-    print(f"Generated dependencies.json at {dependencies_file}")
+    # Generate version_badge.json
+    badge = {
+        "schemaVersion": 1,
+        "label": "JH-Toolkit",
+        "message": version,
+        "labelColor": "#555555",
+        "namedLogo": "github",
+        "color": "#559900",
+        "style": "flat"
+    }
+
+    with open(badge_file, "w", encoding="utf-8") as f:
+        json.dump(badge, f, indent=2)
+    print(f"✅ Generated {badge_file.name}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate dependencies.json or print version.")
+    parser = argparse.ArgumentParser(description="Generate dependencies.json and version_badge.json or print version.")
     parser.add_argument("--get-version", action="store_true", help="Only print the project version and exit.")
     args = parser.parse_args()
     main(get_version_only=args.get_version)
