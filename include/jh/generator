@@ -3,44 +3,42 @@
  * @brief Forwarding header for <code>jh::generator</code>.
  *
  * <p>
- * This header provides a modern include style for coroutine-based generators:
+ * This header provides the canonical include entry for
+ * <code>jh::generator&lt;T, U&gt;</code> — a coroutine-based
+ * generator type for asynchronous iteration.
  * </p>
+ *
  * <pre><code>#include &lt;jh/generator&gt;</code></pre>
  *
  * <p>
- * Internally, it forwards to <code>jh/generator.h</code> and contains no additional code.
+ * Internally, this file forwards to <code>jh/asynchronous/generator.h</code>,
+ * which defines <code>jh::async::generator</code> and related utilities.
+ * Including this header additionally promotes these symbols into the
+ * root namespace <code>jh</code>, allowing use as
+ * <code>jh::generator</code> instead of <code>jh::async::generator</code>.
  * </p>
  *
- * <h4>Migration Notice (Planned for 1.4.0+)</h4>
  * <p>
- * Beginning with <strong>version&nbsp;1.4.0</strong>, generator definitions will move to
- * <code>jh/asynchronous/generator.h</code> as part of the new <code>jh::asynchronous</code> module.
- * </p>
- *
+ * The same functionality is also available through:
  * <ul>
- *   <li>The generator type will be renamed internally to <code>jh::asynchronous::generator</code>.</li>
- *   <li>This forwarding header <strong>will remain available</strong> for compatibility.</li>
- *   <li>A <code>using jh::generator = jh::asynchronous::generator;</code> alias will be provided
- *       to preserve the existing interface and ease migration.</li>
+ *   <li><code>&lt;jh/asynchronous/generator.h&gt;</code> — defines <code>jh::async::generator</code> directly.</li>
+ *   <li><code>&lt;jh/async&gt;</code> — available since <b>v1.4.0</b>, aggregates all asynchronous facilities under <code>jh::async</code>.</li>
  * </ul>
- *
- * <h4>Design Rationale</h4>
- * <p>
- * Although the generator belongs semantically to the asynchronous subsystem,
- * it remains a <strong>core coroutine abstraction</strong> widely used throughout
- * the JH framework. To maintain ergonomic access and backward compatibility,
- * the symbol <code>jh::generator</code> will continue to be available directly
- * from the root include path (<code>&lt;jh/generator&gt;</code>).
  * </p>
- *
- * <h4>Future Access Options</h4>
- * <ul>
- *   <li><code>#include &lt;jh/asynchronous/generator.h&gt;</code> — direct path (1.4.0+)</li>
- *   <li><code>#include &lt;jh/async&gt;</code> — module aggregate header</li>
- *   <li><code>#include &lt;jh/generator&gt;</code> — backward-compatible alias (maintained)</li>
- * </ul>
  */
 
 #pragma once
 
 #include "jh/asynchronous/generator.h"
+
+namespace jh{
+    template<typename T, typename U = typed::monostate>
+    using generator = async::generator<T, U>;
+
+    template<typename T>
+    using generator_range [[maybe_unused]] = async::generator_range<T>;
+
+    using async::make_generator;
+    using async::to_vector;
+    using async::to_deque;
+}

@@ -41,7 +41,7 @@
 #include <cstdint>
 #include <type_traits>
 #include "array.h"
-#include "jh/marcos/platform.h"
+#include "jh/macros/platform.h"
 
 #if !(IS_CLANG || IS_GCC)
 

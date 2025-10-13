@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file header_begin.h (marcos)
+ * @file header_begin.h (macros)
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief Macro setup for dual-mode headers (header-only / static).
  *
@@ -54,7 +54,7 @@
  * <h3>Pseudocode Layout</h3>
  * @code
  * #pragma once
- * #include &lt;jh/marcos/header_begin.h&gt;
+ * #include &lt;jh/macros/header_begin.h&gt;
  *
  * // === Declarations ===
  * declare_classes_or_functions();
@@ -68,7 +68,7 @@
  *     JH_INLINE normal_or_inline_implementation();
  * #endif  // JH_INTERNAL_SHOULD_DEFINE
  *
- * #include &lt;jh/marcos/header_end.h&gt;
+ * #include &lt;jh/macros/header_end.h&gt;
  * @endcode
  *
  * <h3>Visibility Rules</h3>
@@ -82,7 +82,7 @@
  *       <code>#if&nbsp;JH_INTERNAL_SHOULD_DEFINE</code> to avoid redefinition
  *       when linked from a static or shared object.</li>
  *   <li>Always finish the header with
- *       <code>#include&nbsp;&lt;jh/marcos/header_end.h&gt;</code>.</li>
+ *       <code>#include&nbsp;&lt;jh/macros/header_end.h&gt;</code>.</li>
  * </ul>
  *
  * <hr/>
@@ -90,8 +90,8 @@
  *
  * <p>
  * Once you have written a header using
- * <code>&lt;jh/marcos/header_begin.h&gt;</code> and
- * <code>&lt;jh/marcos/header_end.h&gt;</code>,
+ * <code>&lt;jh/macros/header_begin.h&gt;</code> and
+ * <code>&lt;jh/macros/header_end.h&gt;</code>,
  * you can control how that header behaves in each translation unit (TU)
  * by defining specific macros <em>before</em> including it.
  * </p>
@@ -182,7 +182,7 @@
  *   <li>The first inclusion defines the mode for that TU.</li>
  *   <li>Multiple TUs can coexist using different modes safely.</li>
  *   <li>Macros are automatically cleaned by
- *       <code>&lt;jh/marcos/header_end.h&gt;</code>,
+ *       <code>&lt;jh/macros/header_end.h&gt;</code>,
  *       ensuring no cross-header contamination.</li>
  * </ul>
  *
@@ -253,8 +253,8 @@
  * <h3>Important Note</h3>
  * <ul>
  *   <li>These two helper headers
- *       (<code>jh/marcos/header_begin.h</code> and
- *       <code>jh/marcos/header_end.h</code>)
+ *       (<code>jh/macros/header_begin.h</code> and
+ *       <code>jh/macros/header_end.h</code>)
  *       are <strong>intended to be copied directly into your own project</strong>,
  *       rather than included from <code>jh-toolkit</code>.</li>
  *   <li>If your project already depends on <code>jh-toolkit</code>,
@@ -265,7 +265,7 @@
  *       the original license notice.</li>
  * </ul>
  *
- * @see jh/marcos/header_end.h
+ * @see jh/macros/header_end.h
  */
 
 // ====================================================

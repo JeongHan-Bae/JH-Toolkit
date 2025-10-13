@@ -979,7 +979,7 @@ namespace jh {
      * <p>
      * Constructs a new <code>jh::immutable_str</code> using a
      * <code>std::string_view</code> and an associated
-     * <code>std::mutex</code> that guards the view’s lifetime.
+     * <code>std::mutex</code> that guards the view's lifetime.
      * This ensures thread-safe initialization from potentially
      * mutable or shared buffers.
      * </p>
@@ -1019,7 +1019,7 @@ namespace jh {
 } // namespace jh
 
 
-#include "jh/marcos/header_begin.h"
+#include "jh/macros/header_begin.h"
 
 namespace jh {
 #if JH_INTERNAL_SHOULD_DEFINE
@@ -1151,4 +1151,4 @@ namespace jh {
 #endif // JH_INTERNAL_SHOULD_DEFINE
 }
 
-#include "jh/marcos/header_end.h"
+#include "jh/macros/header_end.h"

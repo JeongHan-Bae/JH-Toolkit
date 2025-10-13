@@ -16,9 +16,9 @@
  * \endverbatim
  */
 /**
- * @file header_end.h (marcos)
+ * @file header_end.h (macros)
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- * @brief Cleanup header for <code>jh/marcos/header_begin.h</code>.
+ * @brief Cleanup header for <code>jh/macros/header_begin.h</code>.
  *
  * @attention This header is intended for multiple inclusions.
  * Do NOT use include guards or <code>#pragma once</code>.
@@ -27,13 +27,13 @@
  * <p>
  * Undefines temporary macros (<code>JH_INLINE</code> and
  * <code>JH_INTERNAL_SHOULD_DEFINE</code>) introduced by
- * <code>jh/marcos/header_begin.h</code>.
+ * <code>jh/macros/header_begin.h</code>.
  * Always include it at the <b>end</b> of a dual-mode header.
  * </p>
  *
  * <h3>Pseudocode Layout</h3>
  * @code
- * #include &lt;jh/marcos/header_begin.h&gt;
+ * #include &lt;jh/macros/header_begin.h&gt;
  *
  * declare_things();
  *
@@ -43,10 +43,10 @@
  *     JH_INLINE normal_definition();
  * #endif
  *
- * #include &lt;jh/marcos/header_end.h&gt;
+ * #include &lt;jh/macros/header_end.h&gt;
  * @endcode
  *
- * @see jh/marcos/header_begin.h
+ * @see jh/macros/header_begin.h
  */
 
 // ====================================================

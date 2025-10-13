@@ -84,7 +84,7 @@
 #include <iomanip>
 #include "jh/utils/typed.h"
 #include "jh/utils/base64.h"
-#include "jh/marcos/type_name.h"
+#include "jh/macros/type_name.h"
 #include "pair.h"
 #include "array.h"
 #include "bits.h"
@@ -223,7 +223,7 @@ namespace jh::pod {
 
     template<streamable T>
     inline std::ostream &operator<<(std::ostream &os, const span<T> &sp) {
-        os << "span<" << marco::type_name<T>() << ">[";
+        os << "span<" << macro::type_name<T>() << ">[";
         for (std::uint64_t i = 0; i < sp.size(); ++i) {
             if (i != 0) os << ", ";
             os << sp[i];

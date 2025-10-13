@@ -16,17 +16,31 @@
  * \endverbatim
  */
 /**
- * @file generator.h
+ * @file generator.h (asynchronous)
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief Coroutine-based generator system for modern C++20.
  *
  * <h3>Overview</h3>
  * <p>
- * This header defines <code>jh::generator&lt;T, U&gt;</code>, a coroutine-based generator
- * inspired by Python's <code>Generator[T, U, R]</code> type.  
- * It provides both value-yielding (<code>co_yield</code>) and interactive (<code>send()</code>) semantics
- * while keeping the implementation fully type-safe, constexpr-friendly, and header-only.
+ * This header defines <code>jh::async::generator&lt;T, U&gt;</code>,
+ * a coroutine-based generator inspired by Python's <code>Generator[T, U, R]</code> type.  
+ * It provides both value-yielding (<code>co_yield</code>) and interactive (<code>send()</code>)
+ * semantics while keeping the implementation fully type-safe, constexpr-friendly, and header-only.
  * </p>
+ *
+ * <h4>Namespace Design</h4>
+ * <p>
+ * This version lives under the <code>jh::async</code> namespace, to emphasize that
+ * the generator is coroutine-based and semantically asynchronous.  
+ * However, because generator is also a foundational utility, you may include
+ * <code>&lt;jh/generator&gt;</code> to import it into <code>jh</code> directly.
+ * </p>
+ *
+ * <h4>Include Behavior</h4>
+ * <ul>
+ *   <li><code>#include &lt;jh/asynchronous/generator.h&gt;</code> → defines <code>jh::async::generator</code></li>
+ *   <li><code>#include &lt;jh/generator&gt;</code> → also defines <code>jh::generator</code> as alias of <code>jh::async::generator</code></li>
+ * </ul>
  *
  * <h4>Design Motivation</h4>
  * <p>
@@ -37,7 +51,7 @@
  *   <li><code>R</code> — the value returned when the generator finishes.</li>
  * </ul>
  * However, Python's <code>R</code> is not a true return value — it is part of the coroutine
- * exit mechanism (an exception-based control path).  
+ * exit mechanism (an exception-based control path).
  * In C++, such behavior can be cleanly modeled using standard exception handling (<tt>try</tt>/<tt>catch</tt>).
  * Therefore, <b>JH's</b> <code>generator&lt;T, U&gt;</code> intentionally omits <code>R</code>
  * to simplify design and align with idiomatic C++ coroutine semantics.
@@ -56,7 +70,7 @@
  *       In Python's <code>Generator[T, U, R]</code> model, <code>R</code> represents a
  *       special termination channel, but in C++ it can be naturally handled via
  *       <code>try</code>/<code>catch</code> and normal function return semantics.
- *       Thus, <code>jh::generator&lt;T, U&gt;</code> omits <code>R</code> entirely.</li>
+ *       Thus, <code>jh::async::generator&lt;T, U&gt;</code> omits <code>R</code> entirely.</li>
  * </ul>
  *
  * <h4>Key Features</h4>
@@ -123,7 +137,7 @@ namespace jh::async {
      *   <li>Use <code>.value().value()</code> when you are certain a value exists
      *       (i.e. immediately after a successful <code>next()</code>).</li>
      *   <li>Check <code>.value().has_value()</code> before dereferencing if unsure.</li>
-     *   <li>Convert to containers via <code>jh::to_vector()</code> or <code>jh::to_deque()</code>.</li>
+     *   <li>Convert to containers via <code>jh::async::to_vector()</code> or <code>jh::async::to_deque()</code>.</li>
      *   <li>For repeatable iteration, wrap a <em>generator-producing function</em>
      *       (e.g. a lambda returning a new generator) using <code>jh::to_range()</code>,
      *       instead of passing a generator instance directly.</li>
@@ -158,7 +172,7 @@ namespace jh::async {
         /**
          * <h4>Iterator</h4>
          * <p>
-         * Input iterator for <code>jh::generator&lt;T, U&gt;</code>.
+         * Input iterator for <code>jh::async::generator&lt;T, U&gt;</code>.
          * Enables range-based iteration (<code>for(auto v : gen)</code>) when
          * <code>U == typed::monostate</code>.
          * Iteration is <strong>single-pass</strong>: once a value is consumed,
@@ -317,7 +331,7 @@ namespace jh::async {
          * <h4>Promise Type</h4>
          * <p>
          * The <code>promise_type</code> defines the state and behavior of the coroutine
-         * underlying a <code>jh::generator&lt;T, U&gt;</code>.
+         * underlying a <code>jh::async::generator&lt;T, U&gt;</code>.
          * It manages yielded values, received inputs, exception propagation,
          * and coroutine suspension control points.
          * </p>
@@ -468,20 +482,20 @@ namespace jh::async {
          * <p>
          * This constructor is the linkage point between the coroutine's
          * <code>promise_type</code> and its corresponding
-         * <code>jh::generator&lt;T, U&gt;</code> object.
+         * <code>jh::async::generator&lt;T, U&gt;</code> object.
          * It is invoked automatically by the compiler when a coroutine function
          * returning a generator is defined and called.
          * </p>
          * <p>
          * This enables Python-like semantics for defining and using coroutine generators:
          * <ul>
-         *   <li><code>jh::generator&lt;T, U&gt; Func(Args...) { scope_with_co_yield(); }</code> — defines a coroutine generator.</li>
+         *   <li><code>jh::async::generator&lt;T, U&gt; Func(Args...) { scope_with_co_yield(); }</code> — defines a coroutine generator.</li>
          *   <li><code>Func(args...)</code> — directly obtains a generator instance, without explicitly handling <code>std::coroutine_handle</code>.</li>
          *   <li><code>jh::to_range([...] { Func(args...); })</code> — wraps the generator-producing function into a reusable, re-entrant range.</li>
          * </ul>
          * </p>
          * <p>
-         * Thus, <code>jh::generator&lt;T, U&gt;</code> aligns closely with Python's
+         * Thus, <code>jh::async::generator&lt;T, U&gt;</code> aligns closely with Python's
          * <tt>Generator[T, U, None]</tt> semantics, making coroutine-based data pipelines
          * natural and concise in C++.
          * </p>
@@ -664,7 +678,7 @@ namespace jh::async {
          * suspended frame.
          *
          * <p>
-         * This deletion enforces the invariant that <code>jh::generator&lt;T, U&gt;</code>
+         * This deletion enforces the invariant that <code>jh::async::generator&lt;T, U&gt;</code>
          * may only be iterated when held as a mutable instance.
          * </p>
          */
@@ -703,9 +717,9 @@ namespace jh::async {
 
 namespace jh {
     /**
-     * @brief Specialization of <code>jh::iterator<></code> for <code>jh::generator</code>.
+     * @brief Specialization of <code>jh::iterator<></code> for <code>jh::async::generator</code>.
      * @details
-     * Provides a mapping between <code>jh::generator&lt;T, U&gt;</code> and its
+     * Provides a mapping between <code>jh::async::generator&lt;T, U&gt;</code> and its
      * internal iterator type <code>generator&lt;T, U&gt;::iterator</code>.
      *
      * <p>
@@ -714,13 +728,13 @@ namespace jh {
      * It allows generic code such as:
      * </p>
      * <pre><code>
-     * using it_t = jh::iterator_t&lt;jh::generator&lt;int&gt;&gt;;
+     * using it_t = jh::iterator_t&lt;jh::async::generator&lt;int&gt;&gt;;
      * </code></pre>
-     * to correctly deduce <code>jh::generator&lt;int&gt;::iterator</code>
+     * to correctly deduce <code>jh::async::generator&lt;int&gt;::iterator</code>
      * as the valid iterator type.
      *
      * <p>
-     * This integration ensures that <code>jh::generator</code> participates fully
+     * This integration ensures that <code>jh::async::generator</code> participates fully
      * in the generic <code>iterator_t&lt;&gt;</code> deduction model,
      * alongside STL containers and other user-defined structures.
      * </p>
@@ -728,7 +742,7 @@ namespace jh {
      * @tparam T The generator's yielded value type.
      * @tparam U The generator's input (sent) value type.
      * @see jh::iterator_t
-     * @see jh::generator
+     * @see jh::async::generator
      */
     template<typename T, typename U>
     struct iterator<jh::async::generator<T, U>> {
@@ -893,7 +907,7 @@ namespace jh::async {
      * </p>
      *
      * @code
-     * auto vec = jh::to_vector(gen, jh::to_range(my_sequence));
+     * auto vec = jh::async::to_vector(gen, jh::to_range(my_sequence));
      * @endcode
      *
      * <p>
@@ -1006,7 +1020,7 @@ namespace jh::async {
      * </p>
      *
      * @code
-     * auto dq = jh::to_deque(gen, jh::to_range(my_sequence));
+     * auto dq = jh::async::to_deque(gen, jh::to_range(my_sequence));
      * @endcode
      *
      * <p>
@@ -1047,14 +1061,14 @@ namespace jh::async {
      * interface for coroutine-based generators.
      * Instead of storing a single generator instance (which would be consumed after one iteration),
      * it holds a <strong>factory function</strong> that can produce a fresh
-     * <code>jh::generator&lt;T&gt;</code> each time.
+     * <code>jh::async::generator&lt;T&gt;</code> each time.
      *
      * <p>
      * The factory must have one of the following signatures:
      * </p>
      * <ul>
-     *   <li><code>jh::generator&lt;T&gt; func()</code></li>
-     *   <li><code>[...]() -&gt; jh::generator&lt;T&gt; { ... }</code> (lambda expression)</li>
+     *   <li><code>jh::async::generator&lt;T&gt; func()</code></li>
+     *   <li><code>[...]() -&gt; jh::async::generator&lt;T&gt; { ... }</code> (lambda expression)</li>
      * </ul>
      *
      * <p>
@@ -1075,7 +1089,7 @@ namespace jh::async {
      * It must capture all external state through its closure (via <code>[...]</code> capture).
      * Passing parameterized generators must be done by creating multiple distinct factories.
      *
-     * @tparam T The yielded value type of the underlying <code>jh::generator</code>.
+     * @tparam T The yielded value type of the underlying <code>jh::async::generator</code>.
      *
      * @see jh::to_range
      */
@@ -1185,8 +1199,8 @@ namespace jh {
      *
      * @details
      * This helper transforms a callable object that returns
-     * <code>jh::generator&lt;T&gt;</code> (with <code>U == typed::monostate</code>)
-     * into a <code>jh::generator_range&lt;T&gt;</code>.
+     * <code>jh::async::generator&lt;T&gt;</code> (with <code>U == typed::monostate</code>)
+     * into a <code>jh::async::generator_range&lt;T&gt;</code>.
      * The resulting object supports multiple independent iterations,
      * since each call to <code>begin()</code> constructs a new generator instance.
      *
@@ -1194,10 +1208,10 @@ namespace jh {
      * The callable must take <strong>no arguments</strong>:
      * </p>
      * <ul>
-     *   <li><code>jh::generator&lt;T&gt; func()</code></li>
-     *   <li><code>[=]() -&gt; jh::generator&lt;T&gt; { ... }</code></li>
-     *   <li><code>[&]() -&gt; jh::generator&lt;T&gt; { ... }</code></li>
-     *   <li><code>[+]() -&gt; jh::generator&lt;T&gt; { ... }</code></li>
+     *   <li><code>jh::async::generator&lt;T&gt; func()</code></li>
+     *   <li><code>[=]() -&gt; jh::async::generator&lt;T&gt; { ... }</code></li>
+     *   <li><code>[&]() -&gt; jh::async::generator&lt;T&gt; { ... }</code></li>
+     *   <li><code>[+]() -&gt; jh::async::generator&lt;T&gt; { ... }</code></li>
      * </ul>
      *
      * <p>
@@ -1205,11 +1219,11 @@ namespace jh {
      * External parameters cannot be forwarded dynamically.
      * </p>
      *
-     * @tparam F A callable returning <code>jh::generator&lt;T&gt;</code>.
+     * @tparam F A callable returning <code>jh::async::generator&lt;T&gt;</code>.
      * @param f A generator factory function (no arguments).
      * @return A repeatable, range-compatible wrapper for the generator.
      *
-     * @see jh::generator_range
+     * @see jh::async::generator_range
      */
     template<typename F>
     requires requires(F f)

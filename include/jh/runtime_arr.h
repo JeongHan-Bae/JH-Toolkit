@@ -1529,7 +1529,7 @@ namespace jh {
          * @details
          * Provides read-only access to the bit at the specified index
          * without bounds checking (undefined behavior if out of range).
-         * Returns the boolean value corresponding to the bit’s state.
+         * Returns the boolean value corresponding to the bit's state.
          *
          * @param i Bit index within <tt>[0, size())</tt>.
          * @return Boolean value of the bit.
@@ -1776,7 +1776,7 @@ namespace jh {
     };
 } // namespace jh
 
-#include "jh/marcos/header_begin.h"
+#include "jh/macros/header_begin.h"
 
 namespace jh {
 #if defined(JH_HEADER_NO_IMPL)
@@ -1935,4 +1935,4 @@ namespace jh {
 #endif // JH_INTERNAL_SHOULD_DEFINE
 }
 
-#include "jh/marcos/header_end.h"
+#include "jh/macros/header_end.h"

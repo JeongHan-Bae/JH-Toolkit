@@ -3,35 +3,49 @@
  * @brief Forwarding header for <code>jh::sequence</code>.
  *
  * <p>
- * This header provides a modern include style for sequence concepts and helpers:
+ * This header provides the canonical include entry for sequence
+ * concepts and related helpers.
  * </p>
+ *
  * <pre><code>#include &lt;jh/sequence&gt;</code></pre>
  *
  * <p>
- * Internally, it forwards to <code>jh/sequence.h</code> and contains no additional code.
+ * Internally, this file forwards to <code>jh/conceptual/sequence.h</code>,
+ * which defines <code>jh::concepts</code> sequence utilities.
+ * Including this header additionally promotes these conceptual
+ * templates into the root namespace <code>jh</code> for backward
+ * compatibility within all <b>1.3.x</b> releases.
  * </p>
  *
- * <h4>Deprecation Notice (Planned for 1.4.0+)</h4>
- * <p>
- * Beginning with <strong>version 1.4.0</strong>, sequence concepts and related
- * utilities will be integrated into <code>jh/conceptual/sequence.h</code>.
- * </p>
- *
+ * <h4>Namespace Mapping (1.3.x)</h4>
  * <ul>
- *   <li>This forwarding header will be <strong>removed</strong> in 1.4+.</li>
- *   <li>Users are encouraged to include either:</li>
+ *   <li><code>jh::concepts</code> — defines all sequence-related concepts and helpers.</li>
+ *   <li><code>jh</code> — mirrors <code>jh::concepts</code> symbols for backward compatibility.</li>
+ *   <li><code>jh::to_range(seq)</code> — remains part of <code>jh</code> as infrastructure.</li>
+ * </ul>
+ *
+ * <h4>Deprecation Notice (1.4.0+)</h4>
+ * <ul>
+ *   <li>This forwarding header will be <strong>removed</strong> in version 1.4.0.</li>
+ *   <li><code>jh::concepts</code> symbols will <strong>no longer</strong> be re-exported into <code>jh</code>.</li>
+ *   <li>To ensure forward compatibility, update your code as follows:</li>
  *   <ul>
- *     <li><code>#include &lt;jh/conceptual/sequence.h&gt;</code> — direct path, or</li>
- *     <li><code>#include &lt;jh/concepts&gt;</code> — aggregate conceptual header.</li>
+ *     <li>Include the concrete header <code>&lt;jh/conceptual/sequence.h&gt;</code>.</li>
+ *     <li>Use all conceptual symbols via the <code>jh::concepts</code> namespace explicitly.</li>
  *   </ul>
+ *   <li>Alternatively, include <code>&lt;jh/concepts&gt;</code> (new in 1.4.0) for aggregated concept access.</li>
  * </ul>
  *
  * <p>
- * This header remains valid for all <strong>1.3.x</strong> releases to maintain
- * backward compatibility.
+ * The current form remains valid and supported throughout the entire
+ * <strong>1.3.x</strong> release series.
  * </p>
  */
 
 #pragma once
 
 #include "jh/conceptual/sequence.h"
+
+namespace jh {
+    using namespace jh::concepts;
+}

@@ -129,14 +129,15 @@ if (ENABLE_POD)
             ${CMAKE_SOURCE_DIR}/include/jh/utils/hash_fn.h
             ${CMAKE_SOURCE_DIR}/include/jh/utils/typed.h
             ${CMAKE_SOURCE_DIR}/include/jh/utils/base64.h
+            ${CMAKE_SOURCE_DIR}/include/jh/utils/platform.h # alias in 1.3.x, will be removed in 1.4.0
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/utils
     )
 
-    # Install depending headers in directory 'marcos/'
+    # Install depending headers in directory 'macros/'
     install(FILES
-            ${CMAKE_SOURCE_DIR}/include/jh/marcos/platform.h
-            ${CMAKE_SOURCE_DIR}/include/jh/marcos/type_name.h
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/marcos
+            ${CMAKE_SOURCE_DIR}/include/jh/macros/platform.h
+            ${CMAKE_SOURCE_DIR}/include/jh/macros/type_name.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/macros
     )
 
     # Install the INTERFACE target
