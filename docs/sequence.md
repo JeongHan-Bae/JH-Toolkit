@@ -75,14 +75,14 @@ static_assert(!jh::sequence<jh::generator_range<int>>);
 
 ```c++
 template<typename T>
-using sequence_value_type = /* deduced from iterator_t<T> */;
+using sequence_value_t = /* deduced from iterator_t<T> */;
 ```
 
 Determines the element type by inspecting the `begin()` iterator:
 
 ```c++
-using A = jh::sequence_value_type<std::list<double>>;  // double
-using B = jh::sequence_value_type<std::map<int, std::string>>;  // std::pair<const int, std::string>
+using A = jh::sequence_value_t<std::list<double>>;  // double
+using B = jh::sequence_value_t<std::map<int, std::string>>;  // std::pair<const int, std::string>
 ```
 
 > Internally resolved via `iterator_traits<iterator_t<T>>::value_type`.
@@ -178,7 +178,7 @@ This allows `sequence` to support nearly anything usable in a `for (auto : x)` l
 | Feature                     | Description                                    |
 |-----------------------------|------------------------------------------------|
 | `sequence<T>`               | Minimal concept for const-safe input iteration |
-| `sequence_value_type<T>`    | Deduces element type via `iterator_t`          |
+| `sequence_value_t<T>`    | Deduces element type via `iterator_t`          |
 | `is_sequence<T>`            | Boolean trait for SFINAE/meta-programming      |
 | `to_range(const T&)`        | Converts sequence to standard `subrange`       |
 | Supports raw & custom types | Works with PODs, raw arrays, custom iterables  |

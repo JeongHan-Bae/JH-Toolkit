@@ -24,7 +24,7 @@
  * when building your project.
  */
 
-#include "jh/generator.h"
+#include "jh/generator"
 #include <iostream>
 #include <vector>
 #include <ranges>

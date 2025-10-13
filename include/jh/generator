@@ -1,11 +1,44 @@
 /**
  * @file generator
- * @brief Forwarding header for jh::generator
+ * @brief Forwarding header for <code>jh::generator</code>.
  *
- * This header exists to provide a modern include style (`#include <jh/generator>`),
- * forwarding to `jh/generator.h`. It contains no additional code.
+ * <p>
+ * This header provides the canonical include entry for
+ * <code>jh::generator&lt;T, U&gt;</code> — a coroutine-based
+ * generator type for asynchronous iteration.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/generator&gt;</code></pre>
+ *
+ * <p>
+ * Internally, this file forwards to <code>jh/asynchronous/generator.h</code>,
+ * which defines <code>jh::async::generator</code> and related utilities.
+ * Including this header additionally promotes these symbols into the
+ * root namespace <code>jh</code>, allowing use as
+ * <code>jh::generator</code> instead of <code>jh::async::generator</code>.
+ * </p>
+ *
+ * <p>
+ * The same functionality is also available through:
+ * <ul>
+ *   <li><code>&lt;jh/asynchronous/generator.h&gt;</code> — defines <code>jh::async::generator</code> directly.</li>
+ *   <li><code>&lt;jh/async&gt;</code> — available since <b>v1.4.0</b>, aggregates all asynchronous facilities under <code>jh::async</code>.</li>
+ * </ul>
+ * </p>
  */
 
 #pragma once
 
-#include "jh/generator.h"
+#include "jh/asynchronous/generator.h"
+
+namespace jh{
+    template<typename T, typename U = typed::monostate>
+    using generator = async::generator<T, U>;
+
+    template<typename T>
+    using generator_range [[maybe_unused]] = async::generator_range<T>;
+
+    using async::make_generator;
+    using async::to_vector;
+    using async::to_deque;
+}

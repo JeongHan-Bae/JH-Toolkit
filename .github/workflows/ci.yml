@@ -17,7 +17,7 @@ on:
 jobs:
 
   ubuntu-ci:
-    name: Ubuntu (gcc)
+    name: Linux (Ubuntu / GCC)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -38,7 +38,7 @@ jobs:
         run: ctest --test-dir build-fastdebug --output-on-failure
 
   macos-ci:
-    name: macOS (LLVM Clang 20 + libc++)
+    name: Darwin (macOS / LLVM @ 20)
     runs-on: macos-latest
     steps:
       - name: Checkout repository
@@ -71,7 +71,7 @@ jobs:
         run: ctest --test-dir build-fastdebug --output-on-failure
 
   windows-ci:
-    name: Windows (MSYS2 UCRT64 GCC)
+    name: Windows (MSYS2 UCRT64 / MinGW-w64)
     runs-on: windows-latest
     defaults:
       run:

@@ -1,11 +1,90 @@
+/**
+ * \verbatim
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * \endverbatim
+ */
+/**
+ * @file stringify.h (pods)
+ * @brief Stream output adapters (<code>operator<<</code>) for POD containers and utilities.
+ *
+ * This header provides inline <code>operator<<</code> overloads for types in <code>jh::pod</code>,
+ * producing human-readable, debug-friendly representations on <code>std::ostream</code>.
+ *
+ * <h3>Important Notes:</h3>
+ * <ul>
+ *   <li>These outputs are intended for <b>debugging, inspection, and logging</b>.</li>
+ *   <li><b>They do not define a stable serialization format</b> — output may change across compiler,
+ *       platform, or version differences.</li>
+ *   <li>Do <b>not</b> use these printers for persistence, network protocols, or ABI-sensitive data.</li>
+ *   <li>If you need true serialization:
+ *       <ul>
+ *         <li>Implement your own <code>operator<<</code> / <code>to_string</code> overloads.</li>
+ *         <li>Or use <code>jh::utils::base64</code> helpers, which provide proper encode/decode.</li>
+ *       </ul>
+ *   </li>
+ *   <li>All overloads are declared <code>inline</code>. In C++17+, this does <b>not</b> force inlining,
+ *       but provides <b>weak linkage semantics</b>, allowing safe inclusion in multiple translation units
+ *       without ODR violations, and optional overriding elsewhere.</li>
+ * </ul>
+ *
+ * <h3>jh::utils::base64 (recommended for serialization)</h3>
+ * Provides a minimal and consistent interface for encoding and decoding binary data.
+ *
+ * <ul>
+ *   <li><code>std::string encode(const uint8_t *data, std::size_t len) noexcept;</code><br/>
+ *       Encode raw bytes into a Base64 string.</li>
+ *
+ *   <li><code>std::vector&lt;uint8_t&gt; decode(const std::string &input);</code><br/>
+ *       Decode a Base64 string into a new byte buffer.</li>
+ *
+ *   <li><code>jh::pod::bytes_view decode(const std::string &input, std::vector&lt;uint8_t&gt;& buffer);</code><br/>
+ *       Decode into a provided <code>std::vector&lt;uint8_t&gt;</code> and return a
+ *       <code>bytes_view</code> pointing into it (useful for flat binary operations).</li>
+ *
+ *   <li><code>jh::pod::string_view decode(const std::string &input, std::string& buffer);</code><br/>
+ *       Decode into a provided <code>std::string</code> and return a
+ *       <code>string_view</code> pointing into it (useful for text-like operations).</li>
+ * </ul>
+ *
+ * These APIs are suitable for real serialization and deserialization,
+ * unlike the human-readable printers in this file.
+ *
+ * These APIs provide predictable serialization and deserialization.
+ * Use them if you need to persist or exchange data between systems.
+ *
+ * <h3>Examples of Debug Printers:</h3>
+ * <ul>
+ *   <li><code>pod::array&lt;T, N&gt;</code> → <code>[1, 2, 3]</code></li>
+ *   <li><code>pod::array&lt;char, N&gt;</code> → <code>"escaped\\tstring"</code></li>
+ *   <li><code>pod::pair&lt;T1, T2&gt;</code> → <code>{a, b}</code></li>
+ *   <li><code>pod::optional&lt;T&gt;</code> → <code>value</code> or <code>nullopt</code></li>
+ *   <li><code>pod::bitflags&lt;N&gt;</code> → <code>0x'ABCD</code> or <code>0b'0101</code></li>
+ *   <li><code>pod::bytes_view</code> → <code>base64'...'</code></li>
+ *   <li><code>pod::span&lt;T&gt;</code> → <code>span&lt;int&gt;[1, 2, 3]</code></li>
+ *   <li><code>pod::string_view</code> → <code>string_view"hello"</code></li>
+ * </ul>
+ */
 #pragma once
 
 #include "pod_like.h"
 #include <ostream>
 #include <sstream>
 #include <iomanip>
-#include "../utils/typed.h"
-#include "../utils/base64.h"
+#include "jh/utils/typed.h"
+#include "jh/utils/base64.h"
+#include "jh/macros/type_name.h"
 #include "pair.h"
 #include "array.h"
 #include "bits.h"
@@ -144,7 +223,7 @@ namespace jh::pod {
 
     template<streamable T>
     inline std::ostream &operator<<(std::ostream &os, const span<T> &sp) {
-        os << "span<" << typeid(T).name() << ">[";
+        os << "span<" << macro::type_name<T>() << ">[";
         for (std::uint64_t i = 0; i < sp.size(); ++i) {
             if (i != 0) os << ", ";
             os << sp[i];
