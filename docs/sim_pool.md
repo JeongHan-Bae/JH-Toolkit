@@ -1,265 +1,276 @@
-# 📦 JH Toolkit: `sim_pool` Simple Object Pool API Documentation
+# 🧱 **JH Toolkit — `jh::sim_pool` API Reference**
 
-📌 **Version:** 1.3  
-📅 **Date:** 2025  
+📁 **Header:** `<jh/sim_pool.h>`  
+🔄 **Forwarding Header:** `<jh/sim_pool>`  
+📦 **Namespace:** `jh`  
+📅 **Version:** 1.3.x → 1.4.0-dev (2025)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
-[![Back to README](https://img.shields.io/badge/%20Back%20to%20README-blue?style=for-the-badge)](../README.md)
+<div align="right">
+
+[![Back to README](https://img.shields.io/badge/Back_to_README-blue?style=flat-square)](../README.md)
+
+</div>
 
 ---
 
-## **1. Introduction to `jh::sim_pool<T, Hash, Eq>`**
+## ⚙️ Overview
 
-The `jh::sim_pool<T, Hash, Eq>` class is a **generic weak pointer-based object pool** designed for **efficient, thread-safe, and content-aware** object pooling.  
-It is particularly useful for scenarios where objects are frequently created and destroyed, ensuring **deduplication and automatic cleanup** of expired instances.
+`jh::sim_pool` (**Smart Immutable-objects Managing Pool**)
+is a **weak-pointer–observed**, **non-intrusive** object pool for **immutable** or **structurally immutable** objects.  
 
-### **Key Features**
-
-✅ **Automatic Object Pooling**
-
-* Prevents redundant `std::shared_ptr<T>` allocations by **storing only one instance of semantically identical objects**.
-
-✅ **Dynamic Memory Management**
-
-* **Expands dynamically** when full and **shrinks automatically** when underutilized.
-* Uses `std::atomic<std::uint64_t>` for **efficient, lock-free size tracking**.
-* Introduces **high/low watermark ratios** (87.5% / 25%) to prevent jittery expand/shrink decisions.
-
-  > 🆕 *Watermark Ratios Added in **v1.3.2***
-
-✅ **Thread-Safe Implementation**
-
-* Uses `std::shared_mutex` for **safe concurrent access**.
-* `acquire()` and `cleanup()`(`cleanup_shrink()`) operations are **lock-protected**.
-* Cleanup, resize decisions, and size checks are now consistently performed under a **single lightweight lock**.
-
-  > 🆕 *Improved in **v1.3.2***
-
-✅ **Custom Hashing and Equality Support**
-
-* **Uses content-based hashing** (`Hash`) and equality (`Eq`) instead of pointer-based lookup.
-* Allows **custom pool policies** for managing objects based on their content.
-
-✅ **Automatic Expiration Handling**
-
-* Once all shared references are gone, the object **expires and will be removed upon the next cleanup cycle**.
-* Public `cleanup`, `cleanup_shrink`, and internal `expand_and_cleanup` now share a **unified design** for consistency.
-
-  > 🆕 *Refactored in **v1.3.2***
-  
----
-
-## **2. When Should You Use `sim_pool<T, Hash, Eq>`?**
-
-Use `sim_pool` when you need:
-- **A reusable object pool** that avoids unnecessary heap allocations.
-- **Content-based object deduplication**, storing only **one instance** per unique value.
-- **Automatic cleanup** of expired objects **without manual tracking**.
-
-🚀 **Recommended Usage**
-- **Use `sim_pool<T>` when there is significant object reuse**.
-    - If objects are rarely reused, **the pool's internal management overhead may outweigh its benefits**.
-- **Avoid excessive clearing (`clear()`)** unless switching workloads.
-    - The pool **already performs automatic cleanup**. Frequent manual clearing may lead to unnecessary re-tracking.
-- **If objects do not frequently expire**, the pool may retain outdated weak pointers—periodic `cleanup()` calls can optimize memory usage.
-
-📌 **For automatic pooling of types with `hash()` and `operator==`, use `jh::pool<T>` instead.**  
-📌 **See [`pool.md`](pool.md) for details on `jh::pool<T>`.**
+It deduplicates logically equivalent instances while ensuring that external `std::shared_ptr` holders remain valid even after the pool itself is destroyed.  
+The pool never owns its elements — it only *observes* lifetimes.
 
 ---
 
-## **3. API Reference**
+### 🧭 Design Overview
 
-📌 **For additional details, refer to `sim_pool.h`**.
+`sim_pool` provides lightweight, race-safe interning of shared objects.  
+It supports both **truly immutable** and **structurally immutable** objects —  
+where *identity-defining fields* (those affecting hash and equality) remain constant for life.
 
-### **Class: `jh::sim_pool<T, Hash, Eq>`**
+Typical usage includes:
 
-```c++
-template<typename T, typename Hash, typename Eq>
-struct sim_pool;
-```
-**Note**: Hash and Eq should never use std::hash and std::equal_to<>, as these only compare the raw pointer, which means comparing the address instead of the content.
+* Shared text primitives like [`jh::immutable_str`](immutable_str.md).  
+* Handle- or resource-type wrappers whose unique identity is fixed.
 
 ---
 
-### **Constructor**
+### 🔹 Design Principles
 
-#### 📌 `explicit sim_pool(std::uint64_t reserve_size = 16)`
+| Aspect                       | Description                                                         |
+|------------------------------|---------------------------------------------------------------------|
+| **Ownership**                | Observation only — never claims or extends object lifetime.         |
+| **Lifetime coupling**        | None — destruction order between pool and objects irrelevant.       |
+| **Thread model**             | Shared/exclusive locking for concurrent reads and atomic insertion. |
+| **Cleanup policy**           | Event-driven: opportunistic removal of expired entries.             |
+| **Resizing policy**          | Adaptive; doubles or halves capacity on high/low watermark.         |
+| **Immutability requirement** | Fields defining identity must remain constant.                      |
 
-**Description:**  
-Creates a `sim_pool` with an **initial reserved size** (default: `16`).
+---
 
-🔹 **Parameters**
-- `reserve_size` → The initial number of elements the pool reserves.
+## 🔹 Core Behavior
 
-🔹 **Example**
-```c++
-struct MyObj{
-    int value;
-    MyObj(int value) : value(value) {}
-}; // Suppose MyObj has a constructor that takes an int and details are omitted
+1. Objects are constructed first (with forwarded arguments).  
+2. The pool lock is acquired only during lookup/insertion.  
+3. If an equivalent object already exists, it is reused and the temporary is discarded.  
+4. If not found, the new object is inserted and returned.  
 
-struct MyObjHash {
-    std::size_t operator()(const std::weak_ptr<MyObj> &ptr) const noexcept;
-    // Declaration not implemented in example, but should be content-based
-    // Return type should be convertible to std::uint64_t
-};
+This **construct-first, lock-then-insert** model minimizes contention,
+and supports even non-copyable or non-movable types such as `immutable_str`.  
+Temporary objects must be *cheap to discard* or support *lazy initialization*.
 
-// 🎯 Custom Equality Function (Expired weak_ptrs should be considered different)
-struct MyObjEq {
-    bool operator()(const std::weak_ptr<MyObj> &lhs, const std::weak_ptr<MyObj> &rhs) const noexcept;
-    // Declaration not implemented in example, but should be content-based
-    // Return type should be convertible to bool
-};
-jh::sim_pool<MyObj, MyObjHash, MyObjEq> pool(32); // Start with 32 reserved slots
+---
+
+## 🔹 Immutability & Structural Identity
+
+`sim_pool` enforces the concept of **structural immutability**:
+
+| Concept                           | Meaning                                                                                                                                   |
+|-----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| **Immutable object**              | All state is constant after construction.                                                                                                 |
+| **Structurally immutable object** | Only identity-defining fields (those used in hash / equality) are constant;<br> mutable internals are allowed if externally synchronized. |
+
+Objects with mutable fields may still be stored,
+but all fields influencing `Hash` or `Eq` **must remain invariant**
+throughout the object's lifetime.
+
+---
+
+## 🔹 Cleanup Model
+
+* **Attempt-based cleanup** — Expired entries are removed automatically during insertion or capacity expansion.  
+* **Non-aggressive reclamation** — Cleanup is event-driven, not periodic.  
+* **Adaptive resizing** — When capacity thresholds are reached, the pool first performs cleanup, then:
+    * Doubles capacity if still near full (`>87.5%`).  
+    * Halves capacity if underused (`<25%`).  
+* Shrinkage is always **conservative** — capacity halves (or stops at 16)
+  even if usage is much smaller, to prevent oscillation and allocation jitter.  
+
+---
+
+## 🔬 API Breakdown
+
+### 🏗️ **Construction**
+
+```cpp
+explicit sim_pool(std::uint64_t reserve_size = MIN_RESERVED_SIZE);
 ```
 
+Initializes the pool with reserved capacity.
+
+| Aspect        | Description                                                 |
+|---------------|-------------------------------------------------------------|
+| **Parameter** | `reserve_size` — initial reserve (default `16`).            |
+| **Behavior**  | Preallocates internal hash storage; no objects constructed. |
+| **Guarantee** | Pool never shrinks below `MIN_RESERVED_SIZE`.               |
+
 ---
 
-### **Object Retrieval & Pooling**
+### 🚫 **Copy / Move Semantics**
 
-#### 📌 `std::shared_ptr<T> acquire(Args&&... args)`
+| Operation | Availability | Semantics                                                    |
+|-----------|--------------|--------------------------------------------------------------|
+| Copy      | ❌ Deleted    | Prevents duplicate observers for same object space.          |
+| Move      | ✅ Available  | Transfers weak references and reserved size; source cleared. |
 
-**Description:**  
-Retrieves an object from the pool, or **creates a new one** if none exists.
+Live `shared_ptr` instances are unaffected by move operations.
 
-🔹 **Returns**
-- `std::shared_ptr<T>` → A **shared** instance of `T`, either newly created or retrieved from the pool.
+---
 
-🔹 **Example**
-```c++
-jh::sim_pool<MyObj, MyObjHash, MyObjEq> pool;
-auto obj1 = pool.acquire(10);
-auto obj2 = pool.acquire(10); // Retrieves the same object
-auto obj3 = pool.acquire(20); // Different object
+### 🧩 **Object Acquisition**
 
-std::cout << obj1 == obj2; // ✅ Output: 1 (true) - Same object
-std::cout << obj1 == obj3; // ✅ Output: 0 (false) - Different object
-std::cout << pool.size();  // ✅ Output: 2 - Two objects in the pool
+```cpp
+template<typename... Args>
+std::shared_ptr<T> acquire(Args&&... args);
 ```
 
+Retrieves a shared instance of `T` from the pool,
+or constructs and inserts a new one if none exists.  
+
+**Acquisition Flow**
+
+1. A temporary object is constructed using forwarded arguments.  
+2. The pool lock is acquired for lookup and possible insertion.  
+3. If a logically equivalent instance exists (as determined by `Eq`), it is reused.  
+4. Otherwise, the new object is inserted and returned.  
+
+| Aspect                  | Description                                                                                      |
+|-------------------------|--------------------------------------------------------------------------------------------------|
+| **Template parameters** | Forwarded constructor argument types.                                                            |
+| **Return type**         | `std::shared_ptr<T>` — pooled or newly inserted instance.                                        |
+| **Thread safety**       | Safe for concurrent calls; insertion atomic.                                                     |
+| **Construction model**  | Construct-first, lock-late for minimal contention.                                               |
+| **Design note**         | Supports non-copyable / non-movable `T`. Temporary objects may be discarded if duplicates exist. |
+
 ---
 
-### **Automatic Expiration Handling**
+### 🧹 **Cleanup**
 
-#### 📌 `void cleanup()` & `void cleanup_shrink()`
-
-**Description:**  
-Removes all expired `weak_ptr` references from the pool.
-
-🔹 **Example**
-```c++
-jh::sim_pool<MyObj, MyObjHash, MyObjEq> pool;
-{
-    auto obj = pool.acquire(100);
-} // obj goes out of scope
-
-pool.cleanup();  // Removes expired objects (or using pool.cleanup_shrink() to shrink the pool if necessary)
-std::cout << pool.size();  // ✅ Output: 0 - Object has been removed
+```cpp
+void cleanup();
 ```
 
-**Note** : `cleanup()` is **automatically called** by `expand_and_cleanup()` when the pool reaches capacity.
+Removes expired `weak_ptr` entries from the pool.
+
+| Aspect            | Description                                               |
+|-------------------|-----------------------------------------------------------|
+| **Purpose**       | Reclaim hash table space after released shared objects.   |
+| **Trigger**       | Manual call or internal capacity check.                   |
+| **Thread safety** | Exclusive lock.                                           |
+| **Effect**        | Does not affect live instances — only expired references. |
 
 ---
 
-### **Pool Size and Reserved Capacity**
+### 🧩 **Cleanup with Shrink**
 
-#### 📌 `std::uint64_t size() const`
-
-**Description:**  
-Returns the **current number of stored weak_ptrs**, **including expired ones**.
-- If accurate size is needed, **call `cleanup()` first**.
-
-Examples are already shown in the previous sections.
-
----
-
-#### 📌 `std::uint64_t reserved_size() const`
-
-**Description:**  
-Returns the **current reserved size** before expansion or contraction.
-
-🔹 **Example**
-```c++
-std::cout << pool.reserved_size();  // Check current pool capacity
+```cpp
+void cleanup_shrink();
 ```
 
+Performs cleanup and conditionally reduces capacity.
+
+| Aspect            | Description                                                               |
+|-------------------|---------------------------------------------------------------------------|
+| **Behavior**      | After cleanup, if usage < 25%, reserved capacity halves (or stops at 16). |
+| **Shrink model**  | Always halves — never fine-tunes below half; avoids jitter.               |
+| **Policy**        | Conservative: memory reuse readiness favored over minimal footprint.      |
+| **Thread safety** | Exclusive lock.                                                           |
+
 ---
 
-### **Manual Clearing of Pool**
+### 📊 **Capacity Query**
 
-#### 📌 `void clear()`
-
-**Description:**  
-Removes **all tracked objects** from the pool, but **does not destroy objects that are still referenced elsewhere**.
-- Objects that **still have active `std::shared_ptr` references** will **remain alive** until their last reference disappears.
-- This operation **only removes weak pointers from the pool's internal tracking**, allowing them to be **re-inserted if acquired again**.
-
-🔹 **Example**
-```c++
-auto obj1 = pool.acquire(10);
-auto obj2 = pool.acquire(20);
-
-pool.clear();  // Pool no longer tracks obj1 and obj2
-
-REQUIRE(pool.size() == 0); // ✅ Pool is empty but objects exist if referenced elsewhere
-// obj1 and obj2 are still alive as they are in the scope and not reset
+```cpp
+[[nodiscard]] std::uint64_t reserved_size() const;
 ```
 
+Returns current reserved capacity (adaptive threshold).
+
+| Aspect            | Description                                |
+|-------------------|--------------------------------------------|
+| **Thread safety** | Shared read.                               |
+| **Behavior**      | Reflects internal limit, not active count. |
+
 ---
 
-## **4. Pool Expansion & Cleanup Mechanism**
+### 📏 **Element Count**
 
-### **How `expand_and_cleanup()` Works**
-- If the **pool reaches capacity**, it **doubles** (`*2`) the reserved size.
-- If usage **drops below 25%**, it **shrinks** (`/2`) but **never below `16`**.
-- **Expired objects are always removed** during expansion/shrink cycles.
-
-🔹 **Example**
-```c++
-jh::sim_pool<MyObj, MyObjHash, MyObjEq> pool(16); // Start with 16 reserved slots
-for (int i = 0; i < 20; ++i) {
-    pool.acquire(i); // Acquired objects are not stored so they will expire immediately
-}
-std::cout << pool.reserved_size() <= 16; 
-// ✅ Output: 1 (true) - When the size reaches 16, the next acquire will triger `expand_and_cleanup()` 
-// so the expired objects will be removed so the reserved size will NOT be doubled
-
-pool.clear(); // Clear the pool
-
-std::vector<std::shared_ptr<MyObj>> objs;
-for (int i = 0; i < 20; ++i) {
-    objs.push_back(pool.acquire(i)); // Acquired objects are stored so they will not expire immediately
-}
-std::cout << pool.reserved_size() > 16; // ✅ Output: 1 (true) - The pool will expand to store all the objects
-
-std::cout << pool.size(); // ✅ Output: 20 - All objects are stored in the pool
-
-objs.clear(); // All objects are recycled so the pool-instances will expire
-pool.cleanup(); // Cleanup the pool
-std::cout << pool.size(); // ✅ Output: 0 - All objects are removed
+```cpp
+[[nodiscard]] std::uint64_t size() const;
 ```
 
----
+Returns current total stored weak entries (expired included).
 
-## **5. Modules in JH Toolkit That Use `sim_pool<T, Hash, Eq>`**
-
-Currently, `sim_pool<T>` is **used by the following modules**:
-
-| Module        | Description                                                 | Documentation           |
-|---------------|-------------------------------------------------------------|-------------------------|
-| `jh::pool<T>` | A specialized version of `sim_pool` with automatic hashing. | 📄 [`pool.md`](pool.md) |
+| Aspect            | Description  |
+|-------------------|--------------|
+| **Thread safety** | Shared read. |
 
 ---
 
-## **6. Conclusion**
+### 🔄 **Clear**
 
-The `jh::sim_pool<T, Hash, Eq>` class provides:
-- **Efficient, thread-safe content-aware object pooling**
-- **Automatic expiration cleanup** with minimal overhead
-- **Dynamic expansion and shrinking** based on usage
-- **Full customization** via user-defined hash and equality functions
+```cpp
+void clear();
+```
 
-📌 **For standard automatic pooling, see [`pool.md`](pool.md).**
+Removes all entries and resets baseline capacity to `16`.  
 
-🚀 **Enjoy efficient object management with JH Toolkit!**
+| Aspect            | Description                                                 |
+|-------------------|-------------------------------------------------------------|
+| **Effect**        | Discards observation records only; live objects unaffected. |
+| **Thread safety** | Exclusive write lock.                                       |
+| **Use caution**   | Not recommended for resource/handle-type pools.             |
+
+---
+
+## ⚙️ Concurrency & Safety
+
+| Guarantee                 | Description                                          |
+|---------------------------|------------------------------------------------------|
+| **Concurrent acquire()**  | Safe across threads; insertion is atomic.            |
+| **Locking granularity**   | Shared for reads, exclusive for modifications.       |
+| **Lifetime independence** | External `shared_ptr`s valid after pool destruction. |
+| **Cleanup timing**        | Only during insertion or explicit maintenance.       |
+
+---
+
+## ⚙️ Adaptive Resizing Logic
+
+| Threshold      | Ratio | Action                           |
+|----------------|-------|----------------------------------|
+| High watermark | 0.875 | Double capacity.                 |
+| Low watermark  | 0.25  | Halve capacity (never below 16). |
+| Otherwise      | —     | Retain current capacity.         |
+
+Even if current usage is far below 25%,
+capacity only halves — no multi-step reduction —
+to preserve performance stability.
+
+---
+
+## 🧱 Performance & Characteristics
+
+| Metric               | Behavior                                            |
+|----------------------|-----------------------------------------------------|
+| **Insertion cost**   | O(1) amortized (hash lookup + possible cleanup).    |
+| **Cleanup cost**     | Linear in current pool size.                        |
+| **Lock contention**  | Minimal, lock held only for short insertion period. |
+| **Memory stability** | Conservative adaptive model prevents oscillation.   |
+| **Thread safety**    | Guaranteed via shared mutex.                        |
+
+---
+
+## 🧩 Summary
+
+`jh::sim_pool` is a **non-owning, weak-pointer–based deduplication pool**
+designed for immutable or identity-stable objects.  
+It provides:
+
+* Safe concurrent interning across threads  
+* Adaptive cleanup and resizing  
+* Lifetime independence and predictable memory behavior  
+* Minimal coupling between pool and shared object ownership  
+
+It forms the **foundation** for higher-level interning utilities within the JH Toolkit.
