@@ -1,5 +1,6 @@
 /**
-* Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
+ * \verbatim
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,21 +13,45 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * \endverbatim
  */
-
 /**
  * @file hash_fn.h
+ * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief constexpr-safe hashing utilities with static algorithm selection.
  *
- * Provides multiple 64-bit non-cryptographic hash functions (FNV-1a, FNV-1, DJB2, SDBM)
- * for use in IDs, bucketing, and lightweight data indexing.
+ * Provides multiple 64-bit non-cryptographic hash functions for IDs, bucketing,
+ * and lightweight indexing. These algorithms are constexpr-friendly and avoid
+ * heap or STL dependencies. Not suitable for cryptographic use.
  *
- * The enum class `c_hash` selects the algorithm at compile-time.
- * All functions are constexpr-friendly and avoid heap or STL dependencies.
+ * <h3>Supported Algorithms (<code>jh::utils::hash_fn::c_hash</code>):</h3>
+ * <ul>
+ *   <li><code>c_hash::fnv1a64</code> — FNV-1a 64-bit hash (xor then multiply, default)</li>
+ *   <li><code>c_hash::fnv1_64</code> — FNV-1 64-bit hash (multiply then xor)</li>
+ *   <li><code>c_hash::djb2</code> — DJB2 hash (classic string hash: h * 33 + c)</li>
+ *   <li><code>c_hash::sdbm</code> — SDBM hash (used in DB engines, e.g. readdir)</li>
+ * </ul>
  *
- * Not suitable for cryptographic use.
+ * <h3>Pointer Type Policy:</h3>
+ * <ul>
+ *   <li>All functions take <code>const char*</code> as the canonical input type.</li>
+ *   <li>The following are accepted transparently:
+ *     <ul>
+ *       <li><code>const char*</code></li>
+ *       <li><code>const unsigned char*</code> / <code>const uint8_t*</code></li>
+ *       <li><code>const signed char*</code> / <code>const int8_t*</code></li>
+ *     </ul>
+ *     Regardless of platform-defined <code>char</code> signedness, all input bytes
+ *     are normalized internally via <code>static_cast&lt;uint8_t&gt;</code>.</li>
+ *   <li><code>std::byte*</code> is <b>not</b> supported directly:
+ *       must be explicitly cast with <code>reinterpret_cast&lt;const char*&gt;</code>.</li>
+ *   <li>This restriction ensures constexpr/consteval safety. At runtime,
+ *       reinterpret_cast is fully optimized and safe.</li>
+ * </ul>
+ *
+ * @version <pre>1.3.x</pre>
+ * @date <pre>2025</pre>
  */
-
 
 #pragma once
 
@@ -38,8 +63,8 @@ namespace jh::utils::hash_fn {
     enum class c_hash : std::uint8_t {
         fnv1a64 = 0,  ///< FNV-1a 64-bit hash
         fnv1_64 = 1,  ///< FNV-1 64-bit hash
-        djb2 = 2,  ///< DJB2 hash (classic string hash)
-        sdbm = 3   ///< SDBM hash (used in readdir, DBM)
+        djb2 = 2,     ///< DJB2 hash (classic string hash)
+        sdbm = 3      ///< SDBM hash (used in readdir, DBM)
     };
 
     /// FNV-1a 64-bit hash implementation (default choice)

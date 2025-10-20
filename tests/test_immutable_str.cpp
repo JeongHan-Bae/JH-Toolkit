@@ -289,6 +289,7 @@ TEST_CASE("pool<immutable_str> - Multithreading Same String") {
     for (auto &w: workers) {
         w.join();
     }
+    pool.cleanup();
 
     REQUIRE(pool.size() == 1); // Same immutable_str should be pooled
 }

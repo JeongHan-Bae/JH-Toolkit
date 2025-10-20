@@ -1,21 +1,22 @@
 #define CATCH_CONFIG_MAIN
+
 #include <iostream>
 #include <numeric>
 #include <random>
 #include <catch2/catch_all.hpp>
-#include "jh/generator.h"
+#include "jh/asynchronous/generator.h"
 #include <type_traits>
 
 // Helper template to check if a class has a given member function
-template<typename, template <typename> typename, typename = void>
+template<typename, template<typename> typename, typename = void>
 struct is_detected : std::false_type {
 };
 
-template<typename T, template <typename> typename Op>
+template<typename T, template<typename> typename Op>
 struct is_detected<T, Op, std::void_t<Op<T> > > : std::true_type {
 };
 
-template<typename T, template <typename> typename Op>
+template<typename T, template<typename> typename Op>
 inline constexpr bool is_detected_v = is_detected<T, Op>::value;
 
 // Detection templates for `begin()` and `end()`
@@ -27,25 +28,25 @@ using has_end_t = decltype(std::declval<T>().end());
 
 
 namespace test {
-    jh::generator<int> range(const int end) {
+    jh::async::generator<int> range(const int end) {
         for (int i = 0; i < end; ++i) {
             co_yield i;
         }
     }
 
-    jh::generator<int> range(const int start, const int end) {
+    jh::async::generator<int> range(const int start, const int end) {
         for (int i = start; i < end; ++i) {
             co_yield i;
         }
     }
 
-    jh::generator<int> range(const int start, const int end, const int step) {
+    jh::async::generator<int> range(const int start, const int end, const int step) {
         for (int i = start; i < end; i += step) {
             co_yield i;
         }
     }
 
-    jh::generator<int, int> countdown(int start) {
+    jh::async::generator<int, int> countdown(int start) {
         int step = 1; // Default step size if no value is sent
         while (start > 0) {
             volatile int next_step = step;
@@ -58,7 +59,7 @@ namespace test {
 
 // **Simple Test**
 TEST_CASE("Simple Test") {
-    jh::generator<int> my_generator = []() -> jh::generator<int> {
+    jh::async::generator<int> my_generator = []() -> jh::async::generator<int> {
         for (int i = 1; i <= 5; ++i) {
             co_yield i;
         }
@@ -514,7 +515,7 @@ TEST_CASE("deque -> Generator -> deque Equivalence Test") {
             }
 
             // Convert deque to generator
-            auto generator = jh::make_generator(original_deque);
+            auto generator = jh::async::make_generator(original_deque);
 
             // Convert generator back to deque
             const std::deque<int> generated_deque = to_deque(generator);
@@ -611,7 +612,7 @@ TEST_CASE("Iterator For Loop test") {
 
             // Iterate over the generator and validate values
             int expected_value = start;
-            for (auto iter = generator.begin(); iter != jh::generator<int, jh::typed::monostate>::end(); ++iter) {
+            for (auto iter = generator.begin(); iter != jh::async::generator<int, jh::typed::monostate>::end(); ++iter) {
                 REQUIRE(*iter == expected_value);
                 std::cout << "Generated: " << *iter << " | Expected: " << expected_value << std::endl;
                 ++expected_value;
@@ -643,13 +644,14 @@ TEST_CASE("Static Compilation Test for countdown") {
     static_assert(is_detected_v<RangeType, has_end_t>,
                   "Error: range should HAVE end()");
 
-    static_assert(std::same_as<jh::generator<int, double>::iterator, jh::iterator<jh::generator<int, double> > >,
-                  "Error: iterator should be of same type as jh::iterator<jh::generator<int, double>>");
+    static_assert(std::same_as<jh::async::generator<int, double>::iterator, jh::concepts::iterator_t<jh::async::generator<int, double> > >,
+                  "Error: iterator should be of same type as jh::concepts::iterator_t<jh::asynchronous::generator<int, double>>");
 
-    static_assert(std::same_as<jh::generator<int, jh::typed::monostate>::iterator, jh::iterator<jh::generator<int> > >,
-                  "Error: iterator should be of same type as jh::iterator<jh::generator<int>>");
+    static_assert(
+            std::same_as<jh::async::generator<int, jh::typed::monostate>::iterator, jh::concepts::iterator_t<jh::async::generator<int> > >,
+            "Error: iterator should be of same type as jh::concepts::iterator_t<jh::asynchronous::generator<int>>");
 
-    static_assert(!jh::sequence<jh::generator<int> >, "jh::generator<int> should not be a sequence");
+    static_assert(!jh::concepts::sequence<jh::async::generator<int> >, "jh::asynchronous::generator<int> should not be a sequence");
 }
 
 TEST_CASE("Generator Iterator Consumption Test") {
@@ -662,10 +664,10 @@ TEST_CASE("Generator Iterator Consumption Test") {
     // 2️⃣ Create iterator **after** generator has been advanced
     auto iter = generator.begin();
 
-    static_assert(jh::is_iterator<decltype(iter)>,
+    static_assert(jh::concepts::is_iterator<decltype(iter)>,
                   "Error: iter should be of type iterator");
 
-    static_assert(jh::input_iterator<decltype(iter)>,
+    static_assert(jh::concepts::input_iterator<decltype(iter)>,
                   "Error: iter should be of type input iterator");
 
     // 3️⃣ Iterator should return the next value, NOT the `init_val`
@@ -692,7 +694,7 @@ TEST_CASE("Generator to_range repeatable iteration test") {
 
     constexpr int total_tests = 128;
 
-    static_assert(jh::sequence<jh::generator_range<int>>, "jh::generator_range should satisfy sequence concept.");
+    static_assert(jh::concepts::sequence<jh::async::generator_range<int>>, "jh::asynchronous::generator_range should satisfy sequence concept.");
 
     for (int i = 0; i < total_tests; ++i) {
         SECTION("Randomized to_range Test " + std::to_string(i + 1)) {
@@ -704,7 +706,7 @@ TEST_CASE("Generator to_range repeatable iteration test") {
                 original.push_back(value_dist(gen));
             }
 
-            auto range_ = jh::to_range([&] { return jh::make_generator(original); });
+            auto range_ = jh::to_range([&] { return jh::async::make_generator(original); });
 
             // First collection
             std::vector<int> first_pass;
