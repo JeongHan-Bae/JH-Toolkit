@@ -118,7 +118,8 @@ jobs:
 
       - name: Install Tools
         run: |
-          brew install cmake ninja llvm pipx
+          brew install cmake ninja llvm@20 pipx
+          brew link --force llvm@20
           pipx install conan
           pipx ensurepath
           conan profile detect
