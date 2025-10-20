@@ -1,673 +1,323 @@
-# JH Toolkit
+<h1 align="center">
+  <span>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/1/18/ISO_C%2B%2B_Logo.svg" 
+         alt="C++ Logo" 
+         width="72" valign="middle">
+  </span>
+  <span style="font-size: x-large;">&nbsp;JH Toolkit</span>
+</h1>
 
-### **version: 1.3.2**
+<p align="center">
+  <img
+    src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/JeongHan-Bae/JH-Toolkit/main/version_badge.json"
+    alt="badge"
+    width="196"
+  >
+</p>
 
-**A Modern, Modular C++20 Toolkit for High-Performance Generic Programming — Featuring POD Utilities, Immutable
-Structures, Coroutine Generators, Concept-Driven Abstractions, and Lightweight Object Pools.**
+<div align="center" style="margin-left: 8%; margin-right: 8%; font-size: medium;">
 
-<!-- ✅ Language & Standard Support -->
+<strong>
+A Modern, Duck-Typed C++20 Toolkit for Generic and Asynchronous Programming — Featuring
+Concurrency-Safe Infrastructure, POD Subsystems, Concept-Bridged Type Compatibility, and Extended Range Utilities —
+Fully Template-Driven and RTTI-Free.
+</strong>
+</div>
+
+
+<div align="center">
+<p></p>
+
+<!-- ✅ Core Info -->
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-violet.svg)](https://en.cppreference.com/w/cpp/20)
-[![Header-Only](https://img.shields.io/badge/header--only-partial_(most_modules)-green)](#)
-[![Coroutines](https://img.shields.io/badge/coroutines-supported-brightgreen)](https://en.cppreference.com/w/cpp/language/coroutines)
-[![Concepts](https://img.shields.io/badge/concepts-supported-brightgreen)](https://en.cppreference.com/w/cpp/language/constraints)
+[![Header-Only](https://img.shields.io/badge/header--only-supported-green)](#)
+[![Static Build](https://img.shields.io/badge/static--build-supported-green)](#)
+
+<!-- ✅ CI / Contributors / Wiki -->
+[![CI](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml)
+[![Contributors](https://img.shields.io/github/contributors/JeongHan-Bae/JH-Toolkit.svg)](https://github.com/JeongHan-Bae/JH-Toolkit/graphs/contributors)
+[![Wiki](https://img.shields.io/badge/docs-wiki-blue)](https://github.com/JeongHan-Bae/JH-Toolkit/wiki)
+
 
 <!-- ✅ Feature Highlights -->
-[![Object Pool](https://img.shields.io/badge/object--pooling-weak_ptr_based-brown)](docs/pool.md)
-[![Immutable Strings](https://img.shields.io/badge/immutable--strings-truly_immutable-brown)](docs/immutable_str.md)
-[![Generators](https://img.shields.io/badge/generators-coroutine_driven-brown)](docs/generator.md)
-[![POD System](https://img.shields.io/badge/pod--system-trivial_types%2C_layout_stable-brown)](docs/pod.md)
+[![Object Pool](https://img.shields.io/badge/object--pooling-optimized-brown)](docs/pool.md)
+[![Immutable Strings](https://img.shields.io/badge/immutable--strings-pure-brown)](docs/immutable_str.md)
+[![Generators](https://img.shields.io/badge/generators-coroutines-brown)](docs/generator.md)
+[![POD System](https://img.shields.io/badge/pod--system-trivial-brown)](docs/pod.md)
+[![Duck Concepts](https://img.shields.io/badge/duck--concepts-flexible-brown)](docs/concepts.md)
 
----
-## 🚀 Highlights of v1.3.2 (CI-Stable / LTS-Compatible)
-
-This release refines **POD utilities**, improves **pool stability**, and updates documentation across the toolkit.
-It also fixes CI hash instability issues by enforcing LLVM Clang 20 with `libc++`.
-
-### 🔹 POD System Enhancements
-
-* 🆕 All STL-style POD containers (`pod::span`, `pod::array`, `pod::pair`) now provide **std-compatible type aliases** (e.g. `element_type`, `size_type`), and `pod::string_view` likewise exposes a pseudo-`value_type = char` for seamless interop with `std::string_view`.
-* 🆕 `pod::optional<T>`: clarified ABI (`sizeof == sizeof(T) + 1`), added `value_or` and `nullopt` printing.
-* 🆕 `pod::string_view`: enriched API docs; clarified **content-based equality** vs `span`'s address-based equality.
-* 🆕 Added **`stringify` utilities** (`operator<<`) for all POD wrappers (`array`, `pair`, `optional`, `bitflags`, `bytes_view`, `span`, `string_view`).
-
-  * Designed for **human-readable debugging**.
-  * Distinct from **serialization**, which uses `bytes_view + base64`.
-* 📝 Full POD system API docs updated → see [`docs/pod.md`](docs/pod.md).
-
-### 🔹 Pool & String Improvements
-
-* 🛠️ `sim_pool`: refined allocation policy to avoid repeated **thrashing near capacity limits**,
-  making pooling behavior smoother under high churn.
-* 🛠️ `immutable_str`: now uses **transparent template deduction** for more stable interop with `std::string_view`,
-  reducing implicit copy overhead in generic code.
-* ✅ Both modules preserve the **same public API**, ensuring compatibility with 1.3.x clients.
-
-### 🔹 CI & Compiler Fixes
-
-* 🛠️ Explicitly force GitHub CI to use **LLVM Clang 20 + libc++**.
-
-  * Fixes unstable `std::hash` exports seen in intermediate Clang versions.
-  * Local (Clang ≥20.1.3) and old CI builds (15) were stable → issue traced to mid-upgrade CI env.
-
-### 🔹 CMake Build Optimization
-
-* ⚡ Build system no longer defaults to **`-march=native`**.
-* ✅ Instead, applies **portable SIMD-aware `-march` flags** based on platform when cross-compiling (e.g., Docker builds):
-
-  * `x86_64 / amd64` → `-march=x86-64-v3`
-  * `aarch64 / arm64` → `-march=armv8-a`
-  * `armv7` → `-march=armv7-a` (**fallback only, not officially supported**)
-* 🛠 Ensures **safe SIMD optimizations** even in **same-architecture cross-compilation** (e.g., x86→x86, arm→arm).
-* ⚠️ **Heterogeneous cross-compilation is not recommended**:
-
-  * May introduce significant runtime overhead
-  * SIMD optimizations may be ineffective or counterproductive
-* 📌 **Note on `armv7`**: This flag is included only as a *CMake fallback* for toolchains that default to ARMv7.
-  The JH Toolkit does **not support 32-bit platforms** — actual builds will fail the `static_assert(sizeof(size_t) == 8)` check.
-  This fallback exists solely to provide a valid SIMD flag during toolchain detection.
-
-### 🔹 Documentation Updates
-
-* 📚 `sim_pool` and `immutable_str`:
-  updated file headers → `@version 1.2.x → 1.3.x`.
-* 📚 Updated module docs for POD (`docs/pod.md`) and object pools.
-  Clarified migration guidance (`tuple` → `JH_POD_STRUCT`).
-* 📖 `README.md` updated to 1.3.2 with new highlights.
+</div>
 
 ---
 
-### 📦 Conan Packaging via GitHub Releases
+<div align="center" style="margin-top: 16px; margin-bottom: -8px">
+  <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Oree.svg"
+       alt="Oree mascot"
+       style="width: 128px; height: auto;">
+</div>
 
-Conan packages are now distributed **as `.tar.gz` archives** attached to **GitHub Release Assets**.
+<p align="center" style="font-size: large;">
+  <strong>Let's meet our mascot — <em>Oree</em></strong>
+</p>
 
-**Available (v1.3.2):**
+<p align="center" style="font-size: medium;">
+  <em>Oree</em>, the green-headed duck whose name comes from the Korean word "오리",<br>
+  embodies the philosophy of the <strong>JH Toolkit</strong> — a world where<br>
+  <strong>if it behaves like a duck, it is a duck.</strong>
+</p>
 
-- 🧩 `jh-toolkit-pod` — Header-only (platform independent)
-- 🛠️ `jh-toolkit` — Full builds for:
-  - Linux x86_64
-  - macOS ARM64
-
----
-
-### ⚠️ Notes
-
-- ✅ **Conan 2.x is used**, with modern profile support and CMake toolchains.
-- 📦 **GitHub Packages is _not_ used**, as it does **not support Conan 2.x**.
-  - Conan 1.x is still supported, but only under **organization-owned repositories**.
-  - This limits its functionality and long-term maintainability.
-- ⛔ **We do not use Conan 1.x** due to lack of features and security limitations.
-- ❌ **Windows builds are excluded**, since Conan 2.x on MSYS2/UCRT64 incorrectly injects MSVC dependencies.
-- 🚫 **Linux ARM64 builds are skipped in CI**, due to lack of native runner or fully working QEMU + Docker setup on GitHub-hosted agents.
-
-### 📦 Conan `.tar.gz` Archive — Notes on Usage & Dependencies
-
-> ⚙️ **All `.tar.gz` packages are compiled and archived via GitHub CI** during each tagged release.  
-> They’re ideal for CI/CD environments or machines matching the same OS + compiler configuration.
-
-#### 📋 Package Dependency Matrix
-
-| Package Name              | Platform Dependent | Compiler Dependent | Description                               |
-|---------------------------|--------------------|--------------------|-------------------------------------------|
-| `jh-toolkit-pod`          | ❌                  | ❌                  | Header-only, platform-agnostic POD module |
-| `jh-toolkit-linux-x86_64` | ✅                  | ✅ (GCC 12+)        | Built on `ubuntu-latest`, GCC toolchain   |
-| `jh-toolkit-macos-arm64`  | ✅                  | ✅ (Clang 16+)      | Built on `macos-latest`, Homebrew LLVM    |
-
-#### 🧠 Why Use These Archives?
-
-- ✅ Fast setup for automation and testing pipelines
-- ✅ Consistent behavior across CI and release environments
-- ✅ Perfect for **pre-baked CI runners**, **offline machines**, or **mirrored artifacts**
-
-#### ⚠️ Manual Conan Cache Extraction
-
-```bash
-# Download from GitHub Releases
-wget https://github.com/JeongHan-Bae/JH-Toolkit/releases/download/JH-Toolkit-1.3.2/jh-toolkit-linux-x86_64-1.3.2.tar.gz
-
-# Inject into local Conan 2.x cache
-mkdir -p ~/.conan2/p/jh-toolkit
-tar -xzf jh-toolkit-linux-x86_64-1.3.2.tar.gz -C ~/.conan2/p/jh-toolkit
-```
-
-> 🔍 Inspect cache layout using `conan list` or `conan cache path`
-
-If your environment **differs from our CI presets**, you can still [build from source 📥](#-installation) — always tailored to your toolchain.
+<p align="center" style="font-size: medium;">
+  Instead of enforcing inheritance, the toolkit follows <strong>behavioral compatibility</strong>:<br>
+  every type belongs by what it <em>can do</em>, not by what it <em>inherits</em>.<br>
+  <br>
+  Oree represents freedom, adaptability, and elegance —<br>
+  just like modern C++ itself.
+</p>
 
 ---
 
-## 📌 Requirements
+## 🧰 Build & Platform Guide
 
-- **C++20** (mandatory)
-- **CMake 3.14+** (for library usage)
-- **CMake 3.20+** (for full compilation and installation)
-- **Git** (required for Debug mode builds)
-- **A modern C++20 compiler**
+For detailed build instructions, supported compilers, and Conan packaging notes,  
+please refer to the [Build & Platform Guide](./docs/build.md).
 
-> ✅ CI-tested and recommended toolchains:
-
-| Platform    | Recommended Compiler                                                    | Notes                                                                                  |
-|-------------|-------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
-| **Linux**   | **GCC 12+**                                                             | CI uses `ubuntu-latest` with GCC 12                                                    |
-| **macOS**   | **Apple Clang 16+** (Xcode 15.3+)<br>or **LLVM Clang 16+** via Homebrew | Use Homebrew LLVM if your Xcode version is older                                       |
-| **Windows** | **MSYS2 UCRT64 (GCC 13+)**                                              | Older `mingw64` may lack support for `std::ranges`; use `ucrt64` to ensure correctness |
-
----
-
-### 🧠 Compiler Compatibility Notes
-
-- `jh-toolkit` depends on full support for:
-    - `std::ranges::subrange`, `views`
-    - `concepts`, `requires` constraints
-    - coroutine features (`co_yield`, `co_return`)
-    - aggregate initialization across POD inheritance
-- ✅ Minimum supported versions:
-    - GCC 11+
-    - Clang 15+
-- ✅ CI-tested:
-    - GCC 12+
-    - LLVM Clang 15+ (macOS)
-    - MSYS2 UCRT64 GCC 13+ (Windows)
-
----
-
-### ❌ Not Supported
-
-- **MSVC (Microsoft Visual C++)**  
-  Compilation with MSVC is **explicitly prohibited**.  
-  Any MSVC toolchain will trigger a hard error via [`include/jh/utils/platform.h`](include/jh/utils/platform.h):
-
-  > 🛑 Why?
-  > - Incomplete support for C++20 `concepts`, `ranges`, and coroutine semantics
-  > - Unstable `SFINAE` and template constraints
-  > - ABI and STL inconsistencies across versions
-
-  ✅ Alternatives:
-    - **MSYS2 (UCRT64) with GCC**
-    - **WSL2 + Ubuntu GCC**
-    - **MINGW-Clang for Windows**
-
----
-
-### 🚫 32-bit Platforms
-
-- JH Toolkit **does not support** 32-bit platforms (e.g., x86, ARMv7).
-- A hard `static_assert(sizeof(std::size_t) == 8)` check will **prevent compilation** on such targets.
-- This guarantees ABI consistency and avoids silent miscompilation from fake `-m64` flags or macro spoofing.
-
----
-
-### ⚠️ Windows ARM64 Note
-
-- Native Windows ARM64 toolchains (e.g., MSYS2 `mingw64` or `clang64` for ARM64) are **not fully supported**.
-- They often lack required `std::ranges` and concept resolution features.
-- ✅ Recommended:
-    - Use **WSL2 + Ubuntu + GCC** for reliable ARM64 builds on Windows
-    - Or cross-compile from a known-good x86_64 Linux system
-
----
-
-### 📦 MinGW Compatibility
-
-> - Older `mingw64` toolchains (e.g., GitHub runners, system MinGW) **lack full support** for `std::ranges`, `concepts`,
-    and coroutine semantics.
-> - ✅ However, **`jh::pod` modules** are fully supported even on older MinGW variants.
-> - ✅ If you're only using `jh-toolkit` as a **header-only POD utility**, then any modern C++20-capable MinGW will work.
-
-✅ Toolchains bundled with modern environments like **CLion**, **MSYS2**, or **VSCode + MSYS2** typically ship with **GCC
-12+ or 13+**, and are fully compatible.
-
-> 🛠 For full module support (`generator`, `immutable_str`, `views`, `pool`, etc.), we recommend:
-
-```bash
-pacman -Syu
-pacman -S --needed mingw-w64-ucrt-x86_64-toolchain
-```
-
----
-
-### 🛠 Enabling C++20
-
-Ensure your project explicitly enables **C++20**, otherwise `jh-toolkit` will not compile:
-
-```cmake
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-```
-
----
-
-### 📱 Mobile & Embedded Targets
-
-> ❌ JH Toolkit is **not intended for embedded systems or constrained environments**.
-> Internals are optimized for 64-bit environments with modern allocators and cache alignment.
-
-> ✅ For Android/iOS, use `add_subdirectory(jh-toolkit)` for tight ABI control — avoid using `find_package()` for mobile builds; prefer manual inclusion.
-
-> 📦 You may embed source directly and limit to `jh::pod` for ultra-minimal use cases.
-
----
-
-### 🧰 Older CMake (< 3.20)
-
-If you can't use `CMake 3.20+`, you can still:
-
-- Include source directly in your CMake tree
-- Use `#include "jh/..."`
-- Link individual `.cpp` manually (non-header-only modules)
-
----
-
-✅ Local embedding works reliably on:
-
-- Linux/macOS desktops
-- CI runners
-- Mobile cross-compilation
-
-🚫 Not recommended for:
-
-- 32-bit builds
-- Bare-metal / embedded
-- MSVC-based platforms
-
----
-
-## 📥 Installation
-
-#### 🔸 **Option 1: Latest Stable Version (1.3+ Ongoing)**
-
-```sh
-git clone https://github.com/JeongHan-Bae/jh-toolkit.git
-```
-
-#### 🔹 **Option 2: Latest LTS Release (1.3.0+)**
-
-```sh
-git clone --branch 1.3.x-LTS --depth=1 https://github.com/JeongHan-Bae/jh-toolkit.git
-```
-
-👉 Or download from: **[JH Toolkit Latest LTS Release](https://github.com/JeongHan-Bae/JH-Toolkit/releases/latest)**
-
----
-
-### 1️⃣ Build and Install
-
-#### 🔹 Full Version (Default)
-
-```sh
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-sudo cmake --install build
-```
-
-This installs the complete **`jh-toolkit`**:
-
-- Provides full header sets and implementation.
-- Use `jh::jh-toolkit` and `jh::jh-toolkit-impl`.
-
-Recommended on development machines or when full functionality is needed.
-
----
-
-#### 🔸 Minimal Version (Header-only POD system)
-
-```sh
-cmake -B build-pod -DCMAKE_BUILD_TYPE=Release -DTAR=POD
-cmake --build build-pod
-sudo cmake --install build-pod
-```
-
-This installs only the **POD system**:
-
-- A lightweight, header-only C++20 template library.
-- Use `jh::jh-toolkit-pod`.
-
-Recommended for minimal deployment, embedding, or when implementation is not needed.
-
-📖 See [docs/pod.md](docs/pod.md) for usage details.
-
----
-
-#### 🧩 Custom Build Modes for Modular Deployments
-
-You can selectively build and install specific components using:
-
-```sh
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DTAR=POD,ALL
-```
-
-- The `TAR` option accepts a comma-separated list of target modules to include.
-- Currently supported values: `POD`, `ALL`
-- Targets are **individually downloadable and usable** depending on your deployment needs.
-
-Use case examples:
-
-| Usage Context       | Suggested `TAR` Value | What It Builds                       |
-|---------------------|-----------------------|--------------------------------------|
-| Minimal runtime     | `POD`                 | Header-only POD system               |
-| Development machine | `ALL`                 | Everything: headers + implementation |
-| Shared dependency   | `POD,ALL`             | All targets available in local build |
-
-> ✅ `TAR=POD,ALL` makes all targets available without restricting modularity.  
-> This allows dependent projects to only link what they need.
-
----
-
-#### 📦 Installed Targets by Build Mode
-
-| Build Mode          | CMake Targets Available                 | Description                          |
-|---------------------|-----------------------------------------|--------------------------------------|
-| `TAR=ALL` (default) | `jh::jh-toolkit`, `jh::jh-toolkit-impl` | Full header set + implementation     |
-| `TAR=POD`           | `jh::jh-toolkit-pod`                    | Header-only POD module               |
-| `TAR=POD,ALL`       | All above targets                       | Maximum availability, optional usage |
-
-All modes are compatible with:
-
-```cmake
-find_package(jh-toolkit REQUIRED)
-```
-
-Then link only the targets your project needs.
-
----
-
-### 2️⃣ Verify Installation
-
-If installation is successful, you should be able to include and use `jh-toolkit` in a minimal program:
-
-```c++
-#include <jh/immutable_str> // or <jh/immutable_str.h>
-#include <iostream>
-
-int main() {
-    auto pool = jh::pool<jh::immutable_str>();
-    const auto str = pool.acquire("Hello, JH Toolkit!");
-    std::cout << str->view() << std::endl;
-    return 0;
-}
-```
-
-If this compiles and runs successfully, `jh-toolkit` is correctly installed.
-
-## 📦 Usage
-
-### CMake Integration
-
-Add `jh-toolkit` to your project:
-
-```cmake
-cmake_minimum_required(VERSION 3.14)
-project(my_project LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-find_package(jh-toolkit REQUIRED)
-
-add_executable(my_project main.cpp)
-target_link_libraries(my_project PRIVATE jh::jh-toolkit) # For header-only modules
-target_link_libraries(my_project PRIVATE jh::jh-toolkit-impl) # For compiled components
-```
-
----
-
-### ⚙️ Debug Build Setup
-
-Build and test the project using standard `Debug` or performance-friendly `FastDebug` modes:
-
-```sh
-cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug
-```
-
-**or**
-
-```sh
-cmake -B build-debug -DCMAKE_BUILD_TYPE=FastDebug
-```
-
-**then**
-
-```sh
-cmake --build build-debug
-ctest --test-dir build-debug --output-on-failure
-```
-
----
-
-#### 🧪 Fast, CI-friendly Testing
-
-- All unit tests are registered with `ctest`.
-- Most modules are mature and run limited randomized iterations (e.g., 128 rounds).
-- Suitable for rapid regression checks and automation pipelines.
-
----
-
-#### 🛠️ FastDebug vs Debug
-
-| Mode          | Optimization | Debug Info | Use Case                                             |
-|---------------|--------------|------------|------------------------------------------------------|
-| **Debug**     | `-O0`        | ✅ `-g`     | Traditional debug builds; full symbolic debugging    |
-| **FastDebug** | `-O2`        | ✅ `-g`     | Faster test execution with minimal optimization bias |
-
----
-
-#### 🚫 What FastDebug *Does Not* Do
-
-FastDebug **only** applies `-O2 -g` and intentionally avoids more aggressive compiler behaviors:
-
-- ❌ No `-march=native`
-- ❌ No auto-vectorization (`-ftree-vectorize`)
-- ❌ No loop unrolling (`-funroll-loops`)
-- ❌ No SIMD-only code paths
-
-This ensures consistent runtime behavior and portability across CI runners or developer machines.
-
-> ✅ **FastDebug mode not only speeds up testing, but also helps identify bugs that only appear under compiler
-optimizations (e.g., undefined behavior, aliasing issues, optimization-elided side effects).**
-
----
-
-### 📌 Notes
-
-- 🧪 All modules are covered by unit tests for **behavioral correctness**.
-    - Modules like `generator` and `pool` are stable but **not yet micro-optimized**.
-    - Core utility types such as `immutable_str` and `runtime_arr` are **micro-optimized** and designed for practical
-      performance without sacrificing safety or clarity.
-
----
-
-### ⚙️ On Lightweight Benchmarking
-
-Some core modules include **lightweight, embedded benchmarks** in their test suites to validate real-world performance
-without requiring a full benchmarking framework.
-
-- 🧪 Modules with benchmarks:
-    - `immutable_str`: A fully immutable, thread-safe string type optimized for hashing and interning.
-    - `runtime_arr`: A fixed-size, non-resizable heap array with raw-layout speed and STL compatibility.
-- 🧪 Modules **without active benchmarks**:
-    - `generator`, `pool`: Stable but not micro-optimized yet.
-
-#### 📈 Results Overview
-
-- Benchmarks demonstrate that optimized modules are typically **comparable to STL** in performance.
-- In specific cases, custom structures even **outperform STL** by reducing allocation or indirection overhead.
-- Overhead remains **predictable and minimal** across compilers and optimization levels.
-
-#### 🧪 Running Benchmarks
-
-- 🚀 Run test binaries directly to view timing output (no need for `ctest`).
-- 📚 Module documentation includes brief benchmark context and insights.
-
-> ❗ No separate `benchmark/` directory or `tests/benchmark.cpp` exists; new performance testing will be added only when
-> necessary.
-
----
-
-### 🛠 Build Behavior
-
-- 🔧 Benchmarks, examples, and debugging tools are **disabled in Release builds**.
-- 🚫 Install is **disabled in Debug builds** to prevent accidental system changes.
-- 🔁 Randomized test rounds are capped (e.g. 128 iterations) for long-verified modules — ensuring reasonable CI duration
-  without sacrificing coverage.
+> Covers: toolchains, CMake targets, Conan `.tar.gz` releases, and dual-mode headers.
 
 ---
 
 ## 📚 JH Toolkit Modules Overview
 
-### 📦 Template-Based Modules
+---
 
-Modern C++20 header-only components focused on **zero-cost abstraction**, **type safety**, and **performance-conscious
-design**.
+### 🧩 Conceptual & Ranges-Views System — Duck Typing Philosophy
 
-#### 🧰 Core Utility Modules
+The **`jh::concepts`** & **`jh::views`** system embodies JH Toolkit's **duck typing philosophy** —
+if a type behaves like a sequence, it is treated as one.
+This system generalizes iteration and range utilities through behavior rather than inheritance,
+bridging standard and non-standard containers seamlessly.
 
-- [`pod`](docs/pod.md) — A lightweight system of POD-like value types (`pod::pair`, `array`, `optional`, `bitflags`,
-  etc.), optimized for serialization and placement-new.
-- [`sequence`](docs/sequence.md) — Minimal C++20 concept for forward-iterable sequences; foundation for `view`
-  operations.
-- [`iterator`](docs/iterator.md) — Iterator detection, `iterator_t<>` alias, and validation concepts (`input_iterator`,
-  etc.).
-- [`views`](docs/views.md) — Lazy, allocation-free range adapters: `enumerate`, `zip`, and more; compatible with all
-  `sequence`s.
+`jh::concepts` defines JH Toolkit's **duck-typing model for iteration**,
+recognizing **behavioral compatibility** rather than formal inheritance.
 
-#### 🔁 Functional Utilities
+Any type that supports range-for iteration — readable or writable —
+and **preserves its state across iterations** is treated as a **duck sequence**.
+`jh::concepts::iterator` and `jh::concepts::sequence` together enable
+**`jh::to_range()`**, which transparently proxies such types into a standard-like range view.
 
-- [`generator`](docs/generator.md) — Coroutine-based generator/stream-style interfaces.
-- [`pool`](docs/pool.md) / [`sim_pool`](docs/sim_pool.md) — Shared pointer-based object pools with automatic
-  deduplication.
-- [`immutable_str`](docs/immutable_str.md) — ABI-stable, thread-safe immutable strings with `std::string_view` interop.
+`jh::views` provides **lazy, allocation-free adapters** that extend this model.
+**`jh::views::zip`** and **`jh::views::enumerate`** operate on duck sequences through `jh::to_range()`,
+built upon **`jh::ranges::zip_view`**, a C++20 implementation mirroring
+C++23's `std::ranges::zip_view` when available.
+
+> In all **1.3.x releases**, `jh::concepts` are **globally down-leveled to `jh::*`**
+> for backward compatibility, while `jh::views::*` remains the canonical interface,
+> following the same convention as the C++ standard library (`std::views::*`).
 
 ---
 
-### 🧱 Value Types
+### 🌀 Async System — Cooperative Concurrency, True Parallelism
 
-Finalized C++ types intended for **immutable**, **compact**, and **semantically clear** ownership.
+**`jh::async` — Unified Asynchronous Semantics**
 
-- [`runtime_arr`](docs/runtime_arr.md) — Fixed-size, move-only runtime buffer; STL-compatible, allocator-aware, with
-  `reset_all()` for reuse.
+`jh::async` defines the asynchronous behavior model of JH Toolkit.
+It provides coroutine-based lazy evaluation through **`jh::async::generator`**,
+a **deferred state machine** that models computation rather than storage.
+Generators are **consumable**, representing one logical evaluation path per lifetime,
+and are exposed under both `jh::generator` and `jh::async::generator` for convenience.
 
----
+The upcoming **1.4.x series** extends `jh::async` with other concurrency primitives:
+- **`occ_box`** for optimistic transactional control
+- **`process_mutex`** for timed interprocess synchronization
+- **`process_launcher`** for isolated, parallel process execution
 
-### 🔗 Quick Links to Module Docs
-
-- [`generator`](docs/generator.md)
-- [`immutable_str`](docs/immutable_str.md)
-- [`iterator`](docs/iterator.md)
-- [`pod`](docs/pod.md)
-- [`pool`](docs/pool.md)
-- [`runtime_arr`](docs/runtime_arr.md)
-- [`sequence`](docs/sequence.md)
-- [`sim_pool`](docs/sim_pool.md)
-- [`views`](docs/views.md)
+> Concurrency in JH Toolkit is defined by **behavior**, not class hierarchy —
+> every asynchronous primitive follows explicit lifetime and deterministic semantics.
 
 ---
 
-## **🐍 Pythonic Aesthetics and Philosophy in JH Toolkit**
+### 🧊 POD System — Plain Old Data, Modern Discipline
 
-While **JH Toolkit** is a modern C++20 library, its **design philosophy** embraces several key **Pythonic principles**,
-making C++ development **more expressive, efficient, and intuitive**. These principles shape how `jh-toolkit` is
-structured, promoting **readability, maintainability, and performance**.
+`jh::pod` defines a **layout-stable, trivially copyable type system** for C++20.
+It provides a suite of **fixed-layout value primitives** — like `pod::pair`, `pod::array`, `pod::optional`, and `pod::bitflags` —
+built for **raw memory safety**, **placement-new**, and **binary serialization**.
 
-### **1️⃣ Duck Typing: Behavior Over Declaration**
+All `pod` types are:
 
-> _"If it walks like a duck and quacks like a duck, it must be a duck."_
+* 🧩 **`memcpy`-safe**, trivially copyable, and standard-layout
+* 🧱 Designed for `mmap`, `arena`, and **zero-overhead serialization**
+* ⚙️ Usable inside STL containers with no hidden heap or lifetime coupling
 
-- **How JH Toolkit Implements This**:
-    - **`jh::pool<T>` automatically detects compatible types** (requires `T::hash()` and `operator==`).
-    - **`jh::sequence` validates immutable iteration at compile time**, without requiring explicit inheritance.
-    - **`jh::iterator<>` concepts ensure iterators conform to expected behavior**, rather than relying on inheritance.
+> `*_view` and `span<T>` types are **non-owning references** — they borrow external memory
+> and must not outlive their backing buffers or mapped regions.
+> They are designed for **inspection, slicing, and serialization**, not ownership or mutation.
 
-### **2️⃣ Lazy Evaluation: Compute Only When Necessary**
+`jh::pod` also introduces lightweight tools for structure definition and validation:
 
-> _"Better to compute only when needed than to compute everything upfront."_
+* **`JH_POD_STRUCT(...)`** — define POD structs with compile-time layout checks
+* **`JH_ASSERT_POD_LIKE(T)`** — enforce POD compliance on existing types
 
-- **How JH Toolkit Implements This**:
-    - **`jh::generator<T, U>` defers computation** using coroutines.
-    - **`jh::immutable_str` delays hash computation** until the first `hash()` call, avoiding unnecessary processing.
-    - **`jh::pool<T>` manages objects dynamically**, avoiding upfront allocation.
+Together they form a foundation for **safe binary data modeling** —
+bridging high-level C++ templates with low-level, deterministic memory control.
 
-### **3️⃣ Automatic Memory Management: Smart and Efficient Resource Handling**
-
-> _"Memory management should be handled by the system, not by the user."_
-
-- **How JH Toolkit Implements This**:
-    - **`jh::sim_pool<T, Hash, Eq>` uses `std::weak_ptr<T>`** to automatically expire objects.
-    - **`jh::pool<T>` ensures memory deduplication** without requiring manual object tracking.
-    - **Automatic cleanup** is built into pooling mechanisms, similar to **Python’s garbage collection**.
-
-### **4️⃣ Explicit is Better Than Implicit: Preventing Unintended Behavior**
-
-> _"Code should be clear in its intentions and prevent implicit conversions that cause ambiguity."_
-
-- **How JH Toolkit Implements This**:
-    - **`jh::immutable_str` prohibits implicit conversions** that could lead to data races.
-    - **`jh::generator<T, U>` is explicitly move-only**, preventing unintended copies.
-    - **Concept-based design** enforces correctness at compile time.
-
-### **5️⃣ Readability and Maintainability: Expressive and Clean Code**
-
-> _"Code is read more often than it is written."_
-
-- **How JH Toolkit Implements This**:
-    - **Encapsulates complexity into reusable, well-documented modules**.
-    - **Uses concepts to provide clear type constraints** rather than relying on SFINAE.
-    - **Promotes modularity and interoperability** with standard C++20 features.
-
-### **🔹 Why This Matters**
-
-By following these Pythonic principles, **JH Toolkit makes modern C++ more ergonomic**, helping developers write *
-*concise, expressive, and high-performance** code while reducing **boilerplate and maintenance costs**.
+> ✅ 64-bit only, fully constexpr, header-only, and STL-compatible.
+> Designed for predictable layout, not legacy C-style "plain structs."
 
 ---
 
-## **🔹 Why `snake_case`? Aligning with `std` for a Seamless Toolkit Experience**
+### 🧱 Core System — Immutable, Pooled, Runtime-Stable
 
-JH Toolkit follows **`snake_case` naming conventions**, aligning with **C++ standard library (`std`)** rather than the
-more common **`camelCase` or `CapitalCase`** styles used by other third-party libraries. This choice is intentional and
-deeply rooted in **our goal of providing a seamless, toolkit-like experience** for developers.
+The **Core System** (`immutable_str`, `runtime_arr`, `sim_pool`)
+provides stable storage, safe sharing, and deterministic ownership across threads.
 
-### **📌 1. Consistency with the Standard Library**
+* **`jh::immutable_str`** — a **fully immutable string**, managed via smart pointers.
+  Objects are never moved or modified; only their handles (`unique_ptr` / `shared_ptr`) are replaceable.
 
-> _"A toolkit should feel like a natural extension of the language."_
+* **`jh::runtime_arr<T>`** — a **mutable buffer container**,
+  uniquely owned or shared through smart pointers.
+  Specialized precompiled variants (bit-packed and byte-based) ensure layout stability and performance.
 
-- The C++ **Standard Library (`std`) uses `snake_case`** for its core utilities, including:
-    - **Type traits** (`std::is_same_v`, `std::decay_t`)
-    - **Containers** (`std::vector`, `std::unordered_map`)
-    - **Iterators & Algorithms** (`std::next`, `std::find_if`)
-    - **Concepts in C++20** (`std::same_as`, `std::convertible_to`)
+* **`jh::sim_pool<T>`** — a **Smart Immutable-objects Managing Pool**,
+  acting as a non-owning **observer and redistributor**.
+  It tracks objects via **weak references**, allowing automatic reuse without owning lifetimes.
+  The lightweight **`jh::pool<T>`** is its duck-type counterpart.
 
-- By **mirroring `std` naming conventions**, **JH Toolkit blends naturally** into the developer's codebase, reducing *
-  *cognitive overhead**.
+> 🧩 Identical API for both **header-only** and **static-build** modes —
+> same code, different linkage (`jh::jh-toolkit` / `jh::jh-toolkit-static`).
 
-### **📌 2. JH Toolkit is Primarily a Data Structure & Template Library**
+> 📦 Located under `jh::*` and `<jh/*>` —
+> STL-compatible, ABI-stable, and designed for concurrent environments.
 
-> _"JH Toolkit is not just a utility collection; it's a core toolkit."_
+---
 
-- Many third-party C++ libraries, especially frameworks, use **`CamelCase`** (`Boost`, `Qt`) or **`CapitalCase`** (
-  `Eigen`, `OpenCV`).
-- However, **JH Toolkit is a toolkit for generic data structures and utilities**, not a high-level framework.
-- **Using `snake_case` ensures users interact with JH Toolkit just like they do with `std`**, making it feel **native to
-  modern C++ development**.
+## 🔗 Quick Links to Module Docs
 
-### **📌 3. Improved Readability & Seamless Integration**
 
-> _"The best tools are the ones that feel like they were always there."_
+### 🧩 Project Structure
+<details>
+  <summary>
+    Click to expand ▶️ / collapse 🔽
+  </summary>
 
-- `snake_case` improves **readability** when dealing with **template-heavy, generic code**.
-- Developers using **JH Toolkit alongside `std` will experience a uniform interface**, making it easier to:
-    - **Mix and match `std` and `jh` components.**
-    - **Reduce friction when integrating `jh-toolkit` into existing projects.**
-    - **Lower the learning curve for new users already familiar with `std`.**
+```
+include/jh/
+    ├── asynchronous           # jh::async
+    │   ├── generator.h        # jh::async::generator
+    │   └── ...                # future 1.4.x jh::async submodules
+    ├── conceptual             # jh::concepts
+    │   ├── iterator.h         # jh::concepts::iterator
+    │   └── sequence.h         # jh::concepts::sequence
+    ├── macros                 # jh::macros
+    │   ├── header_begin.h     # dual-mode header basic
+    │   ├── header_end.h       # dual-mode header basic
+    │   ├── platform.h         # macro defined platform detection
+    │   └── type_name.h        # jh::macros::type_name
+    ├── pods                   # jh::pod
+    │   ├── ...                # array, bits, bytes_view, optional, pair, pod_like, span, string_view
+    │   ├── stringify.h        # visualize jh::pod debugging output
+    │   └── tools.h            # supporting macros for jh::pod
+    ├── ranges                 # jh::ranges bases
+    │   ├── views              # jh::views
+    │   │   ├── enumerate.h    # jh::views::enumerate based on zip
+    │   │   └── zip.h          # jh::views::zip based on zip_view
+    │   ├── range_wrapper.h    # jh::to_range base
+    │   └── zip_view.h         # jh::ranges::zip_view mimic C++23
+    ├── utils                  # jh::utils
+    │   ├── ...                # jh::utils::base64, hash_fn
+    │   ├── platform.h         # 1.3.x temporary alias for jh/macros/platform.h
+    │   └── typed.h            # jh::typed::monostate
+    ├── generator              # forwarding header for jh::generator
+    ├── immutable_str          # forwarding header for jh::immutable_str
+    ├── immutable_str.h        # jh::immutable_str
+    ├── iterator               # 1.3.x temporary forwarding header for jh::iterator
+    ├── pod                    # forwarding header for jh::pod
+    ├── pod.h                  # aggregate header for jh::pod
+    ├── pool                   # forwarding header for jh::pool
+    ├── pool.h                 # jh::pool, duck typed jh::sim_pool
+    ├── runtime_arr            # forwarding header for jh::runtime_arr
+    ├── runtime_arr.h          # jh::runtime_arr
+    ├── sequence               # 1.3.x temporary forwarding header for jh::sequence
+    ├── sim_pool               # forwarding header for jh::sim_pool
+    ├── sim_pool.h             # jh::sim_pool
+    ├── views                  # forwarding header for jh::views
+    └── views.h                # 1.3.x temporary aggregate header for jh::views
+```
 
-### **📌 4. Future-Proofing for C++ Evolution**
+</details>
 
-> _"Following the direction of the standard makes long-term maintenance easier."_
+### Documentation Navigation
+<details>
+  <summary>
+    Click to expand ▶️ / collapse 🔽
+  </summary>
 
-- C++ is increasingly adopting **concept-based design** and modern **generic programming paradigms**.
-- JH Toolkit **embraces these trends** by ensuring **consistent naming conventions** for **concepts, iterators, and
-  utilities**.
-- By aligning with `std`, JH Toolkit remains **future-proof** and **less likely to require adaptation** when integrating
-  with **new standard features**.
+- [asynchronous/](docs/asynchronous/overview.md) — `jh::async`
+  - generator.h — `jh::async::generator`
+  - ... — future 1.4.x `jh::async` submodules
+- [conceptual/](docs/conceptual/overview.md) — `jh::concepts`
+  - iterator.h — `jh::concepts::iterator`
+  - sequence.h — `jh::concepts::sequence`
+- [macros/](docs/macros/overview.md) — `jh::macros`
+  - header_begin.h — dual-mode header basic
+  - header_end.h — dual-mode header basic
+  - platform.h — macro-defined platform detection
+  - type_name.h — `jh::macros::type_name`
+- [pods/](docs/pods/overview.md) — `jh::pod`
+  - ... — `array`, `bits`, `bytes_view`, `optional`, `pair`, `pod_like`, `span`, `string_view`
+  - stringify.h — visualize `jh::pod` debugging output
+  - tools.h — supporting macros for `jh::pod`
+- [ranges/](docs/ranges/overview.md) — `jh::ranges` bases
+  - [views/](docs/ranges/views/overview.md) — `jh::views`
+    - enumerate.h — `jh::views::enumerate`
+    - zip.h — `jh::views::zip`
+  - range_wrapper.h — `jh::to_range` base
+  - zip_view.h — `jh::ranges::zip_view`
+- [utils/](docs/utils/overview.md) — `jh::utils`
+  - ... — `jh::utils::base64`, `jh::utils::hash_fn`
+  - platform.h — alias for `jh/macros/platform.h`
+  - typed.h — `jh::typed::monostate`
+- [generator](docs/asynchronous/generator.md) — forwarding header for `jh::generator`
+- [immutable_str](docs/immutable_str.md) — forwarding header for `jh::immutable_str`
+- immutable_str.h — `jh::immutable_str`
+- [iterator](docs/conceptual/iterator.md) — temporary forwarding header for `jh::iterator`
+- [pod](docs/pods/overview.md) — forwarding header for `jh::pod`
+- pod.h — aggregate header for `jh::pod`
+- [pool](docs/pool.md) — forwarding header for `jh::pool`
+- pool.h — `jh::pool`, duck-typed `jh::sim_pool`
+- [runtime_arr](docs/runtime_arr.md) — forwarding header for `jh::runtime_arr`
+- runtime_arr.h — `jh::runtime_arr`
+- [sequence](docs/conceptual/sequence.md) — temporary forwarding header for `jh::sequence`
+- [sim_pool](docs/sim_pool.md) — forwarding header for `jh::sim_pool`
+- sim_pool.h — `jh::sim_pool`
+- [views](docs/ranges/views/overview.md) — forwarding header for `jh::views`
+- views.h — temporary aggregate header for `jh::views`
+
+</details>
+
+---
+
+<h2>
+  <span>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c3/Python-logo-notext.svg"
+       alt="Python Logo"
+       height="28" valign="middle">
+  </span>
+  <span style="font-size: large;">Pythonic Aesthetics and Philosophy in JH Toolkit</span>
+</h2>
+
+<p style="font-size: medium;"><strong>JH Toolkit</strong> brings Pythonic expressiveness and clarity into modern <strong>C++20</strong> design.</p>
+
+<ol style="font-size: medium;">
+  <li><strong>Duck Typing:</strong> Behavior matters more than declarations.</li>
+  <li><strong>Lazy Evaluation:</strong> Compute only when necessary.</li>
+  <li><strong>Automatic Memory Management:</strong> Resources manage themselves.</li>
+  <li><strong>Explicit is Better Than Implicit:</strong> Clarity prevents unintended behavior.</li>
+  <li><strong>Readability and Maintainability:</strong> Readable code lasts longer.</li>
+</ol>
+
+<h3 style="font-size: medium;"><strong>Why <code>snake_case</code>?</strong></h2>
+
+<p style="font-size: medium;">Aligns with <code>std</code> to provide a seamless and natural C++ toolkit experience.</p>
 
 ---
 

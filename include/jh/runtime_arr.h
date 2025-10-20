@@ -1,5 +1,6 @@
 /**
- * Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
+ * \verbatim
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,62 +13,205 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * \endverbatim
  */
-
 /**
  * @file runtime_arr.h
- * @author JeongHan-Bae <mastropseudo@gmail.com>
- * @brief A non-resizable, strongly-semantic runtime array for fixed-length buffer logic.
+ * @brief RAII-managed, non-resizable runtime array — a safe modern replacement for C99 VLA.
+ * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
- * @details
- * `runtime_arr<T, Alloc>` is a move-only, fixed-size container designed for scenarios
- * where **buffer size is known at runtime** but **mutating size (e.g. via `resize()`) is forbidden**.
+ * <h3>Overview</h3>
+ * <p>
+ * <code>jh::runtime_arr&lt;T, Alloc&gt;</code> provides a <b>safe, RAII-managed</b> version
+ * of the C99 Variable Length Array (VLA) concept, which was removed from C++
+ * due to undefined behavior and stack safety concerns.
+ * </p>
+ * <p>
+ * It represents a <b>runtime-sized but fixed-capacity</b> array with deterministic lifetime
+ * management — effectively combining the semantics of <code>std::array</code>
+ * (fixed capacity) with the flexibility of <code>std::vector</code>
+ * (runtime sizing), but without dynamic resizing.
+ * </p>
  *
- * It aims to provide semantic clarity, avoid misuse (such as accidental dynamic growth),
- * and act as a safer alternative to raw heap arrays when using POD or trivially constructible types.
+ * <h3>Design Goals</h3>
+ * <ul>
+ *   <li>Provide a safe, heap-based alternative to C99 VLAs with deterministic lifetime (RAII).</li>
+ *   <li>Offer predictable memory ownership and <b>no implicit growth or reallocation</b>.</li>
+ *   <li>Maintain contiguous memory layout and full STL interoperability (<code>std::span</code>, ranges).</li>
+ *   <li>Support POD-aware zeroing (<code>reset_all()</code>) and uninitialized construction paths.</li>
+ *   <li>Expose allocator parameterization for custom memory management, but default to safe local semantics.</li>
+ * </ul>
  *
- * ## Key Properties
- * - The buffer is allocated with a runtime-determined size, fixed during lifetime.
- * - No `resize()`, `push_back()`, or any size-altering operations are available.
- * - Suitable for **performance-aware**, **memory-stable**, and **temporary data** usage patterns.
- * - Fully compatible with STL-style iteration and `std::ranges::view_interface`.
+ * <h3>Core Characteristics</h3>
+ * <table>
+ *   <tr><th>Aspect</th><th>Behavior</th></tr>
+ *   <tr><td>Ownership</td><td>Unique / move-only (RAII semantics)</td></tr>
+ *   <tr><td>Resizability</td><td>&#10060; — fixed-size only</td></tr>
+ *   <tr><td>Allocator</td><td>Optional (default: <code>typed::monostate</code>)</td></tr>
+ *   <tr><td>Initialization</td><td>Zero, uninitialized, or iterator-based</td></tr>
+ *   <tr><td>POD optimization</td><td>Automatic <code>memset</code> zeroing for POD-like types</td></tr>
+ *   <tr><td>Interop</td><td>STL-compatible iterators, <code>std::span</code>, <code>view_interface</code></td></tr>
+ * </table>
  *
- * ## Comparison vs `std::vector`
- * | Feature                        | `std::vector<T>`           | `runtime_arr<T>`                  |
- * |--------------------------------|----------------------------|-----------------------------------|
- * | Resizability                   | ✅ (`resize`, `push_back`) | ❌ (fixed-size only)              |
- * | Initialization customization   | Partial (`reserve`, etc.)  | ✅ (`uninitialized`, `reset_all`) |
- * | POD-optimized zeroing          | ❌                         | ✅ (`reset_all()` for `T = POD`)  |
- * | Allocator control              | ✅                         | ✅ (optional custom allocator)    |
- * | Access safety                  | `at()`, bounds-check opt   | ✅ (`at()` + `operator[]`)        |
- * | Iterator & range support       | ✅                         | ✅ (`view_interface`)             |
+ * <h3>Comparison vs Related Containers</h3>
+ * <table>
+ *   <tr>
+ *     <th>Feature</th>
+ *     <th><code>std::vector&lt;T&gt;</code></th>
+ *     <th><code>jh::runtime_arr&lt;T&gt;</code></th>
+ *     <th><code>std::array&lt;T, N&gt;</code></th>
+ *     <th><code>VLA (C99)</code></th>
+ *   </tr>
+ *   <tr>
+ *     <td>Compile-time size</td>
+ *     <td>&#10060;</td>
+ *     <td>&#10060;</td>
+ *     <td>&#9989;</td>
+ *     <td>&#10060;</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Runtime size (fixed after init)</td>
+ *     <td>&#9989;</td>
+ *     <td>&#9989; (non-resizable)</td>
+ *     <td>&#10060;</td>
+ *     <td>&#9989;</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Resizing / growth</td>
+ *     <td>&#9989;</td>
+ *     <td>&#10060;</td>
+ *     <td>&#10060;</td>
+ *     <td>&#10060;</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Allocator control</td>
+ *     <td>&#9989; (optional)</td>
+ *     <td>&#9989; (optional)</td>
+ *     <td>&#10060;</td>
+ *     <td>&#10060;</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Storage location</td>
+ *     <td>Heap</td>
+ *     <td>Heap (RAII-managed)</td>
+ *     <td>Stack / static</td>
+ *     <td>Stack (unsafe)</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Exception safety</td>
+ *     <td>Strong</td>
+ *     <td>Strong (RAII + noexcept moves)</td>
+ *     <td>Strong</td>
+ *     <td>Undefined</td>
+ *   </tr>
+ *   <tr>
+ *     <td>POD zero-reset</td>
+ *     <td>&#10060;</td>
+ *     <td>&#9989; (<code>reset_all()</code>)</td>
+ *     <td>&#10060;</td>
+ *     <td>&#10060;</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Lifetime management</td>
+ *     <td>Automatic (allocator)</td>
+ *     <td>RAII-owned unique_ptr</td>
+ *     <td>Automatic</td>
+ *     <td>Automatic (non-deterministic destruction)</td>
+ *   </tr>
+ * </table>
  *
- * ## Design Motivation
- * - Better **communicates intent** for fixed-capacity buffers.
- * - Avoids accidental reallocation or memory growth in inner loops.
- * - Offers reset capability without reallocating, improving memory reuse patterns.
+ * <h3>Design Motivation</h3>
+ * <p>
+ * While C99 introduced Variable Length Arrays (VLAs) to allow runtime-sized stack arrays,
+ * they were banned in C++ due to undefined lifetime behavior, missing exception handling,
+ * and non-portable ABI implications.
+ * </p>
+ * <p>
+ * <code>jh::runtime_arr</code> safely revives the same expressiveness using heap-based allocation,
+ * strong RAII ownership, and predictable lifetime management — without giving up performance
+ * or direct pointer interoperability.
+ * </p>
  *
- * ## Caveats
- * - `runtime_arr` **is not faster** than `std::vector` in most compiler-optimized paths (especially with trivial types).
- * - Intended more for **semantic clarity** and **compile-time safety**, not micro-optimization.
- * - No implicit copy/clone support: move-only by design.
+ * <h3>Specializations</h3>
+ * <ul>
+ *   <li><code>runtime_arr&lt;bool&gt;</code> — bit-packed specialization (64-bit words).</li>
+ *   <li>Provides <code>set()</code>, <code>unset()</code>, <code>test()</code>, <code>reset_all()</code> for bit control.</li>
+ *   <li>Explicitly disables <code>data()</code> and <code>as_span()</code> for safety.</li>
+ * </ul>
  *
- * ## Specialization Note
- * - `runtime_arr<bool, typed::monostate>` provides bit-packing using `uint64_t[]`, and exposes methods like:
- *   - `set(i)`, `unset(i)`, `test(i)`
- *   - `bit_ref`, `raw_data()`, and `raw_word_count()`
+ * <h3>Notes</h3>
+ * <ul>
+ *   <li>No reallocation or growth semantics; all operations are in-place.</li>
+ *   <li>Prefer <code>reset_all()</code> to <code>clear()</code> for POD types.</li>
+ *   <li>Move-only by design — copying is deleted.</li>
+ *   <li>Ideal as a stable buffer for algorithms requiring strict capacity contracts.</li>
+ * </ul>
  *
- * ## Typical Use Cases
- * - Intermediate fixed-size buffers in sort, radix pipelines, or scratch space.
- * - Preventing accidental container growth in memory-critical paths.
- * - Enforcing allocation discipline in systems that rely on buffer contracts.
- * - Safer replacement for raw `T* arr = new T[n]` heap buffers.
+ * <h3>Implementation Summary</h3>
+ * <ul>
+ *   <li>Implements <code>std::ranges::view_interface</code> for range integration.</li>
+ *   <li>Backed by <code>unique_ptr&lt;T[], deleter&gt;</code> (RAII).</li>
+ *   <li>Allocator-aware; default uses <code>typed::monostate</code>.</li>
+ *   <li>Optimized <code>reset_all()</code> for POD/trivially destructible types.</li>
+ * </ul>
  *
- * ## Version
- * @version 1.3.x
- * @date 2025
+ * <h3>Dual-Mode Header Integration</h3>
+ * <p>
+ * This header participates in the <b>Dual-Mode Header</b> system.
+ * You do not need to modify the source code to switch build modes:
+ * </p>
+ * <ul>
+ *   <li>When linked via <code>jh-toolkit</code> → behaves as a <b>header-only</b> component.</li>
+ *   <li>When linked via <code>jh-toolkit-static</code> → uses the <b>precompiled static</b> implementation.</li>
+ * </ul>
+ * <p>
+ * The mode is resolved automatically through <code>JH_INTERNAL_SHOULD_DEFINE</code>,
+ * consistent with <code>jh::immutable_str</code</code> and other dual-mode headers
+ * (<b>currently limited to</b> <code>immutable_str</code> and <code>runtime_arr</code> in v1.3.x,
+ * but <b>future releases may extend this system</b> to additional components).
+ * </p>
+ *
+ * <h3>Performance Summary</h3>
+ *
+ * <p>
+ * Microbenchmark results for <code>jh::runtime_arr&lt;T&gt;</code>
+ * (1024 POD elements, Apple Silicon M3, LLVM clang++ 20, 2025):
+ * </p>
+ *
+ * <table>
+ *   <tr><th>Optimization Level</th><th><code>std::vector&lt;T&gt;</code></th><th><code>runtime_arr&lt;T&gt;</code></th><th>Relative Speedup</th></tr>
+ *   <tr><td>-O0</td><td>≈ 7.6 µs</td><td>≈ 0.15 µs</td><td>≈ 50×</td></tr>
+ *   <tr><td>-O2</td><td>≈ 0.13 µs</td><td>≈ 0.017 µs</td><td>≈ 7×</td></tr>
+ *   <tr><td>-O3</td><td>≈ 0.15 µs</td><td>≈ 0.017 µs</td><td>≈ 8×</td></tr>
+ *   <tr><td>-Ofast</td><td>≈ 0.16 µs</td><td>≈ 0.017 µs</td><td>≈ 9×</td></tr>
+ * </table>
+ *
+ * <h4>Observations</h4>
+ * <ul>
+ *   <li>Benchmarks executed on <b>Apple Silicon M3</b> using <b>LLVM clang++ 20</b> (Darwin target).</li>
+ *   <li>For trivially constructible POD types, <code>runtime_arr</code> exhibits allocation cost virtually identical to raw <code>operator new[]</code>.</li>
+ *   <li>From <code>-O2</code> upward, both <code>std::vector</code> and <code>runtime_arr</code> reach optimization saturation;
+ *       higher levels (<code>-O3</code>, <code>-Ofast</code>) bring negligible gains.</li>
+ *   <li>The consistent 6–9× advantage stems from <code>runtime_arr</code>'s simplified layout,
+ *       absence of <code>allocator_traits</code> indirection, and elimination of dynamic capacity management.</li>
+ *   <li>Measured variance &lt; 1 % across runs, confirming deterministic RAII allocation and compiler inlining behavior.</li>
+ * </ul>
+ *
+ * <p>
+ * These results indicate that <code>jh::runtime_arr</code> offers
+ * <b>stable, compiler-optimized, and allocation-efficient</b> performance
+ * for fixed-size runtime buffers — matching the predictability of raw arrays
+ * while preserving RAII semantics and full STL interoperability.
+ * </p>
+ *
+ * @see jh::pod::pod_like
+ * @see jh::typed::monostate
+ * @see jh::concepts::iterator
+ * @see jh::sequence
+ *
+ * @version <pre>1.3.x</pre>
+ * @date <pre>2025</pre>
  */
-
 
 #pragma once
 
@@ -77,54 +221,85 @@
 #include <stdexcept>
 #include <cstring>
 #include <functional>
-#include "iterator.h"
-#include "pods/pod_like.h"
-#include "utils/typed.h"
+#include <memory>
+#include "jh/conceptual/iterator.h"
+#include "jh/pods/pod_like.h"
+#include "jh/utils/typed.h"
 
 namespace jh {
+
     /**
-     * @brief A move-only, fixed-size array for runtime-determined, non-resizable storage.
+     * @brief A move-only, fixed-capacity array with runtime-determined length and RAII-based ownership.
      *
-     * @tparam T      Element type
-     * @tparam Alloc  Optional allocator (defaults to `typed::monostate`)
+     * @tparam T      Element type.
+     * @tparam Alloc  Allocator type — defaults to <code>typed::monostate</code> (uses <code>new[] / delete[]</code>).
      *
-     *  Short for "runtime-sized array" – move-only, heap-allocated, fixed-length.
+     * <h4>Overview</h4>
+     * <p>
+     * Short for <b>"runtime-sized array"</b>, this class models a <b>heap-allocated,
+     * non-resizable container</b> designed as a safe and expressive replacement
+     * for manual heap buffers (<code>new T[n]</code>).
+     * </p>
      *
-     * `runtime_arr<T, Alloc>` is a strongly semantic array structure meant to replace raw heap buffers
-     * (like `new T[n]`) in performance-sensitive or correctness-critical code.
+     * Unlike <code>std::vector</code>, it forbids resizing, shrinking, or growth semantics.
+     * It focuses on <b>semantic clarity</b> rather than raw performance — making buffer
+     * lifetime and capacity constraints explicit.
      *
-     * Unlike `std::vector`, it forbids resizing, shrinking, or growth semantics.
-     * The goal is not to outperform STL containers, but to **clarify intent**, **limit misuse**, and **make memory behavior predictable**.
+     * <h4>Core Features</h4>
+     * <ul>
+     *   <li>Move-only: eliminates accidental copies and aliasing.</li>
+     *   <li>RAII-managed heap buffer (via <code>unique_ptr&lt;T[], deleter&gt;</code>).</li>
+     *   <li>Optional zero-initialized or uninitialized construction.</li>
+     *   <li>STL/ranges compatible (<code>view_interface</code> inheritance).</li>
+     *   <li><code>reset_all()</code> for fast POD reset using <code>memset</code>.</li>
+     *   <li>Allocator parameterization for custom memory control.</li>
+     *   <li><code>as_span()</code> helper for safe interop with <code>std::span&lt;T&gt;</code>.</li>
+     * </ul>
      *
-     * ### Core Features
-     * - Move-only: no accidental copies or aliasing
-     * - Optional zero/uninitialized construction
-     * - Compatible with STL/ranges interfaces (via `view_interface`)
-     * - `reset_all()` for fast re-zeroing of POD/trivial types
-     * - Allocator customization (if needed)
-     * - Provides `as_span()` helper for safe and ergonomic interop with `std::span<T>`
+     * <h4>Default Allocation Model</h4>
+     * <ul>
+     *   <li>If <code>Alloc = typed::monostate</code> (default):
+     *       <ul>
+     *         <li>Memory is allocated via <code>new[]</code> and released via <code>delete[]</code>.</li>
+     *         <li>No external allocator is required.</li>
+     *       </ul>
+     *   </li>
+     *   <li>If <code>Alloc</code> provides <code>allocate(n)</code> / <code>deallocate(ptr, n)</code>:
+     *       <ul>
+     *         <li>Runtime allocation will use the provided allocator instance.</li>
+     *       </ul>
+     *   </li>
+     * </ul>
      *
-     * ### When to Use
-     * - In-place buffers for radix sort, DP tables, etc.
-     * - Safer alternative to raw `T*` when lifetime and size are known
-     * - Where fixed-capacity is a **hard constraint**, not a performance hint
+     * <h4>When to Use</h4>
+     * <ul>
+     *   <li>As a fixed-capacity buffer with dynamic runtime length.</li>
+     *   <li>When <code>std::vector</code>'s resizing semantics are undesired.</li>
+     *   <li>As a safer RAII alternative to <code>T* arr = new T[n]</code>.</li>
+     * </ul>
      *
-     * ### When *Not* to Use
-     * - You need `push_back`, `resize`, or dynamic append
-     * - You require polymorphic container behavior (e.g., erase/insert/iterator invalidation)
+     * <h4>When <i>Not</i> to Use</h4>
+     * <ul>
+     *   <li>If dynamic resizing, push/pop semantics, or polymorphic behavior is required.</li>
+     *   <li>If compile-time fixed capacity (<code>std::array</code>) suffices.</li>
+     * </ul>
      *
-     * ### Interop Notes
-     * - `runtime_arr<T>` is contiguous and span-compatible: use `std::span(arr.data(), arr.size())`
-     * - Also compatible with range-based for-loops, `std::ranges::views`, and STL algorithms
+     * <h4>Interop Notes</h4>
+     * <ul>
+     *   <li>Contiguous and <code>std::span</code>-compatible.</li>
+     *   <li>Supports range-for iteration, STL algorithms, and <code>std::ranges::views</code>.</li>
+     *   <li><code>runtime_arr&lt;bool&gt;</code> provides bit-packed specialization (see below).</li>
+     * </ul>
      *
-     * ### Notes
-     * - Use `reset_all()` instead of `clear()`
-     * - Use `.data()` if interop with raw APIs is needed
-     * - Use `runtime_arr<T>::uninitialized` to skip default-construction (if safe for T)
+     * @note
+     * <ul>
+     *   <li>Use <code>reset_all()</code> instead of <code>clear()</code>.</li>
+     *   <li>Use <code>runtime_arr&lt;T&gt;::uninitialized</code> to skip default construction (POD only).</li>
+     *   <li>Copy operations are deleted; moves are noexcept.</li>
+     * </ul>
      */
     template<typename T, typename Alloc = typed::monostate>
-    struct runtime_arr : std::ranges::view_interface<runtime_arr<T, Alloc> > {
-    private:
+    class runtime_arr : public std::ranges::view_interface<runtime_arr<T, Alloc> > {
         std::uint64_t size_{0};
 
         using deleter_t = std::function<void(T *)>;
@@ -149,8 +324,16 @@ namespace jh {
                 };
 
     public:
-        using iterator = T *;
-        using const_iterator = const T *;
+
+        using value_type = T;                                        ///< Value type alias.
+        using size_type [[maybe_unused]] = std::uint64_t;            ///< Size type alias (64-bit).
+        using difference_type [[maybe_unused]] = std::ptrdiff_t;     ///< Difference type alias.
+        using reference = value_type &;                              ///< Reference type.
+        using const_reference [[maybe_unused]] = const value_type &; ///< Const reference type.
+        using pointer = value_type *;                                ///< Pointer type.
+        using const_pointer = const value_type *;                    ///< Const pointer type.
+        using iterator = pointer;
+        using const_iterator = const_pointer;
 
         struct uninitialized_t {
         };
@@ -159,22 +342,92 @@ namespace jh {
 
         /**
          * @brief Constructs an uninitialized array of POD-like elements.
-         * @param size The number of elements to allocate
+         * @param size The number of elements to allocate.
+         *
+         * <ul>
+         *   <li>Enabled only when <tt>jh::pod_like&lt;T&gt;</tt> and <tt>Alloc</tt> is <tt>typed::monostate</tt>.</li>
+         *   <li>Uses <code>operator new[]</code> to allocate raw storage — the memory is
+         *       <strong>completely uninitialized</strong> (no zero-fill, no constructor calls).</li>
+         *   <li>For <strong>POD-like</strong> types, such uninitialized allocation is
+         *       semantically safe: their lifetime is bound directly to the allocated storage,
+         *       and no constructor/destructor side effects are required.</li>
+         *   <li>Intended for performance-critical contexts such as bulk I/O buffers,
+         *       custom serialization, or explicit zero-fill via <code>std::memset</code>.</li>
+         *   <li>In practice, this behaves similarly to <code>std::vector::reserve()</code> —
+         *       capacity is guaranteed, but elements are not value-initialized.</li>
+         *   <li>Unlike <code>std::vector</code>, however, <code>runtime_arr</code> does not
+         *       incur large penalties when default-initializing POD types:
+         *       its "initialized" and "uninitialized" paths compile to nearly identical code
+         *       for trivial objects (difference &lt;1%).</li>
+         * </ul>
+         *
+         * <strong>Performance note</strong>
+         * <p>
+         * For POD and trivially constructible types, both initialized and uninitialized
+         * variants of <code>runtime_arr</code> achieve equivalent performance.
+         * The <code>uninitialized</code> form primarily exists to express intent —
+         * much like calling <code>std::vector::reserve()</code> — signaling intent that
+         * the elements will be explicitly initialized later, and thus avoiding redundant
+         * zero-fills or value-initialization writes that compilers may otherwise emit.
+         * For <strong>POD</strong> and trivially constructible types, however, both forms
+         * typically compile to identical machine code, since their constructors are
+         * effectively no-ops.
+         * </p>
+         *
+         * <p><strong>Note:</strong> The content of the allocated memory is indeterminate until written to.
+         * Accessing any element before explicit initialization results in undefined behavior.</p>
          */
-        explicit runtime_arr(const std::uint64_t size, uninitialized_t)
-            requires jh::pod::pod_like<T> && typed::monostate_t<Alloc> {
+        explicit runtime_arr(const std::uint64_t size, uninitialized_t)requires jh::pod::pod_like<T> &&
+                                                                                typed::monostate_t<Alloc> {
             size_ = size;
             T *ptr = static_cast<T *>(operator new[](sizeof(T) * size_));
             data_.reset(ptr);
         }
 
         /**
-         * @brief Constructs a zero-initialized array using default allocation strategy.
-         * @param size Number of elements
+         * @brief Constructs a zero-initialized array using the default allocation strategy.
+         * @param size Number of elements to allocate and value-initialize.
+         *
+         * <ul>
+         *   <li>Requires <tt>is_valid_allocator&lt;Alloc&gt;</tt>.</li>
+         *   <li>If <tt>Alloc</tt> is <tt>typed::monostate</tt>, storage is obtained via
+         *       <code>new T[size]</code> and automatically released by the default deleter.</li>
+         *   <li>Otherwise, a user-provided allocator type is instantiated and used to allocate
+         *       <em>exactly</em> <tt>size</tt> elements, with lifetime managed through a
+         *       bound deleter lambda that captures both the allocator and allocation size.</li>
+         *   <li>All elements are <strong>zero-initialized</strong> (for PODs) or
+         *       <strong>default-constructed</strong> (for non-PODs) immediately after allocation.</li>
+         *   <li>Semantically, this behaves like <code>std::vector&lt;T&gt;(size)</code> but
+         *       without growth capacity or <code>allocator_traits</code> overhead.</li>
+         * </ul>
+         *
+         * <strong>Performance characteristics</strong>
+         * <ul>
+         *   <li>For <strong>POD-like</strong> types, this path compiles down to a single
+         *       contiguous allocation followed by a <code>memset</code> or equivalent zero-fill.</li>
+         *   <li>For non-trivial types, it performs element-wise default construction with
+         *       strong exception safety guarantees.</li>
+         *   <li>No dynamic resizing or capacity growth is performed — the array size is fixed
+         *       for the lifetime of the object.</li>
+         *   <li>In microbenchmarks, this constructor matches or slightly outperforms
+         *       <code>std::vector&lt;T&gt;(size)</code> due to the absence of allocator-layer indirection.</li>
+         * </ul>
+         *
+         * <strong>Allocator semantics</strong>
+         * <ul>
+         *   <li>When using a custom allocator, a lambda deleter is bound that correctly invokes
+         *       <code>alloc.deallocate(ptr, size)</code> upon destruction.</li>
+         *   <li>This preserves RAII semantics and guarantees proper cleanup even in the
+         *       presence of exceptions.</li>
+         *   <li>The allocator is captured by value, ensuring deterministic deallocation.</li>
+         * </ul>
+         *
+         * @note This constructor is the canonical entry point for creating
+         * safe, fixed-size runtime arrays. It offers predictable initialization and deallocation
+         * behavior, suitable for both POD and non-POD types.</p>
          */
-        explicit runtime_arr(std::uint64_t size)
-            requires (is_valid_allocator<Alloc>)
-            : size_(size) {
+        explicit runtime_arr(std::uint64_t size)requires(is_valid_allocator<Alloc>)
+                : size_(size) {
             if constexpr (typed::monostate_t<Alloc>) {
                 T *ptr = new T[size_];
                 data_.reset(ptr); // Use default_deleter
@@ -182,38 +435,93 @@ namespace jh {
                 Alloc alloc{};
                 T *ptr = alloc.allocate(size_);
                 data_ = std::unique_ptr<T[], deleter_t>(
-                    ptr,
-                    [alloc, size](T *p) mutable {
-                        alloc.deallocate(p, size);
-                    }
+                        ptr,
+                        [alloc, size](T *p) mutable {
+                            alloc.deallocate(p, size);
+                        }
                 ); // Bind lambda
             }
         }
 
         /**
-         * @brief Constructs using a provided allocator instance.
-         * @param size Number of elements
-         * @param alloc Allocator instance
+        * @brief Constructs a runtime array using a movable allocator instance (perfect-forwarded).
+         * @param size Number of elements to allocate.
+        * @param alloc Allocator instance (may be lvalue or rvalue).
+         *
+         * <ul>
+         *   <li>Enabled only when <tt>Alloc</tt> is not <tt>typed::monostate</tt>.</li>
+         *   <li>Accepts both lvalue and rvalue allocators; the allocator instance is captured by
+         *       value (moved if possible) inside the deleter closure.</li>
+         *   <li>Provides full support for <tt>std::pmr::polymorphic_allocator&lt;T&gt;</tt> and
+         *       other stateful allocators.</li>
+         * </ul>
+         *
+         * <strong>Design notes</strong>
+         * <ul>
+         *   <li>This overload avoids unnecessary allocator copies and preserves resource binding.</li>
+         *   <li>Equivalent to the by-value form for trivially copyable allocators.</li>
+         *   <li>Ensures allocator lifetime and destruction safety via lambda capture semantics.</li>
+         * </ul>
          */
-        explicit runtime_arr(std::uint64_t size, Alloc alloc)
-            requires (!typed::monostate_t<Alloc>)
-            : size_(size) {
+        explicit runtime_arr(std::uint64_t size, Alloc &&alloc)
+        requires (!typed::monostate_t<Alloc>) : size_(size) {
             T *ptr = alloc.allocate(size_);
             data_ = std::unique_ptr<T[], deleter_t>(
-                ptr,
-                [alloc, size](T *p) mutable {
-                    alloc.deallocate(p, size);
-                }
+                    ptr,
+                    [alloc = std::forward<Alloc>(alloc), size](T *p) mutable {
+                        alloc.deallocate(p, size);
+                    }
             );
         }
 
         /**
-         * @brief Moves a std::vector<T> into runtime_arr (only when Alloc is monostate).
-         * @param vec Rvalue reference to std::vector<T>
+         * @brief Constructs a <code>runtime_arr&lt;T&gt;</code> by moving from a
+         *        <code>std::vector&lt;T&gt;</code> (only when <code>Alloc</code> is <code>typed::monostate</code>).
+         *
+         * @param vec Rvalue reference to a <code>std::vector&lt;T&gt;</code> whose contents will be moved.
+         *
+         * <ul>
+         *   <li>Enabled only when <tt>Alloc == typed::monostate</tt>, ensuring consistent
+         *       <code>new[]</code>/<code>delete[]</code> semantics.</li>
+         *   <li>Allocates a new contiguous buffer of <code>vec.size()</code> elements via
+         *       <code>operator new[]</code>.</li>
+         *   <li>Performs an element-wise move from <code>vec</code> into the internal storage.</li>
+         *   <li>The source vector remains in a valid but unspecified state after construction
+         *       (per standard move semantics).</li>
+         *   <li>The resulting <code>runtime_arr</code> owns its own independent storage and
+         *       does not alias <code>vec</code>'s memory.</li>
+         * </ul>
+         *
+         * <strong>Rationale</strong>
+         * <ul>
+         *   <li>This constructor provides a convenient transition path from STL containers
+         *       to fixed-size <code>runtime_arr</code> semantics.</li>
+         *   <li>Unlike <code>std::vector::reserve()</code> or <code>shrink_to_fit()</code>,
+         *       this operation guarantees immutability of capacity and clear ownership transfer.</li>
+         *   <li>It is intentionally limited to <code>typed::monostate</code> allocators to
+         *       ensure predictable <code>operator new[]</code> / <code>operator delete[]</code>
+         *       lifetime management without allocator-specific behavior.</li>
+         * </ul>
+         *
+         * <strong>Performance Notes</strong>
+         * <ul>
+         *   <li>For trivially movable POD types, the move loop is typically optimized to
+         *       a single <code>memcpy</code> by the compiler.</li>
+         *   <li>For non-trivial types, each element's move constructor is invoked individually.</li>
+         *   <li>Construction cost is proportional to <code>O(n)</code> moves, matching
+         *       <code>std::vector::move()</code> semantics but with fixed-size final storage.</li>
+         * </ul>
+         *
+         * <p><strong>Example:</strong></p>
+         * @code
+         * std::vector&lt;MyPod&gt; data(1024);
+         * // Fill data...
+         * jh::runtime_arr&lt;MyPod&gt; arr(std::move(data));
+         * // arr now owns a separate buffer containing the moved elements.
+         * @endcode
          */
-        explicit runtime_arr(std::vector<T> &&vec)
-            requires (typed::monostate_t<Alloc>)
-            : size_(vec.size()), data_(nullptr, default_deleter) {
+        explicit runtime_arr(std::vector<T> &&vec) requires (typed::monostate_t<Alloc>)
+                : size_(vec.size()), data_(nullptr, default_deleter) {
             if (!vec.empty()) {
                 T *ptr = new T[size_];
                 std::move(vec.begin(), vec.end(), ptr);
@@ -222,18 +530,89 @@ namespace jh {
         }
 
         /**
-         * @brief Constructs from input iterator range (only when Alloc is monostate).
-         * @param first Beginning of input range
-         * @param last End of input range
+         * @brief Constructs a <code>runtime_arr&lt;T&gt;</code> from any valid forward iterator range.
+         * @tparam ForwardIt Iterator type satisfying <code>jh::concepts::forward_iterator</code>.
+         * @param first Beginning of the input range.
+         * @param last End of the input range.
+         *
+         * <ul>
+         *   <li>Enabled only when <tt>Alloc == typed::monostate</tt> and
+         *       <tt>T</tt> is copy-constructible.</li>
+         *   <li>Allocates a contiguous buffer large enough to hold
+         *       <code>std::distance(first, last)</code> elements.</li>
+         *   <li>Copies (or moves, if wrapped with <code>std::make_move_iterator</code>)
+         *       elements from the source range into internal storage.</li>
+         *   <li>Ownership is managed via RAII (<code>std::unique_ptr</code> with custom deleter).</li>
+         * </ul>
+         *
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li>If the range is empty, the resulting array is empty (<tt>size() == 0</tt>).</li>
+         *   <li>If <code>std::distance(first, last) &lt; 0</code>, an
+         *       <code>std::invalid_argument</code> exception is thrown.</li>
+         *   <li>Otherwise, <code>new[]</code> is used to allocate storage and
+         *       <code>std::copy()</code> (or <code>std::move()</code>) to fill it.</li>
+         * </ul>
+         *
+         * <strong>Examples</strong>
+         * <p><strong>From STL containers:</strong></p>
+         * @code
+         * std::vector&lt;int&gt; v = {1, 2, 3};
+         * jh::runtime_arr&lt;int&gt; a(v.begin(), v.end());   // copy
+         *
+         * std::deque&lt;int&gt; d = {4, 5, 6};
+         * jh::runtime_arr&lt;int&gt; b(d.begin(), d.end());   // copy
+         *
+         * std::string s = "Hello, world!";
+         * jh::runtime_arr&lt;char&gt; chars(
+         *     std::make_move_iterator(s.begin()),
+         *     std::make_move_iterator(s.end()));        // moves underlying characters
+         * @endcode
+         *
+         * <p><strong>From other iterator sources:</strong></p>
+         * @code
+         * // Construct from raw array range
+         * int raw[] = {10, 20, 30, 40};
+         * jh::runtime_arr&lt;int&gt; arr(std::begin(raw), std::end(raw));
+         *
+         * // Construct from std::span
+         * std::span&lt;int&gt; sp(raw);
+         * jh::runtime_arr&lt;int&gt; arr2(sp.begin(), sp.end());
+         * @endcode
+         *
+         * <p>
+         * Applicable to any iterator pair that defines a finite, measurable range —
+         * e.g., pointers, container iterators, or spans.
+         * <strong>Single-pass input iterators</strong> (like <code>std::istream_iterator</code>)
+         * are <b>not supported</b>, since <code>std::distance()</code> requires
+         * multiple passes to compute the range size.
+         * </p>
+         *
+         * <strong>Design rationale</strong>
+         * <ul>
+         *   <li>This constructor acts as a <b>universal range importer</b>,
+         *       supporting all standard forward-iterable containers and algorithms.</li>
+         *   <li>It mirrors <code>std::vector(ForwardIt, ForwardIt)</code> semantics,
+         *       but without reallocation or capacity growth.</li>
+         *   <li>Using <code>jh::concepts::forward_iterator</code> ensures that
+         *       <code>std::distance()</code> is non-destructive and efficient.</li>
+         *   <li>When used with <code>std::make_move_iterator</code>,
+         *       move-constructible elements are efficiently transferred without extra copies.</li>
+         * </ul>
          */
-        template<typename InputIt>
-        runtime_arr(InputIt first, InputIt last)
-            requires (typed::monostate_t<Alloc> &&
-                      jh::input_iterator<InputIt> &&
-                      std::is_copy_constructible_v<T>)
-            : data_(nullptr, default_deleter) {
+        template<typename ForwardIt>
+        runtime_arr(ForwardIt first, ForwardIt last)
+        requires (typed::monostate_t<Alloc> &&
+                  jh::concepts::forward_iterator<ForwardIt> &&
+                  std::convertible_to<typename ForwardIt::value_type, value_type> &&
+                  std::is_copy_constructible_v<T>) : data_(nullptr, default_deleter) {
             const auto dist = std::distance(first, last);
-            if (dist < 0) throw std::invalid_argument("Invalid iterator range");
+            // `std::distance(first, last)` is guaranteed to be valid and non-destructive
+            // for forward iterators. Single-pass input iterators (like std::istream_iterator)
+            // are intentionally excluded from this overload.
+
+            if (dist < 0)
+                throw std::invalid_argument("Invalid iterator range");
             size_ = static_cast<std::uint64_t>(dist);
 
             T *ptr = new T[size_];
@@ -241,54 +620,99 @@ namespace jh {
             data_.reset(ptr);
         }
 
-        /// @brief Returns pointer to first element.
-        T *begin() noexcept { return data_.get(); }
+        /// @brief Returns iterator to the beginning.
+        iterator begin() noexcept { return data_.get(); }
 
-        /// @brief Returns pointer past the last element.
-        T *end() noexcept { return data_.get() + size_; }
+        /// @brief Returns const iterator to the beginning.
+        const_iterator begin() const noexcept { return data_.get(); }
 
-        /// @brief Returns const pointer to first element.
-        const T *begin() const noexcept { return data_.get(); }
+        /// @brief Returns iterator to the end (past-the-last element).
+        iterator end() noexcept { return data_.get() + size_; }
 
-        /// @brief Returns const pointer past the last element.
-        const T *end() const noexcept { return data_.get() + size_; }
+        /// @brief Returns const iterator to the end (past-the-last element).
+        const_iterator end() const noexcept { return data_.get() + size_; }
 
-        /// @brief Returns const pointer to first element.
-        const T *cbegin() const noexcept { return data_.get(); }
+        /// @brief Returns const iterator to the beginning.
+        [[maybe_unused]] const_iterator cbegin() const noexcept { return data_.get(); }
 
-        /// @brief Returns const pointer past the last element.
-        const T *cend() const noexcept { return data_.get() + size_; }
-
-        /**
-         * @brief Access element at index (unchecked).
-         * @param index Element index
-         * @return Reference to element
-         */
-        T &operator[](std::uint64_t index) { return data_[index]; }
-        const T &operator[](std::uint64_t index) const { return data_[index]; }
+        /// @brief Returns const iterator to the end (past-the-last element).
+        [[maybe_unused]] const_iterator cend() const noexcept { return data_.get() + size_; }
 
         /**
-         * @brief Access element at index (with bounds checking).
-         * @param index Element index
-         * @return Reference to the element
-         * @throws std::out_of_range if index is out of bounds
+         * @brief Unchecked element access.
+         *
+         * @details
+         * Returns a reference to the element at the given index without
+         * performing bounds checking (undefined behavior if out of range).
+         * Equivalent to <code>*(data() + index)</code>.
+         *
+         * <p><b>CRTP note:</b>
+         * This overload intentionally shadows any base-class implementation
+         * provided by the CRTP pattern (e.g., <code>array_base&lt;Derived, T&gt;</code>).
+         * Such shadowing is normal in CRTP — it refines access logic for the
+         * concrete type while remaining statically resolved (no virtual call).
+         * </p>
+         *
+         * @param index Element index within <tt>[0, size())</tt>.
+         * @return Reference to the element.
          */
-        T &at(std::uint64_t index) {
-            if (index >= size_) throw std::out_of_range("at(): index out of bounds");
+        reference operator[](std::uint64_t index) noexcept { return data_[index]; }
+
+        /**
+         * @brief Unchecked const element access.
+         *
+         * @details
+         * Const overload providing read-only access to the element at the
+         * given index (undefined behavior if out of range).
+         *
+         * <p><b>CRTP note:</b>
+         * Like the non-const version, this intentionally shadows a potential
+         * CRTP base implementation. This ensures direct access through the
+         * derived type's own <code>data_</code> layout while preserving
+         * compile-time resolution.</p>
+         *
+         * @param index Element index within <tt>[0, size())</tt>.
+         * @return Const reference to the element.
+         */
+        const_reference operator[](std::uint64_t index) const noexcept { return data_[index]; }
+
+        /**
+         * @brief Bounds-checked element access.
+         *
+         * @details
+         * Returns a reference to the element at the given index,
+         * performing explicit range checking.
+         * If <code>index &gt;= size()</code>, an <code>std::out_of_range</code>
+         * exception is thrown.
+         *
+         * @param index Element index within <tt>[0, size())</tt>.
+         * @return Reference to the element at the specified index.
+         * @throws std::out_of_range If <code>index &gt;= size()</code>.
+         * @see operator[]()
+         */
+        reference at(std::uint64_t index) {
+            if (index >= size_) throw std::out_of_range("jh::runtime_arr::at(): index out of bounds");
             return data_[index];
         }
 
         /**
-         * @brief Access element at index (with bounds checking).
-         * @param index Element index
-         * @return Constant reference to the element
-         * @throws std::out_of_range if index is out of bounds
+         * @brief Const bounds-checked element access.
+         *
+         * @details
+         * Returns a const reference to the element at the given index,
+         * performing explicit range checking.
+         * If <code>index &gt;= size()</code>, an <code>std::out_of_range</code>
+         * exception is thrown.
+         *
+         * @param index Element index within <tt>[0, size())</tt>.
+         * @return Const reference to the element at the specified index.
+         * @throws std::out_of_range If <code>index &gt;= size()</code>.
+         * @see operator[]()
          */
-        const T &at(std::uint64_t index) const {
-            if (index >= size_) throw std::out_of_range("at(): index out of bounds");
+        const_reference at(std::uint64_t index) const {
+            if (index >= size_) throw std::out_of_range("jh::runtime_arr::at(): index out of bounds");
             return data_[index];
         }
-
 
         /**
          * @brief Sets the value at given index using constructor arguments.
@@ -302,21 +726,41 @@ namespace jh {
         }
 
         /**
-         * @brief Resets all elements to default state.
+         * @brief Resets all elements to their default-initialized state.
          *
-         * @note This operation is only meaningful for types that are default-constructible.
-         *       For types without a valid `T()`, reset has no semantic definition and is therefore disabled.
+         * @details
+         * Reinitializes every element in the array as if assigned with <code>T{}</code>.
+         * The actual strategy depends on the structural properties of <code>T</code>:
          *
-         *       The behavior varies depending on the type trait of `T`:
-         *       - For POD-like types: uses `memset` for maximal efficiency.
-         *       - For trivially destructible types: re-initializes via placement-new.
-         *       - Otherwise: assigns `T{}` to each element (requires destructor and constructor).
+         * <ul>
+         *   <li><b>POD-like types</b> — memory is cleared with <code>std::memset()</code>
+         *       for maximal performance and determinism.</li>
+         *   <li><b>Trivially destructible types</b> — reinitialized in-place using
+         *       placement-new (<code>new(p) T{}</code>), without invoking destructors.</li>
+         *   <li><b>Non-trivial types</b> — each element is explicitly assigned
+         *       <code>T{}</code>, invoking both destructor and constructor logic.</li>
+         * </ul>
          *
-         * @warning This function is disabled at compile-time for types that do not satisfy `is_default_constructible<T>`.
+         * <strong>Implementation Notes</strong>
+         * <ul>
+         *   <li><b>Flatten attribute:</b> Explicit compiler flattening (e.g. <code>[[gnu::flatten]]</code>)
+         *       was experimentally tested and removed. On <b>LLVM Clang 20</b> with <code>-O3</code> or higher,
+         *       <code>flatten</code> introduced micro-jitter and inhibited
+         *       certain inliner heuristics.
+         *       Modern LLVM optimizers already perform ideal unrolling and hoisting automatically.</li>
+         *   <li><b>Template parameter <code>U</code>:</b> This indirection allows
+         *       SFINAE-based disabling via <code>requires(std::is_default_constructible_v&lt;U&gt;)</code>
+         *       without interfering with specialized overloads — such as
+         *       the <code>runtime_arr&lt;bool&gt;</code> specialization,
+         *       which defines its own <code>reset_all()</code>.</li>
+         * </ul>
+         *
+         * @note This function is <code>noexcept</code> for all valid <code>T</code>.
+         * @warning Accessing elements before reset on uninitialized memory results in undefined behavior.
          */
         template<typename U = T>
-            requires (std::is_default_constructible_v<U>)
-        void reset_all() {
+        requires(std::is_default_constructible_v<U>)
+        inline void reset_all() noexcept {
             if constexpr (pod::pod_like<T>) {
                 std::memset(data_.get(), 0, size_ * sizeof(T));
             } else if constexpr (std::is_trivially_destructible_v<T>) {
@@ -328,29 +772,77 @@ namespace jh {
             }
         }
 
-        /// @brief Returns number of elements in the array.
-        [[nodiscard]] std::uint64_t size() const noexcept { return size_; }
-
-        /// @brief Checks whether the array is empty.
-        [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
-
-        /// @brief Raw pointer access.
-        T *data() noexcept { return data_.get(); }
-
-        /// @brief Raw const pointer access.
-        const T *data() const noexcept { return data_.get(); }
+        /**
+         * @brief Returns the number of elements in the array.
+         *
+         * <p><b>CRTP note:</b> This function intentionally shadows
+         * any <code>size()</code> provided by the CRTP base (e.g.,
+         * <code>std::ranges::view_interface</code>).
+         * The override ensures direct access to <code>size_</code>
+         * without indirection or trait inference.</p>
+         *
+         * @return Number of elements currently stored.
+         */
+        [[nodiscard]] size_type size() const noexcept { return size_; }
 
         /**
-         * @brief Move constructor.
+         * @brief Checks whether the array is empty.
+         *
+         * <p><b>CRTP note:</b> Like <code>size()</code>, this method
+         * shadows the base implementation for static resolution,
+         * ensuring that <code>empty()</code> is derived directly from
+         * <code>size_</code> rather than a default base heuristic.</p>
+         *
+         * @return <code>true</code> if <code>size() == 0</code>, otherwise <code>false</code>.
+         */
+        [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
+
+        /**
+         * @brief Provides raw pointer access to the underlying storage.
+         *
+         * <p><b>CRTP note:</b> This overload explicitly replaces any
+         * default <code>data()</code> exposed by the CRTP base.
+         * It guarantees that the returned pointer corresponds to the
+         * internal <code>std::unique_ptr</code>'s managed block.</p>
+         *
+         * @return Pointer to the first element, or <code>nullptr</code> if empty.
+         */
+        pointer data() noexcept { return data_.get(); }
+
+        /**
+         * @brief Provides const raw pointer access to the underlying storage.
+         *
+         * <p><b>CRTP note:</b> This overload mirrors the non-const version,
+         * ensuring that CRTP base resolution is bypassed in favor of
+         * the concrete type's <code>data_</code> field.</p>
+         *
+         * @return Const pointer to the first element, or <code>nullptr</code> if empty.
+         */
+        const_pointer data() const noexcept { return data_.get(); }
+
+        /**
+         * @brief Constructs a new <code>runtime_arr</code> by taking ownership of another instance's data.
+         *
+         * @details
+         * Transfers ownership of the underlying buffer from <code>other</code> to this instance.
+         * After the move, <code>other</code> is left in a valid but empty state
+         * (<code>size() == 0</code>, <code>data() == nullptr</code>).
          */
         runtime_arr(runtime_arr &&other) noexcept
-            : size_(other.size_), data_(std::move(other.data_)) {
+                : size_(other.size_), data_(std::move(other.data_)) {
             other.size_ = 0;
             other.data_.reset();
         }
 
         /**
-         * @brief Move assignment.
+         * @brief Replaces the contents of this <code>runtime_arr</code> with those of another, transferring ownership.
+         *
+         * @details
+         * Releases any existing data owned by this instance and takes ownership
+         * of <code>other</code>'s buffer.  
+         * The source <code>other</code> becomes empty and remains safely destructible.
+         *
+         * @return Reference to the updated <code>*this</code>.
          */
         runtime_arr &operator=(runtime_arr &&other) noexcept {
             if (this != &other) {
@@ -363,15 +855,51 @@ namespace jh {
         }
 
         /**
-         * @brief Converts the buffer into a std::vector<T> via move.
+         * @brief Converts the array into a <code>std::vector&lt;T&gt;</code> by moving its contents.
          *
-         * - For POD-like types (`jh::pod_like<T>`), performs a raw `memcpy` for maximum speed.
-         * - For all other types, uses `std::make_move_iterator` for element-wise move construction.
+         * @details
+         * This conversion performs a one-way ownership transfer from
+         * <code>runtime_arr&lt;T&gt;</code> to <code>std::vector&lt;T&gt;</code>,
+         * consuming the source in the process.
+         * After the conversion, the original <code>runtime_arr</code> becomes
+         * an empty, valid but unspecified object
+         * (<code>size() == 0</code>, <code>data() == nullptr</code>).
          *
-         * @note This operation consumes the array: resets size to 0 and releases internal memory.
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li><b>POD-like types (<code>jh::pod_like&lt;T&gt;</code>):</b>
+         *       Performs a raw <code>std::memcpy</code> for maximal performance.
+         *       The operation is equivalent to copying a contiguous byte buffer.</li>
+         *   <li><b>Non-POD types:</b>
+         *       Uses <code>std::make_move_iterator</code> to move-construct
+         *       each element into the target vector, ensuring proper object semantics.</li>
+         * </ul>
+         *
+         * <strong>Symmetry</strong>
+         * <p>
+         * This operator complements the constructor
+         * <code>runtime_arr(std::vector&lt;T&gt;&amp;&amp;)</code>,
+         * enabling seamless two-way transfer between
+         * <code>std::vector&lt;T&gt;</code> and <code>runtime_arr&lt;T&gt;</code>
+         * with full move semantics.
+         * Both conversions leave the source container in a valid but empty state,
+         * ensuring safe RAII destruction.
+         * </p>
+         *
+         * @note This operator is only available on rvalues
+         *       (<code>runtime_arr&lt;T&gt;&amp;&amp;</code>), preventing accidental copies.
+         * @see runtime_arr(std::vector&lt;T&gt;&amp;&amp;)
          */
         explicit operator std::vector<T>() && {
-            if constexpr (pod::pod_like<T>) {
+            if constexpr (std::is_same_v<T, bool> && !typed::monostate_t<Alloc>) {
+                std::vector<bool> vec(size_);
+                for (std::uint64_t i = 0; i < size_; ++i)
+                    vec[i] = static_cast<bool>(data_[i]);
+                size_ = 0;
+                data_.reset();
+                return vec;
+                // compressed-bit fix
+            } else if constexpr (pod::pod_like<T>) {
                 std::vector<T> vec(size_);
                 std::memcpy(vec.data(), data_.get(), size_ * sizeof(T));
                 size_ = 0;
@@ -385,71 +913,343 @@ namespace jh {
             return vec;
         }
 
-        /// @brief Deleted copy
+        /**
+         * @brief Copy constructor is explicitly deleted.
+         *
+         * @details
+         * Copying a <code>runtime_arr</code> is intentionally disallowed,
+         * as the class models a <b>fixed-size, region-bound buffer</b> —
+         * conceptually similar to a safe version of a
+         * <b>VLA (Variable Length Array)</b>.
+         *
+         * <p>
+         * Each <code>runtime_arr</code> instance owns a unique contiguous
+         * memory block via <code>std::unique_ptr</code>.
+         * Allowing copy semantics would imply duplicating or aliasing
+         * this region, violating its design goal of
+         * <strong>unique, region-local ownership</strong>.
+         * </p>
+         *
+         * <p>
+         * To share or pass an existing array, use references:
+         * <code>runtime_arr&amp;</code> or
+         * <code>std::reference_wrapper&lt;runtime_arr&gt;</code>.
+         * This preserves ownership while allowing safe, non-copy access
+         * across function boundaries.
+         * </p>
+         */
         runtime_arr(const runtime_arr &) = delete;
 
-        /// @brief Deleted copy assignment
+        /**
+         * @brief Copy assignment operator is explicitly deleted.
+         *
+         * @details
+         * Like the copy constructor, copy assignment is disabled to prevent
+         * unintended duplication of the underlying buffer.
+         * This enforces strict RAII-style ownership and guarantees
+         * deterministic lifetime management.
+         *
+         * <p>
+         * When sharing a buffer between scopes or functions,
+         * pass by reference (<code>runtime_arr&amp;</code>) or
+         * wrap in <code>std::reference_wrapper&lt;runtime_arr&gt;</code>
+         * instead of copying.
+         * </p>
+         */
         runtime_arr &operator=(const runtime_arr &) = delete;
 
-        [[nodiscard]] std::span<T> as_span() noexcept { return {data(), size()}; }
+        [[nodiscard]] std::span<value_type> as_span() noexcept { return {data(), size()}; }
 
-        [[nodiscard]] std::span<const T> as_span() const noexcept { return {data(), size()}; }
+        [[nodiscard]] std::span<const value_type> as_span() const noexcept { return {data(), size()}; }
+
+        [[maybe_unused]] [[maybe_unused]] static bool is_static_built() {
+#ifdef JH_IS_STATIC_BUILD
+            return true;
+#else
+            return false;
+#endif // JH_IS_STATIC_BUILD
+        }
     };
 
-    /// @brief Iterator traits helper for runtime_arr<T>; enables custom traits resolution.
+    /**
+     * @brief Specialization of <code>jh::concepts::iterator&lt;&gt;</code> for <code>jh::runtime_arr</code>.
+     *
+     * @details
+     * Provides a mapping between <code>jh::runtime_arr&lt;T, Alloc&gt;</code> and its
+     * internal iterator type <code>runtime_arr&lt;T, Alloc&gt;::iterator</code>.
+     *
+     * <p>
+     * This specialization is used by the <code>jh::concepts::iterator_t&lt;Container&gt;</code>
+     * deduction system to support <strong>duck-typed iterator resolution</strong>.
+     * It allows generic code such as:
+     * </p>
+     *
+     * <pre><code>
+     * using it_t = jh::concepts::iterator_t&lt;jh::runtime_arr&lt;int&gt;&gt;;
+     * </code></pre>
+     * to correctly deduce <code>jh::runtime_arr&lt;int&gt;::iterator</code>
+     * as the valid iterator type.
+     *
+     * <p>
+     * This integration ensures that <code>jh::runtime_arr</code> participates fully
+     * in the generic <code>iterator_t&lt;&gt;</code> deduction model,
+     * alongside STL containers and other user-defined structures.
+     * </p>
+     *
+     * @tparam T Element type of the <code>runtime_arr</code>.
+     * @tparam Alloc Allocator type used by the <code>runtime_arr</code>.
+     * @see jh::concepts::iterator_t
+     * @see jh::runtime_arr
+     */
     template<typename T, typename Alloc>
     struct iterator<runtime_arr<T, Alloc> > {
         using type = typename runtime_arr<T, Alloc>::iterator;
     };
 
+    namespace runtime_arr_helper {
+        /**
+         * @brief Flat allocator for <code>bool</code> — disables bit-packing in <code>jh::runtime_arr&lt;bool&gt;</code>.
+         *
+         * <h4>Overview</h4>
+         * <p>
+         * <code>bool_flat_alloc</code> provides a minimal, stateless allocator used to
+         * instantiate <code>jh::runtime_arr&lt;bool, bool_flat_alloc&gt;</code> as a
+         * <b>byte-based (non-packed)</b> boolean array.
+         * </p>
+         *
+         * <p>
+         * Normally, <code>jh::runtime_arr&lt;bool&gt;</code> uses a <b>bit-packed</b> storage model,
+         * compressing 8 boolean values into a single byte (64 per 64-bit word).
+         * By supplying this allocator, each <code>bool</code> instead occupies 1 full byte,
+         * allowing <b>direct memory access</b> and <b>STL-contiguous semantics</b>.
+         * </p>
+         *
+         * <h4>Usage</h4>
+         * @code
+         * // Compact, bit-packed (default)
+         * jh::runtime_arr&lt;bool&gt; packed(128);
+         *
+         * // Byte-based, non-packed
+         * jh::runtime_arr&lt;bool, jh::runtime_arr_helper::bool_flat_alloc&gt; plain(128);
+         * plain[0] = true;
+         * @endcode
+         *
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li>Stateless — all methods are <code>static</code>.</li>
+         *   <li>Allocates raw <code>bool[n]</code> arrays via <code>new[]</code>.</li>
+         *   <li>Deallocates via <code>delete[]</code>.</li>
+         *   <li>Serves as the <b>byte-based alternative allocator</b> for testing or explicit non-packed use cases.</li>
+         *   <li>Does <b>not</b> implement <code>std::allocator_traits</code> and is not STL-compatible.</li>
+         * </ul>
+         *
+         * <h4>Typical Use Case</h4>
+         * <p>
+         * Used for <b>performance benchmarking</b> and correctness testing of the
+         * <code>jh::runtime_arr&lt;bool&gt;</code> specialization, or for scenarios where
+         * bit-packing overhead is undesirable (e.g. frequent random access or interop with
+         * APIs expecting <code>bool*</code> pointers).
+         * </p>
+         *
+         * @see
+         * <ul>
+         *   <li><code>jh::runtime_arr&lt;bool&gt;</code> — bit-packed specialization.</li>
+         *   <li><code>jh::runtime_arr&lt;bool, runtime_arr_helper::bool_flat_alloc&gt;</code> — byte-based variant.</li>
+         * </ul>
+         */
+        struct bool_flat_alloc {
+            /// @brief Allocate <code>n</code> bytes for a <code>bool</code> array (non-packed form).
+            static bool *allocate(std::uint64_t n) { return new bool[n]; }
+
+            /// @brief Deallocate a previously allocated <code>bool</code> array.
+            /// @note Parameter <code>p</code> must not be <code>const</code> — <code>delete[] const bool*</code> is undefined behavior.
+            static void deallocate(bool *p, std::uint64_t) { delete[] p; } // NOLINT
+        };
+
+    } // namespace runtime_arr_helper
+
     /**
-     * @brief A compact, fixed-size bit array specialized for `bool`, with bit-level access.
+     * @brief Specialized implementation of <code>jh::runtime_arr&lt;bool&gt;</code> — a compact, bit-packed boolean array.
      *
-     * This specialization stores bits in 64-bit blocks (`uint64_t[]`) and supports read/write access via `bit_ref`.
+     * <h4>Overview</h4>
+     * <p>
+     * This specialization provides a <b>memory-efficient representation</b> for <code>bool</code> values,
+     * storing them as individual bits within 64-bit words (<code>uint64_t[]</code>).
+     * Each bit represents a boolean value, achieving <b>8× memory compression</b> compared to
+     * the generic <code>runtime_arr&lt;T, Alloc&gt;</code> template (which stores one byte per <code>bool</code>).
+     * </p>
      *
-     * Compared to `std::vector<bool>`:
-     * - More explicit and less overloaded
-     * - Does not rely on STL vector implementation tricks
-     * - Exposes raw storage (`raw_data()`, `raw_word_count()`) for custom bit ops
+     * <p>
+     * Its purpose is not raw speed but <b>spatial density</b> and <b>fragmentation reduction</b> — ideal for
+     * large logical masks, flags, and occupancy bitfields.
+     * </p>
      *
-     * ### Suitable For:
-     * - Compact masks and flags
-     * - Custom bitmap-based algorithms
-     * - Bit-parallelism or bit-serialization routines
+     * <h4>Relation to Generic Template</h4>
+     * <p>
+     * This specialization mirrors the structure of the generic <code>runtime_arr&lt;T, Alloc&gt;</code>,
+     * but modifies or disables certain operations that are incompatible with bit-level storage.
+     * </p>
      *
-     * ### Key APIs:
-     * - `set(i)`, `unset(i)`, `test(i)`
-     * - `reset_all()` to zero entire array
-     * - STL-style iteration over bits (via `bit_iterator`)
+     * <table>
+     *   <tr><th>Semantics</th><th>Generic Member</th><th>Bool Specialization Equivalent</th><th>Notes</th></tr>
+     *   <tr><td>Raw access</td><td><code>data()</code>, <code>as_span()</code></td><td>&#10060; Deleted</td><td>Direct pointer access invalid for bit-packed layout.</td></tr>
+     *   <tr><td>Element access</td><td><code>operator[](i)</code></td><td>&#9989; Reimplemented</td><td>Non-const returns <code>bit_ref</code>, const returns <code>bool</code>.</td></tr>
+     *   <tr><td>Bounded access</td><td><code>at(i)</code></td><td>&#9989; Reimplemented</td><td>Same proxy/value semantics with range checking.</td></tr>
+     *   <tr><td>Bulk reset</td><td><code>reset_all()</code></td><td>&#9989; Implemented</td><td>Clears all bits via <code>std::memset()</code>.</td></tr>
+     *   <tr><td>Bit manipulation</td><td>(none)</td><td>&#9989; <code>set()</code>, <code>unset()</code>, <code>test()</code></td><td>New API for direct bit operations.</td></tr>
+     *   <tr><td>Allocator constructor</td><td><code>runtime_arr(size, Alloc)</code></td><td>&#10060; Deleted</td><td>Custom allocators not supported for bit layout.</td></tr>
+     *   <tr><td>Copy semantics</td><td>&#10060; Deleted</td><td>&#10060; Deleted</td><td>Copying disallowed to prevent shallow duplication.</td></tr>
+     *   <tr><td>Move semantics</td><td>&#9989; Supported</td><td>&#9989; Supported</td><td>Safe ownership transfer via RAII.</td></tr>
+     * </table>
      *
-     * ### Notable Limitations:
-     * - Not allocator-customizable
-     * - Not intended for massive-scale bitmap (e.g. > 1e9 bits)
-     * - No `std::span/view` compatibility, does NOT inherit the std::ranges::view_interface like other templates.
+     * <h4>Core Characteristics</h4>
+     * <ul>
+     *   <li>Stores bits compactly in 64-bit words (<code>uint64_t[]</code>).</li>
+     *   <li>Uses <code>bit_ref</code> proxies for writable element access.</li>
+     *   <li>Const accessors return plain <code>bool</code> values.</li>
+     *   <li>Implements <code>bit_iterator</code> for STL-style traversal.</li>
+     *   <li>Provides low-level access via <code>raw_data()</code> and <code>raw_word_count()</code>.</li>
+     *   <li>Not a contiguous range (proxy elements are non-trivial).</li>
+     * </ul>
      *
-     * ⚠️ Do NOT reinterpret the underlying storage as `bool*`.
-     * Use `bit_ref` or safe iterators instead.
-     * Only the default <bool> case is affected, those with Allocators are normal.
+     * <h4>Usage Guidance</h4>
+     * <p>
+     * This specialization is automatically selected when <code>T == bool</code> and
+     * the allocator parameter is omitted:
+     * </p>
      *
-     * @note Similar to `std::bitset` in storage layout (contiguous bits), but supports runtime-sized arrays.
-     *       Unlike `std::bitset`, access is via mapped proxy references (`bit_ref`), which may involve
-     *       minor indirection overhead (index to word/bit mapping).
-     *       Compared to `std::vector<bool>`, this class offers more explicit behavior and safer access
-     *       patterns, with predictable memory structure (`uint64_t[]`) and no STL-specific optimizations.
+     * @code
+     * jh::runtime_arr&lt;bool&gt; bits(128);
+     * bits.set(3);
+     * bits.unset(1);
+     * bool b = bits.test(3);
+     * @endcode
+     *
+     * <h4>To disable bit packing:</h4>
+     * <p>
+     * Use <code>jh::runtime_arr&lt;bool, jh::runtime_arr_helper::bool_flat_alloc&gt;</code>
+     * to obtain a <b>byte-based layout</b> (one byte per <code>bool</code>).
+     * This form is also the baseline used in all performance comparisons below.
+     * </p>
+     *
+     * @code
+     * jh::runtime_arr&lt;bool, jh::runtime_arr_helper::bool_flat_alloc&gt; plain(256);
+     * plain[0] = true;  // Stored as 1 byte per bool
+     * @endcode
+     *
+     * <h4>Behavior Summary</h4>
+     * <table>
+     *   <tr><th>Aspect</th><th>Generic <code>runtime_arr&lt;T&gt;</code></th><th>Specialized <code>runtime_arr&lt;bool&gt;</code></th></tr>
+     *   <tr><td>Storage layout</td><td>Contiguous <code>T[]</code></td><td>Bit-packed (<code>uint64_t[]</code>)</td></tr>
+     *   <tr><td>Element access</td><td>Direct reference</td><td>Proxy (<code>bit_ref</code>) / value (<code>bool</code>)</td></tr>
+     *   <tr><td><code>data()</code> / <code>as_span()</code></td><td>&#9989;</td><td>&#10060; Deleted</td></tr>
+     *   <tr><td>Allocator awareness</td><td>&#9989;</td><td>&#10060; Deleted</td></tr>
+     *   <tr><td>Copy semantics</td><td>&#10060;</td><td>&#10060;</td></tr>
+     *   <tr><td>Move semantics</td><td>&#9989;</td><td>&#9989;</td></tr>
+     *   <tr><td><code>reset_all()</code></td><td>Element-wise reset</td><td>Zero bits via <code>memset()</code></td></tr>
+     *   <tr><td>Primary use</td><td>General runtime array</td><td>Compact boolean bitset</td></tr>
+     * </table>
+     *
+     * <h4>Performance Characteristics</h4>
+     *
+     * <p>
+     * Microbenchmark results for <code>jh::runtime_arr&lt;bool&gt;</code>
+     * versus its byte-based counterpart
+     * <code>jh::runtime_arr&lt;bool, jh::runtime_arr_helper::bool_flat_alloc&gt;</code>,
+     * collected on <b>Apple Silicon M3</b> with <b>LLVM clang++ 20</b> (2025),
+     * under the following setup:
+     * </p>
+     *
+     * <ul>
+     *   <li>Array sizes: 1,024 and 1,000,000 elements</li>
+     *   <li>Bernoulli(0.5) data distribution</li>
+     *   <li>Catch2 microbenchmark harness</li>
+     *   <li>Single-threaded, in-cache workload</li>
+     * </ul>
+     *
+     * <h5>Empirical results</h5>
+     * <table>
+     *   <tr>
+     *     <th rowspan="2">Optimization</th>
+     *     <th colspan="3">N = 1,000,000 elements</th>
+     *     <th colspan="3">N = 1,024 elements</th>
+     *   </tr>
+     *   <tr>
+     *     <th>set()</th><th>read()</th><th>reset_all()</th>
+     *     <th>set()</th><th>read()</th><th>reset_all()</th>
+     *   </tr>
+     *   <tr><td>-O0</td>
+     *     <td>~20× slower</td><td>~2.8× slower</td><td>~2.8× slower</td>
+     *     <td>~0.3× faster</td><td>~2.3× slower</td><td>~2.3× slower</td></tr>
+     *   <tr><td>-O2</td>
+     *     <td>~38× slower</td><td>~160× slower</td><td>~130× slower</td>
+     *     <td>~0.55× faster</td><td>~61× slower</td><td>~60× slower</td></tr>
+     *   <tr><td>-O3</td>
+     *     <td>~59× slower</td><td>~140× slower</td><td>~130× slower</td>
+     *     <td>~0.6× faster</td><td>~62× slower</td><td>~61× slower</td></tr>
+     *   <tr><td>-Ofast</td>
+     *     <td>~51× slower</td><td>~150× slower</td><td>~125× slower</td>
+     *     <td>~0.5× faster</td><td>~61× slower</td><td>~59× slower</td></tr>
+     * </table>
+     *
+     * <h5>Interpretation</h5>
+     * <ul>
+     *   <li><b>Small arrays (≤1K):</b> Bit-packing may outperform byte-based storage
+     *       in write-heavy scenarios due to 8× lower memory bandwidth usage.
+     *       Reads and resets remain slower due to bit masking overhead.</li>
+     *   <li><b>Large arrays (≥1M):</b> Bitwise access overhead dominates;
+     *       <code>set()</code> is typically ~30–60× slower,
+     *       and <code>read()</code> / <code>reset_all()</code> are ~120–160× slower but mostly memory-bound.</li>
+     *   <li><b>Optimization scaling:</b> <code>-O2</code> already achieves full inlining;
+     *       <code>-O3</code> and <code>-Ofast</code> differences are within measurement noise (±2%).</li>
+     *   <li><b>Static instantiation:</b> A precompiled specialization provides a
+     *       <b>debug fallback</b>, mitigating <code>-O0</code> template inlining overhead.</li>
+     * </ul>
+     *
+     * <p>
+     * In summary, this specialization trades raw performance for memory compactness.
+     * It is most useful for boolean masks, sparse flags, and occupancy grids
+     * where space efficiency outweighs per-bit access cost.
+     * </p>
+     *
+     * <h4>Notes</h4>
+     * <ul>
+     *   <li>Each bit resides in a 64-bit word.</li>
+     *   <li>Thread safety is not guaranteed for concurrent modification.</li>
+     *   <li>RAII-managed, deterministic destruction.</li>
+     * </ul>
+     *
+     * @see
+     * <ul>
+     *   <li><code>jh::runtime_arr&lt;T, Alloc&gt;</code> — generic version.</li>
+     *   <li><code>jh::runtime_arr&lt;bool, runtime_arr_helper::bool_flat_alloc&gt;</code> — byte-based baseline.</li>
+     *   <li><code>jh::runtime_arr&lt;bool&gt;::bit_ref</code> — proxy reference for writable bits.</li>
+     *   <li><code>jh::runtime_arr&lt;bool&gt;::bit_iterator</code> — iterator class for bit traversal.</li>
+     * </ul>
      */
     template<>
-    struct runtime_arr<bool> {
-    private:
+    class runtime_arr<bool> {
         std::uint64_t size_{};
         std::unique_ptr<std::uint64_t[]> storage_;
         static constexpr std::uint64_t BITS = 64;
 
-        [[nodiscard]] std::uint64_t word_count() const noexcept {
+        [[nodiscard]] inline std::uint64_t word_count() const noexcept {
             return (size_ + BITS - 1) / BITS;
         }
 
     public:
-        /// @brief Internal reference proxy for single bit access.
+        /**
+         * @brief Internal reference proxy for single bit access.
+         *
+         * <h5>Overview</h5>
+         * <p>Represents a writable proxy for an individual bit within a 64-bit word.</p>
+         *
+         * <h5>Behavior</h5>
+         * <ul>
+         *   <li>Writable via assignment from <code>bool</code>.</li>
+         *   <li>Convertible to <code>bool</code> for read access.</li>
+         * </ul>
+         */
         struct bit_ref {
         private:
             std::uint64_t &word_;
@@ -457,13 +1257,19 @@ namespace jh {
 
         public:
             bit_ref(std::uint64_t &word, const std::uint64_t bit)
-                : word_(word), mask_(1ULL << bit) {
+                    : word_(word), mask_(1ULL << bit) {
             }
 
-            bit_ref &operator=(const bool val) {
+            bit_ref &operator=(bool val) & noexcept {
                 if (val) word_ |= mask_;
                 else word_ &= ~mask_;
                 return *this;
+            }
+
+            // declared for std::output_iterator
+            bit_ref &operator=(bool val) const && noexcept {
+                const_cast<bit_ref &>(*this) = val;
+                return const_cast<bit_ref &>(*this);
             }
 
             explicit operator bool() const {
@@ -471,21 +1277,29 @@ namespace jh {
             }
         };
 
-        /// @brief Iterator over individual bits in the bit-packed array.
+        /**
+         * @brief Iterator over individual bits in the bit-packed array.
+         *
+         * <h5>Overview</h5>
+         * <p>
+         * Provides STL-compatible random-access iteration over bits stored in
+         * <code>runtime_arr&lt;bool&gt;</code>.
+         * </p>
+         */
         struct bit_iterator {
         private:
             const runtime_arr *parent_;
             std::uint64_t index_;
 
         public:
-            using iterator_category = std::random_access_iterator_tag;
+            using iterator_category [[maybe_unused]] = std::random_access_iterator_tag;
             using value_type = bool;
             using difference_type = std::ptrdiff_t;
             using reference = bit_ref;
             using pointer = void;
 
             bit_iterator(const runtime_arr *parent, const std::uint64_t index)
-                : parent_(parent), index_(index) {
+                    : parent_(parent), index_(index) {
             }
 
             bit_ref operator*() const { return (*const_cast<runtime_arr *>(parent_))[index_]; }
@@ -523,6 +1337,7 @@ namespace jh {
             }
 
             bit_iterator operator+(const difference_type n) const { return {parent_, index_ + n}; }
+
             bit_iterator operator-(const difference_type n) const { return {parent_, index_ - n}; }
 
             difference_type operator-(const bit_iterator &other) const {
@@ -530,44 +1345,94 @@ namespace jh {
             }
 
             bool operator==(const bit_iterator &other) const { return index_ == other.index_; }
+
             bool operator!=(const bit_iterator &other) const { return !(*this == other); }
+
             bool operator<(const bit_iterator &other) const { return index_ < other.index_; }
+
             bool operator<=(const bit_iterator &other) const { return index_ <= other.index_; }
+
             bool operator>(const bit_iterator &other) const { return index_ > other.index_; }
+
             bool operator>=(const bit_iterator &other) const { return index_ >= other.index_; }
         };
 
+        using raw_type = std::uint64_t;
+        using value_type = bool;
+        using size_type = std::uint64_t;
+        using difference_type [[maybe_unused]] = std::ptrdiff_t;
+        using reference = bit_ref;
+        using const_reference = bool;
         using iterator = bit_iterator;
         using const_iterator = bit_iterator;
 
         /**
-         * @brief Constructs a bit-packed array with all bits zero-initialized.
-         * @param size Number of bits
+         * @brief Constructs a bit-packed boolean runtime array with all bits zero-initialized.
+         * @param size Number of logical bits to allocate and initialize.
+         * @details
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li>Allocates <code>ceil(size / 64)</code> 64-bit words via <code>new[]</code>.</li>
+         *   <li>All bits are cleared to zero (<code>false</code>).</li>
+         *   <li>Each bit is accessible through <code>bit_ref</code> proxy references.</li>
+         *   <li>Ownership is RAII-managed using <code>std::unique_ptr&lt;uint64_t[]&gt;</code>.</li>
+         *   <li>Allocator parameters are not supported for bit-packed storage.</li>
+         * </ul>
+         *
+         * @note
+         * <ul>
+         *   <li>Move-only; copy operations are deleted.</li>
+         *   <li>Use <code>set()</code>, <code>unset()</code>, <code>test()</code>, and <code>reset_all()</code>
+         *       for bit manipulation.</li>
+         * </ul>
          */
-        explicit runtime_arr(const std::uint64_t size)
-            : size_(size), storage_(std::make_unique<std::uint64_t[]>(word_count())) {
-            std::memset(storage_.get(), 0, word_count() * sizeof(std::uint64_t));
-        }
+        explicit runtime_arr(std::uint64_t size);
 
         /**
-         * @brief Constructs from a std::vector<bool>.
-         * @param vec Rvalue reference to std::vector<bool>
+         * @brief Constructs a bit-packed array by moving data from a <code>std::vector&lt;bool&gt;</code>.
+         * @param vec Rvalue reference to <code>std::vector&lt;bool&gt;</code> whose elements are copied bitwise.
+         * @details
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li>Allocates sufficient 64-bit words to store <code>vec.size()</code> bits.</li>
+         *   <li>Each element of <code>vec</code> is copied into the corresponding bit position.</li>
+         *   <li>Ownership and lifetime are RAII-managed internally.</li>
+         *   <li>The source vector remains valid but its contents are not preserved after the operation.</li>
+         * </ul>
+         *
+         * @note
+         * <ul>
+         *   <li>Copying is bitwise; no shared memory with the original vector.</li>
+         *   <li>Move-only type — copy construction and assignment are deleted.</li>
+         * </ul>
          */
-        explicit runtime_arr(std::vector<bool> &&vec)
-            : runtime_arr(vec.size()) {
-            for (std::uint64_t i = 0; i < size_; ++i)
-                set(i, vec[i]);
-        }
+        explicit runtime_arr(std::vector<bool> &&vec);
 
         /**
-         * @brief Constructs from an input iterator range of bools.
-         * @param first Start of range
-         * @param last End of range
-         * @throws std::invalid_argument if range is invalid
+         * @brief Constructs a bit-packed array from a range of boolean values.
+         * @tparam ForwardIt Iterator type satisfying <code>jh::concepts::forward_iterator</code>.
+         * @param first Iterator to the start of the range.
+         * @param last Iterator to the end of the range.
+         * @throws std::invalid_argument If the iterator range is invalid.
+         * @details
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li>Computes the number of elements using <code>std::distance(first, last)</code>.</li>
+         *   <li>Allocates enough 64-bit words to store all bits.</li>
+         *   <li>Clears all bits to zero, then copies values from the input range bitwise.</li>
+         *   <li>Throws <code>std::invalid_argument</code> if the range length is negative.</li>
+         * </ul>
+         *
+         * @note
+         * <ul>
+         *   <li>Supports any forward iterator, including container iterators and <code>std::span</code>.</li>
+         *   <li>Single-pass input iterators are not supported.</li>
+         *   <li>Resulting array is bit-packed and non-resizable.</li>
+         * </ul>
          */
-        template<typename InputIt>
-        runtime_arr(InputIt first, InputIt last)
-            requires (jh::input_iterator<InputIt>) {
+        template<typename ForwardIt>
+        runtime_arr(ForwardIt first, ForwardIt last)
+        requires (jh::concepts::forward_iterator<ForwardIt> && std::convertible_to<typename ForwardIt::value_type, value_type>) {
             const auto dist = std::distance(first, last);
             if (dist < 0) throw std::invalid_argument("Invalid iterator range");
             size_ = static_cast<std::uint64_t>(dist);
@@ -579,38 +1444,140 @@ namespace jh {
                 set(i, static_cast<bool>(*first));
         }
 
-        /// @brief Returns number of logical bits in the array.
-        [[nodiscard]] std::uint64_t size() const noexcept { return size_; }
-
-        /// @brief Returns whether the bit array is empty.
-        [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
-
-        /// @brief Mutable access to the underlying word buffer.
-        std::uint64_t *raw_data() noexcept { return storage_.get(); }
-
-        /// @brief Const access to the underlying word buffer.
-        [[nodiscard]] const std::uint64_t *raw_data() const noexcept { return storage_.get(); }
-
-        /// @brief Returns number of `uint64_t` words used to store all bits.
-        [[nodiscard]] std::uint64_t raw_word_count() const noexcept { return word_count(); }
+        /**
+         * @brief Returns the number of elements in the array.
+         * @return Number of elements currently stored.
+         */
+        [[nodiscard]] size_type size() const noexcept;
 
         /**
-         * @brief Access bit by index (read/write).
-         * @param i Bit index
-         * @return Reference proxy to the bit
+         * @brief Checks whether the array is empty.
+         * @return <code>true</code> if <code>size() == 0</code>, otherwise <code>false</code>.
          */
-        bit_ref operator[](const std::uint64_t i) {
-            return {storage_[i / BITS], i % BITS};
-        }
+        [[nodiscard]] bool empty() const noexcept;
 
         /**
-         * @brief Access bit by index (read-only).
-         * @param i Bit index
-         * @return Boolean value of bit
+         * @brief Provides mutable access to the underlying word buffer.
+         * @details
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li>Returns a pointer to the internal <code>uint64_t</code> storage array.</li>
+         *   <li>Each word contains 64 logical bits of packed boolean data.</li>
+         *   <li>Intended for low-level bitwise operations, serialization, or direct memory inspection.</li>
+         * </ul>
+         *
+         * @note
+         * <ul>
+         *   <li>This function replaces <code>data()</code> from the generic template, since the
+         *       bit-packed layout is <b>not</b> contiguous in <code>bool</code> units.</li>
+         *   <li>Users must manually interpret the bit positions when reading or writing raw words.</li>
+         * </ul>
          */
-        bool operator[](const std::uint64_t i) const {
-            return storage_[i / BITS] >> i % BITS & 1;
-        }
+        raw_type *raw_data() noexcept;
+
+        /**
+         * @brief Provides const access to the underlying word buffer.
+         * @details
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li>Returns a const pointer to the <code>uint64_t</code> buffer.</li>
+         *   <li>Useful for inspection or bitwise read-only operations.</li>
+         * </ul>
+         *
+         * @note
+         * <ul>
+         *   <li>Equivalent to the mutable form, but guarantees const-correct access.</li>
+         *   <li>Replaces <code>const data()</code> from the generic <code>runtime_arr&lt;T&gt;</code> template.</li>
+         * </ul>
+         */
+        [[nodiscard]] const raw_type *raw_data() const noexcept;
+
+        /**
+         * @brief Returns the number of 64-bit words used internally to store all bits.
+         * @details
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li>Computes <code>(size() + 63) / 64</code>, rounding up to the nearest full word.</li>
+         *   <li>Matches the physical storage capacity, not just logical bit count.</li>
+         * </ul>
+         *
+         * @note
+         * <ul>
+         *   <li>Used in conjunction with <code>raw_data()</code> for raw memory operations.</li>
+         *   <li>Provided as a safe, constexpr-accessible alternative to manual division.</li>
+         * </ul>
+         */
+        [[nodiscard]] size_type raw_word_count() const noexcept;
+
+        /**
+         * @brief Unchecked bit access (read/write).
+         *
+         * @details
+         * Returns a proxy reference to the bit at the specified index
+         * without performing bounds checking (undefined behavior if out of range).
+         * Equivalent to <code>*(data() + index)</code> in semantics,
+         * but operates on a bit-packed storage layout.
+         *
+         * @param i Bit index within <tt>[0, size())</tt>.
+         * @return Reference proxy object representing the targeted bit.
+         */
+        reference operator[](const std::uint64_t i) noexcept;
+
+        /**
+         * @brief Unchecked const bit access (read-only).
+         *
+         * @details
+         * Provides read-only access to the bit at the specified index
+         * without bounds checking (undefined behavior if out of range).
+         * Returns the boolean value corresponding to the bit's state.
+         *
+         * @param i Bit index within <tt>[0, size())</tt>.
+         * @return Boolean value of the bit.
+         */
+        [[nodiscard]] value_type operator[](const std::uint64_t i) const noexcept;
+
+        /**
+         * @brief Bounds-checked bit access (read/write).
+         *
+         * @details
+         * Returns a proxy reference to the bit at the specified index,
+         * performing explicit range checking.
+         * If <code>i &gt;= size()</code>, an <code>std::out_of_range</code>
+         * exception is thrown.
+         *
+         * <p>
+         * Equivalent to <code>operator[]</code> but with explicit bounds validation.
+         * Mirrors the semantics of <code>std::vector&lt;bool&gt;::at()</code>.
+         * </p>
+         *
+         * @param i Bit index within <tt>[0, size())</tt>.
+         * @return Bit reference proxy representing the target bit.
+         * @throws std::out_of_range If <code>i &gt;= size()</code>.
+         * @see operator[]()
+         */
+        reference at(const std::uint64_t i);
+
+        /**
+         * @brief Const bounds-checked bit access (read-only).
+         *
+         * @details
+         * Returns the boolean value of the bit at the specified index,
+         * performing explicit range checking.
+         * If <code>i &gt;= size()</code>, an <code>std::out_of_range</code>
+         * exception is thrown.
+         *
+         * <p>
+         * Mirrors <code>std::vector&lt;bool&gt;::at()</code> semantics —
+         * returning a plain <code>bool</code> rather than a proxy
+         * for const access.
+         * </p>
+         *
+         * @param i Bit index within <tt>[0, size())</tt>.
+         * @return Boolean value of the bit.
+         * @throws std::out_of_range If <code>i &gt;= size()</code>.
+         * @see operator[]()
+         */
+        [[nodiscard]] value_type at(const std::uint64_t i) const;
 
         /**
          * @brief Sets or clears the bit at given index.
@@ -618,86 +1585,354 @@ namespace jh {
          * @param val Bit value to assign (true by default)
          * @throws std::out_of_range if i out of bounds
          */
-        void set(const std::uint64_t i, const bool val = true) {
-            if (i >= size_) throw std::out_of_range("set(): index out of bounds");
-            if (val) storage_[i / BITS] |= 1ULL << i % BITS;
-            else storage_[i / BITS] &= ~(1ULL << i % BITS);
-        }
+        void set(const std::uint64_t i, const bool val = true);
 
         /**
          * @brief Clears the bit at given index.
          * @param i Bit index
          * @throws std::out_of_range if i out of bounds
          */
-        void unset(const std::uint64_t i) {
-            if (i >= size_) throw std::out_of_range("unset(): index out of bounds");
-            storage_[i / BITS] &= ~(1ULL << i % BITS);
-        }
+        void unset(const std::uint64_t i);
 
         /**
          * @brief Tests if the bit at index is set.
          * @param i Bit index
-         * @return true if bit is 1, false if 0
+         * @return <code>true</code> if bit is <tt>1</tt>, <code>false</code> if <tt>0</tt>
          * @throws std::out_of_range if i out of bounds
          */
-        [[nodiscard]] bool test(const std::uint64_t i) const {
-            if (i >= size_) throw std::out_of_range("test(): index out of bounds");
-            return storage_[i / BITS] >> i % BITS & 1;
-        }
+        [[nodiscard]] value_type test(const std::uint64_t i) const;
 
         /**
-         * @brief Zeroes out all bits in the array.
+         * @brief Resets all bits in the bit-packed array to zero.
+         * @details
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li>Clears all stored bits by setting every underlying 64-bit word to <code>0</code>.</li>
+         *   <li>After the call, all logical elements read as <code>false</code>.</li>
+         * </ul>
+         *
+         * @note
+         * <ul>
+         *   <li>This replaces the generic <code>reset_all()</code> implementation for <code>runtime_arr&lt;T&gt;</code>,
+         *       which performs element-wise assignment.</li>
+         *   <li>Uses <code>std::memset</code> for efficient zeroing of the bit storage buffer.</li>
+         *   <li>Equivalent to <code>std::fill(begin(), end(), false)</code> but significantly faster.</li>
+         * </ul>
          */
-        [[gnu::used]] void reset_all() { // NOLINT not const
-            std::memset(storage_.get(), 0, word_count() * sizeof(std::uint64_t));
-        }
+        [[gnu::used]] inline void reset_all() noexcept;
+
+        /**
+         * @brief Move constructor — transfers ownership of the bit-packed buffer.
+         *
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li>Transfers ownership of the internal <code>uint64_t[]</code> buffer
+         *       from <code>other</code> to <code>*this</code>.</li>
+         *   <li>After the move, <code>other</code> is left in an empty but valid state
+         *       (<code>size() == 0</code>, <code>raw_data() == nullptr</code>).</li>
+         *   <li>No memory allocation or bit copy is performed — the operation is <b>O(1)</b>.</li>
+         * </ul>
+         *
+         * <strong>Rationale</strong>
+         * <p>
+         * Move semantics allow efficient transfer of large bitsets across scopes,
+         * especially when benchmarking or composing higher-level containers.
+         * Copying remains disabled to avoid accidental deep duplication of bit-packed data.
+         * </p>
+         */
+        runtime_arr(runtime_arr &&other) noexcept;
+
+        /**
+         * @brief Move assignment operator — transfers ownership of the bit-packed buffer.
+         * @details
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li>Releases any existing owned buffer.</li>
+         *   <li>Takes ownership of <code>other</code>'s bit-packed storage.</li>
+         *   <li>Leaves <code>other</code> empty and valid.</li>
+         *   <li>Performs no memory allocation or element-wise operation.</li>
+         * </ul>
+         *
+         * @note
+         * <p>
+         * This operator is <code>noexcept</code> and preserves RAII semantics.
+         * Copy assignment remains deleted to enforce unique ownership.
+         * </p>
+         */
+        runtime_arr &operator=(runtime_arr &&other) noexcept;
+
 
         /**
          * @brief Converts the bit array into std::vector<bool>.
          *        Elements are copied bit-by-bit.
          * @note This operation consumes the array (clears and resets storage).
          */
-        explicit operator std::vector<bool>() && {
-            std::vector<bool> vec(size_);
-            for (std::uint64_t i = 0; i < size_; ++i)
-                vec[i] = static_cast<bool>((*this)[i]);
-            size_ = 0;
-            storage_.reset();
-            return vec;
-        }
+        explicit operator std::vector<bool>() &&;
 
         /// @brief Mutable begin iterator over bits.
-        iterator begin() noexcept { return {this, 0}; }
+        iterator begin() noexcept;
 
         /// @brief Mutable end iterator over bits.
-        iterator end() noexcept { return {this, size_}; }
+        iterator end() noexcept;
 
         /// @brief Const begin iterator over bits.
-        [[nodiscard]] const_iterator begin() const noexcept { return {this, 0}; }
+        [[nodiscard]] const_iterator begin() const noexcept;
 
         /// @brief Const end iterator over bits.
-        [[nodiscard]] const_iterator end() const noexcept { return {this, size_}; }
+        [[nodiscard]] const_iterator end() const noexcept;
 
         /// @brief Const begin iterator over bits.
-        [[nodiscard]] const_iterator cbegin() const noexcept { return begin(); }
+        [[nodiscard]] [[maybe_unused]] const_iterator cbegin() const noexcept;
 
         /// @brief Const end iterator over bits.
-        [[nodiscard]] const_iterator cend() const noexcept { return end(); }
+        [[nodiscard]] [[maybe_unused]] const_iterator cend() const noexcept;
 
         /**
-         * @brief forbid the general data() method from the template.
+         * @brief Deleted <code>data()</code> function — raw pointer access is not valid for bit-packed layout.
+         * @details
+         * <strong>Behavior</strong>
+         * <ul>
+         *   <li>This specialization intentionally deletes <code>data()</code> to prevent treating the
+         *       bit-packed storage as a contiguous <code>bool*</code> array.</li>
+         *   <li>Internally, elements are stored as bits within 64-bit words, not as individual bytes.</li>
+         * </ul>
          *
-         * @note Reinterpreting the bit-packed array as a bool* data buffer will not work as expected.
+         * @note
+         * <ul>
+         *   <li>Use <code>raw_data()</code> and <code>raw_word_count()</code> to access the underlying
+         *       <code>uint64_t</code> storage for low-level operations.</li>
+         *   <li>This deletion ensures type safety and prevents undefined behavior due to misaligned access.</li>
+         * </ul>
          */
         void data() const = delete;
 
-        [[nodiscard]] std::span<bool> as_span() = delete;
+        /**
+         * @brief Deleted allocator-based constructor.
+         * @details
+         * <strong>Behavior</strong>
+         * <p>
+         * The <code>runtime_arr&lt;bool&gt;</code> specialization does not support
+         * allocator-based construction because its layout is bit-packed rather than byte-based.
+         * All allocation is performed internally via <code>new[]</code> with RAII management.
+         * </p>
+         *
+         * @note
+         * <ul>
+         *   <li>Allocator granularity (bytes) is incompatible with bit-level storage.</li>
+         *   <li>Use <code>runtime_arr&lt;bool, runtime_arr_helper::bool_flat_alloc&gt;</code>
+         *       for a byte-based boolean array that supports allocator semantics.</li>
+         * </ul>
+         */
+        runtime_arr(std::uint64_t size, auto) = delete;
 
-        [[nodiscard]] std::span<const bool> as_span() const = delete;
+        /// @brief Deleted — bit-packed array cannot expose a contiguous span of bools.
+        [[nodiscard]] std::span<value_type> as_span() = delete;
+
+        /// @brief Deleted — const version; contiguous view over bits is not representable.
+        [[nodiscard]] std::span<const value_type> as_span() const = delete;
+
+        /// @brief Copy constructor deleted — bit array is non-copyable by design.
+        runtime_arr(const runtime_arr &) = delete;
+
+        /// @brief Copy assignment deleted — bit array is non-copyable by design.
+        runtime_arr &operator=(const runtime_arr &) = delete;
+
+        [[maybe_unused]] [[maybe_unused]] static bool is_static_built();
     };
 
+    /**
+     * @brief Specialization of <code>jh::concepts::iterator&lt;&gt;</code> for <code>jh::runtime_arr&lt;bool&gt;</code>.
+     *
+     * @details
+     * Provides a mapping between <code>jh::runtime_arr&lt;bool&gt;</code> and its
+     * internal bit-level iterator type <code>runtime_arr&lt;bool&gt;::iterator</code>.
+     *
+     * <p>
+     * This specialization is part of the <code>jh::concepts::iterator_t&lt;&gt;</code>
+     * deduction system, ensuring that generic iterator utilities correctly
+     * resolve the iterator type for bit-packed arrays:
+     * </p>
+     *
+     * <pre><code>
+     * using it_t = jh::concepts::iterator_t&lt;jh::runtime_arr&lt;bool&gt;&gt;;
+     * // it_t == jh::runtime_arr&lt;bool&gt;::iterator
+     * </code></pre>
+     *
+     * <p>
+     * This integration enables seamless participation of
+     * <code>runtime_arr&lt;bool&gt;</code> in generic algorithms,
+     * range-based loops, and template-based iteration contexts
+     * that depend on <code>jh::concepts::iterator_t</code> resolution.
+     * </p>
+     *
+     * @tparam None — specialization applies specifically to <code>runtime_arr&lt;bool&gt;</code>.
+     * @see jh::concepts::iterator_t
+     * @see jh::runtime_arr&lt;bool&gt;
+     * @see jh::runtime_arr&lt;bool&gt;::bit_iterator
+     */
     template<>
-    struct iterator<runtime_arr<bool> > {
+    struct iterator<runtime_arr<bool>> {
         using type = runtime_arr<bool>::iterator;
     };
 } // namespace jh
+
+#include "jh/macros/header_begin.h"
+
+namespace jh {
+#if defined(JH_HEADER_NO_IMPL)
+    extern template class runtime_arr<bool, runtime_arr_helper::bool_flat_alloc>;
+#endif
+#if JH_INTERNAL_SHOULD_DEFINE
+
+    // ---- ctor ----
+    JH_INLINE runtime_arr<bool>::runtime_arr(std::uint64_t size)
+            : size_(size),
+              storage_(std::make_unique<std::uint64_t[]>(word_count())) {
+        std::memset(storage_.get(), 0, word_count() * sizeof(std::uint64_t));
+    }
+
+    JH_INLINE runtime_arr<bool>::runtime_arr(std::vector<bool> &&vec)
+            : runtime_arr(vec.size()) {
+        for (std::uint64_t i = 0; i < size_; ++i)
+            set(i, vec[i]);
+    }
+
+    // ---- accessors ----
+
+    JH_INLINE auto runtime_arr<bool>::size() const noexcept -> size_type {
+        return size_;
+    }
+
+    JH_INLINE bool runtime_arr<bool>::empty() const noexcept {
+        return size_ == 0;
+    }
+
+    JH_INLINE auto runtime_arr<bool>::raw_data() noexcept -> raw_type * {
+        return storage_.get();
+    }
+
+    [[maybe_unused]] JH_INLINE auto runtime_arr<bool>::raw_data() const noexcept -> const raw_type * {
+        return storage_.get();
+    }
+
+    JH_INLINE auto runtime_arr<bool>::raw_word_count() const noexcept -> size_type {
+        return word_count();
+    }
+
+    // ---- bit access ----
+
+    JH_INLINE auto runtime_arr<bool>::operator[](std::uint64_t i) noexcept -> reference {
+        return {storage_[i / BITS], i % BITS};
+    }
+
+    JH_INLINE auto runtime_arr<bool>::operator[](std::uint64_t i) const noexcept -> value_type {
+        return (storage_[i / BITS] >> (i % BITS)) & 1U;
+    }
+
+    JH_INLINE auto runtime_arr<bool>::at(std::uint64_t i) -> reference {
+        if (i >= size_)
+            throw std::out_of_range("jh::runtime_arr<bool>::at(): index out of bounds");
+        return operator[](i);
+    }
+
+    JH_INLINE auto runtime_arr<bool>::at(std::uint64_t i) const -> value_type {
+        if (i >= size_)
+            throw std::out_of_range("jh::runtime_arr<bool>::at(): index out of bounds");
+        return operator[](i);
+    }
+
+    // ---- modifiers ----
+
+    JH_INLINE void runtime_arr<bool>::set(std::uint64_t i, bool val) {
+        if (i >= size_) throw std::out_of_range("set(): index out of bounds");
+        if (val)
+            storage_[i / BITS] |= 1ULL << (i % BITS);
+        else
+            storage_[i / BITS] &= ~(1ULL << (i % BITS));
+    }
+
+    JH_INLINE void runtime_arr<bool>::unset(std::uint64_t i) {
+        if (i >= size_) throw std::out_of_range("unset(): index out of bounds");
+        storage_[i / BITS] &= ~(1ULL << (i % BITS));
+    }
+
+    JH_INLINE auto runtime_arr<bool>::test(std::uint64_t i) const -> value_type {
+        if (i >= size_) throw std::out_of_range("test(): index out of bounds");
+        return (storage_[i / BITS] >> (i % BITS)) & 1U;
+    }
+
+    JH_INLINE void runtime_arr<bool>::reset_all() noexcept {
+        const auto words = word_count();
+        if (words > 0)
+            std::memset(storage_.get(), 0, words * sizeof(std::uint64_t));
+    }
+
+    // ---- move-only ----
+
+    JH_INLINE runtime_arr<bool>::runtime_arr(runtime_arr &&other) noexcept
+            : size_(other.size_),
+              storage_(std::move(other.storage_)) {
+        other.size_ = 0;
+        other.storage_.reset();
+    }
+
+    JH_INLINE runtime_arr<bool> &runtime_arr<bool>::operator=(runtime_arr &&other) noexcept {
+        if (this != &other) {
+            size_ = other.size_;
+            storage_ = std::move(other.storage_);
+            other.size_ = 0;
+            other.storage_.reset();
+        }
+        return *this;
+    }
+
+    JH_INLINE runtime_arr<bool>::operator std::vector<bool>() && {
+        std::vector<bool> vec(size_);
+        for (std::uint64_t i = 0; i < size_; ++i)
+            vec[i] = static_cast<bool>((*this)[i]);
+
+        size_ = 0;
+        storage_.reset();
+        return vec;
+    }
+
+    // ---- range ----
+
+    JH_INLINE auto runtime_arr<bool>::begin() noexcept -> iterator {
+        return {this, 0};
+    }
+
+    JH_INLINE auto runtime_arr<bool>::end() noexcept -> iterator {
+        return {this, size_};
+    }
+
+    JH_INLINE auto runtime_arr<bool>::begin() const noexcept -> const_iterator {
+        return {this, 0};
+    }
+
+    JH_INLINE auto runtime_arr<bool>::end() const noexcept -> const_iterator {
+        return {this, size_};
+    }
+
+    [[maybe_unused]] JH_INLINE auto runtime_arr<bool>::cbegin() const noexcept -> const_iterator {
+        return begin();
+    }
+
+    [[maybe_unused]] JH_INLINE auto runtime_arr<bool>::cend() const noexcept -> const_iterator {
+        return end();
+    }
+
+    // ---- compile-flag ----
+
+    [[maybe_unused]] JH_INLINE bool runtime_arr<bool>::is_static_built() {
+#ifdef JH_IS_STATIC_BUILD
+        return true;
+#else
+        return false;
+#endif // JH_IS_STATIC_BUILD
+    }
+
+#endif // JH_INTERNAL_SHOULD_DEFINE
+}
+
+#include "jh/macros/header_end.h"

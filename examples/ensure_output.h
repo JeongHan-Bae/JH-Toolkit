@@ -1,7 +1,7 @@
 // ensure_output.h
 #pragma once
 
-#include "../include/jh/utils/platform.h"
+#include "jh/macros/platform.h"
 
 #if IS_WINDOWS
 #include <windows.h>

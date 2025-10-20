@@ -1,5 +1,6 @@
 /**
- * Copyright 2025 JeongHan-Bae <mastropseudo@gmail.com>
+ * \verbatim
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,58 +13,177 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * \endverbatim
  */
-
-
 /**
  * @file immutable_str.h
- * @author JeongHan-Bae <mastropseudo@gmail.com>
- * @brief A lightweight immutable string with optional automatic trimming.
+ * @brief Immutable, thread-safe string with optional auto-trimming and dual-mode build support.
+ * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
- * @details
- * This module implements an **immutable string class** designed for **safe and efficient storage**.
- * Unlike `const std::string`, which only **restricts modification at the API level**, `immutable_str` **ensures true immutability at the data level**.
+ * <h3>Overview</h3>
+ * <p>
+ * <code>jh::immutable_str</code> provides a <b>true immutable</b> string type in modern C++.
+ * It guarantees <b>memory-level immutability</b> and <b>thread safety</b> — once created,
+ * the string data can never be modified. This makes it ideal for concurrent environments,
+ * global configuration caches, or static metadata storage.
+ * </p>
  *
- * ## Motivation
- * In C++, `std::string` is inherently mutable, even when marked as `const`. This leads to issues such as
- * - **Unintended modification** when cast away from `const`.
- * - **Reallocation overhead** due to *copy-on-write* or implicit resizing.
- * - **Thread safety concerns** since `std::string`'s internal buffer can be modified in some contexts.
+ * <h4>Key Characteristics</h4>
+ * <ul>
+ *   <li>Strict immutability at the memory level — no API allows modification.</li>
+ *   <li>Thread-safe by design — multiple threads can safely share instances.</li>
+ *   <li>Optional <b>automatic whitespace trimming</b> during construction.</li>
+ *   <li>Compact, zero-reallocation model using <code>unique_ptr&lt;const char[]&gt;</code>.</li>
+ *   <li>Transparent hashing and equality for unordered containers.</li>
+ *   <li>Seamless integration with <code>std::shared_ptr&lt;immutable_str&gt;</code> for safe sharing.</li>
+ * </ul>
  *
- * `immutable_str` is designed to:
- * - **Guarantee immutability at the memory level** (no API allows modification).
- * - **Avoid unnecessary memory reallocations** (fixed-size allocation).
- * - **Be naturally thread-safe** without requiring additional synchronization.
+ * <h3>Motivation</h3>
+ * <p>
+ * In C++, <code>std::string</code> remains mutable even when declared <code>const</code>.
+ * This permits unintended modification via <code>const_cast</code> or aliasing, leading to
+ * race conditions and subtle data corruption. <code>jh::immutable_str</code> eliminates these
+ * risks by enforcing immutability both at the type level and memory level.
+ * </p>
  *
- * ## Key Differences: `immutable_str` vs. `const std::string`
- * | Feature                  | `immutable_str`                         | `const std::string`                           |
- * |--------------------------|-----------------------------------------|-----------------------------------------------|
- * | **True Immutability**    | ✅ Enforced at memory level             | ❌ Can be modified via `const_cast`           |
- * | **Thread Safety**        | ✅ No modifications possible            | ❌ Potential unsafe modifications             |
- * | **Memory Efficiency**    | ✅ Fixed-size allocation                | ❌ May trigger reallocation                   |
- * | **Copy Cost**            | ✅ Can be shared via `std::shared_ptr`  | ✅ Can be shared via `std::shared_ptr`        |
- * | **Comparison & Hashing** | ✅ Custom methods avoid full data access| ❌ Default methods may require deep comparison|
- * | **Structure Simplicity** | ✅ Minimal overhead                     | ❌ Larger, manages dynamic capacity           |
+ * <h3>Comparison with <code>const std::string</code></h3>
+ * <table>
+ *   <tr><th>Feature</th><th><code>jh::immutable_str</code></th><th><code>const std::string</code></th></tr>
+ *   <tr><td>Memory-level immutability</td><td>&#9989; True</td><td>&#10060; False</td></tr>
+ *   <tr><td>Thread safety</td><td>&#9989; Safe by design</td><td>&#10060; Mutable buffer</td></tr>
+ *   <tr><td>Reallocation risk</td><td>&#10060; None</td><td>&#9989; Possible</td></tr>
+ *   <tr><td>Hashing</td><td>&#9989; Cached, thread-safe</td><td>&#10060; Recomputed each time</td></tr>
+ *   <tr><td>Storage model</td><td>Compact (unique_ptr)</td><td>Dynamic capacity-managed</td></tr>
+ * </table>
  *
- * ## Best Practice
- * - `immutable_str` is **recommended for shared immutable storage**, especially in multithreaded applications.
- * - Unlike `const std::string`, `immutable_str` **cannot be modified in any way**, making it safer for global or cached storage.
- * - **Using `std::shared_ptr<immutable_str>` (`atomic_str_ptr`) is the preferred way to distribute immutable strings** efficiently.
- * - **Custom hash and equality functions ensure efficient comparison without extracting objects**.
+ * <h3>Core Features</h3>
+ * <ul>
+ *   <li><b>Immutable Data:</b> Stored via <code>unique_ptr&lt;const char[]&gt;</code>, preventing mutation.</li>
+ *   <li><b>Thread-Safe Hashing:</b> Lazy-evaluated via <code>std::once_flag</code> to ensure safe caching.</li>
+ *   <li><b>Auto Trimming:</b> Optional compile-time whitespace removal (controlled by <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>).</li>
+ *   <li><b>Shared Ownership:</b> Distributed through <code>jh::atomic_str_ptr</code> (<code>shared_ptr</code> alias).</li>
+ *   <li><b>Interop:</b> Compatible with <code>std::string_view</code> and C-string APIs.</li>
+ *   <li><b>Custom Hash &amp; Eq:</b> Support for transparent <code>unordered_map</code> lookup via <code>const char*</code>.</li>
+ * </ul>
  *
- * ## Key Features
- * - **Immutable & Thread-Safe**: Once created, cannot be modified.
- * - **Configurable Trimming**: `static auto_trim` flag controls whitespace removal.
- * - **Memory Efficient**: Uses `std::unique_ptr<const char[]>` for compact storage.
- * - **Optimized for Hash Containers**: Custom hashing and comparison methods allow efficient key lookup.
- * - **Recommended for Shared Use**: `std::shared_ptr<immutable_str>` enables efficient string sharing.
- * - **Seamless C-string Compatibility**: Provides `c_str()`[const char*], `view()`[std::string_view()],
- * and `str()`[std::string].
- * - **Constructing**: Supports construction from [C-strings] and [`std::string_view` with mutex protection].
- * - **Pooling Support**: Compatible with `jh::pool` for efficient object pooling.
+ * <h3>Dual-Mode Header Integration</h3>
+ * <p>
+ * From <b>v1.3.x</b>, <code>jh::immutable_str</code> supports the <b>Dual-Mode Header</b> system:
+ * </p>
+ * <ul>
+ *   <li>Linked through <code>jh::jh-toolkit</code> → acts as a <b>header-only</b> component.</li>
+ *   <li>Linked through <code>jh::jh-toolkit-static</code> → compiled as a <b>static implementation</b>
+ *       for performance and deterministic linking.</li>
+ *   <li>Mode controlled internally via <code>JH_INTERNAL_SHOULD_DEFINE</code>.</li>
+ * </ul>
  *
- * @version 1.3.x
- * @date 2025
+ * <h4>Static Build Detection</h4>
+ * <p>
+ * The method <code>bool jh::immutable_str::is_static_built()</code> allows runtime mode verification:
+ * </p>
+ * <ul>
+ *   <li>Returns <b>true</b> if built as part of <code>jh-toolkit-static</code>.</li>
+ *   <li>Returns <b>false</b> when using header-only mode via <code>jh-toolkit</code>.</li>
+ * </ul>
+ *
+ * <h3>Usage Example</h3>
+ * @code
+ * #include &lt;jh/immutable_str&gt;   // or &lt;jh/immutable_str.h&gt;
+ * #include &lt;iostream&gt;
+ *
+ * int main() {
+ *     auto pool = jh::pool&lt;jh::immutable_str&gt;();
+ *     const auto str = pool.acquire("Hello, JH Toolkit!");
+ *     std::cout &lt;&lt; str-&gt;view() &lt;&lt; std::endl;
+ *     return 0;
+ * }
+ * @endcode
+ *
+ * <p>
+ * If the program prints the expected message, it confirms that the correct linkage
+ * (header-only or static) is configured properly in your build environment.
+ * </p>
+ *
+ * <h4>Automatic Pool Integration</h4>
+ * <p>
+ * This header automatically includes <code>jh/pool.h</code>, exposing the full
+ * pooling behavior of <code>jh::immutable_str</code> without requiring any
+ * additional include directives. Because <code>jh::pool</code> performs
+ * duck-typed deduction (detecting <code>hash()</code> and <code>operator==</code>),
+ * <code>immutable_str</code> instances are automatically compatible with
+ * <code>jh::pool</code>.
+ * </p>
+ *
+ * <p>
+ * In addition to providing <code>hash()</code> and <code>operator==</code>,
+ * types used with <code>jh::pool</code> must guarantee <b>semantic immutability</b>:
+ * once an object is inserted into the pool, its <code>hash()</code> and
+ * equality semantics must remain constant for its entire lifetime.
+ * This ensures that pooled instances remain stable and deduplicated.
+ * </p>
+ *
+ * <p>
+ * <code>jh::immutable_str</code> naturally satisfies this requirement — its
+ * memory content and hash are fixed at construction time and can never change.
+ * Therefore, it represents the canonical example of a <b>pool-safe immutable type</b>.
+ * </p>
+ *
+ * <p>
+ * This means you can directly acquire shared, deduplicated immutable strings:
+ * </p>
+ *
+ * @code
+ * #include &lt;jh/immutable_str&gt;
+ * #include &lt;cstdio&gt;
+ *
+ * int main() {
+ *     jh::pool&lt;jh::immutable_str&gt; pool;  // automatically available
+ *     auto a = pool.acquire("JH Toolkit");
+ *     auto b = pool.acquire("JH Toolkit");
+ *
+ *     // both handles reference the same pooled immutable instance
+ *     if (a.get() == b.get()) {
+ *         std::puts("deduplicated successfully");
+ *     }
+ * }
+ * @endcode
+ *
+ * <p>
+ * The <code>pool.acquire()</code> call internally checks for an existing equivalent
+ * object (by <code>hash()</code> and <code>operator==</code>) and reuses it if found.
+ * This guarantees that semantically identical strings always share the same
+ * underlying immutable buffer.
+ * </p>
+ *
+ * <ul>
+ *   <li><b>Automatic inclusion:</b> <code>jh/pool.h</code> is included by default.</li>
+ *   <li><b>Value-based pooling:</b> Identical strings resolve to the same shared instance.</li>
+ *   <li><b>Thread-safe:</b> Pool operations are safe since <code>immutable_str</code> itself is immutable.</li>
+ *   <li><b>Duck-typed deduction:</b> <code>jh::pool</code> automatically recognizes
+ *       compatible types implementing <code>hash()</code> and <code>operator==</code>.</li>
+ * </ul>
+ *
+ * <h3>Performance Notes</h3>
+ * <ul>
+ *   <li>Immutable buffer — no internal reallocation or mutation.</li>
+ *   <li>Constant-time string comparison and hash access after first computation.</li>
+ *   <li>Optimized for concurrent, read-dominant workloads.</li>
+ *   <li>Minimal memory footprint: pointer + cached hash + length field.</li>
+ *   <li><b>Benchmark:</b> In controlled microbenchmarks (LLVM&#64;20, Catch2, 1024× iterations),
+ *       <code>jh::immutable_str</code> shows performance essentially identical to
+ *       <code>std::string</code> — sometimes slower by about <b>1%</b>,
+ *       sometimes faster by up to <b>2%</b>, typically fluctuating within
+ *       <b>±2%</b>. This variation is within normal measurement noise.</li>
+ * </ul>
+ *
+ * <h3>See Also</h3>
+ * <ul>
+ *   <li><code>jh::pool</code> — efficient pooling system compatible with immutable_str.</li>
+ *   <li><code>jh::atomic_str_ptr</code> — shared-pointer alias for efficient immutable string sharing.</li>
+ * </ul>
+ *
+ * @version <pre>1.3.x</pre>
+ * @date <pre>2025</pre>
  */
 
 #pragma once
@@ -72,224 +192,621 @@
 #define JH_IMMUTABLE_STR_AUTO_TRIM true
 #endif
 
+#include <algorithm>        // for std::max
 #include <memory>           // for std::unique_ptr, std::shared_ptr
 #include <unordered_map>    // NOLINT for std::unordered_map
 #include <unordered_set>    // NOLINT for std::unordered_set
 #include <string>           // for std::string
-#include <cstring>          // for strlen
+#include <cstring>          // for ::strnlen
 #include <string_view>      // for std::string_view
 #include <cstdint>          // for std::uint64_t
 #include <optional>         // for std::optional
 #include <type_traits>      // for std::remove_cvref_t
-#include "pool.h"
-#include "pods/string_view.h"
+#include "jh/pool.h"
+#include "jh/pods/string_view.h"
 
 namespace jh::detail {
-    constexpr bool is_space_ascii(const char ch) {
+    constexpr bool is_space_ascii(const unsigned char ch) {
         return ch == ' ' || ch == '\t' || ch == '\n' ||
                ch == '\v' || ch == '\f' || ch == '\r';
     }
 }
 
 namespace jh {
+
     /**
-     * @brief Immutable string with optional automatic trimming.
+     * @brief Immutable string with optional automatic trimming and thread-safe hash caching.
      *
-     * @details
-     * `immutable_str` provides a **true immutable** string implementation in C++.
-     * Unlike `const std::string`, it ensures **no modification, no reallocation, and no reference counting overhead**.
+     * <h4>Overview</h4>
+     * <p>
+     * <code>immutable_str</code> represents a <b>truly immutable</b> and <b>thread-safe</b> string object.
+     * Once constructed, its internal data is fixed in memory and cannot be modified, reallocated, or replaced.
+     * It is designed for efficient read-only access in concurrent systems, configuration registries,
+     * and shared constant datasets.
+     * </p>
      *
-     * - **Recommended for shared use** via `std::shared_ptr<immutable_str>` to avoid unnecessary copies.
-     * - **Automatically trims** leading and trailing whitespace unless `auto_trim` is set to `false`.
+     * <h4>Design Goals</h4>
+     * <ul>
+     *   <li>Guarantee memory-level immutability with zero write access after initialization.</li>
+     *   <li>Provide deterministic lifetime ownership using <code>unique_ptr&lt;const char[]&gt;</code>.</li>
+     *   <li>Support concurrent reads safely without synchronization overhead.</li>
+     *   <li>Enable efficient sharing via <code>std::shared_ptr&lt;immutable_str&gt;</code> (<code>atomic_str_ptr</code>).</li>
+     *   <li>Offer consistent hashing and transparent equality for unordered containers.</li>
+     * </ul>
+     *
+     * <h4>Key Features</h4>
+     * <ul>
+     *   <li><b>True Immutability:</b> Internal buffer is never exposed for modification.</li>
+     *   <li><b>Thread-Safe Hashing:</b> Cached on first access using <code>std::once_flag</code>.</li>
+     *   <li><b>Optional Auto-Trim:</b> Leading/trailing whitespace removed at construction if enabled.</li>
+     *   <li><b>Memory Efficiency:</b> Minimal overhead — stores only a pointer, size, and cached hash.</li>
+     *   <li><b>Transparent Lookup:</b> Works directly with <code>const char*</code> keys in hash tables.</li>
+     * </ul>
+     *
+     * <h4>View Access</h4>
+     * <p>
+     * The class provides several view accessors for interoperability:
+     * </p>
+     * <ul>
+     *   <li><code>c_str()</code> — Returns a <b>null-terminated</b> read-only C-string pointer.</li>
+     *   <li><code>view()</code> — Returns a <code>std::string_view</code> to the internal data (no copy).</li>
+     *   <li><code>pod_view()</code> — Returns a <code>jh::pod::string_view</code> for POD-style access.</li>
+     *   <li><code>str()</code> — Returns a full <code>std::string</code> <b>copy</b> of the immutable buffer.</li>
+     * </ul>
+     * <p>
+     * <b>Note:</b> Only <code>str()</code> performs data copying; other view functions are zero-copy.
+     * </p>
+     *
+     * <h4>Construction Semantics</h4>
+     * <ul>
+     *   <li>Constructible from <code>const char*</code> or <code>std::string_view</code> (with a lock).</li>
+     *   <li>Deleted copy and move semantics to preserve immutability guarantees.</li>
+     *   <li>Preferred factory: <code>jh::make_atomic()</code> for shared atomic usage.</li>
+     * </ul>
+     *
+     * <h4>Dual-Mode Header Integration</h4>
+     * <ul>
+     *   <li>Works under both <b>header-only</b> and <b>static library</b> modes via Dual-Mode Header system.</li>
+     *   <li>Build mode internally controlled by <code>JH_INTERNAL_SHOULD_DEFINE</code>.</li>
+     *   <li>Runtime detection available via <code>is_static_built()</code>.</li>
+     * </ul>
+     *
+     * <h4>Thread Safety</h4>
+     * <ul>
+     *   <li>All accessors (<code>c_str()</code>, <code>view()</code>, <code>hash()</code>, etc.) are thread-safe.</li>
+     *   <li>No external synchronization required after construction.</li>
+     *   <li>Hash is lazily computed once, guarded by <code>std::call_once</code>.</li>
+     * </ul>
+     *
+     * <h4>See Also</h4>
+     * <ul>
+     *   <li><code>jh::pool</code> — object pool compatible with <code>immutable_str</code>.</li>
+     *   <li><code>jh::atomic_str_ptr</code> — alias for <code>std::shared_ptr&lt;immutable_str&gt;</code>.</li>
+     * </ul>
      */
-    struct immutable_str final {
+    class immutable_str final {
+    public:
+
         /**
          * @brief Constructs an immutable string from a C-string.
          *
-         * @param str A null-terminated C-string (ownership transferred).
+         * <p>
+         * Creates an immutable copy of the provided <b>null-terminated C-string</b>.
+         * The constructor performs an internal <code>strlen()</code> to determine
+         * the source length and allocates a new immutable buffer.
+         * </p>
+         *
+         * @param str A null-terminated C-string. May be <code>nullptr</code>, which is treated as an empty string.
+         *
+         * <p>
+         * The caller must ensure that the input pointer remains valid and unmodified during construction.
+         * This is only safe when the input is either:
+         * </p>
+         * <ul>
+         *   <li>a string literal, or</li>
+         *   <li>a thread-exclusive buffer not accessed concurrently.</li>
+         * </ul>
+         * Passing a pointer that can be modified by another thread results in undefined behavior.
+         *
          * @note
-         * - This constructor is `explicit` to **prevent unintended implicit conversions** when passing single values.
-         *   This ensures that initialization does not involve unexpected conversions that could lead to **data races**
-         *   or modification of the intended input.
-         * - The `const char*` parameter is specifically chosen for **seamless compatibility** with
-         *   LLVM `extern "C"` APIs, ensuring safe and efficient interoperability with C-style strings.
-         * - Trimming behavior depends on `immutable_str::auto_trim`.
+         * <ul>
+         *   <li>Marked as <code>explicit</code> to prevent unintended implicit conversions.</li>
+         *   <li>Uses <code>strlen()</code> internally to determine the input length.</li>
+         *   <li>Trimming behavior depends on <code>immutable_str::auto_trim</code>.</li>
+         *   <li>For non-null-terminated or shared buffers, use
+         *       <code>immutable_str(std::string_view, std::mutex&amp;)</code> instead.</li>
+         *   <li>Designed for safe interoperation with C-style APIs (e.g., LLVM <code>extern "C"</code>).</li>
+         * </ul>
          */
         explicit immutable_str(const char *str);
 
         /**
          * @brief Deleted constructor to prevent unintended conversions.
+         *
+         * <p>
+         * This template overload disables single-argument construction from non-C-string types,
+         * ensuring that only <code>const char*</code> inputs are accepted. This avoids
+         * unsafe or ambiguous conversions that could lead to undefined behavior.
+         * </p>
+         *
+         * @note
+         * <ul>
+         *   <li>Rejects non-string pointer inputs (e.g. numeric types, containers, or temporaries).</li>
+         *   <li>Ensures that only <code>const char*</code> can be used for direct construction.</li>
+         *   <li>For data without a null terminator or requiring lifetime protection,
+         *       use <code>immutable_str(std::string_view, std::mutex&amp;)</code> instead.</li>
+         * </ul>
          */
         template<typename T>
         explicit immutable_str(T) = delete;
 
         /**
-         * @brief Constructs an immutable string from a `std::string_view` with a mutex.
+         * @brief Constructs an immutable string from a <code>std::string_view</code> with mutex protection.
          *
-         * @param sv A `std::string_view` representing the string data.
-         * @param mtx A reference to the `std::mutex` that protects the lifetime of the base-struct containing `sv`.
+         * <p>
+         * Creates an immutable copy of the data referenced by <code>sv</code> while holding
+         * the provided mutex. This overload is intended for cases where the source memory
+         * may be transient, mutable, or shared between threads.
+         * </p>
          *
-         * @throws std::logic_error If `sv` contains embedded null (`\0`) characters.
+         * @param sv  A <code>std::string_view</code> representing the source data. It may or may not be null-terminated.
+         * @param mtx A reference to a <code>std::mutex</code> protecting the lifetime of the buffer referenced by <code>sv</code>.
          *
-         * @warning The caller must ensure that `mtx` is the correct mutex protecting `sv`.
-         *          If an unrelated mutex is provided, undefined behavior may occur.
+         * @throws std::logic_error If <code>sv</code> contains embedded null (<tt>'\0'</tt>) characters.
+         *
+         * @note
+         * <ul>
+         *   <li>Performs a bounded null-character check using <code>::strnlen()</code>
+         *       to verify that no embedded nulls exist within <code>sv.size()</code> bytes.</li>
+         *   <li>Copies exactly <code>sv.size()</code> bytes into an internal immutable buffer, even if not null-terminated.</li>
+         *   <li>The provided <code>mtx</code> <b>must</b> guard the same memory region as <code>sv.data()</code>;
+         *       using an unrelated mutex leads to undefined behavior.</li>
+         *   <li>Recommended for constructing immutable strings from shared or non-terminated data regions.</li>
+         * </ul>
          */
         immutable_str(std::string_view sv, std::mutex &mtx);
 
         /**
          * @brief Deleted copy constructor.
-         * @details
-         * `immutable_str` manages its string data using `std::unique_ptr<const char[]>`, which
-         * enforces exclusive ownership. Copying would require duplicating the underlying string
-         * data, which is not permitted.
-         * - To prevent unintended shallow copies and enforce immutability, the copy constructor
-         *   is explicitly deleted.
+         *
+         * <p>
+         * <code>immutable_str</code> manages its string data through
+         * <code>std::unique_ptr&lt;const char[]&gt;</code>, enforcing exclusive ownership.
+         * Copy construction would require duplicating the underlying data buffer,
+         * which is explicitly disallowed to maintain immutability.
+         * </p>
+         *
+         * @note
+         * <ul>
+         *   <li>Prevents unintended shallow copies.</li>
+         *   <li>Ensures that each instance has a unique, immutable data block.</li>
+         * </ul>
          */
         immutable_str(const immutable_str &) = delete;
 
         /**
+         * @brief Deleted copy assignment operator.
+         *
+         * <p>
+         * Copy assignment is disabled to preserve the immutable property of
+         * <code>immutable_str</code>. Assigning one immutable instance to another would imply
+         * replacing its internal buffer, which contradicts its design.
+         * </p>
+         *
+         * @note
+         * <ul>
+         *   <li>Prevents mutation through reassignment.</li>
+         *   <li>Use <code>std::shared_ptr&lt;jh::immutable_str&gt;</code> if sharing semantics are required.</li>
+         * </ul>
+         */
+        immutable_str &operator=(const immutable_str &) = delete;
+
+        /**
          * @brief Deleted move constructor.
-         * @details
-         * Unlike typical movable types, `immutable_str` does not support move semantics because
-         * immutable objects should not be transferred but rather shared.
-         * - Movement would mean transferring ownership of the internal buffer, which contradicts
-         *   the intended immutability.
-         * - Instead of moving, `immutable_str` instances should be managed with
-         *   `std::shared_ptr<jh::immutable_str>` to enable safe sharing.
+         *
+         * <p>
+         * Unlike typical movable types, <code>immutable_str</code> forbids move semantics.
+         * Moving would transfer ownership of the underlying buffer,
+         * violating the immutability principle.
+         * </p>
+         *
+         * @note
+         * <ul>
+         *   <li>Immutability implies that instances cannot change ownership post-construction.</li>
+         *   <li>To share instances safely, use <code>std::shared_ptr&lt;jh::immutable_str&gt;</code>.</li>
+         * </ul>
          */
         immutable_str(immutable_str &&) = delete;
 
         /**
          * @brief Deleted move assignment operator.
-         * @details
-         * Move assignment is disallowed because `immutable_str` is designed to be immutable, meaning
-         * its internal state should not be modified after creation.
-         * - Transferring ownership through assignment would break this principle.
-         * - Rather than moving, use `std::shared_ptr<jh::immutable_str>` to safely share instances.
+         *
+         * <p>
+         * Move assignment is disabled because <code>immutable_str</code> must remain constant
+         * for its entire lifetime. Any form of reassignment or ownership transfer is considered
+         * a modification of its internal state.
+         * </p>
+         *
+         * @note
+         * <ul>
+         *   <li>Enforces strict immutability and thread safety.</li>
+         *   <li>Instances should be shared through <code>std::shared_ptr</code>, not reassigned.</li>
+         * </ul>
          */
         immutable_str &operator=(immutable_str &&) = delete;
 
         /**
-         * @brief Returns the raw C-string.
-         * @return Immutable C-string pointer.
+         * @brief Returns the raw C-style string pointer.
+         *
+         * <p>
+         * Provides direct access to the internal immutable buffer as a
+         * <code>const char*</code>. The returned pointer is guaranteed to remain
+         * valid for the lifetime of the object.
+         * </p>
+         *
+         * @return A pointer to an immutable, null-terminated character sequence.
+         *
+         * @note
+         * <ul>
+         *   <li>The returned pointer must never be modified.</li>
+         *   <li>Ownership remains with <code>immutable_str</code>; do not deallocate it.</li>
+         *   <li>Safe for concurrent read access from multiple threads.</li>
+         * </ul>
          */
         [[nodiscard]] const char *c_str() const noexcept;
 
         /**
-         * @brief Converts to `std::string`.
-         * @return A `std::string` containing the immutable string data.
+         * @brief Converts the immutable content to a <code>std::string</code>.
+         *
+         * <p>
+         * Creates and returns a <b>copy</b> of the internal immutable data as a
+         * <code>std::string</code>. This is the only interface that performs a deep copy,
+         * preserving immutability while providing a mutable external representation.
+         * </p>
+         *
+         * @return A <code>std::string</code> containing a copy of the immutable data.
+         *
+         * @note
+         * <ul>
+         *   <li>This operation allocates new memory for the returned <code>std::string</code>.</li>
+         *   <li>Useful when interoperability with mutable string APIs is required.</li>
+         *   <li>Thread-safe; does not modify the internal buffer.</li>
+         * </ul>
          */
         [[nodiscard]] std::string str() const;
 
         /**
-         * @brief Returns a `std::string_view` for efficient access.
-         * @return A `std::string_view` to the immutable string.
+         * @brief Returns a lightweight <code>std::string_view</code> to the immutable data.
+         *
+         * <p>
+         * Provides a non-owning view of the internal string data without copying.
+         * This is the most efficient accessor for read-only operations and comparison.
+         * </p>
+         *
+         * @return A <code>std::string_view</code> referencing the immutable string data.
+         *
+         * @note
+         * <ul>
+         *   <li>The view remains valid for the lifetime of the <code>immutable_str</code> instance.</li>
+         *   <li>No memory allocation occurs.</li>
+         *   <li>Safe for concurrent reads; not safe if the underlying object is destroyed.</li>
+         * </ul>
          */
         [[nodiscard]] std::string_view view() const noexcept;
 
         /**
-         * @brief Returns a `pod::string_view` for efficient access.
-         * @return A `jh::pod::string_view` to the immutable string.
+         * @brief Returns a <code>jh::pod::string_view</code> representing this immutable string.
+         *
+         * <p>
+         * Provides a POD-compatible, read-only view over the internal buffer.
+         * The returned object has the same layout and semantics as
+         * <code>jh::pod::string_view</code> — that is,
+         * a pair of <code>const char*</code> and <code>uint64_t</code>
+         * describing a non-owning range of bytes.
+         * </p>
+         *
+         * @return A <code>jh::pod::string_view</code> referencing the same data as this object.
+         *
+         * @note
+         * <ul>
+         *   <li>No memory is copied or allocated.</li>
+         *   <li>The view remains valid as long as the originating <code>immutable_str</code> exists.</li>
+         *   <li>Useful when POD layout or constexpr hashing is required, for example in
+         *       compile-time utilities or deep comparison contexts.</li>
+         *   <li>Comparison and hashing behavior are identical to <code>jh::pod::string_view</code>.</li>
+         * </ul>
          */
-        [[nodiscard]] pod::string_view pod_view() const noexcept {
-            return {this->c_str(), this->size()};
-        }
+        [[nodiscard]] pod::string_view pod_view() const noexcept;
 
         /**
-         * @brief Returns the length of the string.
+         * @brief Returns the length of the immutable string.
+         *
+         * <p>
+         * Provides the total number of characters contained in the string.
+         * The length is determined at construction time and remains constant
+         * throughout the object's lifetime.
+         * </p>
+         *
          * @return The number of characters in the string.
+         *
+         * @note
+         * <ul>
+         *   <li>The value is fixed after initialization (no dynamic resizing).</li>
+         *   <li>Equivalent to <code>view().size()</code>.</li>
+         *   <li>Safe for concurrent read access.</li>
+         * </ul>
          */
-        [[nodiscard]] uint64_t size() const noexcept;
+        [[nodiscard]] std::uint64_t size() const noexcept;
 
         /**
-         * @brief Checks if two `immutable_str` objects are equal.
-         * @param other The other immutable string.
-         * @return `true` if the strings are identical.
+         * @brief Compares two <code>immutable_str</code> instances for equality.
+         *
+         * <p>
+         * Performs a deep, byte-wise comparison of the internal buffers.
+         * This operator guarantees that two instances are considered equal
+         * only if their contents are identical.
+         * </p>
+         *
+         * @param other Another <code>immutable_str</code> instance to compare with.
+         * @return <code>true</code> if both strings contain identical data; otherwise <code>false</code>.
+         *
+         * @note
+         * <ul>
+         *   <li>Automatically implies <code>operator!=</code> as its logical negation.</li>
+         *   <li>Comparison is content-based, not pointer-based.</li>
+         *   <li>Safe for concurrent read operations on both operands.</li>
+         * </ul>
          */
         bool operator==(const immutable_str &other) const noexcept;
 
         /**
-         * @brief Computes the hash value of the immutable string.
-         * @return Hash value based on the string content.
+         * @brief Computes the cached hash value of the immutable string.
+         *
+         * <p>
+         * Returns a 64-bit hash derived from the string's contents.
+         * The computation is performed lazily — the first call initializes
+         * the cached value in a thread-safe manner, and all subsequent calls
+         * return the stored result without recomputation.
+         * </p>
+         *
+         * @return A 64-bit hash value uniquely representing the string contents.
+         *
+         * @note
+         * <ul>
+         *   <li>Lazy evaluation ensures hashing is performed only once per instance.</li>
+         *   <li>Thread-safe: guarded internally by <code>std::once_flag</code>.</li>
+         *   <li>Equivalent calls always return the same value for the same object.</li>
+         * </ul>
          */
         [[nodiscard]] std::uint64_t hash() const noexcept;
 
         /**
-         * @brief Global flag for controlling automatic trimming.
+         * @brief Global compile-time flag controlling automatic whitespace trimming.
          *
-         * - `true` (default): Trim leading/trailing whitespace.
-         * - `false`: Preserve original string.
+         * <p>
+         * Determines whether all <code>immutable_str</code> instances automatically remove
+         * leading and trailing ASCII whitespace during construction.
+         * </p>
+         *
+         * <ul>
+         *   <li><code>true</code> (default): Trim leading and trailing whitespace.</li>
+         *   <li><code>false</code>: Preserve the original input exactly.</li>
+         * </ul>
          *
          * @note
-         * `auto_trim` is a static global setting. Modifying it at runtime in a multithreaded environment
-         * may lead to race conditions. All instances of `immutable_str` will respect the current policy.
+         * <ul>
+         *   <li>This is a <b>compile-time constant</b> (set by <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>).</li>
+         *   <li>Changing it at runtime has no effect, and redefining the macro globally is not supported.</li>
+         *   <li>All instances created within the same translation unit share the same policy.</li>
+         *   <li>When deterministic behavior is required across modules, ensure consistent macro definition.</li>
+         * </ul>
          */
         static constexpr bool auto_trim = JH_IMMUTABLE_STR_AUTO_TRIM;
 
+        /**
+         * @brief Reports whether this header was built in static mode.
+         *
+         * <p>
+         * Indicates if the current <code>immutable_str</code> implementation was compiled
+         * as part of the static library target (<code>jh-toolkit-static</code>) or used
+         * in header-only mode (<code>jh-toolkit</code>).
+         * </p>
+         *
+         * @return <code>true</code> if compiled as part of <code>jh-toolkit-static</code>;
+         *         otherwise <code>false</code>.
+         *
+         * @note
+         * <ul>
+         *   <li>This function supports runtime detection for dual-mode header builds.</li>
+         *   <li>In header-only builds, it always returns <code>false</code>.</li>
+         *   <li>In static library builds, it returns <code>true</code> (macro <code>JH_IS_STATIC_BUILD</code> defined).</li>
+         *   <li>Useful for diagnostics or conditional logic depending on linkage mode.</li>
+         * </ul>
+         */
+        [[maybe_unused]] static bool is_static_built();
+
     private:
-        uint64_t size_ = 0; ///< Length of the string
-        std::unique_ptr<const char[]> data_; ///< Immutable string data
+        uint64_t size_ = 0;                                       ///< Length of the string
+        std::unique_ptr<const char[]> data_;                      ///< Immutable string data
         mutable std::optional<std::uint64_t> hash_{std::nullopt}; ///< Cached hash value
-        mutable std::once_flag hash_flag_; ///< Ensures thread-safe lazy initialization
+        mutable std::once_flag hash_flag_;                        ///< Ensures thread-safe lazy initialization
 
         /**
-         * @brief Initializes the string from a C-string, with optional trimming.
-         * @param input_str A null-terminated C-string.
-         * @param input_len len If known else -1
+         * @brief Initializes the immutable string from a C-style source.
+         *
+         * <p>
+         * Dispatches to either <code>init_from_string_trim()</code> or
+         * <code>init_from_string_no_trim()</code> depending on the compile-time
+         * value of <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>.
+         * </p>
+         *
+         * @param input_str A null-terminated C-string. May be <code>nullptr</code> (treated as empty).
+         * @param input_len The known length of the string, or <code>-1</code> to auto-detect via <code>strlen()</code>.
+         *
+         * @note
+         * <ul>
+         *   <li>This function is always defined inline in the header for dual-mode visibility.</li>
+         *   <li>In static builds, both branches are compiled, and the linker resolves the selected path
+         *       based on the current macro configuration.</li>
+         *   <li>In header-only mode, the unused branch is eliminated by the compiler (dead-code pruning).</li>
+         *   <li>Acts as a private dispatcher — not intended for direct user invocation.</li>
+         * </ul>
          */
-        void init_from_string(const char *input_str, std::uint64_t input_len = static_cast<std::uint64_t>(-1));
+        void init_from_string(const char *input_str, std::uint64_t input_len = static_cast<std::uint64_t>(-1)) {
+#if defined(JH_IMMUTABLE_STR_AUTO_TRIM) && JH_IMMUTABLE_STR_AUTO_TRIM
+            init_from_string_trim(input_str, input_len);
+#else
+            init_from_string_no_trim(input_str, input_len);
+#endif
+        }
+
+        void init_from_string_trim(const char *input_str, std::uint64_t input_len);
+
+        void init_from_string_no_trim(const char *input_str, std::uint64_t input_len);
+
     };
 
     /**
-     * @brief Shared pointer alias for `immutable_str`.
+     * @brief Alias for an atomically shareable immutable string.
+     *
+     * <p>
+     * Defines a standardized shared ownership model for <code>immutable_str</code>.
+     * Although named “atomic”, this alias does not imply hardware-level atomicity;
+     * rather, it denotes that <code>atomic_str_ptr</code> can be <b>safely replaced
+     * or shared across threads</b> without requiring additional synchronization,
+     * thanks to the immutability of the underlying string.
+     * </p>
      *
      * @details
-     * This is the **recommended way to distribute immutable strings** efficiently.
-     * Using `std::shared_ptr<immutable_str>` avoids unnecessary deep copies of string data.
+     * <ul>
+     *   <li>Equivalent to <code>std::shared_ptr&lt;immutable_str&gt;</code>.</li>
+     *   <li>Represents an immutable, reference-counted string object
+     *       that can be atomically exchanged between threads.</li>
+     *   <li>Safe for concurrent read and ownership transfer operations.</li>
+     *   <li>Recommended form for distributing immutable strings across
+     *       subsystems, caches, or configuration registries.</li>
+     *   <li>Fully compatible with <code>atomic_str_hash</code> and
+     *       <code>atomic_str_eq</code> for transparent container usage.</li>
+     * </ul>
+     *
+     * @note
+     * <ul>
+     *   <li>Swapping or assigning <code>atomic_str_ptr</code> instances is
+     *       inherently thread-safe due to <code>std::shared_ptr</code> semantics.</li>
+     *   <li>No additional locking is required as long as each thread
+     *       only replaces or reads entire <code>atomic_str_ptr</code> objects.</li>
+     * </ul>
      */
     using atomic_str_ptr = std::shared_ptr<immutable_str>;
+
+    /**
+     * @brief Alias for a weak reference to an <code>immutable_str</code>.
+     *
+     * <p>
+     * Provides a non-owning handle to an <code>immutable_str</code> instance
+     * managed by a shared pointer. This alias complements
+     * <code>atomic_str_ptr</code> for use in cache systems or observer patterns.
+     * </p>
+     *
+     * @details
+     * <ul>
+     *   <li>Equivalent to <code>std::weak_ptr&lt;immutable_str&gt;</code>.</li>
+     *   <li>Prevents reference cycles in shared string registries.</li>
+     *   <li>Access the managed instance using <code>lock()</code>.</li>
+     *   <li>Marked <code>[[maybe_unused]]</code> to suppress static-build warnings.</li>
+     * </ul>
+     */
     using weak_str_ptr [[maybe_unused]] = std::weak_ptr<immutable_str>;
 
     /**
-     * @brief Concept for immutable string compatible types.
+     * @brief Concept for types compatible with <code>jh::immutable_str</code>.
+     *
+     * <p>
+     * Defines the set of types that can safely participate in comparison and hashing
+     * operations with <code>immutable_str</code> instances.
+     * This allows seamless interoperability between
+     * <code>atomic_str_ptr</code>, <code>const char*</code>, and string literals.
+     * </p>
      *
      * @details
-     * This concept is satisfied by:
-     * - `atomic_str_ptr` (and its cv/ref-qualified variants)
-     * - `const char*`
-     * - string literals (e.g. `"hello"`, decayed to `const char*`)
+     * <ul>
+     *   <li>Satisfied by <code>atomic_str_ptr</code> (and its cv/ref-qualified variants).</li>
+     *   <li>Satisfied by <code>const char*</code>.</li>
+     *   <li>Satisfied by string literals such as <code>"hello"</code>
+     *       (which decay to <code>const char*</code>).</li>
+     *   <li>Used internally in custom hash and equality functors to enable
+     *       transparent lookups, e.g. <code>unordered_map::find("key")</code>
+     *       without constructing a temporary <code>immutable_str</code>.</li>
+     * </ul>
      *
-     * It is used to constrain templates (e.g., custom hash/equality) so that they
-     * only accept types safely comparable to `immutable_str` content.
+     * @tparam U Candidate type to test for <code>immutable_str</code> compatibility.
      *
-     * @tparam U Candidate type to check.
+     * @note
+     * <ul>
+     *   <li>Ensures that only pointer-safe, immutable-compatible types are accepted
+     *       in hashing and equality operations.</li>
+     *   <li>String literals are automatically included through pointer decay.</li>
+     * </ul>
      */
     template<typename U>
-    concept is_immutable_str =
+    concept immutable_str_compatible =
     std::same_as<std::remove_cvref_t<U>, atomic_str_ptr> ||
-    std::same_as<std::decay_t<U>, const char*>;
+    std::same_as<std::decay_t<U>, const char *>;
 
     /**
-     * @brief Custom hash function for `atomic_str_ptr`.
+     * @brief Custom hash functor for <code>atomic_str_ptr</code> and compatible types.
+     *
+     * <p>
+     * Provides transparent, content-based hashing for associative containers
+     * involving <code>jh::immutable_str</code> instances. It enables efficient
+     * heterogeneous lookup using <code>const char*</code> or string literals,
+     * while ensuring hash consistency across all compatible types.
+     * </p>
      *
      * @details
-     * The default `std::shared_ptr` hashing function compares the raw pointer itself,
-     * which is not useful for comparing `immutable_str` content. This custom function
-     * ensures the hash is computed based on the immutable string content instead.
-     * - Supports hashing for **both** `shared_ptr<immutable_str>` and `const char*`.
-     * - Allows **direct lookups using string literals** in hash-based containers, without requiring a temporary `immutable_str`.
-     * - **Auto-trims whitespace** (if `immutable_str::auto_trim` is enabled) before computing the hash.
-     * - **Optimized for hash containers** to ensure efficient key lookup.
-     * @note If `immutable_str::auto_trim` is enabled, leading and trailing spaces are **ignored** in hash calculations.
+     * <ul>
+     *   <li>Replaces the default <code>std::shared_ptr</code> hash, which hashes by pointer value,
+     *       with a deterministic hash computed from string content.</li>
+     *   <li>Supports both <code>atomic_str_ptr</code> and <code>const char*</code> operands,
+     *       constrained by <code>immutable_str_compatible</code>.</li>
+     *   <li>Transparent lookup is supported — for example, a container of
+     *       <code>atomic_str_ptr</code> keys can be queried with
+     *       <code>find("key")</code> or <code>contains("key")</code>.</li>
+     *   <li>At least one operand (either the stored key or the lookup key)
+     *       must represent an actual <code>immutable_str</code> instance.</li>
+     *   <li>This contract allows future implementations to freely reorder or
+     *       optimize operand evaluation while maintaining semantic equivalence.</li>
+     *   <li>When <code>immutable_str::auto_trim</code> is enabled,
+     *       leading and trailing ASCII whitespace are ignored in hash computation.</li>
+     * </ul>
      *
-     * @tparam U The type of the input value (either `atomic_str_ptr` or `const char*`).
-     * @param value The value to hash.
-     * @return The computed hash of the string content.
+     * @tparam U
+     *   Input type — must satisfy <code>immutable_str_compatible</code>
+     *   (<code>atomic_str_ptr</code> or <code>const char*</code>).
+     *
+     * @param value
+     *   Input value to hash; may be <code>nullptr</code> (hash result = 0).
+     *
+     * @return
+     *   64-bit hash derived from string content.
+     *
+     * @note
+     * <ul>
+     *   <li>Designed primarily for containers that store
+     *       <code>atomic_str_ptr</code> as keys.</li>
+     *   <li>Either operand may be a <code>const char*</code> during lookup,
+     *       but at least one operand must refer to a valid
+     *       <code>immutable_str</code> instance.</li>
+     *   <li>Whitespace trimming behavior is compile-time controlled via
+     *       <code>immutable_str::auto_trim</code>.</li>
+     *   <li>The nested <code>is_transparent</code> typedef enables
+     *       heterogeneous lookup in standard unordered containers.</li>
+     * </ul>
      */
     struct atomic_str_hash {
         using is_transparent = void; ///< Enables `find(const char*)` in hash-based containers.
         template<typename U>
-        requires is_immutable_str<U>
+        requires immutable_str_compatible<U>
         std::uint64_t operator()(const U &value) const noexcept {
             if constexpr (std::same_as<std::remove_cvref_t<U>, atomic_str_ptr>) {
                 return value ? value->hash() : 0;
@@ -300,10 +817,11 @@ namespace jh {
                 if constexpr (immutable_str::auto_trim) {
                     const std::uint64_t len = std::strlen(value); // Get `const char*` length
                     std::uint64_t leading = 0, trailing = len;
-                    while (leading < len && detail::is_space_ascii(value[leading])) {
+                    while (leading < len && detail::is_space_ascii(static_cast<unsigned char>(value[leading]))) {
                         ++leading;
                     }
-                    while (trailing > leading && detail::is_space_ascii(value[trailing - 1])) {
+                    while (trailing > leading &&
+                           detail::is_space_ascii(static_cast<unsigned char>(value[trailing - 1]))) {
                         --trailing;
                     }
                     return std::hash<std::string_view>{}(std::string_view{value + leading, trailing - leading});
@@ -314,29 +832,60 @@ namespace jh {
     };
 
     /**
-     * @brief Custom equality function for `atomic_str_ptr`.
+     * @brief Custom equality functor for <code>atomic_str_ptr</code> and compatible types.
+     *
+     * <p>
+     * Provides content-based comparison for <code>immutable_str</code> instances,
+     * enabling heterogeneous lookups in hash-based containers. Unlike the default
+     * <code>std::shared_ptr</code> equality operator, which compares raw pointer
+     * addresses, this functor compares the underlying string data safely and consistently.
+     * </p>
      *
      * @details
-     * The default `std::shared_ptr` equality operator only checks if two shared pointers
-     * refer to the same memory address. This custom function allows content-based comparison
-     * of `immutable_str` instances while keeping pointer safety intact.
-     * - Supports hashing for **both** `shared_ptr<immutable_str>` and `const char*`.
-     * - Allows **direct lookups using string literals** in hash-based containers, without requiring a temporary `immutable_str`.
-     * - **Auto-trims whitespace** (if `immutable_str::auto_trim` is enabled) before computing the hash.
-     * - **Optimized for hash containers** to ensure efficient key lookup.
-     * @note If `immutable_str::auto_trim` is enabled, leading and trailing spaces are **ignored** in hash calculations.
+     * <ul>
+     *   <li>Supports both <code>atomic_str_ptr</code> and <code>const char*</code> operands,
+     *       constrained by <code>immutable_str_compatible</code>.</li>
+     *   <li>Allows transparent comparison in containers storing
+     *       <code>atomic_str_ptr</code> keys — e.g.,
+     *       <code>map.find("key")</code> is valid and efficient.</li>
+     *   <li>At least one operand (<code>lhs</code> or <code>rhs</code>)
+     *       must represent a valid <code>immutable_str</code> instance.</li>
+     *   <li>When <code>immutable_str::auto_trim</code> is enabled,
+     *       leading and trailing ASCII whitespace are ignored during comparison.</li>
+     *   <li>Comparison is symmetric and implementation-agnostic:
+     *       either operand may be dereferenced first if future optimizations require it.</li>
+     * </ul>
      *
-     * @tparam U The type of the left-hand side value (either `atomic_str_ptr` or `const char*`).
-     * @tparam V The type of the right-hand side value (either `atomic_str_ptr` or `const char*`).
-     * @param lhs The left-hand side value to compare.
-     * @param rhs The right-hand side value to compare.
-     * @return `true` if the strings are equal. `false` if either value is `nullptr` or the strings are not equal.
+     * @tparam U Type of the left-hand side operand
+     *   (<code>atomic_str_ptr</code> or <code>const char*</code>).
+     * @tparam V Type of the right-hand side operand
+     *   (<code>atomic_str_ptr</code> or <code>const char*</code>).
+     *
+     * @param lhs Left-hand side value to compare.
+     * @param rhs Right-hand side value to compare.
+     *
+     * @return
+     *   <code>true</code> if the strings are equal (after trimming if enabled);
+     *   <code>false</code> otherwise or if either side is <code>nullptr</code>.
+     *
+     * @note
+     * <ul>
+     *   <li>This functor is designed for containers whose key type is
+     *       <code>atomic_str_ptr</code>, but supports lookup using
+     *       <code>const char*</code> and string literals.</li>
+     *   <li>At least one operand must be an <code>immutable_str</code>
+     *       to ensure pointer safety and avoid undefined behavior.</li>
+     *   <li>Whitespace trimming behavior is compile-time controlled via
+     *       <code>immutable_str::auto_trim</code>.</li>
+     *   <li>The nested <code>is_transparent</code> typedef enables
+     *       heterogeneous comparison in unordered containers.</li>
+     * </ul>
      */
     struct atomic_str_eq {
         using is_transparent = void; ///< Enables `find(const char*)` in hash-based containers.
 
         template<typename U, typename V>
-        requires (is_immutable_str<U> && is_immutable_str<V>)
+        requires (immutable_str_compatible<U> && immutable_str_compatible<V>)
         bool operator()(const U &lhs, const V &rhs) const noexcept {
             if constexpr (std::same_as<std::remove_cvref_t<U>, atomic_str_ptr> &&
                           std::same_as<std::remove_cvref_t<V>, atomic_str_ptr>) {
@@ -371,10 +920,10 @@ namespace jh {
         static std::pair<uint64_t, uint64_t> trim(const char *str) noexcept {
             std::uint64_t leading = 0, trailing = std::strlen(str);
 
-            while (leading < trailing && std::isspace(static_cast<unsigned char>(str[leading]))) {
+            while (leading < trailing && detail::is_space_ascii(static_cast<unsigned char>(str[leading]))) {
                 ++leading;
             }
-            while (trailing > leading && std::isspace(static_cast<unsigned char>(str[trailing - 1]))) {
+            while (trailing > leading && detail::is_space_ascii(static_cast<unsigned char>(str[trailing - 1]))) {
                 --trailing;
             }
             return {leading, trailing - leading};
@@ -385,32 +934,221 @@ namespace jh {
     [[maybe_unused]] atomic_str_ptr make_atomic(T str) = delete;
 
     /**
-     * @brief Creates a shared pointer to an `immutable_str`.
+     * @brief Creates a shared pointer to an <code>immutable_str</code>.
      *
-     * @param str A null-terminated C-string.
-     * @return A shared pointer to the `immutable_str`.
+     * <p>
+     * Constructs a new <code>jh::immutable_str</code> instance from a
+     * null-terminated C-string and wraps it in a <code>std::shared_ptr</code>.
+     * This is the standard factory function for creating atomic, immutable
+     * string objects.
+     * </p>
+     *
+     * @param str
+     *   Null-terminated C-string to initialize from.
+     *
+     * @return
+     *   Shared pointer (<code>atomic_str_ptr</code>) managing the constructed
+     *   <code>immutable_str</code> instance.
+     *
+     * @details
+     * <ul>
+     *   <li>Performs a direct construction of <code>immutable_str</code>
+     *       without intermediate copies or moves.</li>
+     *   <li>The returned object is reference-counted via
+     *       <code>std::shared_ptr</code> and can be safely shared
+     *       across threads.</li>
+     *   <li>Trimming behavior (if enabled) follows
+     *       <code>immutable_str::auto_trim</code>.</li>
+     * </ul>
+     *
+     * @note
+     * <ul>
+     *   <li>Because <code>immutable_str</code> is non-copyable and non-movable,
+     *       this factory is the only supported way to allocate it on the heap.</li>
+     *   <li>Once constructed, the lifetime of the string is bound to its
+     *       <code>std::shared_ptr</code> instance.</li>
+     * </ul>
      */
     inline atomic_str_ptr make_atomic(const char *str) {
         return std::make_shared<immutable_str>(str);
     }
 
     /**
-     * @brief Creates a shared pointer to an `immutable_str` from a `std::string_view` with a mutex.
+     * @brief Creates a shared pointer to an <code>immutable_str</code> from a locked string view.
      *
-     * @param sv A `std::string_view` representing the string data.
-     * @param mtx A reference to the `std::mutex` that protects the lifetime of the base-struct containing `sv`.
+     * <p>
+     * Constructs a new <code>jh::immutable_str</code> using a
+     * <code>std::string_view</code> and an associated
+     * <code>std::mutex</code> that guards the view's lifetime.
+     * This ensures thread-safe initialization from potentially
+     * mutable or shared buffers.
+     * </p>
      *
-     * @throws std::logic_error If `sv` contains embedded null (`\0`) characters.
+     * @param sv
+     *   String view referencing existing string data.
+     * @param mtx
+     *   Mutex protecting the lifetime of the structure that owns <code>sv</code>.
      *
-     * @warning The caller must ensure that `mtx` is the correct mutex protecting `sv`.
-     *          If an unrelated mutex is provided, undefined behavior may occur.
+     * @return
+     *   Shared pointer (<code>atomic_str_ptr</code>) managing the constructed
+     *   <code>immutable_str</code> instance.
      *
-     * @return A shared pointer to an `immutable_str`, ensuring safe access.
+     * @throws std::logic_error
+     *   If <code>sv</code> contains embedded null (<code>'\0'</code>) characters.
      *
-     * @note This function is useful when dealing with `std::string_view` obtained from temporary or mutable sources
-     *       that require explicit locking to guarantee a valid string lifetime.
+     * @warning
+     * <ul>
+     *   <li>The caller must ensure that <code>mtx</code> correctly protects the
+     *       memory region referenced by <code>sv</code>.</li>
+     *   <li>Providing an unrelated or unlocked mutex may result in undefined behavior.</li>
+     * </ul>
+     *
+     * @note
+     * <ul>
+     *   <li>This overload is used when <code>std::string_view</code> refers to
+     *       data from temporary, mutable, or shared contexts that require explicit
+     *       synchronization.</li>
+     *   <li>Because <code>immutable_str</code> cannot be copied or moved,
+     *       it must always be constructed via this factory or <code>make_atomic()</code>.</li>
+     * </ul>
      */
     inline atomic_str_ptr safe_from(std::string_view sv, std::mutex &mtx) {
         return std::make_shared<immutable_str>(sv, mtx);
     }
+
 } // namespace jh
+
+
+#include "jh/macros/header_begin.h"
+
+namespace jh {
+#if JH_INTERNAL_SHOULD_DEFINE
+
+    JH_INLINE immutable_str::immutable_str(const char *str) {
+        init_from_string(str);
+    }
+
+    JH_INLINE immutable_str::immutable_str(const std::string_view sv, std::mutex &mtx) {
+        std::lock_guard lock(mtx);
+        if (::strnlen(sv.data(), sv.size()) != sv.size()) {
+            throw std::logic_error(
+                    "jh::immutable_str does not support string views containing embedded null characters.");
+        }
+        init_from_string(sv.data(), sv.size());
+    }
+
+    JH_INLINE const char *immutable_str::c_str() const noexcept {
+        return data_.get();
+    }
+
+    JH_INLINE std::string immutable_str::str() const {
+        return {data_.get(), size_};
+    }
+
+    JH_INLINE std::string_view immutable_str::view() const noexcept {
+        return {data_.get(), size_};
+    }
+
+    JH_INLINE pod::string_view immutable_str::pod_view() const noexcept {
+        return {this->c_str(), this->size()};
+    }
+
+    JH_INLINE uint64_t immutable_str::size() const noexcept {
+        return size_;
+    }
+
+    JH_INLINE bool immutable_str::operator==(const immutable_str &other) const noexcept {
+        return std::strcmp(data_.get(), other.data_.get()) == 0;
+    }
+
+    JH_INLINE std::uint64_t immutable_str::hash() const noexcept {
+        std::call_once(hash_flag_, [this] {
+            hash_.emplace(std::hash<std::string_view>{}(std::string_view(data_.get(), size_)));
+        });
+        return hash_.value();
+    }
+
+    JH_INLINE void immutable_str::init_from_string_trim(const char *input_str,
+                                                        std::uint64_t input_len) {
+        if (!input_str) [[unlikely]] {
+            // Initialize an empty string if input is null
+            size_ = 0;
+            auto data_array_ = std::make_unique<char[]>(1);
+            data_array_[0] = '\0';
+            data_ = std::move(data_array_);
+            return;
+        }
+
+        const char *start = input_str;
+        if (input_len == static_cast<std::size_t>(-1)) {
+            input_len = std::strlen(input_str);  // fallback only if not known
+        }
+
+        const char *end = input_str + input_len - 1;
+
+        // If auto_trim is enabled, remove leading and trailing whitespace
+
+        while (*start && detail::is_space_ascii(*start)) ++start;
+
+        // If the input contains only whitespace, treat it as an empty string
+        if (*start == '\0') [[unlikely]] {
+            size_ = 0;
+            auto data_array_ = std::make_unique<char[]>(1);
+            data_array_[0] = '\0';
+            data_ = std::move(data_array_);
+            return;
+        }
+
+        while (end > start && detail::is_space_ascii(*end)) --end;
+
+
+        // Compute the final string size
+        size_ = end - start + 1;
+
+        // Allocate memory and copy the string
+        auto data_array_ = std::make_unique<char[]>(size_ + 1);
+        std::memcpy(data_array_.get(), start, size_);
+        data_array_[size_] = '\0';
+        data_ = std::move(data_array_);
+    }
+
+    JH_INLINE void immutable_str::init_from_string_no_trim(const char *input_str,
+                                                           std::uint64_t input_len) {
+        if (!input_str) [[unlikely]] {
+            // Initialize an empty string if input is null
+            size_ = 0;
+            auto data_array_ = std::make_unique<char[]>(1);
+            data_array_[0] = '\0';
+            data_ = std::move(data_array_);
+            return;
+        }
+
+        const char *start = input_str;
+        if (input_len == static_cast<std::size_t>(-1)) {
+            input_len = std::strlen(input_str);  // fallback only if not known
+        }
+
+        const char *end = input_str + input_len - 1;
+
+        // Compute the final string size
+        size_ = end - start + 1;
+
+        // Allocate memory and copy the string
+        auto data_array_ = std::make_unique<char[]>(size_ + 1);
+        std::memcpy(data_array_.get(), start, size_);
+        data_array_[size_] = '\0';
+        data_ = std::move(data_array_);
+    }
+
+    [[maybe_unused]] JH_INLINE bool immutable_str::is_static_built() {
+#ifdef JH_IS_STATIC_BUILD
+        return true;
+#else
+        return false;
+#endif // JH_IS_STATIC_BUILD
+    }
+
+#endif // JH_INTERNAL_SHOULD_DEFINE
+}
+
+#include "jh/macros/header_end.h"

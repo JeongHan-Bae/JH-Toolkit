@@ -1,3 +1,66 @@
+/**
+ * \verbatim
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * \endverbatim
+ */
+/**
+ * @file base64.h (utils)
+ * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @brief Standard Base64 serialization and deserialization utilities.
+ *
+ * This header provides <code>jh::utils::base64</code>, the first officially supported
+ * serialization/representation system in the JH-Toolkit. It allows encoding arbitrary
+ * binary data into a Base64 string and decoding Base64 back into POD-safe buffers.
+ *
+ * <h3>Why Base64?</h3>
+ * <ul>
+ *   <li>Provides a canonical, reversible text representation of binary data.</li>
+ *   <li>Interoperable across platforms and languages.</li>
+ *   <li>Works seamlessly with POD-based systems (<code>bytes_view</code>, <code>string_view</code>).</li>
+ *   <li>Zero hidden ABI dependencies, header-only implementation.</li>
+ * </ul>
+ *
+ * <h3>Important Notes:</h3>
+ * <ul>
+ *   <li><b>Do not</b> attempt to serialize POD types using
+ *       <code>std::ostringstream</code> outputs defined in <code>jh::pod::stringify</code>.
+ *       Those outputs are <b>for debugging/logging only</b>.</li>
+ *   <li>This Base64 module is the <b>only officially supported serialization</b>
+ *       in the 1.3.x series.</li>
+ *   <li>All decoding APIs return either:
+ *     <ul>
+ *       <li><code>std::vector&lt;uint8_t&gt;</code></li>
+ *       <li><code>jh::pod::bytes_view</code> (view into user-managed buffer)</li>
+ *       <li><code>jh::pod::string_view</code> (for decoded text)</li>
+ *     </ul>
+ *   </li>
+ *   <li>Buffers passed into decoding APIs must remain alive as long as the returned
+ *       view (<code>bytes_view</code> or <code>string_view</code>) is used.</li>
+ * </ul>
+ *
+ * <h3>Design Guarantees:</h3>
+ * <ul>
+ *   <li>All algorithms are constexpr-friendly where applicable.</li>
+ *   <li>Invalid Base64 inputs trigger exceptions (not UB).</li>
+ *   <li>Padding and illegal character validation strictly enforced.</li>
+ * </ul>
+ *
+ * @version <pre>1.3.x</pre>
+ * @date <pre>2025</pre>
+ */
+
 #pragma once
 
 #include <cstdint>
@@ -6,17 +69,42 @@
 #include <vector>
 #include <iterator>
 #include <algorithm>
-#include "../pods/array.h"
-#include "../pods/string_view.h"
-#include "../pods/bytes_view.h"
+#include "jh/pods/array.h"
+#include "jh/pods/string_view.h"
+#include "jh/pods/bytes_view.h"
 
 namespace jh::utils::base64 {
 
+    /**
+     * @brief Standard Base64 encoding character set.
+     *
+     * <h4>Details:</h4>
+     * <ul>
+     *   <li>Index 0–25: <code>'A'</code>–<code>'Z'</code></li>
+     *   <li>Index 26–51: <code>'a'</code>–<code>'z'</code></li>
+     *   <li>Index 52–61: <code>'0'</code>–<code>'9'</code></li>
+     *   <li>Index 62: <code>'+'</code></li>
+     *   <li>Index 63: <code>'/'</code></li>
+     * </ul>
+     *
+     * Used by the <code>encode()</code> function to map 6-bit values to characters.
+     */
     static constexpr char kBase64Chars[] =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
             "abcdefghijklmnopqrstuvwxyz"
             "0123456789+/";
 
+    /**
+     * @brief Check whether a character is valid in Base64 encoding.
+     *
+     * @param c Input character to validate.
+     * @return <code>true</code> if the character belongs to the Base64 alphabet
+     *         (<code>A–Z</code>, <code>a–z</code>, <code>0–9</code>, <code>'+'</code>, <code>'/'</code>)
+     *         or is the padding character <code>'='</code>; otherwise <code>false</code>.
+     *
+     * <h4>Usage:</h4>
+     * Used internally during decoding to reject illegal characters.
+     */
     constexpr bool is_base64_char(char c) {
         return (c >= 'A' && c <= 'Z') ||
                (c >= 'a' && c <= 'z') ||
@@ -99,12 +187,19 @@ namespace jh::utils::base64 {
         }
     }
 
-
     /**
-     * @brief Encode binary data into a Base64 string
-     * @param data Pointer to input data
-     * @param len Length of input data
-     * @return Base64-encoded string
+     * @brief Encode raw binary data into a Base64 string.
+     *
+     * @param data Pointer to input data buffer (<code>const uint8_t*</code>).
+     * @param len  Length of input data in bytes.
+     * @return Base64-encoded string.
+     *
+     * <h4>Notes:</h4>
+     * <ul>
+     *   <li>Always produces valid Base64 with proper padding (<code>'='</code>).</li>
+     *   <li>Zero-copy safe: output is a <code>std::string</code> constructed from encoded buffer.</li>
+     *   <li>Canonical representation, interoperable across systems.</li>
+     * </ul>
      */
     [[maybe_unused]] inline std::string encode(const uint8_t *data, std::size_t len) noexcept {
         std::vector<uint8_t> out;
@@ -136,9 +231,17 @@ namespace jh::utils::base64 {
     }
 
     /**
-     * @brief Decode a Base64 string into a byte vector
-     * @param input Base64-encoded string
-     * @return Decoded byte vector
+     * @brief Decode a Base64 string into a new byte buffer.
+     *
+     * @param input Base64-encoded string.
+     * @return <code>std::vector&lt;uint8_t&gt;</code> containing the decoded bytes.
+     *
+     * <h4>Notes:</h4>
+     * <ul>
+     *   <li>Buffer is newly allocated; caller takes ownership.</li>
+     *   <li>Throws <code>std::runtime_error</code> on invalid Base64 input
+     *       (length mismatch, illegal characters, bad padding).</li>
+     * </ul>
      */
     [[maybe_unused]] inline std::vector<uint8_t> decode(const std::string &input) {
         std::vector<uint8_t> output;
@@ -147,18 +250,20 @@ namespace jh::utils::base64 {
     }
 
     /**
-     * @brief Decode a Base64 string into a reusable byte buffer and return a view.
+     * @brief Decode a Base64 string into a user-provided buffer and return a <code>bytes_view</code>.
      *
-     * This version decodes the input into the provided `output_buffer` and returns
-     * a `bytes_view` pointing to that buffer. The caller must ensure that
-     * `output_buffer` remains alive for the duration of the view.
+     * @param input Base64-encoded string.
+     * @param output_buffer Target buffer (<code>std::vector&lt;uint8_t&gt;</code>) to store decoded bytes.
+     *        The buffer is cleared before writing.
+     * @return <code>jh::pod::bytes_view</code> referencing the decoded content in <code>output_buffer</code>.
      *
-     * @param input Base64-encoded string
-     * @param output_buffer Target buffer to store decoded bytes (will be cleared and written)
-     * @return `bytes_view` into the decoded content (points to `output_buffer.data()`)
-     *
-     * @warning Do not use the returned view after `output_buffer` is modified or destroyed.
-     * @note This is efficient for zero-copy access patterns, especially in POD systems.
+     * <h4>Notes:</h4>
+     * <ul>
+     *   <li>Zero-copy: returned view points directly to <code>output_buffer.data()</code>.</li>
+     *   <li><b>Lifetime requirement:</b> do not use the returned view after <code>output_buffer</code>
+     *       is modified or destroyed.</li>
+     *   <li>Efficient for flat memory access patterns in POD systems.</li>
+     * </ul>
      */
     [[maybe_unused]] inline jh::pod::bytes_view decode(const std::string &input, std::vector<uint8_t>& output_buffer) {
         output_buffer.clear();
@@ -167,18 +272,19 @@ namespace jh::utils::base64 {
     }
 
     /**
-     * @brief Decode a Base64 string into a `std::string` and return a `string_view`.
+     * @brief Decode a Base64 string into a <code>std::string</code> and return a <code>string_view</code>.
      *
-     * This version is suitable for text content decoding. It decodes into the
-     * provided `output_buffer` and returns a view into its contents. The buffer
-     * must remain valid as long as the returned `string_view` is in use.
+     * @param input Base64-encoded string.
+     * @param output_buffer Target <code>std::string</code> used as the storage for decoded bytes.
+     *        The buffer is overwritten.
+     * @return <code>jh::pod::string_view</code> pointing into <code>output_buffer</code>.
      *
-     * @param input Base64-encoded string
-     * @param output_buffer Target string to store decoded data (will be overwritten)
-     * @return `string_view` pointing to the decoded text content
-     *
-     * @warning The returned `string_view` becomes invalid if `output_buffer` is destroyed or changed.
-     * @note Use this for UTF-8 or plain text decoding into reusable `std::string` buffers.
+     * <h4>Notes:</h4>
+     * <ul>
+     *   <li>Optimized for textual data (e.g., UTF-8).</li>
+     *   <li>Returned <code>string_view</code> becomes invalid if <code>output_buffer</code> is modified or destroyed.</li>
+     *   <li>Recommended when decoding Base64-encoded text payloads.</li>
+     * </ul>
      */
     [[maybe_unused]] inline jh::pod::string_view decode(const std::string &input, std::string& output_buffer) {
         std::vector<uint8_t> output;

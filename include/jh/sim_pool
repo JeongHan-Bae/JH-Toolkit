@@ -1,9 +1,22 @@
 /**
  * @file sim_pool
- * @brief Forwarding header for jh::sim_pool
+ * @brief Forwarding header for <code>jh::sim_pool</code>.
  *
- * This header exists to provide a modern include style (`#include <jh/sim_pool>`),
- * forwarding to `jh/sim_pool.h`. It contains no additional code.
+ * <p>
+ * This header provides the canonical include entry for
+ * <code>jh::sim_pool&lt;T, Hash, Eq&gt;</code> — the
+ * <strong>Smart Immutable-objects Managing Pool</strong>, a lightweight,
+ * non-intrusive pool for shared immutable or structurally immutable objects.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/sim_pool&gt;</code></pre>
+ *
+ * <p>
+ * Internally, this file forwards to <code>jh/sim_pool.h</code>
+ * and defines no additional symbols.
+ * </p>
+ *
+ * @see jh::pool
  */
 
 #pragma once
