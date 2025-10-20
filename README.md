@@ -35,7 +35,7 @@ Fully Template-Driven and RTTI-Free.
 [![Static Build](https://img.shields.io/badge/static--build-supported-green)](#)
 
 <!-- ✅ CI / Contributors / Wiki -->
-[![CI](https://img.shields.io/github/actions/workflow/status/JeongHan-Bae/JH-Toolkit/ci.yml?branch=main)](https://github.com/JeongHan-Bae/JH-Toolkit/actions)
+[![CI](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml)
 [![Contributors](https://img.shields.io/github/contributors/JeongHan-Bae/JH-Toolkit.svg)](https://github.com/JeongHan-Bae/JH-Toolkit/graphs/contributors)
 [![Wiki](https://img.shields.io/badge/docs-wiki-blue)](https://github.com/JeongHan-Bae/JH-Toolkit/wiki)
 
