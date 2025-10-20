@@ -5,3 +5,10 @@ tools/** linguist-vendored
 # Explicitly ignore experimental/ which is not ignored by default
 experimental/* linguist-vendored
 experimental/** linguist-vendored
+
+# Force all headers in include/jh/ to be treated as C++
+include/jh/**/*.h linguist-language=C++
+
+# Explicitly force all examples and tests too
+examples/**/*.h linguist-language=C++
+tests/**/*.h linguist-language=C++
