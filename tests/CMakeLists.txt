@@ -7,47 +7,50 @@ FetchContent_Declare(
         GIT_TAG v3.5.0 # Use the latest stable version
 )
 
-# Enable benchmark mode (OFF by default)
 set(ENABLE_BENCHMARK ${ENABLE_BENCHMARK} CACHE BOOL "Enable benchmark tests")
 
 FetchContent_MakeAvailable(Catch2)
 
-# Create test executables
-add_executable(test_generator test_generator.cpp)
-add_executable(test_immutable_str test_immutable_str.cpp)
-add_executable(test_sequence test_sequence.cpp)
-add_executable(test_pool test_pool.cpp)
-add_executable(test_runtime_arr test_runtime_arr.cpp)
-add_executable(test_view test_view.cpp)
-add_executable(test_pods test_pod_sys.cpp)
-add_executable(test_base64 test_base64.cpp)
+# ---------------------------
+# Define test targets in one list
+# Format: target_name source_file linked_library
+# ---------------------------
+set(TESTS
+        test_generator     test_generator.cpp     jh-toolkit
+        test_immutable_str test_immutable_str.cpp jh-toolkit-impl
+        test_sequence      test_sequence.cpp      jh-toolkit
+        test_pool          test_pool.cpp          jh-toolkit
+        test_runtime_arr   test_runtime_arr.cpp   jh-toolkit
+        test_view          test_view.cpp          jh-toolkit
+        test_pods          test_pod_sys.cpp       jh-toolkit
+        test_base64        test_base64.cpp        jh-toolkit
+        test_str_template  test_str_template.cpp  jh-toolkit
+        test_process_lock  test_process_lock.cpp  jh-toolkit
+        test_occ           test_occ.cpp           jh-toolkit
+)
 
-# Ensure Catch2 is linked properly
-target_link_libraries(test_generator PRIVATE jh-toolkit Catch2::Catch2WithMain)
-target_link_libraries(test_immutable_str PRIVATE jh-toolkit-impl Catch2::Catch2WithMain)
-target_link_libraries(test_sequence PRIVATE jh-toolkit Catch2::Catch2WithMain)
-target_link_libraries(test_pool PRIVATE jh-toolkit Catch2::Catch2WithMain)
-target_link_libraries(test_runtime_arr PRIVATE jh-toolkit Catch2::Catch2WithMain)
-target_link_libraries(test_view PRIVATE jh-toolkit Catch2::Catch2WithMain)
-target_link_libraries(test_pods PRIVATE jh-toolkit Catch2::Catch2WithMain)
-target_link_libraries(test_base64 PRIVATE jh-toolkit Catch2::Catch2WithMain)
+# Get total number of entries
+list(LENGTH TESTS num_entries)
+math(EXPR num_tests "${num_entries} / 3")
+math(EXPR max_index "${num_tests} - 1")
 
-# Ensure test executables can find Catch2 headers
-target_include_directories(test_generator PRIVATE ${CMAKE_SOURCE_DIR}/tests)
-target_include_directories(test_immutable_str PRIVATE ${CMAKE_SOURCE_DIR}/tests)
-target_include_directories(test_sequence PRIVATE ${CMAKE_SOURCE_DIR}/tests)
-target_include_directories(test_pool PRIVATE ${CMAKE_SOURCE_DIR}/tests)
-target_include_directories(test_runtime_arr PRIVATE ${CMAKE_SOURCE_DIR}/tests)
-target_include_directories(test_view PRIVATE ${CMAKE_SOURCE_DIR}/tests)
-target_include_directories(test_pods PRIVATE ${CMAKE_SOURCE_DIR}/tests)
-target_include_directories(test_base64 PRIVATE ${CMAKE_SOURCE_DIR}/tests)
+# Iterate and create test targets
+foreach(i RANGE 0 ${max_index})
+    math(EXPR idx "3 * ${i}")
+    math(EXPR idx1 "${idx} + 1")
+    math(EXPR idx2 "${idx} + 2")
 
-# Register tests with CTest
-add_test(NAME generator_test COMMAND test_generator)
-add_test(NAME immutable_str_test COMMAND test_immutable_str)
-add_test(NAME sequence_test COMMAND test_sequence)
-add_test(NAME sim_pool_test COMMAND test_pool)
-add_test(NAME runtime_arr_test COMMAND test_runtime_arr)
-add_test(NAME view_test COMMAND test_view)
-add_test(NAME pod_test COMMAND test_pods)
-add_test(NAME base64_test COMMAND test_base64)
+    list(GET TESTS ${idx}  target)
+    list(GET TESTS ${idx1} source)
+    list(GET TESTS ${idx2} lib)
+
+    add_executable(${target} ${source})
+    target_link_libraries(${target} PRIVATE ${lib} Catch2::Catch2WithMain)
+    target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/tests)
+
+    # Register the test with CTest
+    string(REGEX REPLACE "^test_" "" test_name ${target})
+    add_test(NAME ${test_name}_test COMMAND ${target})
+endforeach()
+
+add_dependencies(test_process_lock writer reader)
