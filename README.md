@@ -9,7 +9,7 @@
 
 <p align="center">
   <img
-    src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/JeongHan-Bae/JH-Toolkit/main/version_badge.json"
+    src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/JeongHan-Bae/JH-Toolkit/1.3.x-LTS/version_badge.json"
     alt="badge"
     width="196"
   >
@@ -74,6 +74,44 @@ Fully Template-Driven and RTTI-Free.
   Oree represents freedom, adaptability, and elegance —<br>
   just like modern C++ itself.
 </p>
+
+---
+
+## 🧭 Branch Line and Long-Term Support Policy
+
+During the **1.3.x** era, the **`1.3.x-LTS`** branch was maintained by
+**merging release tags from the `main` branch** —
+that is, updates flowed **from `main → 1.3.x-LTS`**.
+
+As the `main` branch now transitions into the **1.4.x** development line,
+the release flow for **1.3.x** has been restructured to ensure long-term stability
+and independent lifecycle management.
+
+### 🔹 `1.3.x-support-dev` — Source Maintenance Branch
+
+The **`1.3.x-support-dev`** branch is cloned directly from
+**`main` at tag `JH-Toolkit-1.3.3`**,
+serving as the **exclusive source-maintenance branch** for the 1.3.x family.
+
+From this point onward:
+
+* All **1.3.x** development is conducted on **`1.3.x-support-dev`**,
+  focusing **solely on source code updates** — no documentation, CMake, or version edits.
+* The source changes are periodically synchronized **upward** into
+  **`main`** or **`1.4.0-dev`**, depending on which higher branch is currently active.
+* When preparing a new 1.3.x release (e.g., **1.3.4**):
+
+  1. Clone **`1.3.x-support-dev`** into **`1.3.4-dev`**.
+  2. Update version numbers and metadata in **`1.3.4-dev`**.
+  3. Merge changes back into **`1.3.x-LTS`**.
+  4. Update documentation and publish the new tag **`JH-Toolkit-1.3.4`**.
+
+This process ensures that:
+
+* **`1.3.x-LTS`** becomes the canonical release line for all 1.3.x versions.
+* The **`1.3.x-support-dev`** branch remains a conflict-free base
+  that can merge cleanly into **LTS**, **main**, and future versions.
+* Low-level module improvements stay synchronized across all generations of JH Toolkit.
 
 ---
 
