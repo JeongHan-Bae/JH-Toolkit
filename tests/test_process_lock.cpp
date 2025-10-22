@@ -91,9 +91,40 @@ TEST_CASE("process_launcher runs writer and reader") {
         std::string content((std::istreambuf_iterator<char>(ifs)),
                             std::istreambuf_iterator<char>());
 
-        // Count occurrences of "[writer]" in the log.
-        // There should be exactly 3 lines written by example_writer.cpp.
-        REQUIRE(test::count_occurrences(content, "[writer]") == 3);
+        // ---- Basic structural checks ----
+        REQUIRE(test::count_occurrences(content, "[writer]") == 5);
+
+        // ---- Functional verification ----
+
+        // (1) Should contain "immediate try_lock failed"
+        REQUIRE(content.find("[writer] immediate try_lock failed (lock held by another)")
+                != std::string::npos);
+
+        // (2) Should contain "timed lock succeeded after"
+        auto pos = content.find("[writer] timed lock succeeded after ");
+        REQUIRE(pos != std::string::npos);
+
+        // (3) Extract the time number after that phrase
+        // Example: "... after 1509 ms\n"
+        std::size_t start = pos + std::string("[writer] timed lock succeeded after ").size();
+        std::size_t end = content.find(" ms", start);
+
+        REQUIRE(end != std::string::npos);
+        auto time_str = content.substr(start, end - start);
+
+        // Convert to integer safely
+        int elapsed_ms = 0;
+        try {
+            elapsed_ms = std::stoi(time_str);
+        } catch (...) {
+            FAIL("Failed to parse timed lock duration from writer log");
+        }
+
+        // (4) Verify the lock actually waited at least 500ms
+        REQUIRE(elapsed_ms >= 500);
+
+        std::cout << "[test] writer timed lock duration = "
+                  << elapsed_ms << " ms" << std::endl;
     }
 
     priv_mutex_t::unlink();

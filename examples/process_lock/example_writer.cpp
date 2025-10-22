@@ -39,6 +39,7 @@
 #include <thread>
 
 using namespace std::chrono_literals;
+using clock_t_ = std::chrono::steady_clock;
 using mutex_t = jh::async::process_mutex<"demo_mutex">;
 
 /**
@@ -82,7 +83,43 @@ int main() {
         }
         m.unlock();
 
-        std::this_thread::sleep_for(2s);
+        std::this_thread::sleep_for(1s);
+    }
+
+    // Step 3: contention test using timed lock
+    std::ostringstream temp;
+    std::cout << "[writer] waiting 1s before contention test...\n";
+    std::this_thread::sleep_for(1s);
+
+    // try immediate lock
+    if (!m.try_lock()) {
+        temp << "[writer] immediate try_lock failed (lock held by another)\n";
+    } else {
+        temp << "[writer] immediate try_lock succeeded unexpectedly!\n";
+        m.unlock();
+    }
+
+    // try timed lock (RAII style)
+    {
+        auto start = clock_t_::now();
+        if (m.try_lock_for(3s)) {
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    clock_t_::now() - start
+            );
+            temp << "[writer] timed lock succeeded after "
+                 << elapsed.count() << " ms\n";
+            m.unlock();
+        } else {
+            temp << "[writer] timed lock timed out after 3s\n";
+        }
+    }
+
+    // Write test results back into shared_log.txt
+    {
+        std::lock_guard lock{m};
+        std::ofstream ofs("shared_log.txt", std::ios::app);
+        ofs << temp.str();
+        std::cout << "[writer] wrote contention test results\n";
     }
 
     return 0;

@@ -52,8 +52,8 @@
  *         <li>POSIX: <code>"/"</code> is prepended internally.</li>
  *         <li>Windows:
  *           <ul>
- *             <li>C++ literal: <code>"Global&bsol;&bsol;name"</code></li>
- *             <li>Runtime object name: <code>Global&bsol;name</code></li>
+ *             <li>C++ literal: <code>"Local&bsol;&bsol;name"</code></li>
+ *             <li>Runtime object name: <code>Local&bsol;name</code></li>
  *           </ul></li>
  *       </ul>
  *   </li>
@@ -110,7 +110,7 @@
 #endif
 
 #include "jh/str_template.h"
-#include "jh/utils/platform.h"
+#include "jh/macros/platform.h"
 
 #include <algorithm>  // for std::min
 #include <string>
@@ -173,7 +173,7 @@ namespace jh::async {
     private:
 #if IS_WINDOWS
         HANDLE handle_{}; ///< OS handle for Windows
-        static constexpr auto full_name_ = jh::str_template::cstr{"Global\\"} + S;
+        static constexpr auto full_name_ = jh::str_template::cstr{"Local\\"} + S;
 #else
         sem_t* sem_{}; ///< POSIX semaphore handle
         static constexpr auto full_name_ = jh::str_template::cstr{"/"} + S;

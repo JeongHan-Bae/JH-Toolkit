@@ -82,7 +82,14 @@ int main() {
             std::cout << "[reader] timeout after 2s, could not acquire lock\n";
         }
 
+        std::this_thread::sleep_for(1s);
+    }
+    // Final demonstration: hold the lock for an extended period
+    {
+        std::lock_guard lock{m};
+        std::cout << "[reader] acquiring lock for 2s to simulate extended hold...\n";
         std::this_thread::sleep_for(2s);
+        std::cout << "[reader] released 2s hold\n";
     }
 
     return 0;

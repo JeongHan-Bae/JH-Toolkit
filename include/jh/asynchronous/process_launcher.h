@@ -151,8 +151,8 @@
 #define JH_ALLOW_PARENT_PATH 0
 #endif
 
-#include "../utils/platform.h"
-#include "../str_template.h"
+#include "jh/macros/platform.h"
+#include "jh/str_template.h"
 #include <string>
 #include <stdexcept>
 #include <filesystem>

@@ -4,7 +4,7 @@
 #include <string>
 #include <sstream>
 
-#include "jh/views.h"
+#include "jh/views"
 #include "jh/pod.h"
 #include "jh/runtime_arr.h"
 

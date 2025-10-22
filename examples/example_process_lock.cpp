@@ -4,7 +4,7 @@
  *        and <code>jh::async::process_launcher</code>.
  */
 
-#include "jh/utils/platform.h"
+#include "jh/macros/platform.h"
 #include "ensure_output.h"  // NOLINT for Windows output
 #include "jh/asynchronous/process_mutex.h"
 #include "jh/asynchronous/process_launcher.h"
