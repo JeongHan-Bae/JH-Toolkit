@@ -188,27 +188,6 @@ if (ENABLE_ALL)
             EXPORT_COMPILE_DEFINITIONS ON
     )
 
-    # Compatibility layer for old versions
-    # It simply forwards to jh-toolkit-static
-    add_library(jh-toolkit-impl INTERFACE)
-    target_link_libraries(jh-toolkit-impl INTERFACE jh-toolkit-static)
-
-    # Make sure it uses the same include paths
-    target_include_directories(jh-toolkit-impl INTERFACE
-            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
-            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-    )
-
-    # Propagate the same header-only define
-    target_compile_definitions(jh-toolkit-impl
-            INTERFACE
-            JH_HEADER_NO_IMPL
-    )
-
-    set_target_properties(jh-toolkit-impl PROPERTIES
-            EXPORT_COMPILE_DEFINITIONS ON
-    )
-
     # Install target libraries
     install(TARGETS jh-toolkit jh-toolkit-static
             EXPORT jh-toolkitTargets
@@ -226,9 +205,6 @@ if (ENABLE_ALL)
             NAMESPACE jh::
             DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/jh-toolkit
     )
-
-    # Install the compatibility target as well
-    install(TARGETS jh-toolkit-impl EXPORT jh-toolkitTargets)
 
 endif ()
 

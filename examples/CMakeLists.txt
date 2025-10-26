@@ -13,7 +13,7 @@ add_executable(example_process_shm example_process_shm.cpp)
 # Common linking
 foreach(target example_generator example_string example_pod example_process_lock example_occ_box example_process_shm)
     target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/include)
-    target_link_libraries(${target} PRIVATE jh-toolkit-impl Catch2::Catch2WithMain)
+    target_link_libraries(${target} PRIVATE jh-toolkit-static Catch2::Catch2WithMain)
 endforeach()
 
 # Add process_lock subdirectory (defines writer/reader)
