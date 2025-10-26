@@ -3,18 +3,22 @@
  * @brief Demonstrations of inter-process synchronization primitives:
  *        - process_counter (shared-memory atomic counter)
  *        - process_condition (cross-process condition variable)
+ *        - shared_process_memory (shared POD object across processes)
  */
 
 #include "jh/macros/platform.h"
 #include "ensure_output.h"  // NOLINT for Windows output
 #include "jh/asynchronous/process_counter.h"
 #include "jh/asynchronous/process_condition.h"
+#include "jh/asynchronous/shared_process_memory.h"
 #include "jh/asynchronous/process_launcher.h"
+#include "jh/pod"
 
 #include <iostream>
 #include <vector>
 #include <thread>
 #include <chrono>
+#include <cmath>
 
 #if IS_WINDOWS
 static EnsureOutput ensure_output_setup;
@@ -28,9 +32,20 @@ using priv_counter_t  = jh::async::ipc::process_counter<"demo_counter", true>;
 using cond_t          = jh::async::ipc::process_condition<"demo_condition">;
 using priv_cond_t     = jh::async::ipc::process_condition<"demo_condition", true>;
 
+// Define shared POD type
+JH_POD_STRUCT(DemoPod,
+    std::uint64_t xor_field;
+    std::uint64_t add_field;
+    double        mul_field;
+);
+
+using shm_t      = jh::async::ipc::shared_process_memory<"demo_shared_pod", DemoPod>;
+using priv_shm_t = jh::async::ipc::shared_process_memory<"demo_shared_pod", DemoPod, true>;
+
 using counter_launcher  = jh::async::ipc::process_launcher<"process_lock/counter">;
 using sleeper_launcher  = jh::async::ipc::process_launcher<"process_lock/sleeper">;
 using awaker_launcher   = jh::async::ipc::process_launcher<"process_lock/awaker">;
+using pod_writer_launcher = jh::async::ipc::process_launcher<"process_lock/pod_writer">;
 
 // -----------------------------------------------------------------------------
 // Example 1: Shared counter (process_counter)
@@ -42,21 +57,16 @@ void run_counter_example() {
     constexpr int increments_per_worker = 200'000;
 
     counter_t::instance().store(0);
-
     std::cout << "Launching " << worker_count << " counter workers...\n";
-
 
     std::vector<decltype(counter_launcher::start())> handles;
     handles.reserve(worker_count);
 
-    for (int i = 0; i < worker_count; ++i) {
+    for (int i = 0; i < worker_count; ++i)
         handles.push_back(counter_launcher::start());
-    }
 
-    for (auto &h : handles) {
+    for (auto &h : handles)
         h.wait();
-    }
-
 
     std::cout << "All counter processes finished.\n";
 
@@ -66,7 +76,6 @@ void run_counter_example() {
     std::cout << "Total = " << total
               << " (expected " << expected << ")\n";
 
-    // Demonstrate API usage
     auto old = counter_t::instance().fetch_apply([](std::uint64_t v) { return v + 10; });
     std::cout << "fetch_apply(+10): old=" << old
               << ", new=" << counter_t::instance().load_strong() << "\n";
@@ -75,7 +84,6 @@ void run_counter_example() {
     std::cout << "store(12345), load_force() = "
               << counter_t::instance().load_force() << "\n";
 
-    // Cleanup
     priv_counter_t::unlink();
     std::cout << "Unlinked shared counter.\n";
 }
@@ -89,29 +97,20 @@ void run_condition_example() {
     constexpr int sleeper_count = 4;
     using namespace std::chrono;
 
-    // Launch N sleepers (they will block on wait_signal)
     std::vector<decltype(sleeper_launcher::start())> handles;
     handles.reserve(sleeper_count);
 
-    for (int i = 0; i < sleeper_count; ++i) {
+    for (int i = 0; i < sleeper_count; ++i)
         handles.push_back(sleeper_launcher::start());
-    }
 
-    // Start timing *after* all sleepers are likely waiting
     auto start = steady_clock::now();
-
-    // Launch awaker (sleeps 500ms, then notify_all)
     auto aw = awaker_launcher::start();
 
-    // Wait for all processes to complete
     aw.wait();
-    for (auto &h : handles) {
+    for (auto &h : handles)
         h.wait();
-    }
 
     auto elapsed_ms = duration_cast<milliseconds>(steady_clock::now() - start).count();
-
-    // Expected wake timing: sleepers wake ~simultaneously after awaker's 500ms delay
     auto min_expected = 500;
     auto max_expected = sleeper_count * 500;
 
@@ -124,11 +123,61 @@ void run_condition_example() {
     else
         std::cout << "→ Wake timing outside expected range (possible contention).\n";
 
-    // Cleanup shared condition object
     priv_cond_t::unlink();
     std::cout << "Unlinked shared condition.\n";
 }
 
+// -----------------------------------------------------------------------------
+// Example 3: Shared POD object (shared_process_memory)
+// -----------------------------------------------------------------------------
+void run_shared_pod_example() {
+    std::cout << "\n==================== shared_process_memory example ====================\n";
+
+    auto &shm = shm_t::instance();
+
+    // Initialize shared object
+    {
+        std::lock_guard guard(shm.lock());
+        shm.flush_acquire();
+        shm.ref() = DemoPod{0, 0, 1.0};
+        shm.flush_seq();
+    }
+
+    constexpr int writer_count = 4;
+    std::cout << "Launching " << writer_count << " POD writer processes...\n";
+
+    std::vector<decltype(pod_writer_launcher::start())> writers;
+    writers.reserve(writer_count);
+
+    for (int i = 0; i < writer_count; ++i)
+        writers.push_back(pod_writer_launcher::start());
+
+    for (auto &w : writers)
+        w.wait();
+
+    // Verify results
+    {
+        shm.flush_acquire();
+        const auto &ref = shm.ref();
+
+        constexpr std::uint64_t add_inc  = 10;
+        constexpr double mul_factor      = 1.0001;
+        constexpr int iterations         = 200'000;
+
+        std::uint64_t expected_add = add_inc * iterations * writer_count;
+        double expected_mul = std::pow(mul_factor, iterations * writer_count);
+
+        std::cout << "xor_field = " << ref.xor_field
+                  << " (expected invariant 0)\n";
+        std::cout << "add_field = " << ref.add_field
+                  << " (expected " << expected_add << ")\n";
+        std::cout << "mul_field = " << ref.mul_field
+                  << " (expected ≈ " << expected_mul << ")\n";
+    }
+
+    priv_shm_t::unlink();
+    std::cout << "Unlinked shared POD memory.\n";
+}
 
 // -----------------------------------------------------------------------------
 // Main entry: run all IPC examples
@@ -137,6 +186,7 @@ int main() {
     try {
         run_counter_example();
         run_condition_example();
+        run_shared_pod_example();
 
         std::cout << "\nAll shared-memory synchronization examples completed successfully.\n";
     } catch (const std::exception &ex) {
@@ -146,4 +196,3 @@ int main() {
 
     return 0;
 }
-

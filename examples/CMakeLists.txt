@@ -21,3 +21,4 @@ add_subdirectory(process_lock)
 
 # Ensure example_process_lock is built after writer and reader
 add_dependencies(example_process_lock writer reader counter)
+add_dependencies(example_process_shm counter sleeper awaker pod_writer)

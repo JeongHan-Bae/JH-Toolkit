@@ -156,6 +156,25 @@ namespace jh::async::ipc {
      * read–modify–write interface suitable for inter-process coordination.
      * </p>
      *
+     * <h4>Internal synchronization objects</h4>
+     * <ul>
+     *   <li><b>Main mutex</b>: <code>process_mutex&lt;S + ".loc"&gt;</code> — protects all
+     *       read–modify–write operations on the counter value.</li>
+     *   <li><b>Initialization mutex</b>: <code>process_mutex&lt;S&gt;</code> — guards the
+     *       one-time initialization of the shared memory region (ensures that
+     *       <code>initialized</code> flag and <code>value</code> are safely set
+     *       by the first process that creates the object).</li>
+     * </ul>
+     *
+     * <p>
+     * Both mutexes are created in the same namespace as the counter, which means
+     * that if a user manually defines a <code>process_mutex&lt;S&gt;</code> or
+     * <code>process_mutex&lt;S + ".loc"&gt;</code> elsewhere, it will conflict
+     * with the internal synchronization of <code>process_counter&lt;S&gt;</code>.
+     * Therefore, avoid declaring any <code>process_mutex</code> with the same
+     * template literal <code>S</code> or its <code>".loc"</code> suffix.
+     * </p>
+     *
      * <h4>Usage notes</h4>
      * <ul>
      *   <li>Acts as a globally shared 64-bit counter.</li>
@@ -386,7 +405,7 @@ namespace jh::async::ipc {
          * <h4>Semantics</h4>
          * <ul>
          *   <li>On POSIX systems, calls <code>shm_unlink()</code> for the counter name,
-         *       and then delegates to <code>process_mutex&lt;S + ".loc"&gt;::unlink()</code>.</li>
+         *       and then delegates to <code>process_mutex&lt;S&gt;::unlink()</code> and <code>process_mutex&lt;S + ".loc"&gt;::unlink()</code>.</li>
          *   <li>If the object does not exist (<code>errno == ENOENT</code>),
          *       the call is silently ignored.</li>
          *   <li>If unlinking fails for other reasons, a <code>std::runtime_error</code> is thrown.</li>
@@ -413,6 +432,7 @@ namespace jh::async::ipc {
                 throw std::runtime_error(
                         "shm_unlink failed for " + std::string{shm_name_.val()} +
                         " (errno=" + std::to_string(errno) + ")");
+            process_mutex<S, HighPriv>::unlink();
             lock_t::unlink();
 #endif
         }

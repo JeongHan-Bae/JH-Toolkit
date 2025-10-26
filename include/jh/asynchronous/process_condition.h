@@ -125,45 +125,76 @@ namespace jh::async::ipc {
     /**
      * @brief Cross-process condition variable primitive (POSIX / Win32).
      *
-     * <h4>Overview</h4>
-     * <p>
-     * <code>jh::async::ipc::process_condition</code> provides a minimal inter-process signaling
-     * mechanism modeled after <code>pthread_cond_t</code>. It is a true IPC primitive implemented
-     * with OS-level facilities and usable across multiple processes.
-     * </p>
+     * Provides a minimal inter-process signaling mechanism modeled after
+     * <code>pthread_cond_t</code>. It allows processes to coordinate via named
+     * OS-level synchronization objects (shared memory or named events).
+     *
+     * <h4>Design goals</h4>
+     * <ul>
+     *   <li>Safe across processes and threads.</li>
+     *   <li>Consistent API between POSIX and Windows.</li>
+     *   <li>Usable as a building block for higher-level IPC synchronization constructs.</li>
+     * </ul>
      *
      * <h4>Platform behavior</h4>
      * <ul>
-     *   <li><b>POSIX</b>: uses <code>pthread_cond_t</code> with <code>PTHREAD_PROCESS_SHARED</code>
-     *       stored in shared memory.</li>
-     *   <li><b>Windows</b>: uses named <code>Event</code> objects in the
-     *       <code>Global&bsol;&bsol;</code> namespace. Administrator privilege is required.</li>
+     *   <li><b>POSIX</b>:
+     *     <ul>
+     *       <li>Backed by <code>pthread_cond_t</code> and <code>pthread_mutex_t</code>
+     *           stored in shared memory.</li>
+     *       <li>Both are configured as <code>PTHREAD_PROCESS_SHARED</code>.</li>
+     *     </ul>
+     *   </li>
+     *   <li><b>Windows</b>:
+     *     <ul>
+     *       <li>Backed by a named <code>Event</code> object in the
+     *           <code>Global&bsol;&bsol;</code> namespace.</li>
+     *       <li>Requires Administrator privilege to create or open.</li>
+     *     </ul>
+     *   </li>
      * </ul>
      *
      * <h4>Notification model</h4>
      * <ul>
-     *   <li><b>POSIX</b>: <code>notify_all(n)</code> wakes up to <code>n</code> waiting processes
-     *       (default 32).</li>
-     *   <li><b>Windows</b>: there is no true broadcast; <code>notify_all()</code> simulates it
-     *       by holding the event open for about 1 ms.</li>
+     *   <li><b>POSIX</b>: <code>notify_all(n)</code> wakes up to <code>n</code> waiting
+     *       processes (default 32).</li>
+     *   <li><b>Windows</b>: lacks a true broadcast primitive; <code>notify_all()</code>
+     *       simulates one by setting the event for approximately 1&nbsp;ms.</li>
      * </ul>
      *
-     * <h4>Design stance</h4>
+     * <h4>Internal synchronization objects</h4>
+     * <ul>
+     *   <li><b>Condition mutex</b>: an internal <code>pthread_mutex_t</code> (POSIX only)
+     *       protecting access to the condition variable state.</li>
+     *   <li><b>Initialization mutex</b>: <code>process_mutex&lt;S&gt;</code> — ensures one-time
+     *       initialization of the shared memory region and condition object attributes
+     *       (<code>PTHREAD_PROCESS_SHARED</code> flags, <code>initialized</code> guard, etc.).</li>
+     * </ul>
+     *
      * <p>
-     * Windows is treated as a <b>second-class IPC target</b>: API compatibility is preserved,
-     * but strict semantic equivalence is not guaranteed. The primitive is intended for
-     * composition with <code>process_mutex</code> or <code>process_counter</code> in
-     * higher-level synchronization constructs.
+     * The initialization mutex <code>process_mutex&lt;S&gt;</code> is automatically created
+     * within the same namespace as the condition itself. If the user manually declares a
+     * <code>process_mutex&lt;S&gt;</code> elsewhere, it will conflict with the internal
+     * synchronization of <code>process_condition&lt;S&gt;</code>. Therefore, avoid defining
+     * any <code>process_mutex</code> with the same template literal <code>S</code>.
      * </p>
      *
-     * <h4>Privilege and unlink</h4>
+     * <h4>Privilege and unlink semantics</h4>
      * <ul>
-     *   <li><b>POSIX</b>: no special privilege required; supports explicit <code>unlink()</code>.</li>
-     *   <li><b>Windows</b>: requires Administrator rights; no unlink concept.</li>
+     *   <li><b>POSIX</b>: supports explicit <code>unlink()</code>; removes both the shared
+     *       condition object and the initialization lock.</li>
+     *   <li><b>Windows</b>: no unlink; the event handle is released automatically when the
+     *       last process closes it.</li>
+     *   <li>Operations are idempotent; redundant unlink calls are safe.</li>
      * </ul>
      *
-     * @tparam S Bare name string (letters, digits, dot, dash, underscore).
-     * @tparam HighPriv If true, exposes <code>unlink()</code> (POSIX only).
+     * <h4>Usage notes</h4>
+     * <ul>
+     *   <li>Acts as a process-visible condition primitive; intended to be composed with
+     *       <code>process_mutex</code> or <code>process_counter</code> for complex protocols.</li>
+     *   <li>Semantics (especially broadcast fairness) are platform-dependent.</li>
+     *   <li>Windows implementation provides approximate equivalence, not strict parity.</li>
+     * </ul>
      */
     template <CStr S, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length>())
@@ -376,18 +407,49 @@ namespace jh::async::ipc {
             pthread_mutex_unlock(&data_->mutex);
         }
 #endif
+
         /**
-         * @brief Remove the shared-memory backing (POSIX only).
+         * @brief Remove the condition variable's shared-memory backing (POSIX only).
          *
          * <h4>Semantics</h4>
-         * Invokes <code>shm_unlink()</code> for the condition's shared segment.
-         * Safe and idempotent; ignored on Windows.
+         * <ul>
+         *   <li>Invokes <code>shm_unlink()</code> for the condition segment
+         *       (<code>"/"&nbsp;+&nbsp;S</code>), removing the shared memory region.</li>
+         *   <li>Also unlinks the associated <code>process_mutex&lt;S&gt;</code>
+         *       used for one-time initialization.</li>
+         *   <li>Silently ignores <code>ENOENT</code> if the object does not exist.</li>
+         *   <li>Throws <code>std::runtime_error</code> for other unlink failures.</li>
+         * </ul>
+         *
+         * <h4>Additional cleanup</h4>
+         * <p>
+         * The <code>process_condition</code> internally creates a helper mutex
+         * (<code>process_mutex&lt;S&gt;</code>) for initialization coordination.
+         * When <code>unlink()</code> is called, both the shared-memory segment and
+         * this mutex are unlinked to prevent stale IPC objects from persisting.
+         * </p>
+         *
+         * <h4>Idempotency</h4>
+         * <p>
+         * The operation is safe to call multiple times. Once all processes close
+         * their mappings, the system automatically reclaims the resources.
+         * </p>
+         *
+         * <h4>Windows</h4>
+         * <p>
+         * Windows does not support explicit unlink for named event handles.
+         * They are destroyed automatically when the final handle is closed.
+         * </p>
          */
         static void unlink() requires(HighPriv) {
 #if IS_WINDOWS
             // no unlink semantics on Windows
 #else
-            ::shm_unlink(shm_name_.val());
+            if (::shm_unlink(shm_name_.val()) == -1 && errno != ENOENT)
+                throw std::runtime_error(
+                        "shm_unlink failed for " + std::string{shm_name_.val()} +
+                        " (errno=" + std::to_string(errno) + ")");
+            process_mutex<S, HighPriv>::unlink();
 #endif
         }
 

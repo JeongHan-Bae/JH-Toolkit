@@ -27,7 +27,7 @@ set(TESTS
         test_str_template  test_str_template.cpp  jh-toolkit
         test_process_lock  test_process_lock.cpp  jh-toolkit
         test_occ           test_occ.cpp           jh-toolkit
-        test_proc_counter  test_proc_counter.cpp  jh-toolkit
+        test_proc_mapping  test_proc_mapping.cpp  jh-toolkit
         test_proc_cond     test_proc_cond.cpp     jh-toolkit
         test_shproc_lock   test_shproc_lock.cpp   jh-toolkit
 )
@@ -57,5 +57,5 @@ foreach(i RANGE 0 ${max_index})
 endforeach()
 
 add_dependencies(test_process_lock writer reader)
-add_dependencies(test_proc_counter counter)
+add_dependencies(test_proc_mapping counter pod_writer)
 add_dependencies(test_proc_cond sleeper awaker)
