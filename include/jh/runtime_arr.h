@@ -1619,7 +1619,7 @@ namespace jh {
          *   <li>Equivalent to <code>std::fill(begin(), end(), false)</code> but significantly faster.</li>
          * </ul>
          */
-        [[gnu::used]] inline void reset_all() noexcept;
+        [[gnu::used]] void reset_all() noexcept;
 
         /**
          * @brief Move constructor — transfers ownership of the bit-packed buffer.

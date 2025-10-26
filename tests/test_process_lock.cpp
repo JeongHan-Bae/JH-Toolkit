@@ -30,7 +30,7 @@ namespace test {
 
 }
 
-using mutex_t = jh::async::process_mutex<"test_mutex">;
+using mutex_t = jh::async::ipc::process_mutex<"test_mutex">;
 
 // ---- Single-process tests ----
 TEST_CASE("process_mutex basic lock/unlock") {
@@ -50,21 +50,21 @@ TEST_CASE("process_mutex basic lock/unlock") {
         REQUIRE(acquired == false);  // timeout, could not acquire
         m.unlock();
     }
-    jh::async::process_mutex<"test_mutex", true>::unlink();
+    jh::async::ipc::process_mutex<"test_mutex", true>::unlink();
 }
 
 // ---- Cross-process tests ----
 
 /// writer and reader are launched as external processes
-using writer_launcher = jh::async::process_launcher<"../examples/process_lock/writer">;
-using reader_launcher = jh::async::process_launcher<"../examples/process_lock/reader">;
+using writer_launcher = jh::async::ipc::process_launcher<"../examples/process_lock/writer">;
+using reader_launcher = jh::async::ipc::process_launcher<"../examples/process_lock/reader">;
 
 /**
  * @brief priv_mutex_t represents the same named process-wide mutex ("demo_mutex")
  * used by writer/reader. It is declared with HighPriv=true so this test
  * can call unlink() to clean up the semaphore afterwards.
  */
-using priv_mutex_t = jh::async::process_mutex<"demo_mutex", true>;
+using priv_mutex_t = jh::async::ipc::process_mutex<"demo_mutex", true>;
 
 TEST_CASE("process_launcher runs writer and reader") {
     // Launch writer & reader

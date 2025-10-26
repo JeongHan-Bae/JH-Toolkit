@@ -16,12 +16,12 @@
  * \endverbatim
  */
 /**
- * @file process_mutex.h
+ * @file process_mutex.h (asynchronous)
  * @brief Cross-platform process-wide named mutex with timed try_lock.
  *
  * <h3>Overview</h3>
  * <p>
- * <code>jh::async::process_mutex</code> is a cross-platform, process-wide synchronization primitive
+ * <code>jh::async::ipc::process_mutex</code> is a cross-platform, process-wide synchronization primitive
  * identified by a <strong>compile-time string literal</strong>. Each unique literal corresponds to a unique
  * OS-level named semaphore.
  * </p>
@@ -45,19 +45,35 @@
  *
  * <h3>Naming rules</h3>
  * <ul>
- *   <li>Only alphanumeric characters, <code>_</code>, <code>-</code>, and <code>.</code> are allowed.</li>
- *   <li>Name length must be in range <strong>[1, 128]</strong> (engineering constraint for portability).</li>
- *   <li>Prefix is added automatically:
- *       <ul>
- *         <li>POSIX: <code>"/"</code> is prepended internally.</li>
- *         <li>Windows:
- *           <ul>
- *             <li>C++ literal: <code>"Local&bsol;&bsol;name"</code></li>
- *             <li>Runtime object name: <code>Local&bsol;name</code></li>
- *           </ul></li>
- *       </ul>
+ *   <li>Allowed characters: <code>[A-Za-z0-9_.-]</code>.</li>
+ *   <li>No leading slash (<code>'/'</code>); it is automatically added when required
+ *       by the underlying platform namespace.</li>
+ *   <li>Name length limits are <strong>platform-specific</strong>:
+ *     <ul>
+ *       <li><b>FreeBSD / Darwin (macOS)</b>: maximum base name length = <b>30</b>
+ *           (POSIX limit is 31 bytes including the leading '/').</li>
+ *       <li><b>Linux / Windows / WASM</b>: extended portable limit = <b>128</b>.</li>
+ *     </ul>
+ *     The limit is automatically enforced at <em>compile time</em> by
+ *     <code>jh::async::ipc::limits::valid_object_name</code>.
+ *   </li>
+ *   <li>Prefixes are applied automatically:
+ *     <ul>
+ *       <li><b>POSIX</b>: <code>"/"</code> is prepended internally (per POSIX naming convention).</li>
+ *       <li><b>Windows</b>:
+ *         <ul>
+ *           <li>C++ literal name: <code>"Local&bsol;&bsol;name"</code></li>
+ *           <li>Runtime Win32 object: <code>Local&bsol;name</code></li>
+ *         </ul>
+ *       </li>
+ *     </ul>
  *   </li>
  * </ul>
+ * <p>
+ * Because the name is a <strong>compile-time constant</strong>,
+ * invalid or overly long identifiers produce a <strong>compile-time error</strong>,
+ * ensuring deterministic and portable IPC behavior across all supported platforms.
+ * </p>
  *
  * <h3>unlink semantics</h3>
  * <ul>
@@ -111,6 +127,7 @@
 
 #include "jh/str_template.h"
 #include "jh/macros/platform.h"
+#include "jh/asynchronous/ipc_limits.h"
 
 #include <algorithm>  // for std::min
 #include <string>
@@ -130,45 +147,75 @@
 #if !IS_WINDOWS
 #include <sys/stat.h>
 
-namespace jh::async::detail {
+namespace jh::async::ipc::detail {
     static constexpr mode_t process_mutex_permissions =
             JH_PROCESS_MUTEX_SHARED ? static_cast<mode_t>(0666) : static_cast<mode_t>(0644);
 }
 #endif
 
 
-namespace jh::async {
-
-    namespace detail {
-        /// Check if a character is valid in a mutex name (alnum, '_', '-', '.').
-        constexpr bool is_mutex_char(char c) noexcept {
-            return (c >= 'A' && c <= 'Z') ||
-                   (c >= 'a' && c <= 'z') ||
-                   (c >= '0' && c <= '9') ||
-                   c == '_' || c == '-' || c == '.';
-        }
-
-        /// Validate compile-time string as a legal mutex name.
-        template <jh::str_template::CStr S>
-        consteval bool valid_mutex_name() {
-            if (S.size() < 1) return false;
-            if (S.size() > 128) return false;
-            for (std::uint64_t i = 0; i < S.size(); ++i) {
-                if (!is_mutex_char(S.val()[i])) return false;
-            }
-            return true;
-        }
-
-    } // namespace detail
+namespace jh::async::ipc {
 
     /**
-     * @brief Cross-platform named process-wide mutex.
+     * @class process_mutex
+     * @brief Cross-platform named process-wide mutex primitive.
+     *
+     * <h4>Overview</h4>
+     * <p>
+     * <code>jh::async::ipc::process_mutex</code> is a low-level inter-process synchronization
+     * primitive that mirrors the behavior of <code>std::timed_mutex</code>, extended to
+     * operate across process boundaries via OS-level named semaphores.
+     * Each unique template literal <code>S</code> defines a globally visible named mutex.
+     * </p>
+     *
+     * <h4>Semantic model</h4>
+     * <ul>
+     *   <li>Acts as an <strong>IPC primitive</strong> — not a composition of higher-level constructs.</li>
+     *   <li>Provides the same contract as <code>std::timed_mutex</code>:
+     *     <ul>
+     *       <li>Exclusive ownership semantics (single holder at a time).</li>
+     *       <li>Non-recursive — attempting to lock twice without unlocking causes deadlock.</li>
+     *       <li>Unlocking without ownership or multiple consecutive unlocks is <b>undefined behavior</b>.</li>
+     *     </ul>
+     *   </li>
+     *   <li>Integrates with RAII-style locking utilities such as
+     *       <code>std::lock_guard</code>, <code>std::unique_lock</code>,
+     *       or equivalent user-defined wrappers.</li>
+     *   <li>Supports <code>try_lock()</code>, <code>try_lock_for()</code>,
+     *       and <code>try_lock_until()</code> for timed acquisition.</li>
+     * </ul>
+     *
+     * <strong>Cross-platform behavior</strong>
+     * <ul>
+     *   <li><b>POSIX</b>: implemented via <code>sem_open()</code>, <code>sem_wait()</code>, and <code>sem_post()</code>.</li>
+     *   <li><b>Windows / MSYS2</b>: implemented via <code>CreateSemaphore()</code> and
+     *       <code>WaitForSingleObject()</code>.</li>
+     *   <li>All standard privilege levels are sufficient; administrative rights are <b>not</b> required.</li>
+     * </ul>
+     *
+     * <h4>Error and UB conditions</h4>
+     * <ul>
+     *   <li>Calling <code>unlock()</code> without owning the mutex, or calling it multiple times, is undefined behavior.</li>
+     *   <li>Calling <code>lock()</code> twice without an intervening <code>unlock()</code> causes deadlock.</li>
+     *   <li>POSIX may silently ignore double-unlock; Windows may terminate the process.</li>
+     * </ul>
+     *
+     * <h4>Usage recommendation</h4>
+     * <p>
+     * Use RAII-style management whenever possible:
+     * @code
+     * auto& m = jh::async::ipc::process_mutex<"example">::instance();
+     * std::lock_guard guard(m); // automatically unlocks on scope exit
+     * @endcode
+     * <p>
+     * This ensures exception safety and correct pairing of <code>lock()</code>/<code>unlock()</code>.
+     * </p>
      *
      * @tparam S Bare name string (letters, digits, dot, dash, underscore).
      * @tparam HighPriv If true, exposes <code>unlink()</code> for POSIX.
      */
     template <jh::str_template::CStr S, bool HighPriv = false>
-    requires (detail::valid_mutex_name<S>())
+    requires (limits::valid_object_name<S, limits::max_name_length>())
     class process_mutex final{
     private:
 #if IS_WINDOWS
@@ -198,7 +245,40 @@ namespace jh::async {
         /// @brief Deleted move assignment.
         process_mutex& operator=(process_mutex&&) = delete;
 
-        /// @brief Acquire the lock (blocking).
+        /**
+         * @brief Acquire the lock (blocking).
+         *
+         * <h4>Semantics</h4>
+         * <p>
+         * Blocks the calling thread or process until the mutex becomes available.
+         * Once acquired, the caller obtains exclusive ownership of the
+         * process-wide synchronization primitive.
+         * </p>
+         *
+         * <h4>Reentrancy</h4>
+         * <p>
+         * This mutex is <strong>non-recursive</strong>.
+         * Calling <code>lock()</code> twice from the same thread or process
+         * without a corresponding <code>unlock()</code> causes a <b>self-deadlock</b>,
+         * identical to the behavior of <code>std::timed_mutex</code>.
+         * </p>
+         *
+         * <h4>Contract</h4>
+         * <ul>
+         *   <li>Each <code>lock()</code> call must eventually be paired with <code>unlock()</code>.</li>
+         *   <li>Re-locking a held mutex results in deadlock.</li>
+         *   <li>Unlocking without ownership is undefined behavior.</li>
+         * </ul>
+         *
+         * <h4>Usage recommendation</h4>
+         * <p>
+         * When using <code>process_mutex</code> within a lexical scope,
+         * prefer RAII-style management with <code>std::lock_guard</code> or
+         * an equivalent wrapper to ensure exception-safe unlock.
+         * </p>
+         *
+         * @throw std::runtime_error if the underlying system call fails unexpectedly.
+         */
         void lock() {
 #if IS_WINDOWS
             DWORD r = WaitForSingleObject(handle_, INFINITE);
@@ -323,7 +403,36 @@ namespace jh::async {
 #endif
         }
 
-        /// @brief Release the lock.
+        /**
+         * @brief Release the lock.
+         *
+         * <h4>Semantics</h4>
+         * <p>
+         * Releases ownership of the process-wide mutex.
+         * This operation must only be called by a participant that currently
+         * holds the lock; calling <code>unlock()</code> without prior ownership
+         * or invoking it multiple times consecutively constitutes
+         * <strong>undefined behavior</strong>.
+         * </p>
+         *
+         * <h4>Error model</h4>
+         * <ul>
+         *   <li>On POSIX systems, improper unlocking may silently fail or leave the
+         *       semaphore count inconsistent.</li>
+         *   <li>On Windows, calling <code>ReleaseSemaphore()</code> from a thread that
+         *       does not own the lock may raise a runtime error or terminate the process.</li>
+         * </ul>
+         *
+         * <h4>Contract</h4>
+         * <ul>
+         *   <li>The caller is responsible for ensuring lock ownership before calling <code>unlock()</code>.</li>
+         *   <li>Repeated unlocking or unlocking without acquisition is <b>UB</b>.</li>
+         *   <li>If required, ownership can be tracked manually (e.g. via <code>thread_local</code> flags
+         *       or process-scoped state) depending on usage scope.</li>
+         * </ul>
+         *
+         * @throw std::runtime_error if the underlying system call fails unexpectedly.
+         */
         void unlock() {
 #if IS_WINDOWS
             if (!ReleaseSemaphore(handle_, 1, nullptr)) {
@@ -415,4 +524,4 @@ namespace jh::async {
         }
     };
 
-} // namespace jh::async
+} // namespace jh::async::ipc

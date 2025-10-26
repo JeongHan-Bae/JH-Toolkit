@@ -11,7 +11,7 @@
  *
  * <h3>Details</h3>
  * <ul>
- *   <li>Synchronization is achieved using <code>jh::async::process_mutex</code>.</li>
+ *   <li>Synchronization is achieved using <code>jh::async::ipc::process_mutex</code>.</li>
  *   <li>Before writing iterations, the writer clears the file using
  *       <code>std::ios::trunc</code> to ensure a clean start.</li>
  *   <li>Each iteration acquires the lock, appends a timestamped entry,
@@ -40,7 +40,7 @@
 
 using namespace std::chrono_literals;
 using clock_t_ = std::chrono::steady_clock;
-using mutex_t = jh::async::process_mutex<"demo_mutex">;
+using mutex_t = jh::async::ipc::process_mutex<"demo_mutex">;
 
 /**
  * @brief Entry point of the writer example.

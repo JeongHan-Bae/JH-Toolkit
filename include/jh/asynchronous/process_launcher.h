@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file process_launcher.h
+ * @file process_launcher.h (asynchronous)
  * @brief Cross-platform process launcher aligned with std::thread semantics.
  *
  * <h3>Rationale</h3>
@@ -143,6 +143,39 @@
  *     </ul>
  *   </li>
  * </ul>
+ *
+ * <h4>Handle semantics &amp; security rationale</h4>
+ * <ul>
+ *   <li>Each call to <code>start()</code> returns a unique, move-only
+ *       <code>handle</code> representing one running process.</li>
+ *   <li>The handle enforces <strong>strict ownership</strong>:
+ *     <ul>
+ *       <li>It must be <code>wait()</code>-ed before destruction.</li>
+ *       <li>Destruction of an active handle triggers <code>std::terminate()</code>.</li>
+ *       <li>Move transfers ownership; the source becomes invalid and cannot
+ *           be moved or waited again.</li>
+ *       <li>Assigning into an active handle also terminates the program.</li>
+ *     </ul>
+ *   </li>
+ *   <li>Each <code>process_launcher&lt;Path, IsBinary&gt;</code> has its own
+ *       nested handle type, <strong>bound to its executable at compile time</strong>.</li>
+ *   <li>This binding is a deliberate design for both type safety and security:
+ *     <ul>
+ *       <li>Prevents handle reuse or hijacking across launchers.</li>
+ *       <li>Disallows runtime path injection or substitution attacks.</li>
+ *       <li>Guarantees the executable path is compile-time verified.</li>
+ *     </ul>
+ *   </li>
+ *   <li>A unified generic handle is intentionally avoided because it would:
+ *     <ul>
+ *       <li>Break compile-time validation guarantees,</li>
+ *       <li>Enable runtime path injection,</li>
+ *       <li>And expand the attack surface for untrusted binaries.</li>
+ *     </ul>
+ *   </li>
+ *   <li>By keeping the handle type bound to its launcher, the system enforces
+ *       a static trust boundary: only pre-validated, known executables can run.</li>
+ * </ul>
  */
 
 #pragma once
@@ -153,6 +186,7 @@
 
 #include "jh/macros/platform.h"
 #include "jh/str_template.h"
+#include "jh/asynchronous/ipc_limits.h"
 #include <string>
 #include <stdexcept>
 #include <filesystem>
@@ -168,68 +202,7 @@
 #endif
 
 
-namespace jh::async {
-    namespace detail {
-        /// Check if character is valid for POSIX relative path.
-        constexpr bool is_path_char(char c) noexcept {
-            return (c >= 'A' && c <= 'Z') ||
-                   (c >= 'a' && c <= 'z') ||
-                   (c >= '0' && c <= '9') ||
-                   c == '_' || c == '-' || c == '.' || c == '/';
-        }
-
-        /**
-         * @brief Compile-time validation for POSIX-style relative paths.
-         *
-         * <h4>Rules</h4>
-         * <ul>
-         *   <li>Length must be in range <strong>[1, 128]</strong>.</li>
-         *   <li>Absolute paths are forbidden (no leading <code>'/'</code>).</li>
-         *   <li><code>"./"</code> segments are disallowed (meaningless).</li>
-         *   <li><code>".."</code> handling:
-         *     <ul>
-         *       <li>Default (<code>JH_ALLOW_PARENT_PATH == 0</code>): any <code>".."</code> is rejected.</li>
-         *       <li>Relaxed (<code>JH_ALLOW_PARENT_PATH == 1</code>): one or more leading
-         *           <code>"../"</code> segments are permitted, but:
-         *         <ul>
-         *           <li>The entire path cannot consist solely of <code>"../"</code> segments.</li>
-         *           <li>Once non-empty content has been appended, no further <code>".."</code> is allowed.</li>
-         *         </ul>
-         *       </li>
-         *     </ul>
-         *   </li>
-         *   <li>Allowed characters: <code>[A-Za-z0-9_.-/]</code>.</li>
-         * </ul>
-         *
-         * @return <code>true</code> if path is valid at compile time, otherwise <code>false</code>.
-         */
-        template<jh::str_template::CStr S>
-        consteval bool valid_relative_path() {
-            if (S.size() < 1) return false;
-            if (S.size() > 128) return false;
-            if (S.val()[0] == '/') return false;   // forbid abs path
-
-            std::uint64_t i = 0;
-
-#if JH_ALLOW_PARENT_PATH
-            // allow several ../
-            while (i + 2 < S.size() &&
-                S.val()[i] == '.' &&
-                S.val()[i + 1] == '.' &&
-                S.val()[i + 2] == '/') {
-            i += 3;
-            }
-            if (i == S.size()) return false; // should not contain only ../
-#endif
-            for (; i < S.size(); ++i) {
-                if (!is_path_char(S.val()[i])) return false;
-                if (S.val()[i] == '.' && i + 1 < S.size() && S.val()[i + 1] == '.') {
-                    return false; // illegal backwards
-                }
-            }
-            return true;
-        }
-    }
+namespace jh::async::ipc {
 
     /**
      * @brief Cross-platform process launcher.
@@ -292,7 +265,8 @@ namespace jh::async {
      * and parameter combination.
      * </p>
      */
-    template<jh::str_template::CStr Path, bool IsBinary = true> requires (detail::valid_relative_path<Path>())
+    template<jh::str_template::CStr Path, bool IsBinary = true>
+    requires (limits::valid_relative_path<Path>())
     class process_launcher final {
     public:
         process_launcher() = delete;                                    ///< Not constructible.
@@ -300,15 +274,30 @@ namespace jh::async {
         process_launcher &operator=(const process_launcher &) = delete; ///< Not assignable.
 
         /**
-         * @brief Handle object representing a launched process.
+         * @brief Process handle representing a single launched instance.
          *
          * <h4>Semantics</h4>
          * <ul>
          *   <li>Must be explicitly <code>wait()</code>-ed before destruction.</li>
-         *   <li>If destroyed without waiting, invokes <code>std::terminate()</code>.</li>
-         *   <li>Non-copyable and non-movable.</li>
-         *   <li><strong>Note:</strong> The executable path associated with this handle
-         *       must follow the relative-path rule described in the file-level documentation.</li>
+         *   <li>If destroyed while still active, the program terminates.</li>
+         *   <li>Non-copyable, but <strong>movable</strong> with strict rules:</li>
+         *   <ul>
+         *     <li>Move transfers exclusive ownership.</li>
+         *     <li>The source becomes invalid and cannot be reused or waited.</li>
+         *     <li>Assigning into an active handle triggers <code>std::terminate()</code>.</li>
+         *   </ul>
+         *   <li>These rules mirror <code>std::thread</code> semantics and ensure
+         *       safe, deterministic process lifetime management.</li>
+         * </ul>
+         *
+         * <h4>Security binding</h4>
+         * <ul>
+         *   <li>This handle type is <strong>tightly bound</strong> to its
+         *       <code>process_launcher&lt;Path, IsBinary&gt;</code> template.</li>
+         *   <li>Each launcher produces a unique handle type tied to a specific
+         *       compile-time verified executable path.</li>
+         *   <li>This prevents handle hijacking, cross-launcher misuse, and
+         *       runtime path injection attacks.</li>
          * </ul>
          */
         struct handle final {
@@ -317,9 +306,23 @@ namespace jh::async {
 
             handle &operator=(const handle &) = delete;
 
-            handle(handle &&) = delete;
+            handle(handle &&other) noexcept {
+                move_from(std::move(other));
+            }
 
-            handle &operator=(handle &&) = delete;
+            handle &operator=(handle &&other) noexcept {
+                if (this == &other)
+                    return *this;
+
+                // if this handle is still active, error out
+                if (!waited_) {
+                    std::cerr << "Error: assigning into active process handle\n";
+                    std::terminate();
+                }
+
+                move_from(std::move(other));
+                return *this;
+            }
 
             /**
              * @brief Destructor enforces <code>std::thread</code>-like semantics.
@@ -383,6 +386,27 @@ namespace jh::async {
 #elif IS_POSIX
             pid_t pid_{};
 #endif
+
+            void move_from(handle &&other) noexcept {
+                // avoid moving from invalid or already-waited handles
+                if (other.waited_) {
+                    std::cerr << "Error: moving from an invalid or waited handle\n";
+                    std::terminate();
+                }
+#if IS_WINDOWS
+                // transfer ownership of handles
+                pi_ = other.pi_;
+                // void out source handles
+                other.pi_.hProcess = nullptr;
+                other.pi_.hThread  = nullptr;
+#elif IS_POSIX
+                pid_ = other.pid_;
+                other.pid_ = -1;
+#endif
+                // mark source as waited
+                waited_ = false;
+                other.waited_ = true;
+            }
         };
 
         /**
@@ -440,4 +464,4 @@ namespace jh::async {
         }
     };
 
-} // namespace jh::async
+} // namespace jh::async::ipc
