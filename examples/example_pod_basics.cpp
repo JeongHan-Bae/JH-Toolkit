@@ -17,7 +17,7 @@
  * - Ideal for serialization, zero-cost abstraction, and memory-constrained code
  */
 
-#include "jh/pod.h"
+#include "jh/pod"
 #include <iostream>
 #include <cstring>
 #include <numeric>

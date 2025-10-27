@@ -406,6 +406,34 @@ namespace jh::pod {
     struct bitflags<64> : detail::bitflags_uint<std::uint64_t> {
     };
 
+    template<std::uint16_t N>
+    requires (is_native_bitflags<N>)
+    [[nodiscard]] constexpr bitflags<N>
+    operator|(const bitflags<N>& lhs, const bitflags<N>& rhs) noexcept {
+        return bitflags<N>{ lhs | rhs };
+    }
+
+    template<std::uint16_t N>
+    requires (is_native_bitflags<N>)
+    [[nodiscard]] constexpr bitflags<N>
+    operator&(const bitflags<N>& lhs, const bitflags<N>& rhs) noexcept {
+        return bitflags<N>{ lhs & rhs };
+    }
+
+    template<std::uint16_t N>
+    requires (is_native_bitflags<N>)
+    [[nodiscard]] constexpr bitflags<N>
+    operator^(const bitflags<N>& lhs, const bitflags<N>& rhs) noexcept {
+        return bitflags<N>{ lhs ^ rhs };
+    }
+
+    template<std::uint16_t N>
+    requires (is_native_bitflags<N>)
+    [[nodiscard]] constexpr bitflags<N>
+    operator~(const bitflags<N>& v) noexcept {
+        return bitflags<N>{ ~v };
+    }
+
     /**
      * @brief Serialize a <code>bitflags&lt;N&gt;</code> into a little-endian byte array (snapshot).
      * @note The output is always little-endian, regardless of host architecture.
