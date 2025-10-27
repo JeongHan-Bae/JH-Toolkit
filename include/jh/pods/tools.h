@@ -17,29 +17,31 @@
  */
 /**
  * @file tools.h (pods)
- * @brief POD helper utilities based on macros and placeholder types.
+ * @brief Macro-based POD helper utilities.
  *
- * Unlike core POD containers (e.g., <code>array</code>, <code>pair</code>, <code>optional</code>),
- * this header provides <b>tools</b> for enforcing and constructing POD types, mostly
- * via macro magic or placeholder types.
+ * <p>
+ * This header provides <b>compile-time helper macros</b> for defining and validating
+ * POD-compatible structures. It no longer includes transitional tuple utilities.
+ * </p>
  *
- * <h3>Contents:</h3>
+ * <h3>Contents</h3>
  * <ul>
- *   <li><code>JH_POD_STRUCT</code>: Macro to declare a POD struct with <code>operator==</code>
+ *   <li><code>JH_POD_STRUCT</code> — Declare a POD struct with <code>operator==</code>
  *       and automatic <code>pod_like</code> validation.</li>
- *   <li><code>JH_ASSERT_POD_LIKE</code>: Compile-time assertion that a user-defined type
- *       satisfies <code>pod_like</code> constraints.</li>
- *   <li><code>jh::pod::tuple</code>: A transitional POD-compatible fixed-size tuple,
- *       using <code>typed::monostate</code> as placeholder for unused slots.</li>
+ *   <li><code>JH_ASSERT_POD_LIKE</code> — Verify a manually defined type satisfies
+ *       <code>jh::pod::pod_like</code> constraints.</li>
  * </ul>
  *
- * <h3>Design Notes:</h3>
+ * <h3>Version Notes</h3>
  * <ul>
- *   <li>These are <b>helper facilities</b> — not general-purpose containers.</li>
- *   <li><code>tuple</code> is marked <code>[[deprecated]]</code> and provided mainly for
- *       migration or bridging with generic algorithms.</li>
- *   <li>Recommended practice: prefer <b>explicit POD structs</b> with named fields.</li>
+ *   <li>From <b>1.3.4</b> onward, <code>tools.h</code> only contains macro-based helpers.</li>
+ *   <li>The transitional <code>jh::pod::tuple</code> (available in 1.3.0–1.3.3)
+ *       was removed and replaced with a full implementation in
+ *       <code>&lt;jh/pods/tuple.h&gt;</code>.</li>
  * </ul>
+ *
+ * @see jh::pod::tuple (in <code>jh/pods/tuple.h</code>)
+ * @see jh::pod::pod_like
  */
 
 #pragma once

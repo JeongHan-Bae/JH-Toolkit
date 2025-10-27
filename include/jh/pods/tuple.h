@@ -18,6 +18,8 @@
 /**
  * @file tuple.h (pods)
  * @brief Implementation of POD-compatible tuple, pair and array bindings.
+ *
+ * @details
  * <p>
  * This header defines <code>jh::pod::tuple&lt;Ts...&gt;</code> and its
  * interoperability with <code>std::tuple_size</code> and
@@ -33,6 +35,46 @@
  * <code>tuple_impl</code> provides one field and a sublayer for the rest.
  * This ensures that the resulting type remains a true POD while
  * supporting element-wise access.
+ * </p>
+ *
+ * <h3>Design Philosophy & Principles</h3>
+ * The <code>jh::pod::tuple</code> in version <b>1.3.4</b> and later is a
+ * <b>true POD-based tuple</b>, replacing the transitional implementation used
+ * between 1.3.0–1.3.3.
+ *
+ * <p>
+ * It achieves <b>std::tuple-like behavior</b> — supporting <code>make_tuple</code>,
+ * <code>get&lt;&gt;</code>, packing, and unpacking — through <b>composition instead of inheritance</b>.
+ * Each element is recursively composed inside a <code>tuple_field&lt;I, T&gt;</code> wrapper,
+ * ensuring complete triviality and standard layout.
+ * </p>
+ *
+ * <p>
+ * Because every layer is a deducible aggregate, the resulting <code>tuple</code>
+ * is a <b>pure POD type</b>. Optimizers can often treat <code>get&lt;I&gt;(tuple)</code>
+ * as a direct <b>offset-based access</b> into a contiguous memory block.
+ * In effect, the memory layout of <code>jh::pod::tuple</code> is equivalent to
+ * a manually defined POD struct with unnamed, ordered fields.
+ * </p>
+ *
+ * <p>
+ * Note that this version uses <b>ADL-based</b> access:
+ * <code>get&lt;I&gt;(tuple)</code> rather than <code>tuple.get&lt;I&gt;()</code>.
+ * </p>
+ *
+ * <h4>Value and Reference Unpacking</h4>
+ *
+ * <ul>
+ *   <li>When unpacked as <code>auto</code> or <code>const auto&amp;</code>,
+ *       elements are accessed <b>by value</b>. This design prevents unsafe aliasing;
+ *       <code>const_cast</code> tricks cannot modify internal data.</li>
+ *   <li>When unpacked as <code>auto&amp;</code>, elements are accessed <b>by reference</b>
+ *       and can be safely modified.</li>
+ * </ul>
+ *
+ * <p>
+ * These semantics provide safe and predictable structured bindings fully aligned
+ * with standard tuple-like behavior while maintaining strict POD guarantees.
  * </p>
  *
  * <h4>Example</h4>

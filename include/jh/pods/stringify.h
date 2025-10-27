@@ -105,21 +105,21 @@
  */
 #pragma once
 
-#include "pod_like.h"
+#include "jh/pods/pod_like.h"
 #include <ostream>
 #include <sstream>
 #include <iomanip>
 #include "jh/utils/typed.h"
 #include "jh/utils/base64.h"
 #include "jh/macros/type_name.h"
-#include "pair.h"
-#include "array.h"
-#include "bits.h"
-#include "bytes_view.h"
-#include "span.h"
-#include "string_view.h"
-#include "optional.h"
-#include "tuple.h"
+#include "jh/pods/array.h"
+#include "jh/pods/bits.h"
+#include "jh/pods/bytes_view.h"
+#include "jh/pods/optional.h"
+#include "jh/pods/pair.h"
+#include "jh/pods/span.h"
+#include "jh/pods/string_view.h"
+#include "jh/pods/tuple.h"
 
 namespace jh::pod {
 

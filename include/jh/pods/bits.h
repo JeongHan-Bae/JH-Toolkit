@@ -40,7 +40,7 @@
 
 #include <cstdint>
 #include <type_traits>
-#include "array.h"
+#include "jh/pods/array.h"
 #include "jh/macros/platform.h"
 
 #if !(IS_CLANG || IS_GCC)
