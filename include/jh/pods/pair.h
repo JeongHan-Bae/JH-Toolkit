@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "pod_like.h"
+#include "jh/pods/pod_like.h"
 
 namespace jh::pod {
     /**
@@ -60,4 +60,25 @@ namespace jh::pod {
         /// @brief Member-wise equality comparison.
         constexpr bool operator==(const pair &) const = default;
     };
-}
+
+    /**
+     * @brief Constructs a POD-compatible pair from two values.
+     *
+     * @details
+     * This function aligns with <code>std::make_pair</code> for interface consistency.
+     * It performs no special handling beyond aggregate initialization and
+     * exists solely to provide a familiar, STL-compatible API name.
+     *
+     * @tparam T1 Type of the first element.
+     * @tparam T2 Type of the second element.
+     * @param first First element value.
+     * @param second Second element value.
+     * @return A <code>jh::pod::pair&lt;T1, T2&gt;</code> containing the given elements.
+     *
+     * @see jh::pod::pair
+     */
+    template<cv_free_pod_like T1, cv_free_pod_like T2>
+    constexpr auto make_pair(T1 first, T2 second) noexcept {
+        return pair<T1, T2>{first, second};
+    }
+} // namespace jh::pod

@@ -2,16 +2,12 @@
 
 #include <catch2/catch_all.hpp>
 #include <array>
+#include <vector>
+#include <ranges>
 #include "jh/macros/platform.h"
-
-#if IS_GCC || IS_CLANG
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-// No warning for jh::pod::tuple<>
 #include <numeric>
 
-#include "jh/pod.h"
+#include "jh/pod"
 #include "jh/conceptual/sequence.h"
 
 namespace pod = jh::pod;
@@ -820,6 +816,7 @@ TEST_CASE("pod::ostream << overloads for built-in and custom POD types", "[ostre
     using jh::pod::span;
     using jh::pod::string_view;
     using jh::typed::monostate;
+    using jh::pod::tuple;
 
     SECTION("array<T, N> general printable") {
         array<int, 3> a = {1, 2, 3};
@@ -903,5 +900,102 @@ TEST_CASE("pod::ostream << overloads for built-in and custom POD types", "[ostre
         std::ostringstream oss;
         oss << m;
         REQUIRE(oss.str() == "null");
+    }
+
+    SECTION("pod::tuple ostream output formats correctly") {
+        using jh::pod::make_tuple;
+
+        std::ostringstream oss0, oss1, oss5;
+
+        tuple<> t0{};
+        tuple<int> t1{{ {42}, {} }};
+        auto t5 = make_tuple(1, 2, 3, 4, 5);
+
+        oss0 << t0;
+        oss1 << t1;
+        oss5 << t5;
+
+        REQUIRE(oss0.str() == "()");
+        REQUIRE(oss1.str() == "(42,)");
+        REQUIRE(oss5.str() == "(1, 2, 3, 4, 5)");
+    }
+}
+
+TEST_CASE("pod::array works with std::views pipelines") {
+    using jh::pod::array;
+
+    array<int, 6> arr = {{1, 2, 3, 4, 5, 6}};
+    auto even = arr
+                | std::views::filter([](int x) { return x % 2 == 0; })
+                | std::views::transform([](int x) { return x * 10; });
+
+    std::vector<int> result;
+    std::ranges::copy(even, std::back_inserter(result));
+
+    REQUIRE(result == std::vector<int>{20, 40, 60});
+}
+
+TEST_CASE("pod::array supports structured bindings") {
+    using jh::pod::array;
+
+    array<int, 3> arr = {{10, 20, 30}};
+    auto &[a, b, c] = arr;
+    REQUIRE(a == arr.data[0]);
+    REQUIRE(b == arr.data[1]);
+    REQUIRE(c == arr.data[2]);
+
+    a = 42;
+    REQUIRE(arr[0] == 42);
+}
+
+TEST_CASE("pod::make_pair and direct pair construction produce same result") {
+    using jh::pod::pair;
+    using jh::pod::make_pair;
+
+    pair<int, double> p1{1, 2.5};
+    auto p2 = make_pair(1, 2.5);
+
+    REQUIRE(p1 == p2);
+}
+
+TEST_CASE("pod::tuple construction: nested braces vs make_tuple") {
+    using jh::pod::tuple;
+    using jh::pod::make_tuple;
+
+    tuple<int, double> t1{{ {7}, {{3.14}, {}} }};
+    auto t2 = make_tuple(7, 3.14);
+
+    REQUIRE(t1 == t2);
+}
+
+TEST_CASE("bitflags native type operator return types are self type") {
+    using namespace jh::pod;
+
+    SECTION("operator| returns self type") {
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<8>>()  | std::declval<bitflags<8>>()),  bitflags<8>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<16>>() | std::declval<bitflags<16>>()), bitflags<16>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<32>>() | std::declval<bitflags<32>>()), bitflags<32>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<64>>() | std::declval<bitflags<64>>()), bitflags<64>>);
+    }
+
+    SECTION("operator& returns self type") {
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<8>>()  & std::declval<bitflags<8>>()),  bitflags<8>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<16>>() & std::declval<bitflags<16>>()), bitflags<16>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<32>>() & std::declval<bitflags<32>>()), bitflags<32>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<64>>() & std::declval<bitflags<64>>()), bitflags<64>>);
+    }
+
+    SECTION("operator^ returns self type") {
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<8>>()  ^ std::declval<bitflags<8>>()),  bitflags<8>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<16>>() ^ std::declval<bitflags<16>>()), bitflags<16>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<32>>() ^ std::declval<bitflags<32>>()), bitflags<32>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<64>>() ^ std::declval<bitflags<64>>()), bitflags<64>>);
+    }
+
+    SECTION("operator~ returns self type") {
+        STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<8>>()),  bitflags<8>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<16>>()), bitflags<16>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<32>>()), bitflags<32>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<64>>()), bitflags<64>>);
     }
 }

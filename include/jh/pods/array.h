@@ -24,7 +24,7 @@
 
 #include <cstdint>
 #include <cstddef>
-#include "pod_like.h"
+#include "jh/pods/pod_like.h"
 
 namespace jh::pod {
     /// @brief Maximum size of a POD array (16KB). This is a compile-time constant.

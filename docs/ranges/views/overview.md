@@ -65,6 +65,30 @@ namespace jh::views {
 
 ---
 
+## ⚠️ Integration Notes (update)
+
+* Implements **range adaptor interfaces**, but is **not** a full reimplementation of `std::views`.
+* Designed to interoperate with both **STL ranges** and **`jh::sequence`-like** objects.
+* Each adaptor (such as `zip` and `enumerate`) normalizes its inputs through `jh::to_range()`.
+* Fully header-only; no external linkage or runtime registration required.
+* Safe for use in constexpr contexts and compatible with `jh::concepts::sequence`.
+
+> ⚠️ **Known limitation (1.3.4 freeze note):**  
+> The current implementation of `zip` and `enumerate` in **1.3.4**
+> does **not** employ full closure-based functor composition.  
+> Consequently, they **cannot participate in the pipe (`|`) operator**
+> as native `std::views` adaptors do in C++23.  
+> This limitation only affects syntax convenience — **functional correctness and laziness remain intact**.
+
+> 💡 **Planned improvement (1.3.5):**  
+> A redesigned adaptor system based on **closure objects** is under development.  
+> Starting from **1.3.5**, all `jh::views` components will support
+> standard **pipe syntax compatibility** and improved deduced-type semantics.  
+> This update will align JH Toolkit's `views` behavior with
+> the **C++23 standard model** while preserving backward compatibility.
+
+---
+
 ## 🧭 Navigation
 
 |           Resource            |                                                                Link                                                                |

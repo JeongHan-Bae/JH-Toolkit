@@ -2,7 +2,7 @@
 
 📁 **Header:** `<jh/pods/bits.h>`  
 📦 **Namespace:** `jh::pod`  
-📅 **Version:** 1.3.3+ → 1.4.0-dev (2025)  
+📅 **Version:** 1.3.4+  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -195,36 +195,29 @@ For persistence or binary interchange, prefer `to_bytes()` / `from_bytes()`.
 
 ---
 
-## 💡 Known Issue (v1.3.3 and earlier)
+## 💡 Version Notes (v1.3.4+)
 
-In **v1.3.3 and earlier**, bitwise operators
-(`|`, `&`, `^`, `~`) on **native-backed** bitflags (`8, 16, 32, 64 bits`)
-return the internal `detail::bitflags_uint` type instead of the outer `bitflags<N>`.
+Starting from **v1.3.4**, all bitwise operators on `jh::pod::bitflags<N>`
+(`|`, `&`, `^`, `~`) now correctly return a **`bitflags<N>`** value —
+consistent across all bit widths, including native (`8–64` bits).
 
-This means expressions like:
+This resolves the previous inconsistency (in ≤ v1.3.3)
+where native-width specializations returned an internal type.
+
+Example (now fully valid and type-safe):
 
 ```cpp
 jh::pod::bitflags<16> a{}, b{};
-auto c = a | b;  // type mismatch in v1.3.3
+auto c = a | b;   // ✅ returns jh::pod::bitflags<16>
+a &= b;           // ✅ in-place operation still valid
+std::cout << c;   // works as expected
 ```
 
-produce a valid result but with an **unexpected type**,
-causing confusion or implicit conversion warnings in strict builds. (non-printable)
-
-**Workaround (safe for all versions):**
-
-```cpp
-auto c = jh::pod::bitflags<16>(a | b);  // explicit rewrap
-a &= b;                                 // direct ops are fine
-std::cout << c << std::endl;            // prints normally
-```
-
-This will be corrected in **v1.3.4**, and the fix will persist in **v1.4.x+**.
-The issue affects **only the operator return type**, not runtime correctness.
+All bitwise operations are constexpr and no longer require explicit wrapping.
 
 ---
 
-## ⚠️ Integration Notes (update)
+## ⚙️ Integration Notes
 
 * Designed as a **compressed POD boolean buffer**, not an STL container.
 * Independent from other modules; does not rely on `array` or `pair`.
@@ -232,11 +225,9 @@ The issue affects **only the operator return type**, not runtime correctness.
 * Directly satisfies `pod_like`, usable in reinterpret-safe contexts.
 * Compatible with `bytes_view` for safe binary reinterpretation.
 
-> ⚠️ **Known limitation (to be fixed in 1.3.4):**  
-> For native bit widths (`8, 16, 32, 64`), bitwise operators
-> currently return the internal implementation type (`detail::bitflags_uint`).  
-> This affects type deduction, not correctness, and will be resolved
-> to always return `jh::pod::bitflags<N>` in all future versions.
+> ✅ **Update (since v1.3.4):**  
+> All bitwise operators now return `jh::pod::bitflags<N>` consistently.  
+> Behavior is uniform for both native and extended bit widths.
 
 ---
 

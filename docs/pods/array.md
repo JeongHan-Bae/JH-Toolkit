@@ -2,7 +2,7 @@
 
 📁 **Header:** `<jh/pods/array.h>`  
 📦 **Namespace:** `jh::pod`  
-📅 **Version:** 1.3.3+ → 1.4.0-dev (2025)  
+📅 **Version:** 1.3.4+  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -374,6 +374,46 @@ If you want to customize printing:
 Argument-dependent lookup (ADL) automatically finds
 `jh::pod::operator<<` for all `jh::pod` types,
 so no extra `using` directives are normally required.
+
+---
+
+## 🧩 Structured Bindings Support
+
+`jh::pod::array` supports **structured bindings** when
+`<jh/pods/tuple.h>` or the unified header `<jh/pod>` is included.  
+This provides tuple-like unpacking semantics consistent with `jh::pod::tuple`.
+
+### 🔹 Binding Semantics
+
+| Binding form                | Access type  | Description                 |
+|-----------------------------|--------------|-----------------------------|
+| `auto [a, b] = arr;`        | by value     | Copies each element.        |
+| `auto& [a, b] = arr;`       | by reference | Elements remain modifiable. |
+| `const auto& [a, b] = arr;` | read-only    | Safe const access.          |
+
+### 🔹 Combined Usage
+
+Structured bindings and printing can be used together:
+
+```cpp
+#include <jh/pod>
+#include <iostream>
+
+int main() {
+    jh::pod::array<int, 3> rgb = {128, 200, 255};
+    auto& [r, g, b] = rgb;
+
+    std::cout << "RGB: " << rgb << '\n';
+    g = 180;  // direct reference access
+    std::cout << "Modified: " << rgb << '\n';
+}
+```
+
+> 💡 Include `<jh/pod>` to enable all features:
+>
+> * Structured bindings (tuple integration)
+> * Stream printing (`stringify`)
+> * Full POD safety and constexpr compatibility
 
 ---
 

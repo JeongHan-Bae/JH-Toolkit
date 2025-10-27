@@ -131,13 +131,29 @@ int main() {
 
 ---
 
-## 🔹 Integration Notes
+## ⚠️ Integration Notes (update)
 
 * Used internally by [`jh::ranges::views::zip`](views/zip.md)
-  and [`jh::ranges::views::enumerate`](views/enumerate.md).  
-* Designed to be **ABI-compatible** with the standard `zip_view` once available.  
-* Avoids any dependency on experimental or vendor-specific range extensions.  
-* Included automatically when using `<jh/views>` or directly via `<jh/ranges/views/zip.h>`.
+  and [`jh::ranges::views::enumerate`](views/enumerate.md).
+* Designed to be **ABI-compatible** with the standard `std::ranges::zip_view` once available.
+* Avoids any dependency on experimental or vendor-specific range extensions.
+* Automatically included when using `<jh/views>` or `<jh/ranges/views/zip.h>`.
+
+> ⚠️ **Known limitation (1.3.4 freeze note):**  
+> The current implementation of `jh::ranges::zip_view` is **not yet fully recognized**
+> by `jh::concepts::sequence`.  
+> It only satisfies the *range-binding semantics* through structural matching
+> rather than full duck-type conformance.  
+> This limitation affects concept resolution in generic pipelines,
+> though the view itself functions correctly within `jh::views` and STL range contexts.
+
+> 💡 **Planned improvement (1.3.5):**  
+> The upcoming **1.3.5** release will extend the internal trait detection and
+> concept resolution rules to fully register `jh::ranges::zip_view`
+> as a valid `jh::concepts::sequence` type.  
+> This update will introduce stronger duck-typing semantics
+> and ensure that all range adaptors—`zip`, `enumerate`, and future ones—
+> participate seamlessly in generic pipelines and meta-level type deduction.
 
 ---
 
