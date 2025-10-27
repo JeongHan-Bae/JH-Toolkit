@@ -2,7 +2,7 @@
 
 📁 **Header:** `<jh/pods/pair.h>`  
 📦 **Namespace:** `jh::pod`  
-📅 **Version:** 1.3.3+ → 1.4.0-dev (2025)  
+📅 **Version:** 1.3.4+  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -131,6 +131,54 @@ int main() {
 > To override, define a global non-inline `operator<<`,
 > or bring your overload into scope with `using my_namespace::operator<<;`.  
 > ADL will automatically select the visible overload.
+
+
+---
+
+## 🧩 Structured Bindings Support
+
+`jh::pod::pair` supports **structured bindings** when
+`<jh/pods/tuple.h>` or the unified header `<jh/pod>` is included.  
+This enables unpacking semantics identical to `jh::pod::tuple`.
+
+### 🔹 Binding Semantics
+
+| Binding form                | Access type  | Description                  |
+|-----------------------------|--------------|------------------------------|
+| `auto [a, b] = p;`          | by value     | Copies both elements.        |
+| `auto& [a, b] = p;`         | by reference | Elements remain modifiable.  |
+| `const auto& [a, b] = p;`   | read-only    | Safe const access.           |
+
+### 🔹 Combined Usage
+
+Structured bindings and printing can be used together:
+
+```cpp
+#include <jh/pod>
+#include <iostream>
+
+int main() {
+    jh::pod::pair<int, double> p = {1, 3.14};
+    auto& [id, value] = p;
+
+    std::cout << "Pair: " << p << '\n';
+    value = 2.71;  // direct reference modification
+    std::cout << "Modified: " << p << '\n';
+}
+```
+
+**Output:**
+
+```
+Pair: {1, 3.14}
+Modified: {1, 2.71}
+```
+
+> 💡 Include `<jh/pod>` to enable all features:
+>
+> * Structured bindings (tuple integration)
+> * Stream printing (`stringify`)
+> * Full POD safety and constexpr compatibility
 
 ---
 

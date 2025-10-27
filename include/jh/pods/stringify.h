@@ -64,34 +64,62 @@
  * These APIs provide predictable serialization and deserialization.
  * Use them if you need to persist or exchange data between systems.
  *
- * <h3>Examples of Debug Printers:</h3>
- * <ul>
- *   <li><code>pod::array&lt;T, N&gt;</code> → <code>[1, 2, 3]</code></li>
- *   <li><code>pod::array&lt;char, N&gt;</code> → <code>"escaped\\tstring"</code></li>
- *   <li><code>pod::pair&lt;T1, T2&gt;</code> → <code>{a, b}</code></li>
- *   <li><code>pod::optional&lt;T&gt;</code> → <code>value</code> or <code>nullopt</code></li>
- *   <li><code>pod::bitflags&lt;N&gt;</code> → <code>0x'ABCD</code> or <code>0b'0101</code></li>
- *   <li><code>pod::bytes_view</code> → <code>base64'...'</code></li>
- *   <li><code>pod::span&lt;T&gt;</code> → <code>span&lt;int&gt;[1, 2, 3]</code></li>
- *   <li><code>pod::string_view</code> → <code>string_view"hello"</code></li>
- * </ul>
+ * <h3>Examples of Debug Printers</h3>
+ *
+ * Stream adapters (<code>operator&lt;&lt;</code>) follow a layered visual convention
+ * distinguishing between <b>owning types</b>, <b>view types</b>, and <b>semantic wrappers</b>.
+ *
+ * <ol>
+ *   <li>
+ *     <b>Owning Types (Value Containers)</b> — use <b>bare structural delimiters</b>.
+ *     <ul>
+ *       <li><code>pod::array&lt;T, N&gt;</code> → <code>[1, 2, 3]</code></li>
+ *       <li><code>pod::array&lt;char, N&gt;</code> → <code>"escaped&bsol;tstring"</code></li>
+ *       <li><code>pod::pair&lt;T1, T2&gt;</code> → <code>{a, b}</code></li>
+ *       <li><code>pod::tuple&lt;Ts...&gt;</code> → <code>()</code>, <code>(1,)</code>, <code>(1, 2, 3)</code></li>
+ *     </ul>
+ *   </li>
+ *   <li>
+ *     <b>View Types (Non-owning References)</b> — prefixed with their type name to clarify borrowed semantics.
+ *     <ul>
+ *       <li><code>pod::span&lt;T&gt;</code> → <code>span&lt;int&gt;[1, 2, 3]</code></li>
+ *       <li><code>pod::string_view</code> → <code>string_view"hello"</code></li>
+ *       <li><code>pod::bytes_view</code> → <code>base64'...'</code></li>
+ *     </ul>
+ *   <li>
+ *     <b>Semantic Wrappers</b> — printed with <b>keywords</b> to express meaning rather than structure.
+ *     <ul>
+ *       <li><code>pod::optional&lt;T&gt;</code> → <code>value</code> or <code>nullopt</code></li>
+ *       <li><code>typed::monostate</code> → <code>null</code></li>
+ *       <li><code>pod::bitflags&lt;N&gt;</code> → <code>0x'ABCD'</code> or <code>0b'0101'</code></li>
+ *     </ul>
+ *   </li>
+ *   <li>
+ *     <b>Nesting</b> — all printers are composable: nested POD types print recursively,
+ *     preserving their delimiters at each layer.
+ *     <br/>
+ *     Example: <code>pod::array&lt;pod::tuple&lt;int, int&gt;, 2&gt;</code> →
+ *     <code>[(1, 2), (3, 4)]</code>
+ *   </li>
+ * </ol>
  */
 #pragma once
 
-#include "pod_like.h"
+#include "jh/pods/pod_like.h"
 #include <ostream>
 #include <sstream>
 #include <iomanip>
 #include "jh/utils/typed.h"
 #include "jh/utils/base64.h"
 #include "jh/macros/type_name.h"
-#include "pair.h"
-#include "array.h"
-#include "bits.h"
-#include "bytes_view.h"
-#include "span.h"
-#include "string_view.h"
-#include "optional.h"
+#include "jh/pods/array.h"
+#include "jh/pods/bits.h"
+#include "jh/pods/bytes_view.h"
+#include "jh/pods/optional.h"
+#include "jh/pods/pair.h"
+#include "jh/pods/span.h"
+#include "jh/pods/string_view.h"
+#include "jh/pods/tuple.h"
 
 namespace jh::pod {
 
@@ -245,6 +273,28 @@ namespace jh::pod {
         std::ostringstream oss;
         oss << p;
         return oss.str();
+    }
+
+    namespace detail {
+        template<typename Tuple, std::size_t... Is>
+        inline void print_tuple_elements(std::ostream &os, const Tuple &t, std::index_sequence<Is...>) {
+            ((os << (Is == 0 ? "" : ", ") << jh::pod::get<Is>(t)), ...);
+        }
+    }
+
+    template<streamable... Ts>
+    inline std::ostream &operator<<(std::ostream &os, const jh::pod::tuple<Ts...> &t) {
+        constexpr std::size_t N = sizeof...(Ts);
+        os << "(";
+        if constexpr (N == 0) {
+            // ()
+        } else if constexpr (N == 1) {
+            os << jh::pod::get<0>(t) << ",";
+        } else {
+            detail::print_tuple_elements(os, t, std::index_sequence_for<Ts...>{});
+        }
+        os << ")";
+        return os;
     }
 }
 

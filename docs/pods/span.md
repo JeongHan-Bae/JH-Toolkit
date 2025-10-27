@@ -2,7 +2,7 @@
 
 📁 **Header:** `<jh/pods/span.h>`  
 📦 **Namespace:** `jh::pod`  
-📅 **Version:** 1.4.0-dev (2025)  
+📅 **Version:** 1.3.4+  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
