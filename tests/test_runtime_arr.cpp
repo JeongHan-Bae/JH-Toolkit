@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 #include <random>
-#include "jh/pod.h"
+#include "jh/pod"
 
 using namespace jh;
 

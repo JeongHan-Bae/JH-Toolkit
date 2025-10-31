@@ -88,7 +88,7 @@
  *
  * <h3>Usage Example</h3>
  * @code
- * #include &lt;jh/immutable_str&gt;   // or &lt;jh/immutable_str.h&gt;
+ * #include &lt;jh/immutable_str&gt;
  * #include &lt;iostream&gt;
  *
  * int main() {
@@ -202,6 +202,7 @@
 #include <cstdint>          // for std::uint64_t
 #include <optional>         // for std::optional
 #include <type_traits>      // for std::remove_cvref_t
+#include "jh/locking/const_lock.h"
 #include "jh/pool.h"
 #include "jh/pods/string_view.h"
 
@@ -349,8 +350,11 @@ namespace jh {
          * may be transient, mutable, or shared between threads.
          * </p>
          *
+         * @tparam M Any type satisfying <code>jh::concepts::mutex_like</code> —
+         *         such as <code>std::mutex</code>, <code>std::shared_mutex</code>, or custom types.
+         *
          * @param sv  A <code>std::string_view</code> representing the source data. It may or may not be null-terminated.
-         * @param mtx A reference to a <code>std::mutex</code> protecting the lifetime of the buffer referenced by <code>sv</code>.
+         * @param mtx A reference to a mutex protecting the lifetime of the buffer referenced by <code>sv</code>.
          *
          * @throws std::logic_error If <code>sv</code> contains embedded null (<tt>'\0'</tt>) characters.
          *
@@ -361,10 +365,28 @@ namespace jh {
          *   <li>Copies exactly <code>sv.size()</code> bytes into an internal immutable buffer, even if not null-terminated.</li>
          *   <li>The provided <code>mtx</code> <b>must</b> guard the same memory region as <code>sv.data()</code>;
          *       using an unrelated mutex leads to undefined behavior.</li>
+         *   <li>Supports both exclusive and shared mutex types, via <code>jh::lock::const_lock</code>.</li>
          *   <li>Recommended for constructing immutable strings from shared or non-terminated data regions.</li>
+         *   <li>
+         *       <b>Optional optimization:</b><br>
+         *       If you are certain that the source data is <em>not shared across threads</em>,
+         *       you may explicitly use <code>jh::typed::null_mutex</code> (from <code>&lt;jh/typed&gt;</code>)
+         *       as the mutex parameter. It is a zero-cost, concept-compatible dummy mutex,
+         *       and all locking operations become no-ops.<br>
+         *       <b>Note:</b> This must be explicitly specified; no automatic substitution is performed.
+         *   </li>
          * </ul>
          */
-        immutable_str(std::string_view sv, std::mutex &mtx);
+        template <jh::concepts::mutex_like M>
+        immutable_str(std::string_view sv, M &mtx) {
+            jh::lock::const_lock<M> guard(mtx);  // Scope-based lock, auto-detects shared/exclusive
+
+            if (::strnlen(sv.data(), sv.size()) != sv.size()) {
+                throw std::logic_error(
+                        "jh::immutable_str does not support string views containing embedded null characters.");
+            }
+            init_from_string(sv.data(), sv.size());
+        }
 
         /**
          * @brief Deleted copy constructor.
@@ -978,16 +1000,20 @@ namespace jh {
      *
      * <p>
      * Constructs a new <code>jh::immutable_str</code> using a
-     * <code>std::string_view</code> and an associated
-     * <code>std::mutex</code> that guards the view's lifetime.
-     * This ensures thread-safe initialization from potentially
-     * mutable or shared buffers.
+     * <code>std::string_view</code> and an associated mutex-like object
+     * that guards the view's lifetime. This ensures thread-safe initialization
+     * from potentially mutable or shared buffers.
      * </p>
+     *
+     * @tparam M
+     *   Any type satisfying <code>jh::concepts::mutex_like</code>,
+     *   such as <code>std::mutex</code>, <code>std::shared_mutex</code>,
+     *   or <code>jh::typed::null_mutex_t</code>.
      *
      * @param sv
      *   String view referencing existing string data.
      * @param mtx
-     *   Mutex protecting the lifetime of the structure that owns <code>sv</code>.
+     *   Mutex-like object protecting the lifetime of the structure that owns <code>sv</code>.
      *
      * @return
      *   Shared pointer (<code>atomic_str_ptr</code>) managing the constructed
@@ -1008,11 +1034,14 @@ namespace jh {
      *   <li>This overload is used when <code>std::string_view</code> refers to
      *       data from temporary, mutable, or shared contexts that require explicit
      *       synchronization.</li>
+     *   <li>When the data is guaranteed to be thread-local or immutable,
+     *       <code>jh::typed::null_mutex</code> may be used for zero-cost locking.</li>
      *   <li>Because <code>immutable_str</code> cannot be copied or moved,
      *       it must always be constructed via this factory or <code>make_atomic()</code>.</li>
      * </ul>
      */
-    inline atomic_str_ptr safe_from(std::string_view sv, std::mutex &mtx) {
+    template <jh::concepts::mutex_like M>
+    inline atomic_str_ptr safe_from(std::string_view sv, M &mtx) {
         return std::make_shared<immutable_str>(sv, mtx);
     }
 
@@ -1026,15 +1055,6 @@ namespace jh {
 
     JH_INLINE immutable_str::immutable_str(const char *str) {
         init_from_string(str);
-    }
-
-    JH_INLINE immutable_str::immutable_str(const std::string_view sv, std::mutex &mtx) {
-        std::lock_guard lock(mtx);
-        if (::strnlen(sv.data(), sv.size()) != sv.size()) {
-            throw std::logic_error(
-                    "jh::immutable_str does not support string views containing embedded null characters.");
-        }
-        init_from_string(sv.data(), sv.size());
     }
 
     JH_INLINE const char *immutable_str::c_str() const noexcept {

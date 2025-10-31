@@ -107,7 +107,7 @@
 
 #include "jh/conceptual/sequence.h"
 #include "jh/conceptual/iterator.h"
-#include "jh/utils/typed.h"
+#include "jh/typing/monostate.h"
 
 namespace jh::async {
 

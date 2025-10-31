@@ -2,9 +2,25 @@
 #include <catch2/catch_all.hpp>
 #include "jh/sim_pool.h"
 #include "jh/pool.h"
+#include "jh/macros/platform.h"
 #include <memory>
 #include <thread>
 #include <iostream>
+
+#if IS_WINDOWS
+#include <cstdlib>
+
+// Disable Windows UCRT debug heap in MSYS2 / MinGW-UCRT environment.
+// Prevents spurious heap corruption (0xC0000374) during multi-threaded tests.
+static struct DisableWinDebugHeap {
+    DisableWinDebugHeap() noexcept {
+        // Equivalent to: set _NO_DEBUG_HEAP=1
+        // Ensures the loader skips debug-heap instrumentation in UCRT.
+        ::putenv(const_cast<char*>("_NO_DEBUG_HEAP=1"));
+    }
+} _disable_debug_heap_guard;
+#endif
+
 
 namespace test {
     // 🎯 Test Object

@@ -150,7 +150,7 @@ namespace jh::concepts {
      */
     template<typename T>
     constexpr bool is_sequence = sequence<T>;
-}
+} // namespace jh::concepts
 
 namespace jh::ranges {
     template<typename Seq>
@@ -158,7 +158,7 @@ namespace jh::ranges {
 
     template<typename Seq>
     range_wrapper(Seq &&) -> range_wrapper<Seq>;
-}
+} // namespace jh::ranges
 
 namespace jh::concepts::detail {
     /**
@@ -257,7 +257,7 @@ namespace jh::concepts::detail {
             }
         }
     };
-}
+} // namespace jh::concepts::detail
 
 namespace jh {
     /**
@@ -290,7 +290,7 @@ namespace jh {
     decltype(auto) to_range(Seq &&s) {
         return concepts::detail::to_range_traits<Seq>::convert(std::forward<Seq>(s));
     }
-}
+} // namespace jh
 
 namespace jh::concepts {
     /**
@@ -322,6 +322,6 @@ namespace jh::concepts {
     using sequence_difference_t =
             std::ranges::range_difference_t<decltype(jh::to_range(std::declval<Seq &>()))>;
 
-} // namespace jh
+} // namespace jh::concepts
 
 #include "jh/ranges/range_wrapper.h"

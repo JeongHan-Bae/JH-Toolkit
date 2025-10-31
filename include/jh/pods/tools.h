@@ -47,7 +47,7 @@
 #pragma once
 
 #include "pod_like.h"
-#include "jh/utils/typed.h"
+#include "jh/typing/monostate.h"
 
 #ifdef JH_POD_STRUCT
 // User manually defined the macro before us — this is a hard conflict

@@ -238,7 +238,7 @@ namespace jh {
      */
     template<typename Container>
     struct iterator;
-}
+} // namespace jh
 
 namespace jh::concepts {
     /**
@@ -810,4 +810,4 @@ namespace jh::concepts {
      */
     template<typename Container>
     using iterator_t = typename detail::iterator_resolver<Container>::type;
-} // namespace jh
+} // namespace jh::concepts
