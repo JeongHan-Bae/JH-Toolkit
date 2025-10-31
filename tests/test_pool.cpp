@@ -16,7 +16,7 @@ static struct DisableWinDebugHeap {
     DisableWinDebugHeap() noexcept {
         // Equivalent to: set _NO_DEBUG_HEAP=1
         // Ensures the loader skips debug-heap instrumentation in UCRT.
-        std::putenv(const_cast<char*>("_NO_DEBUG_HEAP=1"));
+        ::putenv(const_cast<char*>("_NO_DEBUG_HEAP=1"));
     }
 } _disable_debug_heap_guard;
 #endif
