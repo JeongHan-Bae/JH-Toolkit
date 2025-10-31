@@ -109,7 +109,7 @@
 #include <ostream>
 #include <sstream>
 #include <iomanip>
-#include "jh/utils/typed.h"
+#include "jh/typing/monostate.h"
 #include "jh/utils/base64.h"
 #include "jh/macros/type_name.h"
 #include "jh/pods/array.h"

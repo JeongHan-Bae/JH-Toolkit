@@ -1,8 +1,10 @@
 #define CATCH_CONFIG_MAIN
 #include <random>
 #include <thread>
+#include <shared_mutex>
 #include <catch2/catch_all.hpp>
 #include "jh/immutable_str.h"
+#include "jh/typing/null_mutex.h"
 
 namespace test {
     using ImmutablePool = jh::pool<jh::immutable_str>;
@@ -144,6 +146,28 @@ TEST_CASE("Immutable String with Mutex-Protected std::string") {
     }
 }
 
+// ✅ No-op mutex string tests
+TEST_CASE("Immutable String with No-op Mutex std::string") {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<size_t> len_dist(5, 20);
+    constexpr int total_tests = 128;
+
+    for (int i = 0; i < total_tests; ++i) {
+        SECTION("No-op Mutex String Test " + std::to_string(i + 1)) {
+            std::string original = test::generate_random_string(len_dist(gen));
+
+            std::string base_string = original; // Create a base string in scope
+
+            const jh::atomic_str_ptr imm_str = jh::safe_from(base_string, jh::typed::null_mutex);
+            // string will be implicitly converted to string_view to create immutable_str
+
+            REQUIRE(imm_str->view() == original);
+            REQUIRE(imm_str->hash() == std::hash<std::string>{}(original));
+        }
+    }
+}
+
 // ✅ Mutex-protected string with different inputs
 TEST_CASE("Immutable String Mutex-Protected Mismatched") {
     std::random_device rd;
@@ -160,7 +184,7 @@ TEST_CASE("Immutable String Mutex-Protected Mismatched") {
                 str2 = test::generate_random_string(len_dist(gen));
             }
 
-            std::mutex str_mutex;
+            std::shared_mutex str_mutex;
             std::string_view sv1(str1);
             std::string_view sv2(str2);
 

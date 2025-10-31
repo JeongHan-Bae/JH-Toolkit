@@ -224,7 +224,7 @@
 #include <memory>
 #include "jh/conceptual/iterator.h"
 #include "jh/pods/pod_like.h"
-#include "jh/utils/typed.h"
+#include "jh/typing/monostate.h"
 
 namespace jh {
 

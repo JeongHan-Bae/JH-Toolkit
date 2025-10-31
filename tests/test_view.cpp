@@ -5,7 +5,7 @@
 #include <sstream>
 
 #include "jh/views.h"
-#include "jh/pod.h"
+#include "jh/pod"
 #include "jh/runtime_arr.h"
 
 // ------------------------------
