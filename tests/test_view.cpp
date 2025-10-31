@@ -15,33 +15,62 @@ namespace test {
 
     struct DummyIter {
         int i = 0;
+
         int operator*() const { return i; }
-        DummyIter& operator++() { ++i; return *this; }
-        DummyIter operator++(int) { auto tmp = *this; ++i; return tmp; }
-        bool operator==(const DummyIter& other) const { return i == other.i; }
+
+        DummyIter &operator++() {
+            ++i;
+            return *this;
+        }
+
+        DummyIter operator++(int) {
+            auto tmp = *this;
+            ++i;
+            return tmp;
+        }
+
+        bool operator==(const DummyIter &other) const { return i == other.i; }
     };
 
     struct MySeq {
         static DummyIter begin() { return DummyIter{0}; }
+
         static DummyIter end() { return DummyIter{5}; }
     };
 
     struct DummyWriteIter {
         int i = 0;
-        int* target = nullptr;
-        int& operator*() const noexcept { return *target; }
-        DummyWriteIter& operator++() noexcept { ++target; ++i; return *this; }
-        DummyWriteIter operator++(int) noexcept { auto tmp = *this; ++*this; return tmp; }
-        bool operator==(const DummyWriteIter& other) const noexcept { return target == other.target; }
+        int *target = nullptr;
+
+        int &operator*() const noexcept { return *target; }
+
+        DummyWriteIter &operator++() noexcept {
+            ++target;
+            ++i;
+            return *this;
+        }
+
+        DummyWriteIter operator++(int) noexcept {
+            auto tmp = *this;
+            ++*this;
+            return tmp;
+        }
+
+        bool operator==(const DummyWriteIter &other) const noexcept { return target == other.target; }
     };
 
     struct MyWritableSeq {
         int buf[5]{};
-        DummyWriteIter begin() { return {0, buf}; }
-        DummyWriteIter end() { return {5, buf + 5}; }
+
+        DummyWriteIter begin() noexcept { return {0, buf}; }
+
+        DummyWriteIter end() noexcept { return {5, buf + 5}; }
+
+        [[nodiscard]] DummyWriteIter begin() const noexcept { return {0, const_cast<int *>(buf)}; }
+
+        [[nodiscard]] DummyWriteIter end() const noexcept { return {5, const_cast<int *>(buf + 5)}; }
     };
 } // namespace test
-
 
 // =======================================================
 //  enumerate tests
@@ -53,7 +82,7 @@ TEST_CASE("enumerate read only seq", "[enumerate][ro]") {
 
     const MySeq s{};
     std::ostringstream out;
-    for (auto [i, x] : jh::views::enumerate(s, 100)) {
+    for (auto [i, x]: jh::views::enumerate(s, 100)) {
         out << i << ":" << x << " ";
     }
 
@@ -65,12 +94,12 @@ TEST_CASE("enumerate write then read", "[enumerate][rw]") {
     using test::MyWritableSeq;
 
     MyWritableSeq seq{};
-    for (auto [i, x] : jh::views::enumerate(seq, 100)) {
+    for (auto [i, x]: jh::views::enumerate(seq, 100)) {
         x = i * 10;
     }
 
     std::ostringstream out;
-    for (auto [i, x] : jh::views::enumerate(seq, 100)) {
+    for (auto [i, x]: jh::views::enumerate(seq, 100)) {
         out << i << ":" << x << " ";
     }
 
@@ -80,12 +109,12 @@ TEST_CASE("enumerate write then read", "[enumerate][rw]") {
 /// @brief test for immovable range
 TEST_CASE("enumerate immovable seq", "[enumerate][immov]") {
     jh::runtime_arr<int> arr{3};
-    for (auto [i, x] : jh::views::enumerate(arr, 0)) {
+    for (auto [i, x]: jh::views::enumerate(arr, 0)) {
         x = i + 1;
     }
 
     std::ostringstream out;
-    for (auto [i, x] : jh::views::enumerate(arr, 0)) {
+    for (auto [i, x]: jh::views::enumerate(arr, 0)) {
         out << i << ":" << x << " ";
     }
 
@@ -102,7 +131,7 @@ TEST_CASE("zip two seq", "[zip]") {
 
     const auto zipped = jh::views::zip(nums, words);
     std::size_t i = 0;
-    for (const auto& [a, b] : zipped) {
+    for (const auto &[a, b]: zipped) {
         REQUIRE(a == nums[i]);
         REQUIRE(b == words[i]);
         ++i;
@@ -115,10 +144,12 @@ TEST_CASE("zip trunc to shorter", "[zip][truncate]") {
     constexpr jh::pod::array<int, 3> b = {10, 20, 30};
 
     const auto zipped = jh::views::zip(a, b);
-    const std::vector<std::pair<int, int>> expect = {{1,10},{2,20},{3,30}};
+    const std::vector<std::pair<int, int>> expect = {{1, 10},
+                                                     {2, 20},
+                                                     {3, 30}};
 
     std::size_t i = 0;
-    for (auto p : zipped) {
+    for (auto p: zipped) {
         REQUIRE(p.get<0>() == expect[i].first);
         REQUIRE(p.get<1>() == expect[i].second);
         ++i;
@@ -137,7 +168,7 @@ TEST_CASE("zip multi trunc", "[zip][multi][truncate]") {
 
     std::vector<int> seen_idx;
     std::size_t i = 0;
-    for (auto [idx, n, w, d] : zipped) {
+    for (auto [idx, n, w, d]: zipped) {
         seen_idx.push_back(idx);
         REQUIRE(idx == static_cast<int>(i));
         REQUIRE(n == nums[i]);
@@ -149,4 +180,113 @@ TEST_CASE("zip multi trunc", "[zip][multi][truncate]") {
     REQUIRE(i == 3);
     REQUIRE(seen_idx.size() == 3);
     REQUIRE(seen_idx == std::vector<int>{0, 1, 2});
+}
+
+/// @brief Combined test for enumerate + zip adaptors using pipe syntax.
+/// @details
+/// Verifies that chained view adaptors correctly produce nested tuples:
+/// - `enumerate` yields `(index, element)`
+/// - `zip` packs multiple ranges into tuple-of-tuples
+TEST_CASE("enumerate and zip combined with pipes", "[enumerate][zip][pipe]") {
+    // ------------------------------------------------------
+    // Setup input sequences
+    // ------------------------------------------------------
+    jh::runtime_arr<int> numbers(5);
+    jh::runtime_arr<std::string> words(5);
+
+    // Initialize numbers: 10, 20, 30, 40, 50
+    for (auto [i, x]: numbers | jh::views::enumerate(1)) {
+        x = static_cast<int>(i * 10);
+    }
+
+    // Initialize words
+    words[0] = "ten";
+    words[1] = "twenty";
+    words[2] = "thirty";
+    words[3] = "forty";
+    words[4] = "fifty";
+
+    // ------------------------------------------------------
+    // Pipeline: enumerate + zip
+    // ------------------------------------------------------
+    std::ostringstream out;
+
+    // Note:
+    // `numbers | enumerate(100) | zip(words)` produces elements of type:
+    //   std::tuple< std::tuple<index, value>, word >
+    for (auto [pair, word]: numbers
+                            | jh::views::enumerate(100)
+                            | jh::views::zip(words)) {
+        auto [idx, num] = pair;
+        out << "(" << idx << "," << num << "," << word << ") ";
+    }
+
+    REQUIRE(out.str() ==
+            "(100,10,ten) (101,20,twenty) (102,30,thirty) (103,40,forty) (104,50,fifty) ");
+
+    // ------------------------------------------------------
+    // Direct chained adaptors (non-pipe)
+    // ------------------------------------------------------
+    // Equivalent structure: zip( enumerate(numbers, 200), words )
+    const auto combined = jh::views::zip(
+            jh::views::enumerate(numbers, 200),
+            words
+    );
+
+    std::ostringstream out2;
+    for (auto [pair, word]: combined) {
+        auto [idx, num] = pair;
+        out2 << "[" << idx << ":" << num << ":" << word << "] ";
+    }
+
+    REQUIRE(out2.str() ==
+            "[200:10:ten] [201:20:twenty] [202:30:thirty] [203:40:forty] [204:50:fifty] ");
+}
+
+/// @brief Complex pipeline test: zip with four sequences of different lengths.
+/// @details
+/// Demonstrates correct short-circuiting and structured binding when
+/// combining multiple adaptors with different container lengths.
+/// The resulting range should terminate at the shortest underlying range.
+TEST_CASE("zip multiple sequences with pipes", "[zip][pipe][multi]") {
+    // ------------------------------------------------------
+    // Setup input sequences
+    // ------------------------------------------------------
+    jh::runtime_arr<int> ids(5);
+    jh::runtime_arr<std::string> words(4);
+    std::vector<double> prices = {1.1, 2.2, 3.3};
+    std::vector<char> grades = {'A', 'B', 'C', 'D', 'E'};
+
+    // Fill ids: 10, 20, 30, 40, 50
+    for (auto [i, x]: ids | jh::views::enumerate(1)) {
+        x = static_cast<int>(i * 10);
+    }
+
+    // Fill words
+    words[0] = "apple";
+    words[1] = "banana";
+    words[2] = "carrot";
+    words[3] = "durian";
+
+    // ------------------------------------------------------
+    // Pipeline composition:
+    // ids | enumerate(100) | zip(words, prices, grades)
+    // ------------------------------------------------------
+    std::ostringstream out;
+
+    for (auto [pair, word, price, grade] :
+            ids
+            | jh::views::enumerate(100)
+            | jh::views::zip_pipe(words, prices, grades)) {
+        auto [idx, id] = pair;
+        out << "(" << idx << "," << id << "," << word
+            << "," << price << "," << grade << ") ";
+    }
+
+    // The shortest input is `prices` (3 elements)
+    // → only 3 iterations expected.
+    REQUIRE(out.str() ==
+            "(100,10,apple,1.1,A) "
+            "(101,20,banana,2.2,B) "
+            "(102,30,carrot,3.3,C) ");
 }

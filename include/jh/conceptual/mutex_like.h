@@ -284,7 +284,7 @@ namespace jh::concepts {
     mutex_like<M> &&
     (recursive_registry<std::remove_cvref_t<M>>::value || requires {
         typename M::is_recursive_tag;
-        std::convertible_to<typename M::is_recursive_tag, std::true_type>;
+        requires std::convertible_to<typename M::is_recursive_tag, std::true_type>;
     });
 
     /**
@@ -305,7 +305,7 @@ namespace jh::concepts {
     mutex_like<M> &&
     (reentrant_registry<std::remove_cvref_t<M>>::value || requires {
         typename M::is_reentrant_tag;
-        std::convertible_to<typename M::is_reentrant_tag, std::true_type>;
+        requires std::convertible_to<typename M::is_reentrant_tag, std::true_type>;
     });
 
     /**

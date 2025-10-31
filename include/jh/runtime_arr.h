@@ -224,7 +224,7 @@
 #include <memory>
 #include "jh/conceptual/iterator.h"
 #include "jh/pods/pod_like.h"
-#include "jh/typing/monostate.h"
+#include "jh/utils/typed.h"
 
 namespace jh {
 
@@ -1619,7 +1619,7 @@ namespace jh {
          *   <li>Equivalent to <code>std::fill(begin(), end(), false)</code> but significantly faster.</li>
          * </ul>
          */
-        [[gnu::used]] inline void reset_all() noexcept;
+        [[gnu::used]] void reset_all() noexcept;
 
         /**
          * @brief Move constructor — transfers ownership of the bit-packed buffer.
