@@ -24,11 +24,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Dependencies (no man-db)
+      - name: Fast Install Dependencies (no man-db)
         run: |
-          sudo apt-get update
+          sudo apt-get update -qq
+          sudo apt-get remove -y man-db || true
+          echo "man-db hold" | sudo dpkg --set-selections
           sudo apt-get install -y --no-install-recommends eatmydata
-          sudo eatmydata apt-get install -y ninja-build g++ cmake
+          sudo eatmydata apt-get install -y --no-install-recommends ninja-build g++ cmake
 
       - name: Configure (FastDebug)
         run: cmake -B build-fastdebug -DCMAKE_BUILD_TYPE=FastDebug -G Ninja
