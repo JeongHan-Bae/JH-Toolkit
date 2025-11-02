@@ -108,7 +108,8 @@ TEST_CASE("enumerate write then read", "[enumerate][rw]") {
 
 /// @brief test for immovable range
 TEST_CASE("enumerate immovable seq", "[enumerate][immov]") {
-    jh::runtime_arr<int> arr{3};
+    jh::runtime_arr<int> arr(3);
+    REQUIRE(arr.size() == 3);
     for (auto [i, x]: jh::views::enumerate(arr, 0)) {
         x = i + 1;
     }
