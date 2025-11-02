@@ -999,3 +999,30 @@ TEST_CASE("bitflags native type operator return types are self type") {
         STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<64>>()), bitflags<64>>);
     }
 }
+
+TEST_CASE("pod::string_view explicit conversion and to_std() behave identically") {
+    using jh::pod::string_view;
+
+    static constexpr char raw[] = "conversion_test";
+    constexpr std::uint64_t len = sizeof(raw) - 1;
+    const string_view sv{raw, len};
+
+    const std::string_view a = static_cast<std::string_view>(sv); // explicit conversion
+    const std::string_view b = sv.to_std();                        // to_std() method
+
+    SECTION("Data pointer and size must match") {
+        REQUIRE(a.data() == b.data());
+        REQUIRE(a.size() == b.size());
+    }
+
+    SECTION("Content equality check") {
+        REQUIRE(a == b);
+        REQUIRE(a == "conversion_test");
+    }
+
+    SECTION("Both produce same hash via std::hash") {
+        const auto ha = std::hash<std::string_view>{}(a);
+        const auto hb = std::hash<std::string_view>{}(b);
+        REQUIRE(ha == hb);
+    }
+}

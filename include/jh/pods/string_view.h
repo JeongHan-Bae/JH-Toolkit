@@ -39,9 +39,12 @@
 #pragma once
 
 #include <cstdint>
-#include <cstring> // for memcmp, memcpy
+#include <cstring>      // for memcmp, memcpy
+#include <string_view>  // for std::string_view interoperability
 #include <type_traits>
+#include <cstddef>
 
+#include "jh/pods/pod_like.h"
 #include "jh/utils/hash_fn.h"
 
 namespace jh::pod {
@@ -148,7 +151,17 @@ namespace jh::pod {
          * @return <code>true</code> if contents are equal, <code>false</code> otherwise.
          */
         constexpr bool operator==(const string_view &rhs) const noexcept {
-            return len == rhs.len && std::memcmp(data, rhs.data, len) == 0;
+            if (len != rhs.len)
+                return false;
+
+            if (std::is_constant_evaluated()) {
+                for (std::uint64_t i = 0; i < len; ++i)
+                    if (data[i] != rhs.data[i])
+                        return false;
+                return true;
+            } else {
+                return std::memcmp(data, rhs.data, len) == 0;
+            }
         }
 
         /**
@@ -170,6 +183,7 @@ namespace jh::pod {
             const std::uint64_t real_len = length == 0 || length > remaining ? remaining : length;
             return {data + offset, real_len};
         }
+
         /**
          * @brief Lexical comparison (similar to <code>strcmp()</code>).
          * @return <code>&lt;0</code> if <tt>this &lt; rhs</tt>,
@@ -259,5 +273,50 @@ namespace jh::pod {
             std::memcpy(buffer, data, n);
             buffer[n] = '\0';
         }
+
+        /**
+         * @brief Explicit conversion to <code>std::string_view</code>.
+         *
+         * Provides safe, zero-overhead interoperability with the standard library.
+         * This conversion preserves both pointer and length semantics without
+         * affecting POD compatibility.
+         *
+         * <p>
+         * <b>Semantics:</b>
+         * </p>
+         * <ul>
+         *   <li>Conversion is <b>explicit</b> — requires <code>static_cast</code> or brace-init form.</li>
+         *   <li>Performs no allocation or copy; simply wraps existing data.</li>
+         *   <li>Pointer and size are preserved exactly (1:1 mapping).</li>
+         * </ul>
+         *
+         * @note Explicit to avoid unintended implicit conversions in overload resolution.
+         *       See also: <code>to_std()</code> for named equivalent.
+         */
+        explicit constexpr operator std::string_view() const noexcept {
+            return {data, static_cast<std::size_t>(len)};
+        }
+
+        /**
+         * @brief Named conversion helper to obtain a <code>std::string_view</code>.
+         *
+         * Functionally identical to <code>explicit operator std::string_view()</code>,
+         * but callable in normal expressions without <code>static_cast</code>.
+         *
+         * <p>
+         * <b>Use cases:</b>
+         * </p>
+         * <ul>
+         *   <li>Improves readability in non-template or mixed API contexts.</li>
+         *   <li>Convenient when passing to standard library functions expecting <code>std::string_view</code>.</li>
+         * </ul>
+         *
+         * @see operator std::string_view()
+         */
+        [[nodiscard]] constexpr std::string_view to_std() const noexcept {
+            return {data, static_cast<std::size_t>(len)};
+        }
     };
 } // namespace jh::pod
+
+static_assert(jh::pod::pod_like<jh::pod::string_view>);
