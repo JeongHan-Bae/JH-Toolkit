@@ -17,27 +17,39 @@
  */
 /**
  * @file string_view.h (pods)
- * @brief POD-safe <code>string_view</code> with deep comparison and constexpr hashing.
+ * @brief POD-safe <code>string_view</code> with full <code>constexpr</code> semantics and consteval/runtime dual-path optimization.
  *
- * This is a lightweight, read-only, non-owning view of immutable strings,
- * conceptually similar to <code>std::string_view</code> but restricted
- * to POD-compatible usage.
+ * This header defines a lightweight, read-only, non-owning string view
+ * specifically designed for <b>POD-compatible</b> use cases, offering
+ * <code>constexpr</code> evaluation and optimized runtime behavior.
  *
- * <h3>Notes:</h3>
+ * <h3>Highlights:</h3>
  * <ul>
- *   <li>POD layout (<code>const char* + uint64_t</code>)</li>
- *   <li><b>Deep equality</b> via <code>memcmp</code> (not pointer identity)</li>
- *   <li><b>Constexpr/consteval hash</b> supported (unlike <code>bytes_view</code>)</li>
- *   <li>Designed as a safe view for <code>immutable_str</code> and POD containers</li>
+ *   <li><b>POD layout</b>: strictly <code>{ const char*, uint64_t }</code></li>
+ *   <li><b>All operations constexpr</b>: usable in both compile-time (<code>consteval</code>) and runtime contexts</li>
+ *   <li><b>Dual-path design</b>:
+ *       <ul>
+ *         <li>Constexpr-safe logic for compile-time evaluation</li>
+ *         <li>Accelerated runtime path using <code>memcmp</code> / <code>memcpy</code></li>
+ *       </ul>
+ *   </li>
+ *   <li><b>Deep comparison</b> via <code>memcmp</code>, not pointer identity</li>
+ *   <li><b>Constexpr hash</b> supported — usable in <code>consteval</code> expressions</li>
+ *   <li>Designed as a safe view type for <code>immutable_str</code> and POD containers</li>
  * </ul>
  *
- * @note Unlike <code>bytes_view</code>, its <code>hash()</code> is constexpr-safe,
- *       enabling compile-time usage such as <code>str_template::cstr</code>.
+ * <h3>Usage Notes:</h3>
+ * <ul>
+ *   <li>Provides zero-overhead interop with <code>std::string_view</code></li>
+ *   <li>Supports compile-time construction via <code>from_literal()</code> or <code>"..."_psv</code></li>
+ *   <li>No dynamic allocation, no exceptions, fully constexpr evaluable</li>
+ *   <li>Enables compile-time hashing (e.g., <code>str_template::cstr</code>)</li>
+ * </ul>
  */
-
 
 #pragma once
 
+#include <compare>
 #include <cstdint>
 #include <cstring>      // for memcmp, memcpy
 #include <string_view>  // for std::string_view interoperability
@@ -178,7 +190,7 @@ namespace jh::pod {
          */
         [[nodiscard]] constexpr string_view sub(const std::uint64_t offset,
                                                 const std::uint64_t length = 0) const noexcept {
-            if (offset > len) return {nullptr, 0}; // out-of-range → empty
+            if (offset > len) return {nullptr, 0}; // out-of-range -> empty
             const std::uint64_t remaining = len - offset;
             const std::uint64_t real_len = length == 0 || length > remaining ? remaining : length;
             return {data + offset, real_len};
@@ -210,14 +222,39 @@ namespace jh::pod {
         }
 
         /// @brief Check whether this view starts with the given <code>prefix</code>.
-        [[nodiscard]] bool starts_with(const string_view &prefix) const noexcept {
-            return len >= prefix.len && std::memcmp(data, prefix.data, prefix.len) == 0;
+        [[nodiscard]] constexpr bool starts_with(const string_view &prefix) const noexcept {
+            if (prefix.len > len)
+                return false;
+
+            if (std::is_constant_evaluated()) {
+                // constexpr path
+                for (std::uint64_t i = 0; i < prefix.len; ++i)
+                    if (data[i] != prefix.data[i])
+                        return false;
+                return true;
+            } else {
+                // runtime path
+                return std::memcmp(data, prefix.data, prefix.len) == 0;
+            }
         }
 
         /// @brief Check whether this view ends with the given <code>suffix</code>.
-        [[nodiscard]] bool ends_with(const string_view &suffix) const noexcept {
-            return len >= suffix.len &&
-                   std::memcmp(data + (len - suffix.len), suffix.data, suffix.len) == 0;
+        [[nodiscard]] constexpr bool ends_with(const string_view &suffix) const noexcept {
+            if (suffix.len > len)
+                return false;
+
+            const std::uint64_t offset = len - suffix.len;
+
+            if (std::is_constant_evaluated()) {
+                // constexpr path
+                for (std::uint64_t i = 0; i < suffix.len; ++i)
+                    if (data[offset + i] != suffix.data[i])
+                        return false;
+                return true;
+            } else {
+                // runtime path
+                return std::memcmp(data + offset, suffix.data, suffix.len) == 0;
+            }
         }
 
         /**
@@ -226,7 +263,7 @@ namespace jh::pod {
          * @param ch Target character to search for.
          * @return Offset index if found, or <code>-1</code> (as <code>uint64_t</code>) if not found.
          */
-        [[nodiscard]] std::uint64_t find(const char ch) const noexcept {
+        [[nodiscard]] constexpr std::uint64_t find(const char ch) const noexcept {
             for (std::uint64_t i = 0; i < len; ++i)
                 if (data[i] == ch) return i;
             return static_cast<std::uint64_t>(-1); // not found
@@ -316,7 +353,72 @@ namespace jh::pod {
         [[nodiscard]] constexpr std::string_view to_std() const noexcept {
             return {data, static_cast<std::size_t>(len)};
         }
+
+        /**
+         * @brief Three-way comparison operator (spaceship operator).
+         *
+         * Performs a <b>lexicographical three-way comparison</b> between two
+         * <code>string_view</code> instances, returning a value of type
+         * <code>std::strong_ordering</code>.
+         *
+         * <h4>Semantics:</h4>
+         * <ul>
+         *   <li>Returns <code>std::strong_ordering::less</code>  if <tt>*this &lt; rhs</tt></li>
+         *   <li>Returns <code>std::strong_ordering::equal</code> if <tt>*this == rhs</tt></li>
+         *   <li>Returns <code>std::strong_ordering::greater</code> if <tt>*this &gt; rhs</tt></li>
+         * </ul>
+         *
+         * The comparison is implemented in terms of <code>compare()</code>,
+         * and therefore follows identical lexicographic ordering rules.
+         * This ensures <b>bitwise consistency</b> between <code>compare()</code>,
+         * <code>operator==</code>, and all derived relational operators.
+         *
+         * <h4>Properties:</h4>
+         * <ul>
+         *   <li>Guaranteed <b>constexpr</b> and <b>noexcept</b>.</li>
+         *   <li>Implements a <b>strict total ordering</b> (same as <code>std::string_view</code>).</li>
+         *   <li>Automatically enables all relational operators
+         *       (<code>&lt;, &lt;=, &gt;, &gt;=</code>) via the compiler.</li>
+         * </ul>
+         *
+         * @param rhs The right-hand side <code>string_view</code> to compare against.
+         * @return <code>std::strong_ordering</code> value indicating the lexicographic relation.
+         *
+         * @see compare()
+         * @see operator==()
+         */
+        constexpr std::strong_ordering operator<=>(const string_view &rhs) const noexcept {
+            const int cmp = compare(rhs);
+            if (cmp < 0) return std::strong_ordering::less;
+            if (cmp > 0) return std::strong_ordering::greater;
+            return std::strong_ordering::equal;
+        }
     };
 } // namespace jh::pod
 
 static_assert(jh::pod::pod_like<jh::pod::string_view>);
+
+namespace jh::pod::literals {
+
+    /**
+     * @brief User-defined literal for <code>jh::pod::string_view</code>.
+     *
+     * Converts a string literal to a lightweight, POD-safe string_view.
+     *
+     * Example:
+     * @code
+     * using namespace jh::pod::literals;
+     * constexpr auto s = "hello"_psv;
+     * static_assert(s.size() == 5);
+     * @endcode
+     *
+     * This is the only fully standard, portable, and safe form.
+     * The literal's storage is static by definition,
+     * so the resulting view never dangles.
+     */
+    [[nodiscard]] constexpr jh::pod::string_view
+    operator ""_psv(const char *str, std::size_t len) noexcept {
+        return {str, static_cast<std::uint64_t>(len)};
+    }
+
+} // namespace jh::pod::literals

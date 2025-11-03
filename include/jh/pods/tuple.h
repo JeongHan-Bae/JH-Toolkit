@@ -150,7 +150,7 @@ namespace jh::pod {
         };
 
         template<std::size_t I, typename IndexSeq, typename... Ts>
-        decltype(auto) get(tuple_impl<IndexSeq, Ts...> &t) noexcept {
+        constexpr decltype(auto) get(tuple_impl<IndexSeq, Ts...> &t) noexcept {
             if constexpr (I == 0)
                 return (t.field.value);
             else
@@ -158,7 +158,7 @@ namespace jh::pod {
         }
 
         template<std::size_t I, typename IndexSeq, typename... Ts>
-        auto get(const tuple_impl<IndexSeq, Ts...> &t) noexcept {
+        constexpr auto get(const tuple_impl<IndexSeq, Ts...> &t) noexcept {
             if constexpr (I == 0)
                 return t.field.value; // copy elision
             else
@@ -198,12 +198,12 @@ namespace jh::pod {
     };
 
     template<std::size_t I, typename... Ts>
-    decltype(auto) get(tuple<Ts...> &t) noexcept {
+    constexpr decltype(auto) get(tuple<Ts...> &t) noexcept {
         return get<I>(static_cast<detail::tuple_impl<std::index_sequence_for<Ts...>, Ts...> &>(t));
     }
 
     template<std::size_t I, typename... Ts>
-    auto get(const tuple<Ts...> &t) noexcept {
+    constexpr auto get(const tuple<Ts...> &t) noexcept {
         return get<I>(static_cast<const detail::tuple_impl<std::index_sequence_for<Ts...>, Ts...> &>(t));
     }
 
@@ -295,7 +295,8 @@ namespace jh::pod {
      *
      * @see jh::pod::tuple
      */
-    template <jh::pod::cv_free_pod_like... Ts>
+    template <typename... Ts>
+    requires (jh::pod::cv_free_pod_like<std::decay_t<Ts>> && ...)
     constexpr auto make_tuple([[maybe_unused]] Ts&&... args) noexcept {
         using tuple_t = tuple<std::decay_t<Ts>...>;
         tuple_t t{};

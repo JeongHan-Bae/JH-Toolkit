@@ -18,8 +18,6 @@
 /**
  * @file pool.h
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- * @brief Duck-typed extension of <code>jh::sim_pool</code> — automatic hash and equality inference for immutable objects.
- *
  * @brief Duck-typed adapter of <code>jh::sim_pool</code> — content-based pooling for immutable types.
  *
  * <h3>Overview</h3>

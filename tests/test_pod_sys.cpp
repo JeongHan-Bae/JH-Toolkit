@@ -30,7 +30,8 @@ namespace test {
 }
 
 // ✅ Recognizing JH PODS
-TEST_CASE("JH PODS Recognition") {
+TEST_CASE("JH PODS Recognition And Static Checks") {
+    using namespace jh::pod::literals;
     STATIC_REQUIRE(pod::pod_like<pod::array<int, 128>>);
     STATIC_REQUIRE(pod::pod_like<pod::pair<int, float>>);
     STATIC_REQUIRE(pod::pod_like<pod::array<pod::pair<int, float>, 128>>);
@@ -59,6 +60,41 @@ TEST_CASE("JH PODS Recognition") {
     STATIC_REQUIRE(std::is_same_v<jh::pod::pair<int, double>::first_type, int>);
     STATIC_REQUIRE(std::is_same_v<jh::pod::pair<int, double>::second_type, double>);
     STATIC_REQUIRE(std::is_same_v<jh::pod::span<int>::element_type, int>);
+    STATIC_REQUIRE(jh::pod::string_view::from_literal("hello") == "hello"_psv);
+    STATIC_REQUIRE(""_psv.empty());
+    STATIC_REQUIRE("hello"_psv.size() == 5);
+    STATIC_REQUIRE("hello"_psv.begin()[0] == 'h');
+    STATIC_REQUIRE("hello"_psv.end()[-1] == 'o');
+    constexpr auto hw = "hello_world"_psv;
+    constexpr auto pre = "hello"_psv;
+    constexpr auto suf = "world"_psv;
+    constexpr auto mid = "ello_w"_psv;
+    STATIC_REQUIRE(hw.starts_with(pre));
+    STATIC_REQUIRE(hw.ends_with(suf));
+    STATIC_REQUIRE(!hw.starts_with("holla"_psv));
+    STATIC_REQUIRE(!hw.ends_with("wurld"_psv));
+    STATIC_REQUIRE(hw.sub(1, 6) == mid);
+    STATIC_REQUIRE("abc"_psv.compare("abc"_psv) == 0);
+    STATIC_REQUIRE("abc"_psv.compare("abd"_psv) < 0);
+    STATIC_REQUIRE("abd"_psv.compare("abc"_psv) > 0);
+    STATIC_REQUIRE("abc"_psv.hash() == "abc"_psv.hash());
+    STATIC_REQUIRE("abc"_psv.hash() != "xyz"_psv.hash());
+    constexpr auto s = "podsystem"_psv;
+    STATIC_REQUIRE(s.sub(0, 3) == "pod"_psv);
+    STATIC_REQUIRE(s.find('s') == 3);
+    STATIC_REQUIRE(s.find('x') == static_cast<std::uint64_t>(-1));
+    constexpr auto a = "abc"_psv;
+    constexpr auto b = "abd"_psv;
+    constexpr auto c = "abc"_psv;
+    STATIC_REQUIRE((a <=> b) == std::strong_ordering::less);
+    STATIC_REQUIRE((b <=> a) == std::strong_ordering::greater);
+    STATIC_REQUIRE((a <=> c) == std::strong_ordering::equal);
+    STATIC_REQUIRE(a < b);
+    STATIC_REQUIRE(b > a);
+    STATIC_REQUIRE(!(a > b));
+    STATIC_REQUIRE(a == c);
+    STATIC_REQUIRE(a <= c);
+    STATIC_REQUIRE(a >= c);
 }
 
 TEST_CASE("JH_POD_STRUCT generated struct is pod_like") {
@@ -630,6 +666,42 @@ TEST_CASE("pod::string_view basic usage", "[string_view]") {
         sv.copy_to(buffer, sizeof(buffer));
         REQUIRE(std::strcmp(buffer, "hello_pod_world") == 0);
     }
+    SECTION("Three-way comparison and compare() consistency") {
+        using namespace std;
+        string_view a{"abc", 3};
+        string_view b{"abd", 3};
+        string_view c{"abc", 3};
+
+        REQUIRE(a.compare(b) < 0);
+        REQUIRE(b.compare(a) > 0);
+        REQUIRE(a.compare(c) == 0);
+
+        auto ab = (a <=> b);
+        auto ba = (b <=> a);
+        auto ac = (a <=> c);
+
+        REQUIRE(ab == strong_ordering::less);
+        REQUIRE(ba == strong_ordering::greater);
+        REQUIRE(ac == strong_ordering::equal);
+
+        auto cmp_to_order = [](int cmp) {
+            if (cmp < 0) return strong_ordering::less;
+            if (cmp > 0) return strong_ordering::greater;
+            return strong_ordering::equal;
+        };
+
+        REQUIRE((a <=> b) == cmp_to_order(a.compare(b)));
+        REQUIRE((b <=> a) == cmp_to_order(b.compare(a)));
+        REQUIRE((a <=> c) == cmp_to_order(a.compare(c)));
+
+        REQUIRE(a < b);
+        REQUIRE(b > a);
+        REQUIRE(!(a > b));
+        REQUIRE(a == c);
+        REQUIRE(a <= c);
+        REQUIRE(a >= c);
+    }
+
 }
 
 TEST_CASE("string_view from_literal correctness") {
@@ -1024,5 +1096,72 @@ TEST_CASE("pod::string_view explicit conversion and to_std() behave identically"
         const auto ha = std::hash<std::string_view>{}(a);
         const auto hb = std::hash<std::string_view>{}(b);
         REQUIRE(ha == hb);
+    }
+}
+
+namespace test{
+    consteval auto f() {
+        constexpr auto t = jh::pod::make_tuple(1, 2, 3);
+        return get<0>(t) + get<1>(t) + get<2>(t);
+    }
+}
+
+TEST_CASE("pod::tuple constexpr and compile-time semantics") {
+    using jh::pod::tuple;
+    using jh::pod::make_tuple;
+    using jh::pod::get;
+
+    // ✅ 1. constexpr make_tuple + get
+    {
+        constexpr auto t = make_tuple(10, 2.5, true);
+        static_assert(get<0>(t) == 10);
+        static_assert(get<1>(t) == 2.5);
+        static_assert(get<2>(t) == true);
+        static_assert(t == make_tuple(10, 2.5, true));
+        static_assert(t != make_tuple(11, 2.5, true));
+    }
+
+    // ✅ 2. consteval path (stronger than constexpr)
+    {
+        static_assert(test::f() == 6);
+    }
+
+    // ✅ 3. nested tuple and structured comparison
+    {
+        constexpr auto inner = make_tuple(1, 2);
+        constexpr auto outer = make_tuple(inner, 3);
+        static_assert(get<0>(outer) == inner);
+        static_assert(get<1>(outer) == 3);
+    }
+
+    // ✅ 4. tuple of POD types with manual nested braces (aggregate form)
+    {
+        constexpr tuple<int, float> t1{{ {7}, {{3.14f}, {}} }};
+        constexpr auto t2 = make_tuple(7, 3.14f);
+        static_assert(t1 == t2);
+    }
+
+    // ✅ 5. tuple triviality and POD traits
+    {
+        static_assert(std::is_trivial_v<tuple<int, double>>);
+        static_assert(std::is_standard_layout_v<tuple<int, double>>);
+        static_assert(pod::pod_like<tuple<int, double>>);
+    }
+
+    // ✅ 6. constexpr operator== and != coverage
+    {
+        constexpr auto a = make_tuple(1, 2);
+        constexpr auto b = make_tuple(1, 2);
+        constexpr auto c = make_tuple(1, 3);
+        static_assert(a == b);
+        static_assert(a != c);
+    }
+
+    // ✅ 7. compile-time nested get recursion test
+    {
+        constexpr auto t = make_tuple(make_tuple(1, 2), 3);
+        static_assert(get<1>(t) == 3);
+        static_assert(get<0>(get<0>(t)) == 1);
+        static_assert(get<1>(get<0>(t)) == 2);
     }
 }
