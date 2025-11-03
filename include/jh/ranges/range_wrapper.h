@@ -143,6 +143,18 @@ namespace jh::ranges {
                 return !(a == b);
             }
 
+            // ---- Self comparison (iterator vs iterator) ----
+            friend constexpr bool operator==(const completed_iterator &a, const completed_iterator &b)
+            noexcept(noexcept(static_cast<const Inner &>(a) == static_cast<const Inner &>(b)))requires requires(
+                    const Inner &x, const Inner &y) { x == y; } {
+                return static_cast<const Inner &>(a) == static_cast<const Inner &>(b);
+            }
+
+            friend constexpr bool operator!=(const completed_iterator &a, const completed_iterator &b)
+            noexcept(noexcept(!(a == b)))requires requires(const Inner &x, const Inner &y) { x == y; } {
+                return !(a == b);
+            }
+
             // move
             constexpr completed_iterator(
                     completed_iterator &&) noexcept(std::is_nothrow_move_constructible_v<Inner>) = default;
@@ -298,6 +310,12 @@ namespace jh::ranges {
      * it defines STL-compatible iterator traits.
      *
      * @tparam Seq Sequence-like type satisfying <code>jh::concepts::sequence</code>.
+     *
+     * @note
+     * If the sequence's <code>begin()</code> and <code>end()</code> types are identical,
+     * the wrapper transparently returns a <code>completed_iterator</code> for both.
+     * This allows the resulting view to model <code>std::ranges::common_range</code>,
+     * enabling tighter interoperability with standard range algorithms.
      */
     template<typename Seq>
     class range_wrapper : public std::ranges::view_interface<range_wrapper<Seq>> {
@@ -317,7 +335,12 @@ namespace jh::ranges {
 
         auto begin() noexcept(noexcept(get().begin())) { return iterator(get().begin()); }
 
-        auto end() noexcept(noexcept(get().end())) { return get().end(); }
+        auto end() noexcept(noexcept(get().end())) {
+            if constexpr (std::same_as<inner_iterator, sentinel>)
+                return iterator(get().end());
+            else
+                return get().end();
+        }
 
     private:
         static auto wrap(auto &&v) {

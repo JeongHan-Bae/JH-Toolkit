@@ -462,9 +462,15 @@ namespace jh::ranges {
          * reaches its corresponding end sentinel.
          */
         constexpr auto end() {
-            return zip_sentinel{
-                    tuple_transform([](auto &v) { return std::ranges::end(v); }, bases)
-            };
+            if constexpr ((std::ranges::common_range<Views> && ...)) {
+                return zip_iterator{
+                        tuple_transform([](auto &v) { return std::ranges::end(v); }, bases)
+                };
+            } else {
+                return zip_sentinel{
+                        tuple_transform([](auto &v) { return std::ranges::end(v); }, bases)
+                };
+            }
         }
 
         /**
