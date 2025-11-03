@@ -385,3 +385,28 @@ TEST_CASE("pool multithreading with storing shared_ptr") {
         }
     }
 }
+
+/// ⚠️ Note:
+/// std::string itself is *not* an immutable type — its internal buffer may change.
+/// This test only demonstrates that it *can* be pooled because it satisfies
+/// std::hash<std::string> and operator==.
+/// For stable, non-static, content-based pooling, use jh::pool&lt;jh::immutable_str&gt; instead.
+TEST_CASE("pool with std::string") {
+    jh::pool<std::string> pool;
+
+    auto hello1 = pool.acquire("hello");
+    auto hello2 = pool.acquire("hello");
+    auto world  = pool.acquire("world");
+
+    REQUIRE(hello1 == hello2);   // 🎯 identical strings should be reused
+    REQUIRE(hello1 != world);    // 🎯 distinct strings should not be reused
+    REQUIRE(pool.size() == 2);   // 🎯 only two unique entries in the pool
+
+    hello1.reset();
+    hello2.reset();
+    world.reset();
+
+    REQUIRE(pool.size() == 2);   // 🎯 expired entries remain until cleanup
+    pool.cleanup();
+    REQUIRE(pool.size() == 0);   // 🎯 after cleanup, pool becomes empty
+}

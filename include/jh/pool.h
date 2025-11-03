@@ -20,89 +20,89 @@
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief Duck-typed extension of <code>jh::sim_pool</code> — automatic hash and equality inference for immutable objects.
  *
+ * @brief Duck-typed adapter of <code>jh::sim_pool</code> — content-based pooling for immutable types.
+ *
  * <h3>Overview</h3>
  * <p>
- * <code>jh::pool&lt;T&gt;</code> is a lightweight, duck-typed wrapper around
- * <code>jh::sim_pool&lt;T, Hash, Eq&gt;</code>, designed for types that expose
- * both a <code>hash()</code> method and an equality operator.
- * It automatically infers hashing and equality behavior, eliminating the need
- * to manually register <code>Hash</code> and <code>Eq</code> functors.
+ * <code>jh::pool&lt;T&gt;</code> provides an automatic, duck-typed wrapper over
+ * <code>jh::sim_pool&lt;T, Hash, Eq&gt;</code>. It infers hashing and equality
+ * policies for any type <code>T</code> that exposes a valid <code>hash()</code>
+ * (directly or via <code>jh::hash&lt;T&gt;</code>) and <code>operator==</code>.
+ * This enables transparent deduplication of shared, immutable objects without
+ * manually specifying <code>Hash</code> or <code>Eq</code> functors.
  * </p>
  *
+ * <h3>Automatic Type Deduction</h3>
  * <p>
- * This specialization enables transparent, content-based deduplication of
- * shared immutable or <em>structurally immutable</em> objects while preserving
- * all behavioral guarantees and thread-safety mechanisms of <code>jh::sim_pool</code>.
- * </p>
- *
- * <h4>Automatic Type Deduction</h4>
- * <p>
- * For any type <code>T</code> that satisfies both:
+ * For any <code>T</code> satisfying:
  * </p>
  * <ul>
- *   <li><code>std::uint64_t hash() const noexcept</code></li>
- *   <li><code>bool operator==(const T&amp;) const noexcept</code></li>
+ *   <li><code>jh::concepts::extended_hashable&lt;T&gt;</code></li>
+ *   <li><code>jh::has_equal&lt;T&gt;</code></li>
  * </ul>
  * <p>
- * <code>jh::pool&lt;T&gt;</code> automatically applies
+ * the specialization
+ * <code>jh::pool&lt;T&gt;</code> internally binds
  * <code>jh::weak_ptr_hash&lt;T&gt;</code> and
- * <code>jh::weak_ptr_eq&lt;T&gt;</code> internally,
- * enabling seamless pooling of semantically identical instances without
- * requiring external hash or equality registration.
+ * <code>jh::weak_ptr_eq&lt;T&gt;</code>,
+ * providing consistent content-based identity semantics for pooled objects.
  * </p>
  *
- * <h4>Type Requirements</h4>
+ * <h3>Supported Hash Mechanisms</h3>
+ * <p>
+ * From version <b>1.3.5</b> onward, <code>jh::pool</code> supports full
+ * <em>duck-typed hash deduction</em> through <code>jh::hash&lt;T&gt;</code>.
+ * Hashes are resolved in the following order:
+ * </p>
+ * <pre><tt>
+ * std::hash&lt;T&gt;{ }(v)
+ *   > hash(v)
+ *   > v.hash()
+ * </tt></pre>
+ * <p>
+ * This makes <code>jh::pool</code> compatible with standard, ADL, and
+ * member-based hashing without requiring explicit specialization.
+ * </p>
+ *
+ * <h3>Requirements</h3>
  * <ul>
- *   <li>Objects must be <strong>immutable</strong> or at least
- *       <strong>structurally immutable</strong> — fields affecting hashing
- *       and equality must remain constant throughout their lifetime.</li>
- *   <li><code>T::hash()</code> must produce a consistent hash for logically identical values.</li>
- *   <li><code>T::operator==()</code> must define stable, content-based equality semantics.</li>
+ *   <li><b>Immutability</b> — fields affecting equality and hashing must remain constant.</li>
+ *   <li><b>Equality</b> — <code>T::operator==</code> must define logical, content-based comparison.</li>
+ *   <li><b>Hashability</b> — must satisfy <code>jh::concepts::extended_hashable&lt;T&gt;</code>.</li>
  * </ul>
  *
- * <h4>Non-hashable Types</h4>
- * <p>
- * Types that do not implement <code>hash()</code> may still use
- * <code>jh::sim_pool</code> directly by providing a custom hash functor.
- * In such cases, <code>jh::weak_ptr_eq&lt;T&gt;</code> can be reused for
- * equality comparison, since it forwards comparison to
- * the underlying type's <code>operator==</code>.
- * </p>
- *
- * <p>
- * This allows non-hashable but equality-comparable types to participate in
- * pooling without modifying their class definition.
- * The resulting behavior remains fully compatible with the semantics of
- * <code>jh::pool</code>.
- * </p>
- *
- * <h4>Behavior and Semantics</h4>
- * <p>
- * All lifecycle, synchronization, and resizing behaviors are identical to
- * <code>jh::sim_pool</code>:
- * </p>
+ * <h3>Behavior</h3>
  * <ul>
- *   <li><strong>Weak reference observation</strong> — the pool tracks shared instances without owning them.</li>
- *   <li><strong>Construct-first, lock-then-insert</strong> — insertion occurs atomically after tentative construction.</li>
- *   <li><strong>Attempt-based cleanup</strong> — expired entries are reclaimed on behavioral triggers or explicit cleanup.</li>
- *   <li><strong>Adaptive resizing</strong> — managed by high/low watermarks
- *       (<tt>0.875</tt> / <tt>0.25</tt>) to balance reuse and avoid jitter.</li>
- *   <li><strong>Thread-safe access</strong> — concurrent read access and atomic insertions under shared mutex protection.</li>
+ *   <li>Weak reference tracking: pooled objects are observed, not owned.</li>
+ *   <li>Atomic construct-then-insert semantics for safe concurrent insertion.</li>
+ *   <li>Automatic cleanup of expired entries on access or trigger points.</li>
+ *   <li>Adaptive resizing with load thresholds (0.875 / 0.25).</li>
+ *   <li>Full thread safety under shared mutex protection.</li>
  * </ul>
  *
- * <h4>Relationship to <code>jh::sim_pool</code></h4>
+ * <h3>Usage</h3>
+ * <p>
+ * Use <code>jh::pool&lt;T&gt;</code> when:
+ * </p>
  * <ul>
- *   <li><code>jh::pool&lt;T&gt;</code> is a duck-typed convenience adapter.</li>
- *   <li>Internally inherits
- *       <code>jh::sim_pool&lt;T, weak_ptr_hash&lt;T&gt;, weak_ptr_eq&lt;T&gt;&gt;</code>.</li>
- *   <li>All mechanisms of <code>jh::sim_pool</code> — cleanup, deduplication,
- *       resizing, and thread safety — are fully preserved.</li>
- *   <li>Recommended as the primary interface for immutable or
- *       structurally immutable types such as <code>jh::immutable_str</code>.</li>
+ *   <li><code>T</code> is immutable or structurally immutable.</li>
+ *   <li><code>T</code> defines <code>hash()</code> or is compatible with
+ *       <code>std::hash</code> / <code>hash(const T&)</code>.</li>
+ *   <li><code>T</code> defines <code>operator==</code> with content semantics.</li>
  * </ul>
  *
- * @version <pre>1.3.x</pre>
+ * <p>
+ * For types that do not satisfy these conditions, use
+ * <code>jh::sim_pool&lt;T, CustomHash, CustomEq&gt;</code> directly.
+ * </p>
+ *
+ * @version <pre>1.3.5+</pre>
  * @date <pre>2025</pre>
+ *
+ * @see jh::sim_pool
+ * @see jh::hash
+ * @see jh::weak_ptr_hash
+ * @see jh::weak_ptr_eq
  */
 
 #pragma once
@@ -111,47 +111,9 @@
 #include <cstdint>          // for std::uint64_t
 #include <utility>          // for std::ignore
 #include "jh/sim_pool.h"
+#include "jh/conceptual/hashable.h"
 
 namespace jh {
-
-    /**
-     * @brief Compile-time concept verifying that a type provides a hash function.
-     *
-     * <p><strong>Purpose:</strong></p>
-     * <p>
-     * Ensures that a type <strong>T</strong> defines a member function
-     * returning a hash value convertible to <code>std::uint64_t</code>.
-     * The hash function must be <strong>pure</strong> — it must always produce
-     * the same value for logically equivalent instances.
-     * </p>
-     *
-     * <p><strong>Definition:</strong></p>
-     * <pre><code>std::uint64_t T::hash() const noexcept;</code></pre>
-     *
-     * <p>
-     * This concept is required by <code>jh::pool</code> and
-     * <code>jh::sim_pool</code> to enable content-based lookup and deduplication
-     * instead of pointer-based identity comparison.
-     * </p>
-     *
-     * @tparam T The candidate type to be checked.
-     *
-     * @note
-     * <ul>
-     *   <li>The check uses <code>const T&amp;</code> instead of <code>const T</code>
-     *       to match standard C++ conventions and avoid the impression that
-     *       <strong>T</strong> must be copy-constructible.</li>
-     *   <li>Concept checking is a non-evaluated context; even if a type deletes
-     *       its copy or move constructors (e.g. <code>immutable_str</code>),
-     *       the check will still succeed as long as <code>obj.hash()</code>
-     *       is a valid expression.</li>
-     * </ul>
-     */
-    template<typename T>
-    concept has_hash = requires(const T& obj)
-    {
-        { obj.hash() } -> std::convertible_to<std::uint64_t>;
-    };
 
     /**
      * @brief Compile-time concept verifying that a type supports equality comparison.
@@ -197,30 +159,54 @@ namespace jh {
     /**
      * @brief Content-based hash functor for <code>std::weak_ptr&lt;T&gt;</code>.
      *
-     * <p><strong>Behavior:</strong></p>
+     * <h3>Behavior</h3>
      * <ul>
      *   <li>If the pointer is expired, returns <tt>0</tt>.</li>
-     *   <li>If valid, locks and calls <code>T::hash()</code> on the underlying object.</li>
-     *   <li>Performs a preliminary <code>hash()</code> access to guarantee consistent results
-     *       during concurrent insertion into a pool.</li>
+     *   <li>If valid, locks and applies the unified <code>jh::hash&lt;T&gt;</code> functor
+     *       to the underlying object.</li>
+     *   <li>Ensures consistent results during concurrent insertion into a
+     *       <code>jh::pool</code> by performing a single well-defined hash access
+     *       per locked instance.</li>
      * </ul>
      *
-     * <p><strong>Purpose:</strong></p>
+     * <h3>Purpose</h3>
      * <p>
-     * Enables <code>jh::pool</code> and <code>jh::sim_pool</code> to hash weakly referenced
-     * shared objects without altering ownership or extending lifetimes.
+     * Enables <code>jh::pool</code> and <code>jh::sim_pool</code> to hash
+     * weakly referenced shared objects by logical content, without altering
+     * ownership or extending object lifetimes.
      * </p>
      *
-     * @tparam T The managed type, which must satisfy <code>has_hash</code>.
+     * <h3>Version Note (since 1.3.5)</h3>
+     * <p>
+     * Starting with <b>1.3.5</b>, <code>weak_ptr_hash&lt;T&gt;</code> supports
+     * <em>automatic hash deduction</em> through
+     * <code>jh::hash&lt;T&gt;</code>, which transparently resolves hashing
+     * via the following precedence chain:
+     * </p>
+     * <pre><tt>
+     * std::hash&lt;T&gt;{ }(v)
+     *   &gt;  hash(v)
+     *   &gt;  v.hash()
+     * </tt></pre>
+     *
+     * <p>
+     * This allows any type declaring a valid hash mechanism — standard,
+     * ADL-based, or member-based — to participate in pooling without the need
+     * for custom specialization.
+     * </p>
+     *
+     * @tparam T The managed type, which must satisfy
+     *           <code>jh::concepts::extended_hashable</code>.
+     *
+     * @see jh::concepts::extended_hashable
+     * @see jh::hash
      */
     template<typename T>
-        requires has_hash<T>
+    requires jh::concepts::extended_hashable<T>
     struct weak_ptr_hash {
-        std::size_t operator()(const std::weak_ptr<T> &ptr) const noexcept {
+        std::size_t operator()(const std::weak_ptr<T>& ptr) const noexcept {
             if (const auto sp = ptr.lock()) {
-                // Pre-touch hash once to ensure consistent hash during insert()
-                std::ignore = sp->hash(); // ensures atomic hash() before insert
-                return sp->hash();
+                return jh::hash<T>{}(*sp);
             }
             return 0;
         }
@@ -260,34 +246,90 @@ namespace jh {
      * @brief Duck-typed specialization of <code>jh::sim_pool</code> with automatic
      *        hash and equality inference.
      *
-     * <p><strong>Purpose:</strong></p>
+     * <h3>Purpose</h3>
      * <p>
      * Provides a simplified user interface for pooling immutable or
-     * structurally immutable objects. When a type <strong>T</strong> defines
-     * both <code>hash()</code> and <code>operator==()</code>,
-     * <code>jh::pool&lt;T&gt;</code> automatically applies
-     * <code>jh::weak_ptr_hash&lt;T&gt;</code> and
+     * structurally immutable objects. When a type <strong>T</strong> satisfies
+     * both <code>jh::concepts::extended_hashable</code> and
+     * <code>has_equal</code>, <code>jh::pool&lt;T&gt;</code> automatically
+     * applies <code>jh::weak_ptr_hash&lt;T&gt;</code> and
      * <code>jh::weak_ptr_eq&lt;T&gt;</code> as internal policies.
      * </p>
      *
-     * <p><strong>Behavior:</strong></p>
+     * <h3>Behavior</h3>
      * <ul>
      *   <li>Deduplicates shared instances based on logical equivalence.</li>
-     *   <li>Observes object lifetimes via <code>std::weak_ptr</code>.</li>
-     *   <li>Preserves all concurrency and cleanup semantics from <code>jh::sim_pool</code>.</li>
+     *   <li>Observes object lifetimes through <code>std::weak_ptr</code>.</li>
+     *   <li>Preserves all concurrency, cleanup, and resizing semantics from
+     *       <code>jh::sim_pool</code>.</li>
      * </ul>
      *
-     * <p><strong>Type Requirements:</strong></p>
+     * <h3>Type Requirements</h3>
      * <ul>
-     *   <li><code>T::hash()</code> must return a stable <code>std::uint64_t</code> hash.</li>
-     *   <li><code>T::operator==()</code> must define logical equality semantics.</li>
-     *   <li>All fields involved in hash or equality must remain constant for the object's lifetime.</li>
+     *   <li>The type must be <strong>logically immutable</strong> — all fields
+     *       affecting equality and hashing remain constant during the object’s
+     *       lifetime.</li>
+     *   <li>It must satisfy <code>jh::concepts::extended_hashable</code>,
+     *       meaning it provides one of:
+     *       <ul>
+     *         <li><code>std::hash&lt;T&gt;</code> specialization</li>
+     *         <li>ADL-discoverable <code>hash(const T&amp;)</code> free function</li>
+     *         <li>Member function <code>T::hash()</code></li>
+     *       </ul>
+     *   </li>
+     *   <li>It must support <code>operator==</code> for content-based equality.</li>
      * </ul>
      *
-     * @tparam T The pooled object type satisfying both <code>has_hash</code> and <code>has_equal</code>.
+     * <h3>Version Note (since 1.3.5)</h3>
+     * <p>
+     * From <b>1.3.5</b> onward, <code>jh::pool</code> supports full
+     * <em>duck-typed hash deduction</em> through <code>jh::hash&lt;T&gt;</code>,
+     * enabling seamless use with standard, ADL, or member-based hash semantics.
+     * No explicit <code>hash()</code> method is required as long as one of the
+     * supported mechanisms is available.
+     * </p>
+     *
+     * @note
+     *
+     * <p>
+     * <code>jh::hash&lt;T&gt;</code> is <b>not</b> a registration point.
+     * It performs only <em>behavioral deduction</em> based on available
+     * hash semantics. The system intentionally does <b>not</b> recognize or
+     * check for user specializations of <code>jh::hash&lt;T&gt;</code>.
+     * </p>
+     *
+     * <p>
+     * For better portability and interoperability with the standard library or
+     * third-party frameworks, it is <b>recommended</b> to register your hash
+     * via one of the following standard mechanisms instead:
+     * </p>
+     * <ul>
+     *   <li>Specialize <code>std::hash&lt;T&gt;</code> — the canonical
+     *       registration form recognized by all standard containers.</li>
+     *   <li>Provide an <b>ADL-discoverable</b> free function
+     *       <code>size_t hash(const T&amp;)</code>.</li>
+     *   <li>Implement a member function <code>size_t T::hash() const</code>.</li>
+     * </ul>
+     *
+     * <p>
+     * <b>Design rationale:</b> this deliberate restriction ensures that
+     * <code>jh::hash&lt;T&gt;</code> remains a <em>deduction layer</em> rather
+     * than a registration layer, preventing fragmented extension points across
+     * libraries. Only the three canonical mechanisms above are considered part
+     * of the official detection chain.
+     * </p>
+     *
+     * @tparam T The pooled object type satisfying both
+     *           <code>jh::concepts::extended_hashable</code> and
+     *           <code>has_equal</code>.
+     *
+     * @see jh::concepts::extended_hashable
+     * @see jh::weak_ptr_hash
+     * @see jh::weak_ptr_eq
+     * @see jh::hash
      */
     template<typename T>
-        requires (has_hash<T> && has_equal<T>) // Define jh::pool<T> only for types with hash() and operator==
+        requires (jh::concepts::extended_hashable<T> && has_equal<T>) // Define jh::pool<T> only for types with hash() and operator==
     class pool final : public sim_pool<T, weak_ptr_hash<T>, weak_ptr_eq<T> > {
         using sim_pool<T, weak_ptr_hash<T>, weak_ptr_eq<T> >::sim_pool; ///< Inherit constructors from `sim_pool`
     };
