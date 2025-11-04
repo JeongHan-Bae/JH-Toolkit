@@ -51,10 +51,57 @@
 #pragma once
 
 #include <cstdint>
+#include <concepts>
 
 namespace jh::meta {
 
-    /// Compile-time selectable hash algorithm tag (FNV, DJB2, SDBM, etc.)
+    /**
+     * @brief Concept representing <tt>character-semantic</tt> 1-byte integral types.
+     *
+     * This concept includes only the fundamental character types that the
+     * implementation treats as one-byte integral entities directly usable as
+     * textual or byte-sequence data.
+     *
+     * Specifically, it accepts:
+     * <ul>
+     *   <li><code>char</code></li>
+     *   <li><code>signed char</code></li>
+     *   <li><code>unsigned char</code></li>
+     * </ul>
+     *
+     * These are the <tt>clean</tt> core character types without cv-qualifiers or references,
+     * and are guaranteed to be exactly 1 byte in size (<tt>sizeof(T) == 1</tt>).
+     *
+     * @note
+     * <code>char8_t</code> is <b>not</b> included.
+     * It is a distinct built-in type introduced by <code>__cpp_char8_t</code> for UTF-8
+     * character support, not considered equivalent to any form of <code>char</code>.
+     * It represents <tt>UTF-8 code units</tt>, not raw bytes, and therefore requires
+     * explicit conversion when hashing.
+     *
+     * @details
+     * This constraint ensures that only raw character data (in the sense of
+     * 1-byte memory representation types) participates in compile-time hashing.
+     * Non-character or higher-level types such as:
+     * <ul>
+     *   <li><code>bool</code></li>
+     *   <li><code>std::byte</code></li>
+     *   <li><code>char8_t</code></li>
+     * </ul>
+     * must be explicitly converted via
+     * <code>reinterpret_cast&lt;const char&#42;&gt;</code>.
+     *
+     * The intent is to enforce semantic correctness and guarantee that hashing
+     * remains <tt>constexpr</tt>-safe, type-clean, and free of undefined behavior
+     * across translation units.
+     */
+    template<typename T>
+    concept any_char =
+    std::same_as<T, char> ||
+    std::same_as<T, signed char> ||
+    std::same_as<T, unsigned char>;
+
+    /// @brief Compile-time selectable hash algorithm tag (FNV, DJB2, SDBM, etc.)
     enum class c_hash : std::uint8_t {
         fnv1a64 = 0,  ///< FNV-1a 64-bit hash
         fnv1_64 = 1,  ///< FNV-1 64-bit hash
@@ -62,8 +109,9 @@ namespace jh::meta {
         sdbm = 3      ///< SDBM hash (used in readdir, DBM)
     };
 
-    /// FNV-1a 64-bit hash implementation (default choice)
-    constexpr std::uint64_t fnv1a64(const char *data, const std::uint64_t size) noexcept {
+    /// @brief FNV-1a 64-bit hash implementation (default choice)
+    template<any_char Char>
+    constexpr std::uint64_t fnv1a64(const Char *data, const std::uint64_t size) noexcept {
         std::uint64_t h = 14695981039346656037ull;
         for (std::uint64_t i = 0; i < size; ++i) {
             h ^= static_cast<std::uint8_t>(data[i]);
@@ -72,8 +120,9 @@ namespace jh::meta {
         return h;
     }
 
-    /// FNV-1 64-bit hash (multiply before xor)
-    constexpr std::uint64_t fnv1_64(const char *data, const std::uint64_t size) noexcept {
+    /// @brief FNV-1 64-bit hash (multiply before xor)
+    template<any_char Char>
+    constexpr std::uint64_t fnv1_64(const Char *data, const std::uint64_t size) noexcept {
         std::uint64_t h = 14695981039346656037ull;
         for (std::uint64_t i = 0; i < size; ++i) {
             h *= 1099511628211ull;
@@ -82,8 +131,9 @@ namespace jh::meta {
         return h;
     }
 
-    /// DJB2 hash (hash * 33 + c)
-    constexpr std::uint64_t djb2(const char *str, const std::uint64_t size) noexcept {
+    /// @brief DJB2 hash (hash * 33 + c)
+    template<any_char Char>
+    constexpr std::uint64_t djb2(const Char *str, const std::uint64_t size) noexcept {
         std::uint64_t hash = 5381;
         for (std::uint64_t i = 0; i < size; ++i) {
             hash = ((hash << 5) + hash) + static_cast<std::uint8_t>(str[i]);
@@ -91,8 +141,9 @@ namespace jh::meta {
         return hash;
     }
 
-    /// SDBM hash (used in several DB engines)
-    constexpr std::uint64_t sdbm(const char *str, const std::uint64_t size) noexcept {
+    /// @brief SDBM hash (used in several DB engines)
+    template<any_char Char>
+    constexpr std::uint64_t sdbm(const Char *str, const std::uint64_t size) noexcept {
         std::uint64_t hash = 0;
         for (std::uint64_t i = 0; i < size; ++i) {
             hash = static_cast<std::uint8_t>(str[i]) + (hash << 6) + (hash << 16) - hash;
@@ -100,8 +151,9 @@ namespace jh::meta {
         return hash;
     }
 
-    /// Dispatch to selected hash algorithm based on c_hash
-    constexpr std::uint64_t hash(const c_hash algo, const char *data, const std::uint64_t size) noexcept {
+    /// @brief Dispatch to selected hash algorithm based on c_hash
+    template<any_char Char>
+    constexpr std::uint64_t hash(const c_hash algo, const Char *data, const std::uint64_t size) noexcept {
         switch (algo) {
             case c_hash::fnv1a64:
                 return fnv1a64(data, size);
