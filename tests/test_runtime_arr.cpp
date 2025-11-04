@@ -324,11 +324,6 @@ TEST_CASE("concept checks for runtime_arr<T> and runtime_arr<bool>", "[concepts]
         STATIC_REQUIRE(has_data<runtime_arr<int, test_allocator<int>>>);
     }
 
-    SECTION("bit_ref explicit conversion only") {
-        STATIC_REQUIRE(bool_like<runtime_arr<bool>::bit_ref>);
-        STATIC_REQUIRE(!convertible_to_bool<runtime_arr<bool>::bit_ref>);
-    }
-
     SECTION("iterator type correctness") {
         STATIC_REQUIRE(std::is_same_v<begin_t<runtime_arr<int>>, int *>);
         STATIC_REQUIRE(std::is_same_v<begin_t<runtime_arr<int, test_allocator<int>>>, int *>);

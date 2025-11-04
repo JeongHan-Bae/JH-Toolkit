@@ -4,6 +4,14 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <vector>
+#include <string>
+#include <type_traits>
+#include <set>
+#include <list>
+#include <deque>
+#include <stack>
+#include <memory_resource>
 
 #include "jh/ranges/views/flatten.h" // force include to compact with 1.3.x-support-dev branch
 #include "jh/views"
@@ -448,4 +456,119 @@ TEST_CASE("constexpr flatten_proxy recursion and tuple_materialize", "[flatten][
     const auto [a, b, c, d, e, f, g] = fp;
     out << a << "," << b << "," << c << "," << d << "," << e << "," << f << "," << g;
     REQUIRE(out.str() == "1,2,3,4,5,6,7");
+}
+
+struct DeclaredOnly {
+    using value_type = double;
+};
+
+struct DeducedOnly {
+    int* begin();
+    int* end();
+};
+
+struct CompatibleProxy {
+    using value_type = bool;
+    struct proxy { operator bool() const { return true; } };
+    proxy* begin();
+    proxy* end();
+};
+
+struct Conflict {
+    using value_type = int;
+    struct proxy { operator std::string() const { return {}; } };
+    proxy* begin();
+    proxy* end();
+};
+
+struct Voidish { };
+
+class my_vector : public std::vector<char> { };
+
+template<>
+struct jh::container_deduction<my_vector> {
+    using value_type = unsigned char;
+};
+
+// ---- static trait checks ----
+static_assert(std::same_as<jh::concepts::container_value_t<DeclaredOnly>, double>);
+static_assert(std::same_as<jh::concepts::container_value_t<DeducedOnly>, int>);
+static_assert(std::same_as<jh::concepts::container_value_t<CompatibleProxy>, bool>);
+static_assert(std::same_as<jh::concepts::container_value_t<Conflict>, void>);
+static_assert(std::same_as<jh::concepts::container_value_t<Voidish>, void>);
+static_assert(std::same_as<jh::concepts::container_value_t<my_vector>, unsigned char>);
+
+// ---- closable_container_for static checks ----
+static_assert(jh::concepts::closable_container_for<std::vector<int>, std::vector<int>>);
+static_assert(jh::concepts::closable_container_for<std::set<int>, std::vector<int>>);
+static_assert(jh::concepts::closable_container_for<std::vector<double>, std::vector<int>>);
+static_assert(!jh::concepts::closable_container_for<std::vector<std::string>, std::vector<int>>);
+
+// =======================================================
+//  dynamic collect / to verification
+// =======================================================
+
+TEST_CASE("collect and to dynamic examples", "[collect][to][dynamic]") {
+    std::vector<int> v = {1, 2, 3};
+
+    // normal
+    auto s = jh::ranges::to<std::set<int>>(v);
+    auto dq = jh::ranges::to<std::deque<double>>(v);
+    auto st = jh::ranges::to<std::stack<int>>(v);
+    REQUIRE(s.size() == 3);
+    REQUIRE(dq.size() == 3);
+    REQUIRE(st.size() == 3);
+
+    // allocator-aware
+    std::pmr::monotonic_buffer_resource pool;
+    std::pmr::polymorphic_allocator<int> alloc(&pool);
+    auto pmr_vec = jh::ranges::to<std::pmr::vector<int>>(v, alloc);
+    REQUIRE(pmr_vec.size() == v.size());
+
+    // pipeline sanity
+    std::vector<int> input = {1, 2, 3};
+    std::vector<char> other = {'a', 'b', 'c'};
+
+    // collect and adapt chain
+    auto aaaa = input
+                | jh::ranges::to<std::vector<int>>()
+                | jh::ranges::collect<std::set<int>>()
+                | jh::ranges::adapt();
+
+    std::ostringstream out_a;
+    for (auto x : aaaa) out_a << x << " ";
+    REQUIRE(out_a.str() == "1 2 3 ");
+
+    // flatten and zip
+    auto bbbb = input
+                | jh::ranges::views::zip(other)
+                | jh::ranges::to<std::vector<std::tuple<int, char>>>();
+
+    std::ostringstream out_b;
+    for (auto& [a, b] : bbbb)
+        out_b << "(" << a << "," << b << ") ";
+    REQUIRE(out_b.str() == "(1,a) (2,b) (3,c) ");
+
+    // enumerate + flatten
+    std::ostringstream out_c;
+    for (auto&& [i, ch0, ch1] :
+            input
+            | jh::ranges::views::zip(other)
+            | jh::ranges::views::enumerate(100)
+            | jh::ranges::views::flatten()) {
+        out_c << i << ":(" << ch0 << "," << ch1 << ") ";
+    }
+    REQUIRE(out_c.str() == "100:(1,a) 101:(2,b) 102:(3,c) ");
+
+    // collect + to chained
+    auto rg = input
+              | jh::ranges::views::zip(other)
+              | jh::ranges::views::enumerate(100)
+              | jh::ranges::views::flatten()
+              | jh::ranges::collect<std::vector<std::tuple<int, char, char>>>()
+              | jh::ranges::to<std::deque<std::tuple<int, char, char>>>();
+
+    REQUIRE(rg.size() == 3);
+    auto [i0, c0, c1] = rg.front();
+    REQUIRE(i0 == 100);
 }

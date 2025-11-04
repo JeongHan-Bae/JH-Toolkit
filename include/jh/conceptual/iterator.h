@@ -307,15 +307,21 @@ namespace jh::concepts {
 
         template<typename I> requires has_value_type_v<I>
         struct iterator_value_impl<I> {
-            using value_type = typename I::value_type;
-            using ref_type = decltype(*std::declval<I &>());
+        private:
+            using ref_type = decltype(*std::declval<I&>());
+            using value_type = typename std::iterator_traits<I>::value_type;
 
-            static_assert(std::common_reference_with<
-                    std::remove_cvref_t<ref_type>,
-                    value_type
-            >, "iterator's operator*() must share a common reference with its value_type");
+            template<typename R, typename V>
+            static constexpr bool compatible =
+                    requires {
+                        typename std::common_reference_t<std::remove_cvref_t<R>, V>;
+                    } || std::convertible_to<R, V>;
 
-            using type = value_type;
+        public:
+            using type = std::conditional_t<
+                    compatible<ref_type, value_type>,
+                    value_type,
+                    void>;
         };
 
         template<typename I>
@@ -335,18 +341,21 @@ namespace jh::concepts {
 
         template<typename I> requires requires { typename I::reference; }
         struct iterator_reference_impl<I> {
+        private:
             using reference_type = typename I::reference;
             using deref_type = decltype(*std::declval<I &>());
 
-            static_assert(
-                    std::common_reference_with<
+            static constexpr bool compatible =
+                    (std::common_reference_with<
                             std::remove_cvref_t<deref_type>,
                             std::remove_cvref_t<reference_type>
-                    >,
-                    "iterator::reference and *it must share a common reference type"
-            );
-
-            using type = reference_type;
+                    > || std::convertible_to<deref_type, reference_type>);
+        public:
+            using type = std::conditional_t<
+                    compatible,
+                    reference_type,
+                    void
+            >;
         };
 
         template<typename I>

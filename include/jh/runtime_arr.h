@@ -378,7 +378,7 @@ namespace jh {
          * Accessing any element before explicit initialization results in undefined behavior.</p>
          */
         explicit runtime_arr(const std::uint64_t size, uninitialized_t) requires jh::pod::pod_like<T> &&
-                                                                                typed::monostate_t<Alloc> {
+                                                                                 typed::monostate_t<Alloc> {
             size_ = size;
             T *ptr = static_cast<T *>(operator new[](sizeof(T) * size_));
             data_.reset(ptr);
@@ -404,8 +404,7 @@ namespace jh {
          *
          * @throws std::bad_alloc If allocation fails.
          */
-        runtime_arr(std::initializer_list<T> init)
-        requires(typed::monostate_t<Alloc>)
+        runtime_arr(std::initializer_list<T> init)requires(typed::monostate_t<Alloc>)
                 : size_(init.size()), data_(nullptr, default_deleter) {
             if (size_ == 0) return;
             T *ptr = new T[size_];
@@ -493,14 +492,13 @@ namespace jh {
          *
          * @throws std::bad_alloc If allocator fails to provide storage.
          */
-        runtime_arr(std::initializer_list<T> init, Alloc alloc)
-        requires(!typed::monostate_t<Alloc>)
+        runtime_arr(std::initializer_list<T> init, Alloc alloc)requires(!typed::monostate_t<Alloc>)
                 : size_(init.size()) {
             T *ptr = alloc.allocate(size_);
             std::uninitialized_copy(init.begin(), init.end(), ptr);
             data_ = std::unique_ptr<T[], deleter_t>(
                     ptr,
-                    [alloc, size=size_](T *p) mutable { alloc.deallocate(p, size); }
+                    [alloc, size = size_](T *p) mutable { alloc.deallocate(p, size); }
             );
         }
 
@@ -524,8 +522,7 @@ namespace jh {
          *   <li>Ensures allocator lifetime and destruction safety via lambda capture semantics.</li>
          * </ul>
          */
-        explicit runtime_arr(std::uint64_t size, Alloc &&alloc)
-        requires (!typed::monostate_t<Alloc>) : size_(size) {
+        explicit runtime_arr(std::uint64_t size, Alloc &&alloc)requires (!typed::monostate_t<Alloc>): size_(size) {
             T *ptr = alloc.allocate(size_);
             data_ = std::unique_ptr<T[], deleter_t>(
                     ptr,
@@ -662,11 +659,11 @@ namespace jh {
          * </ul>
          */
         template<typename ForwardIt>
-        runtime_arr(ForwardIt first, ForwardIt last)
-        requires (typed::monostate_t<Alloc> &&
-                  jh::concepts::forward_iterator<ForwardIt> &&
-                  std::convertible_to<typename ForwardIt::value_type, value_type> &&
-                  std::is_copy_constructible_v<T>) : data_(nullptr, default_deleter) {
+        runtime_arr(ForwardIt first, ForwardIt last)requires (typed::monostate_t<Alloc> &&
+                                                              jh::concepts::forward_iterator<ForwardIt> &&
+                                                              std::convertible_to<typename ForwardIt::value_type, value_type> &&
+                                                              std::is_copy_constructible_v<T>) : data_(nullptr,
+                                                                                                       default_deleter) {
             const auto dist = std::distance(first, last);
             // `std::distance(first, last)` is guaranteed to be valid and non-destructive
             // for forward iterators. Single-pass input iterators (like std::istream_iterator)
@@ -1333,7 +1330,7 @@ namespace jh {
                 return const_cast<bit_ref &>(*this);
             }
 
-            explicit operator bool() const {
+            operator bool() const {
                 return (word_ & mask_) != 0;
             }
         };
@@ -1514,8 +1511,8 @@ namespace jh {
          * </ul>
          */
         template<typename ForwardIt>
-        runtime_arr(ForwardIt first, ForwardIt last)
-        requires (jh::concepts::forward_iterator<ForwardIt> && std::convertible_to<typename ForwardIt::value_type, value_type>) {
+        runtime_arr(ForwardIt first, ForwardIt last)requires (jh::concepts::forward_iterator<ForwardIt> &&
+                                                              std::convertible_to<typename ForwardIt::value_type, value_type>) {
             const auto dist = std::distance(first, last);
             if (dist < 0) throw std::invalid_argument("Invalid iterator range");
             size_ = static_cast<std::uint64_t>(dist);
@@ -1893,7 +1890,8 @@ namespace jh {
         return storage_.get();
     }
 
-    [[maybe_unused]] [[maybe_unused]] [[maybe_unused]] [[maybe_unused]] JH_INLINE auto runtime_arr<bool>::raw_data() const noexcept -> const raw_type * {
+    [[maybe_unused]] [[maybe_unused]] [[maybe_unused]] [[maybe_unused]] JH_INLINE auto
+    runtime_arr<bool>::raw_data() const noexcept -> const raw_type * {
         return storage_.get();
     }
 
@@ -1983,7 +1981,7 @@ namespace jh {
             : size_(init.size()),
               storage_(std::make_unique<std::uint64_t[]>(word_count())) {
         std::uint64_t i = 0;
-        for (bool v : init)
+        for (bool v: init)
             set(i++, v);
     }
 
@@ -2027,3 +2025,52 @@ namespace jh {
 }
 
 #include "jh/macros/header_end.h"
+
+namespace std {
+
+    template<>
+    struct common_reference<jh::runtime_arr<bool>::bit_ref, bool> {
+        using type = bool;
+    };
+
+    template<>
+    struct common_reference<bool, jh::runtime_arr<bool>::bit_ref> {
+        using type = bool;
+    };
+
+    template<>
+    struct common_reference<jh::runtime_arr<bool>::bit_ref, jh::runtime_arr<bool>::bit_ref> {
+        using type = jh::runtime_arr<bool>::bit_ref;
+    };
+
+    template<>
+    struct common_reference<jh::runtime_arr<bool>::bit_ref &&, bool &&>
+            : common_reference<jh::runtime_arr<bool>::bit_ref, bool> {
+    };
+
+    template<>
+    struct common_reference<bool &&, jh::runtime_arr<bool>::bit_ref &&>
+            : common_reference<bool, jh::runtime_arr<bool>::bit_ref> {
+    };
+
+    template<>
+    struct common_reference<jh::runtime_arr<bool>::bit_ref &&, jh::runtime_arr<bool>::bit_ref &&>
+            : common_reference<jh::runtime_arr<bool>::bit_ref, jh::runtime_arr<bool>::bit_ref> {
+    };
+
+    template<>
+    struct common_reference<jh::runtime_arr<bool>::bit_ref &, bool &>
+            : common_reference<jh::runtime_arr<bool>::bit_ref, bool> {
+    };
+
+    template<>
+    struct common_reference<bool &, jh::runtime_arr<bool>::bit_ref &>
+            : common_reference<bool, jh::runtime_arr<bool>::bit_ref> {
+    };
+
+    template<>
+    struct common_reference<jh::runtime_arr<bool>::bit_ref &, jh::runtime_arr<bool>::bit_ref &>
+            : common_reference<jh::runtime_arr<bool>::bit_ref, jh::runtime_arr<bool>::bit_ref> {
+    };
+
+} // namespace std
