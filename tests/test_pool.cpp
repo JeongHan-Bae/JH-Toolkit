@@ -10,6 +10,13 @@
 #if IS_WINDOWS
 #include <cstdlib>
 
+extern "C" void disable_debug_heap_before_crt() {
+    ::putenv(const_cast<char*>("_NO_DEBUG_HEAP=1"));
+}
+#pragma section(".CRT$XIB", long, read)
+__declspec(allocate(".CRT$XIB"))
+void (*p_disable_debug_heap)(void) = disable_debug_heap_before_crt;
+
 // Disable Windows UCRT debug heap in MSYS2 / MinGW-UCRT environment.
 // Prevents spurious heap corruption (0xC0000374) during multi-threaded tests.
 static struct DisableWinDebugHeap {
