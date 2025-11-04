@@ -310,8 +310,10 @@ namespace jh::concepts {
             using value_type = typename I::value_type;
             using ref_type = decltype(*std::declval<I &>());
 
-            static_assert(std::convertible_to<ref_type, value_type>,
-                          "iterator's operator*() must be convertible to its value_type");
+            static_assert(std::common_reference_with<
+                    std::remove_cvref_t<ref_type>,
+                    value_type
+            >, "iterator's operator*() must share a common reference with its value_type");
 
             using type = value_type;
         };
@@ -337,9 +339,11 @@ namespace jh::concepts {
             using deref_type = decltype(*std::declval<I &>());
 
             static_assert(
-                    std::convertible_to<deref_type, reference_type> ||
-                    std::convertible_to<reference_type, deref_type>,
-                    "iterator::reference must be consistent with decltype(*it)"
+                    std::common_reference_with<
+                            std::remove_cvref_t<deref_type>,
+                            std::remove_cvref_t<reference_type>
+                    >,
+                    "iterator::reference and *it must share a common reference type"
             );
 
             using type = reference_type;
@@ -416,8 +420,14 @@ namespace jh::concepts {
     } && requires(I &&it) {
         detail::adl_iter_move(std::forward<I>(it));
     } &&
-                                 std::convertible_to<std::remove_cvref_t<jh::concepts::iterator_reference_t<I>>, jh::concepts::iterator_value_t<I>> &&
-                                 std::convertible_to<std::remove_cvref_t<jh::concepts::iterator_rvalue_reference_t<I>>, jh::concepts::iterator_value_t<I>>;
+            std::common_reference_with<
+                    std::remove_cvref_t<iterator_reference_t<I>>,
+                    iterator_value_t<I>
+            > &&
+            std::common_reference_with<
+                    std::remove_cvref_t<iterator_rvalue_reference_t<I>>,
+                    iterator_value_t<I>
+            >;
 
     /**
      * @brief Concept for types that support indirect write operations through dereference.
