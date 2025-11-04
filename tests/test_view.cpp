@@ -1,12 +1,15 @@
 #define CATCH_CONFIG_MAIN
+
 #include <catch2/catch_all.hpp>
 #include <vector>
 #include <string>
 #include <sstream>
 
+#include "jh/ranges/views/flatten.h" // force include to compact with 1.3.x-support-dev branch
 #include "jh/views"
 #include "jh/pod"
 #include "jh/runtime_arr.h"
+#include "jh/ranges_ext"    // temporarily located ranges_ext tests here for 1.3.x series
 
 // ------------------------------
 //  local helper types
@@ -275,7 +278,7 @@ TEST_CASE("zip multiple sequences with pipes", "[zip][pipe][multi]") {
     // ------------------------------------------------------
     std::ostringstream out;
 
-    for (auto [pair, word, price, grade] :
+    for (auto [pair, word, price, grade]:
             ids
             | jh::views::enumerate(100)
             | jh::views::zip_pipe(words, prices, grades)) {
@@ -290,4 +293,159 @@ TEST_CASE("zip multiple sequences with pipes", "[zip][pipe][multi]") {
             "(100,10,apple,1.1,A) "
             "(101,20,banana,2.2,B) "
             "(102,30,carrot,3.3,C) ");
+}
+
+TEST_CASE("adapt runtime_arr streamable", "[adapt][runtime_arr]") {
+    jh::runtime_arr<int> arr(3);
+    for (auto [i, x]: arr | jh::ranges::views::enumerate(1)) {
+        x = static_cast<int>(i * 10);
+    }
+
+    std::ostringstream out;
+    for (auto x: arr | jh::ranges::adapt() | std::views::all) {
+        out << x << " ";
+    }
+    // check arr can be adapted and streamed correctly
+    // (non-copyable ranges are normally reject by std::views::all)
+
+    REQUIRE(out.str() == "10 20 30 ");
+}
+
+TEST_CASE("flatten after enumerate+zip_pipe", "[flatten][zip][enumerate]") {
+    jh::runtime_arr<int> ids(3);
+    jh::runtime_arr<std::string> names(3);
+
+    for (auto [i, x]: ids | jh::ranges::views::enumerate(1))
+        x = static_cast<int>(i * 10);
+    names[0] = "Alice";
+    names[1] = "Bob";
+    names[2] = "Carol";
+
+    auto zipped =
+            ids | jh::ranges::views::enumerate(100) | jh::ranges::views::zip_pipe(names);
+
+    // flatten the nested tuples into single-level tuples
+    std::ostringstream out;
+    for (auto e: zipped | jh::ranges::views::flatten()) {
+        auto [i, v, n] = e;
+        out << "(" << i << "," << v << "," << n << ") ";
+    }
+
+    REQUIRE(out.str() == "(100,10,Alice) (101,20,Bob) (102,30,Carol) ");
+}
+
+TEST_CASE("adapt: direct call vs pipe form equivalence", "[adapt][equiv]") {
+    jh::runtime_arr<int> arr(3);
+    for (auto [i, x]: arr | jh::ranges::views::enumerate(1))
+        x = static_cast<int>(i * 10);
+
+    // direct call
+    auto r1 = jh::ranges::adapt(arr);
+    std::ostringstream out1;
+    for (auto x: r1) out1 << x << " ";
+
+    // pipe form
+    std::ostringstream out2;
+    for (auto x: arr | jh::ranges::adapt()) out2 << x << " ";
+
+    REQUIRE(out1.str() == out2.str());
+    REQUIRE(out1.str() == "10 20 30 ");
+}
+
+TEST_CASE("flatten: direct call vs pipe form equivalence", "[flatten][equiv]") {
+    jh::runtime_arr<int> a(3);
+    jh::runtime_arr<std::string> b(3);
+
+    for (auto [i, x]: a | jh::ranges::views::enumerate(1))
+        x = static_cast<int>(i * 10);
+    b[0] = "A";
+    b[1] = "B";
+    b[2] = "C";
+
+    // Build zipped enumerate view
+    auto zipped = jh::ranges::views::zip(
+            jh::ranges::views::enumerate(a, 100),
+            b
+    );
+
+    // direct flatten
+    std::ostringstream out1;
+    for (auto e: jh::ranges::views::flatten(zipped)) {
+        auto [i, v, s] = e;
+        out1 << "(" << i << "," << v << "," << s << ") ";
+    }
+
+    // pipe flatten
+    std::ostringstream out2;
+    for (auto e: zipped | jh::ranges::views::flatten()) {
+        auto [i, v, s] = e;
+        out2 << "(" << i << "," << v << "," << s << ") ";
+    }
+
+    REQUIRE(out1.str() == out2.str());
+    REQUIRE(out1.str() == "(100,10,A) (101,20,B) (102,30,C) ");
+}
+
+TEST_CASE("flatten deep nested enumerate+zip_pipe", "[flatten][nested]") {
+    jh::runtime_arr<int> ids(3);
+    jh::runtime_arr<std::string> names(3);
+    jh::runtime_arr arrays = {
+            jh::pod::array{{10, 20, 30}},
+            jh::pod::array{{40, 50, 60}},
+            jh::pod::array{{70, 80, 90}}
+    };
+    for (auto [i, x]: ids | jh::ranges::views::enumerate(1))
+        x = static_cast<int>(i * 10);
+    names[0] = "A";
+    names[1] = "B";
+    names[2] = "C";
+
+    // inner enumerate for duplication
+    auto inner = ids | jh::ranges::views::enumerate(10);
+
+    // deep nested: ( (i,v), name, (j,v2) )
+    auto zipped =
+            ids | jh::ranges::views::enumerate(100)
+            | jh::ranges::views::zip_pipe(names, inner, arrays);
+
+    std::ostringstream out;
+    for (auto e: zipped | jh::ranges::views::flatten()) {
+        auto [i, v, n, j, v2, a0, a1, a2] = e;
+        out << "(" << i << "," << v << "," << n << "," << j << ","
+            << v2 << "," << a0 << "," << a1 << "," << a2 << ") ";
+    }
+
+    REQUIRE(out.str() ==
+            "(100,10,A,10,10,10,20,30) (101,20,B,11,20,40,50,60) (102,30,C,12,30,70,80,90) ");
+}
+
+TEST_CASE("constexpr flatten_proxy recursion and tuple_materialize", "[flatten][meta][constexpr]") {
+    using jh::meta::flatten_proxy;
+    using jh::pod::make_tuple;
+
+    constexpr auto t = std::tuple{
+            std::tuple{1, 2},
+            make_tuple(3, 4),
+            std::tuple{make_tuple(5, 6), 7},
+    };
+
+    constexpr auto fp = flatten_proxy{t};
+
+    constexpr auto m = jh::meta::tuple_materialize(t);
+
+    static_assert(std::tuple_size_v<decltype(fp)> == 7);
+    static_assert(std::tuple_size_v<decltype(m)> == 7);
+
+    constexpr auto check = []<typename Tup>(const Tup& tup) {
+        const auto& [a, b, c, d, e, f, g] = tup;
+        return a == 1 && b == 2 && c == 3 && d == 4 && e == 5 && f == 6 && g == 7;
+    };
+
+    static_assert(check(fp));
+    static_assert(check(m));
+
+    std::ostringstream out;
+    const auto [a, b, c, d, e, f, g] = fp;
+    out << a << "," << b << "," << c << "," << d << "," << e << "," << f << "," << g;
+    REQUIRE(out.str() == "1,2,3,4,5,6,7");
 }

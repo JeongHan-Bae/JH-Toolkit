@@ -1,0 +1,3 @@
+#pragma once
+
+#include "jh/ranges/adapt.h"

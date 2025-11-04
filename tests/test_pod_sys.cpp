@@ -757,7 +757,7 @@ TEST_CASE("pod::array<pod::string_view> comparison") {
 TEST_CASE("bytes_view hash reflects exact byte content") {
     using jh::pod::bytes_view;
     using jh::pod::array;
-    using jh::utils::hash_fn::c_hash;
+    using jh::meta::c_hash;
 
     SECTION("Equal content produces same hash") {
         array<std::uint32_t, 4> a = {1, 2, 3, 4};
@@ -810,7 +810,7 @@ TEST_CASE("bytes_view hash reflects exact byte content") {
 
 TEST_CASE("string_view hash reflects exact character content") {
     using jh::pod::string_view;
-    using jh::utils::hash_fn::c_hash;
+    using jh::meta::c_hash;
 
     static constexpr char content1[] = "alpha_test";
     static constexpr char content2[] = "alpha_test";  // same content, different instance

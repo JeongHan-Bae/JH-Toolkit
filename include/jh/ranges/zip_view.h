@@ -139,6 +139,33 @@ namespace jh::ranges {
                                             std::make_index_sequence<N>{});
     }
 
+    template<typename... Es>
+    struct zip_reference_proxy;
+
+    template<typename T>
+    struct is_zip_proxy : std::false_type {};
+
+    template<typename... Ts>
+    struct is_zip_proxy<class zip_reference_proxy<Ts...>> : std::true_type {};
+
+    template<typename T>
+    inline constexpr bool is_zip_proxy_v = is_zip_proxy<T>::value;
+
+    template<typename T>
+    struct zip_proxy_value_tuple {
+        using type = std::unwrap_reference_t<std::remove_cvref_t<T>>;
+    };
+
+    template<typename... Ts>
+    struct zip_proxy_value_tuple<class zip_reference_proxy<Ts...>> {
+        using type = std::tuple<
+                typename zip_proxy_value_tuple<std::remove_cvref_t<Ts>>::type...
+        >;
+    };
+
+    template<typename T>
+    using zip_proxy_value_tuple_t = typename zip_proxy_value_tuple<T>::type;
+
     /**
      * @brief Aggregates element references for a single tuple in <code>jh::ranges::zip_view</code>.
      *
@@ -170,44 +197,51 @@ namespace jh::ranges {
      * underlying element.
      * </p>
      *
-     * @tparam Elems The element types of the aggregated tuple. Each may be a
+     * @tparam Es The element types of the aggregated tuple. Each may be a
      *         reference, <code>std::reference_wrapper</code>, or value type.
      *
      * @see jh::ranges::zip_iterator
      * @see jh::ranges::zip_view
      */
-    template<typename... Elems>
+    template<typename... Es>
     struct zip_reference_proxy {
-        std::tuple<Elems...> elems;
+        std::tuple<Es...> elems;
 
-        template<std::size_t I>
-        constexpr decltype(auto) get() const noexcept {
-            auto &&e = std::get<I>(elems);
-            if constexpr (requires { e.get(); })
-                return (e.get());
-            else
-                return (e);
+    private:
+        static constexpr decltype(auto) unwrap_ref(auto&& x) {
+            using X = std::remove_cvref_t<decltype(x)>;
+            if constexpr (requires { x.get(); }) {
+                return x.get();
+            } else if constexpr (is_zip_proxy_v<X>) {
+                return static_cast<zip_proxy_value_tuple_t<X>>(std::forward<decltype(x)>(x));
+            } else {
+                return std::forward<decltype(x)>(x);
+            }
         }
 
-        // allow implicit conversion to tuple of unwrapped references/values
-        constexpr operator std::tuple<std::remove_cvref_t<
-                std::unwrap_reference_t<Elems>>...>() const {
-            return std::apply([](auto&&... e) {
-                return std::tuple<std::remove_cvref_t<
-                        std::unwrap_reference_t<Elems>>...>{unwrap_ref(e)...};
+    public:
+        constexpr operator zip_proxy_value_tuple_t<zip_reference_proxy>() const & {
+            return std::apply([](auto const&... e) {
+                return zip_proxy_value_tuple_t<zip_reference_proxy>{ unwrap_ref(e)... };
             }, elems);
         }
 
-    private:
-        // unwrap reference_wrapper or forward the value
-        static constexpr auto&& unwrap_ref(auto&& x) {
-            if constexpr (requires { x.get(); })
-                return x.get();
-            else
-                return std::forward<decltype(x)>(x);
+        constexpr operator zip_proxy_value_tuple_t<zip_reference_proxy>() && {
+            return std::apply([](auto&&... e) {
+                return zip_proxy_value_tuple_t<zip_reference_proxy>{ unwrap_ref(std::forward<decltype(e)>(e))... };
+            }, std::move(elems));
+        }
+
+        template <std::size_t N>
+        constexpr decltype(auto) get() const & noexcept {
+            return std::get<N>(elems);
+        }
+
+        template <std::size_t N>
+        constexpr decltype(auto) get() && noexcept {
+            return std::get<N>(std::move(elems));
         }
     };
-
 
     /**
      * @brief Retrieves the <code>I</code>-th element from a <code>zip_reference_proxy</code>.
@@ -529,5 +563,72 @@ namespace std {
     struct tuple_element<I, jh::ranges::zip_reference_proxy<Elems...>> {
         using type = decltype(std::declval<jh::ranges::zip_reference_proxy<Elems...>>().template get<I>());
     };
+
+    template<typename... Ts, typename... Us>
+    struct [[maybe_unused]] common_reference<
+            jh::ranges::zip_reference_proxy<Ts...>,
+            std::tuple<Us...>
+    > {
+        using type = std::tuple<std::common_reference_t<
+                std::unwrap_reference_t<Ts>,
+                std::unwrap_reference_t<Us>>...>;
+    };
+
+    template<typename... Ts, typename... Us>
+    struct [[maybe_unused]] common_reference<
+            std::tuple<Ts...>,
+            jh::ranges::zip_reference_proxy<Us...>
+    > {
+        using type = std::tuple<std::common_reference_t<
+                std::unwrap_reference_t<Ts>,
+                std::unwrap_reference_t<Us>>...>;
+    };
+
+    template<typename... Ts, typename... Us>
+    struct [[maybe_unused]] common_reference<
+            jh::ranges::zip_reference_proxy<Ts...>,
+            jh::ranges::zip_reference_proxy<Us...>
+    > {
+        using type = jh::ranges::zip_reference_proxy<std::common_reference_t<
+                std::unwrap_reference_t<Ts>,
+                std::unwrap_reference_t<Us>>...>;
+    };
+
+    template<typename... Ts, typename... Us>
+    struct [[maybe_unused]] common_reference<
+            jh::ranges::zip_reference_proxy<Ts...>&&,
+            std::tuple<Us...>&
+    > : common_reference<jh::ranges::zip_reference_proxy<Ts...>, std::tuple<Us...>> {};
+
+    template<typename... Ts, typename... Us>
+    struct [[maybe_unused]] common_reference<
+            jh::ranges::zip_reference_proxy<Ts...>&,
+            std::tuple<Us...>&
+    > : common_reference<jh::ranges::zip_reference_proxy<Ts...>, std::tuple<Us...>> {};
+
+    template<typename... Ts, typename... Us>
+    struct [[maybe_unused]] common_reference<
+            jh::ranges::zip_reference_proxy<Ts...>&&,
+            std::tuple<Us...>&&
+    > : common_reference<jh::ranges::zip_reference_proxy<Ts...>, std::tuple<Us...>> {};
+
+    // tuple& vs proxy&&
+    template<typename... Ts, typename... Us>
+    struct [[maybe_unused]] common_reference<
+            std::tuple<Ts...>&,
+            jh::ranges::zip_reference_proxy<Us...>&&
+    > : common_reference<
+            std::tuple<Ts...>,
+            jh::ranges::zip_reference_proxy<Us...>> {};
+
+    // proxy&& vs proxy&
+    template<typename... Ts, typename... Us>
+    struct [[maybe_unused]] common_reference<
+            jh::ranges::zip_reference_proxy<Ts...>&&,
+            jh::ranges::zip_reference_proxy<Us...>&
+    > : common_reference<
+            jh::ranges::zip_reference_proxy<Ts...>,
+            jh::ranges::zip_reference_proxy<Us...>> {};
+
 }
 #endif

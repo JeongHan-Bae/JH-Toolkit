@@ -57,7 +57,7 @@
 #include <cstddef>
 
 #include "jh/pods/pod_like.h"
-#include "jh/utils/hash_fn.h"
+#include "jh/meta/hash.h"
 
 namespace jh::pod {
 
@@ -292,9 +292,9 @@ namespace jh::pod {
          * </ul>
          */
         [[nodiscard]] constexpr std::uint64_t
-        hash(jh::utils::hash_fn::c_hash hash_method = jh::utils::hash_fn::c_hash::fnv1a64) const noexcept {
+        hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64) const noexcept {
             if (!data) return static_cast<std::uint64_t>(-1);
-            return utils::hash_fn::hash(hash_method, data, len);
+            return meta::hash(hash_method, data, len);
         }
 
         /**
