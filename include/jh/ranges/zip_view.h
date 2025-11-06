@@ -547,7 +547,7 @@ namespace jh::ranges {
      * a <code>zip_view</code> directly.
      */
     template<std::ranges::viewable_range... Rs>
-    [[maybe_unused]] zip_view(Rs &&...) -> zip_view<std::views::all_t<Rs>...>;
+    zip_view(Rs &&...) -> zip_view<std::views::all_t<Rs>...>;
 
 #endif // fallback
 } // namespace jh::ranges

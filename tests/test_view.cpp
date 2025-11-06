@@ -609,9 +609,9 @@ TEST_CASE("collect to unordered_map from vector of tuple", "[collect][unordered_
     REQUIRE(map1["carrot"] == 30);
 
     // ------------------------------------------------------
-    // Check that to<> also works directly
+    // Check that collect<> also works directly
     // ------------------------------------------------------
-    auto map2 = jh::ranges::to<std::unordered_map<std::string, int>>(pairs);
+    auto map2 = jh::ranges::collect<std::unordered_map<std::string, int>>(pairs);
     REQUIRE(map2 == map1);
 
     // ------------------------------------------------------
@@ -619,7 +619,7 @@ TEST_CASE("collect to unordered_map from vector of tuple", "[collect][unordered_
     // ------------------------------------------------------
     std::ostringstream out;
     for (auto &&[k, v]: pairs
-                        | jh::ranges::to<std::unordered_map<std::string, int>>()
+                        | jh::ranges::collect<std::unordered_map<std::string, int>>()
                         | jh::ranges::adapt()) {
         out << "(" << k << "," << v << ") ";
     }
@@ -631,7 +631,7 @@ TEST_CASE("collect to unordered_map from vector of tuple", "[collect][unordered_
     REQUIRE(result.find("(carrot,30)") != std::string::npos);
 }
 
-TEST_CASE("collect→to continuous chain to pmr::unordered_map", "[collect][to][pmr][unordered_map]") {
+TEST_CASE("collect+to continuous chain to pmr::unordered_map", "[collect][to][pmr][unordered_map]") {
     std::vector<std::string> input = {
             {"apple"},
             {"banana"},
