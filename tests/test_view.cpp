@@ -106,7 +106,7 @@ TEST_CASE("enumerate write then read", "[enumerate][rw]") {
 
     MyWritableSeq seq{};
     for (auto [i, x]: jh::views::enumerate(seq, 100)) {
-        x = i * 10;
+        x = static_cast<int>(i * 10);
     }
 
     std::ostringstream out;
@@ -122,7 +122,7 @@ TEST_CASE("enumerate immovable seq", "[enumerate][immov]") {
     jh::runtime_arr<int> arr(3);
     REQUIRE(arr.size() == 3);
     for (auto [i, x]: jh::views::enumerate(arr, 0)) {
-        x = i + 1;
+        x = static_cast<int>(i + 1);
     }
 
     std::ostringstream out;
@@ -444,8 +444,8 @@ TEST_CASE("constexpr flatten_proxy recursion and tuple_materialize", "[flatten][
     static_assert(std::tuple_size_v<decltype(fp)> == 7);
     static_assert(std::tuple_size_v<decltype(m)> == 7);
 
-    constexpr auto check = []<typename Tup>(const Tup& tup) {
-        const auto& [a, b, c, d, e, f, g] = tup;
+    constexpr auto check = []<typename Tup>(const Tup &tup) {
+        const auto &[a, b, c, d, e, f, g] = tup;
         return a == 1 && b == 2 && c == 3 && d == 4 && e == 5 && f == 6 && g == 7;
     };
 
@@ -463,27 +463,40 @@ struct DeclaredOnly {
 };
 
 struct DeducedOnly {
-    int* begin();
-    int* end();
+    int *begin();
+
+    int *end();
 };
 
 struct CompatibleProxy {
     using value_type = bool;
-    struct proxy { operator bool() const { return true; } };
-    proxy* begin();
-    proxy* end();
+
+    struct proxy {
+        operator bool() const { return true; }
+    };
+
+    proxy *begin();
+
+    proxy *end();
 };
 
 struct Conflict {
     using value_type = int;
-    struct proxy { operator std::string() const { return {}; } };
-    proxy* begin();
-    proxy* end();
+
+    struct proxy {
+        operator std::string() const { return {}; }
+    };
+
+    proxy *begin();
+
+    proxy *end();
 };
 
-struct Voidish { };
+struct Voidish {
+};
 
-class my_vector : public std::vector<char> { };
+class my_vector : public std::vector<char> {
+};
 
 template<>
 struct jh::container_deduction<my_vector> {
@@ -523,7 +536,9 @@ TEST_CASE("collect and to dynamic examples", "[collect][to][dynamic]") {
     std::pmr::monotonic_buffer_resource pool;
     std::pmr::polymorphic_allocator<int> alloc(&pool);
     auto pmr_vec = jh::ranges::to<std::pmr::vector<int>>(v, alloc);
+    auto p2 = v | jh::ranges::to<std::pmr::vector<int>>(alloc);
     REQUIRE(pmr_vec.size() == v.size());
+    REQUIRE(p2.size() == v.size());
 
     // pipeline sanity
     std::vector<int> input = {1, 2, 3};
@@ -536,7 +551,7 @@ TEST_CASE("collect and to dynamic examples", "[collect][to][dynamic]") {
                 | jh::ranges::adapt();
 
     std::ostringstream out_a;
-    for (auto x : aaaa) out_a << x << " ";
+    for (auto x: aaaa) out_a << x << " ";
     REQUIRE(out_a.str() == "1 2 3 ");
 
     // flatten and zip
@@ -545,13 +560,13 @@ TEST_CASE("collect and to dynamic examples", "[collect][to][dynamic]") {
                 | jh::ranges::to<std::vector<std::tuple<int, char>>>();
 
     std::ostringstream out_b;
-    for (auto& [a, b] : bbbb)
+    for (auto &[a, b]: bbbb)
         out_b << "(" << a << "," << b << ") ";
     REQUIRE(out_b.str() == "(1,a) (2,b) (3,c) ");
 
     // enumerate + flatten
     std::ostringstream out_c;
-    for (auto&& [i, ch0, ch1] :
+    for (auto &&[i, ch0, ch1]:
             input
             | jh::ranges::views::zip(other)
             | jh::ranges::views::enumerate(100)
@@ -571,4 +586,72 @@ TEST_CASE("collect and to dynamic examples", "[collect][to][dynamic]") {
     REQUIRE(rg.size() == 3);
     auto [i0, c0, c1] = rg.front();
     REQUIRE(i0 == 100);
+}
+
+TEST_CASE("collect to unordered_map from vector of tuple", "[collect][unordered_map]") {
+    // ------------------------------------------------------
+    // Prepare input: vector of tuple<key, value>
+    // ------------------------------------------------------
+    std::vector<std::tuple<std::string, int>> pairs = {
+            {"apple",  10},
+            {"banana", 20},
+            {"carrot", 30}
+    };
+
+    // ------------------------------------------------------
+    // Use collect() to produce unordered_map
+    // ------------------------------------------------------
+    auto map1 = pairs | jh::ranges::collect<std::unordered_map<std::string, int>>();
+
+    REQUIRE(map1.size() == 3);
+    REQUIRE(map1["apple"] == 10);
+    REQUIRE(map1["banana"] == 20);
+    REQUIRE(map1["carrot"] == 30);
+
+    // ------------------------------------------------------
+    // Check that to<> also works directly
+    // ------------------------------------------------------
+    auto map2 = jh::ranges::to<std::unordered_map<std::string, int>>(pairs);
+    REQUIRE(map2 == map1);
+
+    // ------------------------------------------------------
+    // Pipeline chain with adapt (ensures it's view-compatible)
+    // ------------------------------------------------------
+    std::ostringstream out;
+    for (auto &&[k, v]: pairs
+                        | jh::ranges::to<std::unordered_map<std::string, int>>()
+                        | jh::ranges::adapt()) {
+        out << "(" << k << "," << v << ") ";
+    }
+
+    // The order of unordered_map is unspecified — just check presence
+    std::string result = out.str();
+    REQUIRE(result.find("(apple,10)") != std::string::npos);
+    REQUIRE(result.find("(banana,20)") != std::string::npos);
+    REQUIRE(result.find("(carrot,30)") != std::string::npos);
+}
+
+TEST_CASE("collect→to continuous chain to pmr::unordered_map", "[collect][to][pmr][unordered_map]") {
+    std::vector<std::string> input = {
+            {"apple"},
+            {"banana"},
+            {"cherry"}
+    };
+
+    std::pmr::monotonic_buffer_resource pool;
+    std::pmr::polymorphic_allocator<std::pair<const std::string, int>> alloc(&pool);
+
+    auto result = input
+                  | jh::ranges::views::enumerate()
+                  | jh::ranges::collect<std::vector<std::pair<size_t, std::string>>>()
+                  | jh::ranges::to<std::pmr::unordered_map<size_t, std::string>>(
+            0,
+            std::hash<size_t>{},
+            std::equal_to<size_t>{},
+            alloc
+    );
+    REQUIRE(result.size() == 3);
+    REQUIRE(result[0] == "apple");
+    REQUIRE(result[1] == "banana");
+    REQUIRE(result[2] == "cherry");
 }

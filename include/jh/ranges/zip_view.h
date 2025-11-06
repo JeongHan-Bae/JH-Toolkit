@@ -547,7 +547,7 @@ namespace jh::ranges {
      * a <code>zip_view</code> directly.
      */
     template<std::ranges::viewable_range... Rs>
-    zip_view(Rs &&...) -> zip_view<std::views::all_t<Rs>...>;
+    [[maybe_unused]] zip_view(Rs &&...) -> zip_view<std::views::all_t<Rs>...>;
 
 #endif // fallback
 } // namespace jh::ranges
@@ -629,6 +629,54 @@ namespace std {
     > : common_reference<
             jh::ranges::zip_reference_proxy<Ts...>,
             jh::ranges::zip_reference_proxy<Us...>> {};
+} // namespace std
 
-}
+namespace std::ranges{
+    /**
+     * @brief Legal specialization of <code>std::ranges::enable_borrowed_range</code>.
+     *
+     * <p>
+     * This specialization is <b>explicitly permitted</b> by the C++ standard.
+     * User code may provide template specializations for certain customization points
+     * declared under the <code>std::ranges</code> namespace, including
+     * <code>std::ranges::enable_borrowed_range</code>, to indicate that a custom range
+     * type models the borrowed-range property.
+     * </p>
+     *
+     * <h4>About Clang-Tidy false positives</h4>
+     * <p>
+     * Static analyzers such as <b>Clang-Tidy</b> may emit a warning:
+     * <em>"Modification of 'std' namespace can result in undefined behavior"</em>.
+     * This warning is triggered because Clang-Tidy heuristically treats
+     * <b>any</b> declaration inside a user-written <code>namespace std</code> block
+     * as a modification of the standard namespace, without recognizing that
+     * <em>nested namespaces</em> like <code>std::ranges</code> define a separate,
+     * standards-sanctioned customization domain.
+     * </p>
+     *
+     * <p>
+     * Concretely:
+     * </p>
+     * <ul>
+     *   <li>Specializations such as <code>std::tuple_element&lt;&gt;</code> are recognized
+     *       by Clang-Tidy as explicitly allowed and thus do <b>not</b> trigger the warning.</li>
+     *   <li>Specializations inside nested subnamespaces (e.g.
+     *       <code>std::ranges::enable_borrowed_range&lt;T&gt;</code>) are equally legal
+     *       under the standard, but Clang-Tidy does not check the whitelist at that depth
+     *       and therefore incorrectly flags them as potential UB.</li>
+     * </ul>
+     *
+     * <p>
+     * This is a <b>false positive</b> — the specialization is <em>fully standard-compliant</em>
+     * and does <b>not</b> constitute undefined behavior.
+     * </p>
+     *
+     * @see <a href="https://en.cppreference.com/w/cpp/ranges/borrowed_range.html">
+     * std::ranges::borrowed_range</a>
+     */
+    template <typename... Views>
+    [[maybe_unused]] inline constexpr bool enable_borrowed_range<jh::ranges::zip_view<Views...>> =
+            (std::ranges::borrowed_range<Views> && ...);
+} // namespace std::ranges
+
 #endif

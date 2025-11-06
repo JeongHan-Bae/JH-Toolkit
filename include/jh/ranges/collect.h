@@ -17,82 +17,162 @@
  */
 /**
  * @file collect.h (ranges)
- * @brief Eager materialization adaptor for range pipelines — explicit termination of lazy views.
+ * @brief Eager materialization adaptor — explicitly terminates a lazy range pipeline
+ *        and realizes it into a concrete container <code>C</code>.
  * @author
  *   JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * <p>
- * The <code>jh::ranges::collect</code> adaptor provides a <b>controlled and explicit</b>
- * way to <em>materialize</em> a range pipeline into a concrete container <code>C</code>.
- * </p>
- *
- * <p>
- * Conceptually, <code>collect</code> represents the <b>eager half</b> of the proposed
- * C++23 <code>std::ranges::to</code>. While the standard function fuses materialization
- * and container adaptation into a single call, <code>jh::ranges::collect</code>
- * separates these responsibilities:
- * </p>
- * <ul>
- *   <li><b><code>collect&lt;C&gt;</code></b> – performs materialization, producing a fully
- *       realized container instance of type <code>C</code>.</li>
- *   <li><b><code>to&lt;C&gt;</code></b> – performs container adaptation only when
- *       the container and range are already <em>closable</em>
- *       (i.e., directly constructible via <code>closable_container_for</code>).</li>
- * </ul>
- *
- * <p>
- * This separation allows <b>fine-grained control</b> over lazy evaluation boundaries,
- * ensuring that intermediate <code>view</code> layers (such as
- * <code>transform_view</code> or <code>flatten_view</code>) can be explicitly
- * finalized into concrete storage before further adaptation.
+ * The <code>jh::ranges::collect</code> adaptor provides an <b>explicit</b> and
+ * <b>controlled</b> way to materialize a lazy range into a concrete container.
+ * It represents the <b>eager half</b> of <code>std::ranges::to</code>: while
+ * <code>to</code> performs direct construction of a <em>closable</em> container,
+ * <code>collect</code> enforces <b>explicit evaluation</b> of any lazy or
+ * proxy-based range and yields a stable, value-semantic container.
  * </p>
  *
  * <h3>Behavior overview</h3>
  * <ul>
- *   <li>If <code>C</code> and the input range <code>R</code> satisfy
- *       <code>closable_container_for&lt;C, R&gt;</code>, <code>collect</code>
- *       delegates directly to <code>jh::ranges::to_adaptor&lt;C&gt;</code>.</li>
- *   <li>Otherwise, it performs a generic insertion or emplace iteration
- *       based on <code>collectable_status</code> deduction.</li>
- *   <li>If <code>C</code> supports <code>reserve()</code> and <code>R</code>
- *       is a <code>sized_range</code>, capacity is reserved automatically.</li>
+ *   <li>If <code>C</code> and <code>R</code> satisfy
+ *       <code>closable_container_for&lt;C, R&gt;</code>, it delegates directly to
+ *       <code>jh::ranges::to_adaptor&lt;C&gt;</code>.</li>
+ *   <li>Otherwise, it performs element-wise insertion according to
+ *       <code>collectable_status</code> deduction, supporting the four canonical
+ *       insertion forms aligned with the proposed <code>std::ranges::to</code>:
+ *       <ul>
+ *         <li><b><code>emplace_back()</code></b></li>
+ *         <li><b><code>push_back()</code></b></li>
+ *         <li><b><code>emplace()</code></b></li>
+ *         <li><b><code>insert()</code></b></li>
+ *       </ul>
+ *       These cover virtually all standard and third-party container families.</li>
+ *   <li>If <code>C</code> provides <code>reserve()</code> and <code>R</code> models
+ *       <code>sized_range</code>, capacity is automatically preallocated.</li>
  * </ul>
  *
- * <h3>Usage</h3>
+ * <h3>Tuple unpacking and reconstruction</h3>
+ * <p>
+ * When none of the direct or implicit construction paths apply, and the range's
+ * element type is <em>tuple-like</em>, <code>collect</code> attempts a fallback
+ * reconstruction step: it unpacks the tuple-like element via
+ * <code>jh::meta::adl_apply</code> into <code>emplace_back()</code> or
+ * <code>emplace()</code> calls.
+ * This mechanism is unique to <code>collect</code> — the standard
+ * <code>std::ranges::to</code> does not perform such unpacking.
+ * </p>
+ *
  * @code
- * using namespace jh::ranges;
- *
- * std::vector&lt;int&gt; v = {1, 2, 3};
- *
- * // Direct form:
- * auto s = collect&lt;std::set&lt;int&gt;&gt;(v);
- *
- * // Pipe form:
- * auto dq = v | collect&lt;std::deque&lt;int&gt;&gt;();
- *
- * // Combine with views:
- * auto r = input
- *        | jh::ranges::views::zip(other)
- *        | jh::ranges::views::enumerate(100)
- *        | jh::ranges::views::flatten()
- *        | jh::ranges::collect&lt;std::vector&lt;std::tuple&lt;int, char, char&gt;&gt;&gt;()
- *        | jh::ranges::to&lt;std::deque&lt;std::tuple&lt;int, char, char&gt;&gt;&gt;();
+ * auto result = input_strings
+ *   | jh::ranges::views::enumerate()
+ *   | jh::ranges::collect&lt;std::vector&lt;std::pair&lt;size_t, std::string&gt;&gt;&gt;()
+ *   | jh::ranges::to&lt;std::pmr::unordered_map&lt;size_t, std::string&gt;&gt;(
+ *         0,
+ *         std::hash&lt;size_t&gt;{},
+ *         std::equal_to&lt;size_t&gt;{},
+ *         alloc
+ *     );
  * @endcode
+ *
+ * <p>
+ * Here, <code>enumerate()</code> (implemented via jh::ranges::zip_view and std::iota) yields a
+ * tuple-like proxy (zip_reference_proxy) combining the index and
+ * string reference; <code>collect</code> detects that it cannot insert the
+ * proxy directly, unpacks it, and reconstructs real
+ * <code>std::pair&lt;size_t, std::string&gt;</code> objects.
+ * </p>
+ *
+ * <h3>Semantic role</h3>
+ * <p>
+ * <code>collect</code> defines the <b>explicit evaluation boundary</b> within a
+ * lazy pipeline — it marks where deferred computations stop and data becomes
+ * concrete.
+ * This is crucial when interacting with <code>std::views::transform</code> or
+ * other lazy adaptors that convert a range into a transient, consumptive stream.
+ * By forcing evaluation, <code>collect</code> ensures that the data is
+ * materialized and safe from dangling or deferred access.
+ * </p>
+ *
+ * <ul>
+ *   <li><b>Explicit materialization:</b> forces evaluation of lazy pipelines.</li>
+ *   <li><b>Type normalization:</b> resolves proxy and reference wrappers into
+ *       value objects.</li>
+ *   <li><b>Tuple fallback:</b> reconstructs unpacked objects when direct
+ *       construction is not viable.</li>
+ * </ul>
+ *
+ * <h3>Argument policy</h3>
+ * <p>
+ * <code>collect</code> does <b>not</b> accept additional constructor arguments.
+ * It performs data normalization only — all container-specific configuration
+ * (e.g. allocators, hashers, comparators) belongs to <code>jh::ranges::to</code>.
+ * </p>
+ *
+ * @code
+ * // Correct pipeline:
+ * auto result = lazy_view
+ *   | jh::ranges::collect&lt;std::vector&lt;Key, Val&gt;&gt;()
+ *   | jh::ranges::to&lt;std::pmr::unordered_map&lt;Key, Val&gt;&gt;(
+ *         0,
+ *         std::hash&lt;Key&gt;{},
+ *         std::equal_to&lt;Key&gt;{},
+ *         alloc
+ *     );
+ * @endcode
+ *
+ * <p>
+ * Do <b>not</b> use <code>std::move()</code> between <code>collect</code> and
+ * <code>to</code> — it provides no benefit.
+ * The two adaptors are designed to compose directly in a pipeline;
+ * move construction is handled automatically via RVO/NRVO.
+ * See the <code>to</code> adaptor documentation for detailed move semantics.
+ * </p>
+ *
+ * <h3>Direct completion</h3>
+ * <p>
+ * If your target container is a standard type that does not require extra
+ * constructor parameters (e.g. <code>std::vector</code>,
+ * <code>std::set</code>, <code>std::unordered_map</code>), you can use
+ * <code>collect&lt;C&gt;</code> directly as the final stage.
+ * Performance will be identical to <code>to</code> because, when possible,
+ * <code>collect</code> automatically dispatches to
+ * <code>to_adaptor&lt;C&gt;</code> internally.
+ * </p>
  *
  * <h3>Design rationale</h3>
  * <ul>
- *   <li><b>Explicit materialization point:</b> marks where the lazy evaluation chain ends.</li>
- *   <li><b>Composable pipeline:</b> integrates seamlessly into the range adaptor model.</li>
- *   <li><b>Closability awareness:</b> reuses direct constructors when possible for efficiency.</li>
- *   <li><b>Container independence:</b> works for both standard and custom containers that
- *       satisfy <code>collectable_container_for</code>.</li>
+ *   <li><b>Evaluation control:</b> explicitly terminates lazy or consumptive pipelines.</li>
+ *   <li><b>Unified insertion model:</b> supports four canonical insertion forms
+ *       and extends them with tuple-based reconstruction.</li>
+ *   <li><b>Predictable semantics:</b> forbids extra arguments, ensuring
+ *       unambiguous materialization.</li>
+ *   <li><b>Composable design:</b> integrates seamlessly with
+ *       <code>jh::ranges::to</code> for final adaptation.</li>
  * </ul>
  *
+ * <h4>Relation to <code>jh::ranges::to</code></h4>
+ * <p>
+ * <code>collect</code> focuses on <b>materialization</b> — forcing a lazy range
+ * into stable storage.
+ * <code>to</code> focuses on <b>adaptation</b> — constructing the final container,
+ * possibly with configuration parameters.
+ * </p>
+ *
+ * <ol>
+ *   <li><code>collect&lt;V&gt;()</code> — eagerly realize and normalize data.</li>
+ *   <li><code>to&lt;C&gt;(...)</code> — adapt and construct the final container.</li>
+ * </ol>
+ *
+ * <p>
+ * Together they form a deterministic two-phase pipeline, separating lazy
+ * evaluation from container adaptation for clarity, safety, and composability.
+ * </p>
+ *
  * @note
- * Unlike <code>jh::ranges::to</code>, which requires a fully <em>closable</em> container–range pair,
- * <code>collect</code> is more permissive and can operate on any <em>collectable</em> range,
- * materializing even partially defined or proxy-based views (such as <code>transform_view</code>)
- * that would otherwise be non-closable.
+ * <code>collect</code> is more permissive than <code>to</code>: it accepts any
+ * range that supports minimal insertion semantics, and provides additional
+ * tuple-unpacking fallback paths.
+ * However, because it forbids extra arguments, configuration such as allocators
+ * or policies must be handled by <code>to</code>.
  *
  * @see jh::ranges::to
  * @see jh::concepts::collectable_container_for
@@ -100,12 +180,12 @@
  * @date <pre>2025</pre>
  */
 
-
 #pragma once
 
 #include <ranges>
 #include "jh/conceptual/collectable_container.h"
 #include "jh/ranges/to.h"
+#include "jh/meta/adl_apply.h"
 
 
 namespace jh::ranges {
@@ -150,21 +230,41 @@ namespace jh::ranges {
         constexpr auto status = Impl::status;
 
         if constexpr (status == jh::concepts::detail::collectable_status::closable) {
-            // prefer closable construction
+            // prefer direct closable construction
             return jh::ranges::to_adaptor<C>(std::forward<R>(r));
         } else {
             C c{}; // guaranteed NRVO, only need default constructor
+
+            // reserve if available
             if constexpr (requires(C &cont, std::size_t n) { cont.reserve(n); } &&
             std::ranges::sized_range<R>) {
                 c.reserve(std::ranges::size(r));
             }
+
             for (auto &&e: r) {
-                if constexpr (status == jh::concepts::detail::collectable_status::insert)
-                    c.insert(e);
-                else if constexpr (status == jh::concepts::detail::collectable_status::emplace)
-                    c.emplace(e);
-                else if constexpr (status == jh::concepts::detail::collectable_status::emplace_back)
-                    c.emplace_back(e);
+                if constexpr (status == jh::concepts::detail::collectable_status::emplace_back_direct) {
+                    c.emplace_back(std::forward<decltype(e)>(e));
+                } else if constexpr (status == jh::concepts::detail::collectable_status::push_back_direct) {
+                    c.push_back(std::forward<decltype(e)>(e));
+                } else if constexpr (status == jh::concepts::detail::collectable_status::emplace_direct) {
+                    c.emplace(std::forward<decltype(e)>(e));
+                } else if constexpr (status == jh::concepts::detail::collectable_status::insert_direct) {
+                    c.insert(std::forward<decltype(e)>(e));
+                } else if constexpr (status == jh::concepts::detail::collectable_status::emplace_back_unpack) {
+                    // tuple-like element, unpack into emplace_back
+                    jh::meta::adl_apply(
+                            [&](auto &&... args) {
+                                c.emplace_back(std::forward<decltype(args)>(args)...);
+                            },
+                            std::forward<decltype(e)>(e));
+                } else if constexpr (status == jh::concepts::detail::collectable_status::emplace_unpack) {
+                    // tuple-like element, unpack into emplace
+                    jh::meta::adl_apply(
+                            [&](auto &&... args) {
+                                c.emplace(std::forward<decltype(args)>(args)...);
+                            },
+                            std::forward<decltype(e)>(e));
+                }
             }
             return c;
         }

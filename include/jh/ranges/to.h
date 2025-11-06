@@ -48,17 +48,25 @@
  * @code
  * using namespace jh::ranges;
  *
- * std::vector&lt;int&gt; v = {1, 2, 3};
+ * std::vector&lt;int&gt; v = {1, 2, 3, 4};
  *
- * // Direct call:
- * auto s = to&lt;std::set&lt;int&gt;&gt;(v);
- *
- * // Pipe form:
- * auto dq = v | to&lt;std::deque&lt;double&gt;&gt;();
- *
- * // With allocator or extra constructor arguments:
  * std::pmr::monotonic_buffer_resource pool;
- * auto pmr_vec = to&lt;std::pmr::vector&lt;int&gt;&gt;(v, std::pmr::polymorphic_allocator&lt;int&gt;(&pool));
+ *
+ * // Direct construction — requires closable_container_for&lt;std::pmr::vector&lt;int&gt;, std::vector&lt;int&gt;&gt;
+ * auto pmr_vec = to&lt;std::pmr::vector&lt;int&gt;&gt;(
+ *     v,
+ *     std::pmr::polymorphic_allocator&lt;int&gt;(&pool)
+ * );
+ *
+ * // Equivalent pipe form
+ * auto pmr_vec2 = v
+ *   | to&lt;std::pmr::vector&lt;int&gt;&gt;(std::pmr::polymorphic_allocator&lt;int&gt;(&pool));
+ *
+ * // When the source range is not directly closable, normalize first:
+ * auto pmr_vec3 = std::views::iota(0, 5)
+ *   | std::views::transform([](int x) { return x * x; })
+ *   | collect&lt;std::vector&lt;int&gt;&gt;()
+ *   | to&lt;std::pmr::vector&lt;int&gt;&gt;(std::pmr::polymorphic_allocator&lt;int&gt;(&pool));
  * @endcode
  *
  * <h3>Design rationale</h3>
@@ -70,7 +78,72 @@
  *   <li><b>Full pipe compatibility:</b> Works seamlessly in range pipelines
  *       with or without additional constructor parameters.</li>
  * </ul>
+ * 
+ * <h3>Optimization semantics: <code>collect + to</code></h3>
+ * <p>
+ * Under optimized compilation (C++20 and later), the combination
+ * <code>collect + to</code> behaves as a <em>semantic two-stage pipeline</em> but is
+ * compiled down to a near-optimal one-stage construction.  
+ * Although <code>collect</code> materializes an intermediate container (usually
+ * <code>std::vector&lt;T&gt;</code>), the compiler's <b>RVO</b> and <b>move-propagation</b>
+ * rules ensure that no redundant copies occur for right-value ranges.
+ * </p>
  *
+ * <table>
+ *   <tr>
+ *     <th>Stage</th>
+ *     <th>Responsibility</th>
+ *     <th>Typical Behavior</th>
+ *     <th>Optimization Result</th>
+ *   </tr>
+ *   <tr>
+ *     <td><b>collect&lt;V&gt;()</b></td>
+ *     <td>Terminates lazy views and produces a normalized, value-semantic
+ *         container (e.g. <code>std::vector&lt;pair&lt;K,V&gt;&gt;</code>).</td>
+ *     <td>Constructs a temporary container on the caller's stack.</td>
+ *     <td>RVO creates the container directly in the caller frame; no copy or
+ *         move is required.</td>
+ *   </tr>
+ *   <tr>
+ *     <td><b>to&lt;C&gt;()</b></td>
+ *     <td>Adapts the collected data into the final container <code>C</code>
+ *         via its constructor (<code>[begin, end)</code>, move-iterators,
+ *         or adapter dispatch).</td>
+ *     <td>Passes iterators of the temporary container.</td>
+ *     <td>Because the source is a right-value, the target container moves each
+ *         element; no deep copy occurs.</td>
+ *   </tr>
+ *   <tr>
+ *     <td><b>Overall pipeline</b></td>
+ *     <td>Two semantic stages: materialization + construction.</td>
+ *     <td>Intermediate vector exists logically but not physically duplicated.</td>
+ *     <td>Equivalent runtime cost to <code>C(std::make_move_iterator(...))</code>;
+ *         no extra allocations, deterministic lifetime.</td>
+ *   </tr>
+ * </table>
+ *
+ * <h4>Why this design is semantically superior</h4>
+ * <ul>
+ *   <li><b>Explicit materialization point:</b> The exact moment a lazy range
+ *       becomes concrete is visible and controllable.</li>
+ *   <li><b>Allocator and resource safety:</b> Construction parameters are isolated
+ *       in <code>to</code>, preventing accidental cross-allocator moves.</li>
+ *   <li><b>Predictable evaluation order:</b> No hidden eager materialization as in
+ *       <code>std::ranges::to</code>.</li>
+ *   <li><b>Copy-safe yet move-efficient:</b> Even though
+ *       <code>return C(begin(r), end(r))</code> is specified as a copy operation,
+ *       compilers perform per-element <code>move</code> for right-value containers,
+ *       achieving optimal performance without losing semantic clarity.</li>
+ *   <li><b>Transparent lifetime management:</b> The intermediate vector's scope is
+ *       clear, making debugging and reasoning about resource ownership trivial.</li>
+ * </ul>
+ *
+ * <p>
+ * In practice, <code>collect + to</code> achieves the same performance as a
+ * monolithic <code>std::ranges::to</code> call while providing stronger guarantees
+ * of safety, clarity, and composability within a range pipeline.
+ * </p>
+ * 
  * @see jh::ranges::collect
  * @see jh::concepts::closable_container_for
  * @version <pre>1.3.x</pre>
@@ -80,6 +153,7 @@
 #pragma once
 
 #include <ranges>
+#include "jh/meta/adl_apply.h"
 #include "jh/conceptual/closable_container.h"
 
 
@@ -120,21 +194,17 @@ namespace jh::ranges {
 
         if constexpr (status == jh::concepts::detail::closable_status::direct_copy) {
             return C(std::ranges::begin(r), std::ranges::end(r), std::forward<Args>(args)...);
-        } else if constexpr (status == jh::concepts::detail::closable_status::direct_move) {
-            return C(std::make_move_iterator(std::ranges::begin(r)),
-                     std::make_move_iterator(std::ranges::end(r)),
-                     std::forward<Args>(args)...);
         } else if constexpr (status == jh::concepts::detail::closable_status::via_vector_whole) {
             std::vector<Cv> tmp(std::ranges::begin(r), std::ranges::end(r));
             return C(std::move(tmp), std::forward<Args>(args)...);
-        } else if constexpr (status == jh::concepts::detail::closable_status::via_vector_copy) {
-            std::vector<Cv> tmp(std::ranges::begin(r), std::ranges::end(r));
-            return C(tmp.begin(), tmp.end(), std::forward<Args>(args)...);
         } else if constexpr (status == jh::concepts::detail::closable_status::via_vector_move) {
             std::vector<Cv> tmp(std::ranges::begin(r), std::ranges::end(r));
             return C(std::make_move_iterator(tmp.begin()),
                      std::make_move_iterator(tmp.end()),
                      std::forward<Args>(args)...);
+        } else if constexpr (status == jh::concepts::detail::closable_status::via_vector_copy) {
+            std::vector<Cv> tmp(std::ranges::begin(r), std::ranges::end(r));
+            return C(tmp.begin(), tmp.end(), std::forward<Args>(args)...);
         } else if constexpr (status == jh::concepts::detail::closable_status::adapter_via_underlying) {
             using Underlying = typename C::container_type;
             auto base = jh::ranges::to_adaptor<Underlying>(std::forward<R>(r), std::forward<Args>(args)...);
@@ -168,7 +238,7 @@ namespace jh::ranges {
              */
             template<std::ranges::range R>
             constexpr auto operator()([[maybe_unused]] R &&r) const {
-                return std::apply([&]<typename... A>(A &&... unpacked) {
+                return jh::meta::adl_apply([&]<typename... A>(A &&... unpacked) {
                     return jh::ranges::to_adaptor<C>(std::forward<R>(r), std::forward<A>(unpacked)...);
                 }, args);
             }

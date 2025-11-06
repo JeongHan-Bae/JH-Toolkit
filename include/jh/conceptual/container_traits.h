@@ -1,3 +1,85 @@
+/**
+ * \verbatim
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * \endverbatim
+ */
+/**
+ * @file container_traits.h (conceptual)
+ * @brief Unified deduction model for container element types.
+ * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ *
+ * <p>
+ * This header defines the trait <code>jh::concepts::container_value_t</code>,
+ * a unified and extensible mechanism for deducing the <em>value type</em> of
+ * arbitrary container-like types.
+ * It harmonizes three deduction strategies — user registration, declared
+ * <code>value_type</code>, and iterator-based inference — under a deterministic
+ * priority system.
+ * </p>
+ *
+ * <h3>Purpose</h3>
+ * <p>
+ * Many standard and custom containers expose different or ambiguous value-type
+ * information. This trait provides a <b>canonical, conflict-resolving</b> method
+ * to obtain a single consistent element type used across the entire
+ * <code>jh::concepts</code> subsystem (e.g. in
+ * <code>closable_container_for</code> and <code>collectable_container_for</code>).
+ * </p>
+ *
+ * <h3>Deduction priority</h3>
+ * <ol>
+ *   <li><b>User override:</b>
+ *       <code>jh::container_deduction&lt;C&gt;::value_type</code> — explicit registration
+ *       always takes precedence.</li>
+ *   <li><b>Declared type:</b>
+ *       <code>C::value_type</code> — used if no override is present.</li>
+ *   <li><b>Iterator-based deduction:</b>
+ *       extracted via <code>iterator_t&lt;C&gt;</code> and
+ *       <code>iterator_value_t&lt;iterator_t&lt;C&gt;&gt;</code>.</li>
+ *   <li><b>Conflict resolution:</b>
+ *       if both declared and deduced forms exist and share a common reference,
+ *       the declared form wins.</li>
+ *   <li><b>Fallback:</b> <code>void</code> — deduction failure.</li>
+ * </ol>
+ *
+ * <h3>User customization point</h3>
+ * <p>
+ * Custom containers can specialize <code>jh::container_deduction&lt;C&gt;</code>
+ * to explicitly define a <code>value_type</code>.
+ * This mechanism overrides all automatic deduction and provides a
+ * stable interface for third-party containers that do not follow standard
+ * iterator or value conventions.
+ * </p>
+ *
+ * <h3>Design rationale</h3>
+ * <ul>
+ *   <li>Fully constexpr and SFINAE-safe; compatible with incomplete types.</li>
+ *   <li>Consistent with <code>std::ranges</code> conventions while allowing
+ *       user extension without ADL or traits injection.</li>
+ *   <li>Provides uniform type deduction across <code>collect</code>,
+ *       <code>to</code>, and all range-concept meta-utilities.</li>
+ * </ul>
+ *
+ * @see jh::concepts::iterator_t
+ * @see jh::concepts::sequence_t
+ * @see jh::concepts::closable_container_for
+ * @see jh::concepts::collectable_container_for
+ * @version <pre>1.3.x</pre>
+ * @date <pre>2025</pre>
+ */
+
 #pragma once
 
 #include <ranges>
@@ -109,8 +191,8 @@ namespace jh::concepts::detail {
         static constexpr bool has_deduced = !std::same_as<deduced_t, void>;
 
         using type = decltype([]() {
-            // Step 1: user override always wins
             if constexpr (has_override) {
+                // Step 1: user override always wins
                 return std::type_identity<override_t>{};
             }
                 // Step 2: declared only
