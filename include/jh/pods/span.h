@@ -55,7 +55,7 @@ namespace jh::pod {
          * </ul>
          */
         template<typename C, typename T = std::remove_pointer_t<decltype(std::declval<C>().data())> >
-        concept LinearContainer =
+        concept linear_container =
                 requires(const C &c)
                 {
                     { c.data() } -> std::convertible_to<const T *>;
@@ -170,14 +170,14 @@ namespace jh::pod {
     }
 
     /// @brief Create span from an object with <code>.data()</code> and <code>.size()</code>.
-    template<detail::LinearContainer C>
+    template<detail::linear_container C>
     [[nodiscard]] constexpr auto to_span(C &c) noexcept
         -> span<std::remove_pointer_t<decltype(c.data())> > {
         return {c.data(), static_cast<std::uint64_t>(c.size())};
     }
 
     /// @brief Const overload for containers.
-    template<detail::LinearContainer C>
+    template<detail::linear_container C>
     [[nodiscard]] constexpr auto to_span(const C &c) noexcept
         -> span<const std::remove_pointer_t<decltype(c.data())>> {
         return {c.data(), static_cast<std::uint64_t>(c.size())};

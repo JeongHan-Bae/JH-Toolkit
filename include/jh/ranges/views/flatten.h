@@ -20,35 +20,32 @@
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief View adaptor for flattening tuple-like elements in a range.
  *
- * @details
- *   The <code>jh::ranges::views::flatten</code> adaptor produces a lazy view that
- *   traverses a range and flattens its <tt>tuple-like</tt> elements into
- *   <code>jh::meta::flatten_proxy</code> objects.
- *   Non–tuple-like elements are passed through unchanged.
- *
- *   Each element of the resulting view is therefore either
- *   - a <code>jh::meta::flatten_proxy</code> (when the source element models
- *     <code>jh::concepts::tuple_like</code>), or
- *   - the original element itself (when it does not).
+ * <p>
+ * The <code>jh::ranges::views::flatten</code> adaptor produces a lazy view that
+ * inspects each element of a range and, if it models
+ * <code>jh::concepts::tuple_like</code>, wraps it in a
+ * <code>jh::meta::flatten_proxy</code>. Non–tuple-like elements are forwarded
+ * unchanged.
+ * </p>
  *
  * <h3>Behavior</h3>
  * <ul>
- *   <li>If an element is <code>tuple_like</code>, it is recursively flattened into
- *       a <code>jh::meta::flatten_proxy</code>.</li>
- *   <li>If an element is not <code>tuple_like</code>, it is left untouched
- *       (no-op).</li>
- *   <li>The resulting range is implemented as a
- *       <code>std::ranges::transform_view</code> applying the flattening projection
- *       lazily.</li>
+ *   <li>Tuple-like elements are recursively flattened into
+ *       <code>jh::meta::flatten_proxy</code> objects.</li>
+ *   <li>Non–tuple-like elements are passed through as-is.</li>
+ *   <li>The transformation is applied lazily; no element is copied or expanded eagerly.</li>
  * </ul>
  *
- * <h3>Design Notes</h3>
+ * <h3>Implementation Notes</h3>
  * <ul>
- *   <li>Flattening occurs lazily via <code>transform_view</code> projection.</li>
- *   <li><code>flatten_proxy</code> instances are compatible with structured bindings
- *       and tuple-based algorithms.</li>
- *   <li>Perfect forwarding and <code>constexpr</code> evaluation are preserved.</li>
- *   <li>Non–tuple-like elements incur zero overhead (no additional wrapping).</li>
+ *   <li><code>flatten</code> delegates to <code>jh::ranges::views::transform</code>.</li>
+ *   <li><code>jh::ranges::views::transform</code> internally decides whether to
+ *       construct a non-consuming or consuming transformation view depending on
+ *       the behavior of the projection function.</li>
+ *   <li>Because <code>flatten</code> is a pure observation, its output preserves
+ *       the consumption property of the underlying range:
+ *       if the input is non-consuming, the output remains non-consuming;
+ *       if the input is single-pass, the result is also single-pass.</li>
  * </ul>
  *
  * @version <pre>1.3.x</pre>
@@ -59,46 +56,44 @@
 
 #include <ranges>
 #include "jh/meta/flatten_proxy.h"
+#include "jh/ranges/views/transform.h"
 
 namespace jh::ranges::views {
     namespace detail {
 
         /**
-         * @brief Closure enabling pipe syntax for <tt>flatten</tt> adaptor.
+         * @brief Closure enabling pipe syntax for <code>flatten</code>.
          *
-         * @details
-         * Provides the core callable implementation for
-         * <code>jh::ranges::views::flatten</code>. It applies a lazy transformation
-         * over a given range, recursively flattening tuple-like elements into
-         * <code>jh::meta::flatten_proxy</code> objects.
+         * <p>
+         * Provides the callable interface for <code>jh::ranges::views::flatten</code>.
+         * It applies a lazy flattening transformation that wraps tuple-like elements
+         * into <code>jh::meta::flatten_proxy</code> objects while leaving other elements unchanged.
+         * </p>
          *
-         * <p><b>Behavior summary:</b></p>
-         * <ul>
-         *   <li>If the element type models <code>jh::concepts::tuple_like</code>,
-         *       it is replaced by a <code>jh::meta::flatten_proxy</code>.</li>
-         *   <li>Otherwise, the element is forwarded unchanged.</li>
-         *   <li>The resulting range is represented as a
-         *       <code>std::ranges::transform_view</code>.</li>
-         * </ul>
+         * <p>
+         * The transformation is purely observational. Data is neither consumed nor copied,
+         * and the resulting view preserves the consumption property of the input range.
+         * </p>
          */
         struct flatten_closure {
 
             /**
-             * @brief Applies flattening transformation to a given range.
+             * @brief Applies the flatten adaptor directly to a range.
              *
-             * @tparam R The range type, must satisfy <code>std::ranges::range</code>.
-             * @param r The input range to flatten.
-             * @return A <tt>std::ranges::transform_view</tt> that lazily flattens tuple-like elements.
+             * @tparam R A type satisfying <code>std::ranges::range</code>.
+             * @param r  The range whose elements are to be flattened.
+             * @return   A transformation view that flattens tuple-like elements lazily.
              *
-             * @details
-             * The transformation projects each element as follows:
+             * <p><b>Semantics:</b></p>
              * <ul>
-             *   <li>If <code>T</code> models <code>jh::concepts::tuple_like</code>,
-             *       returns <code>jh::meta::flatten_proxy&lt;T&gt;</code>.</li>
-             *   <li>Otherwise, returns <code>T</code> directly.</li>
+             *   <li>Tuple-like elements are wrapped into <code>jh::meta::flatten_proxy</code>.</li>
+             *   <li>Non–tuple-like elements are passed through unchanged.</li>
+             *   <li>The adaptor invokes <code>jh::ranges::views::transform</code>,
+             *       which automatically selects an appropriate internal implementation
+             *       according to the projection's observational nature.</li>
+             *   <li>As <code>flatten</code> is purely observational, no ownership or
+             *       lifetime semantics are altered.</li>
              * </ul>
-             *
-             * @note This operation is <b>lazy</b>; no data is copied or eagerly expanded.
              */
             template<std::ranges::range R>
             constexpr auto operator()(R &&r) const {
@@ -110,23 +105,30 @@ namespace jh::ranges::views {
                         return std::forward<decltype(elem)>(elem);
                 };
 
-                return std::ranges::transform_view(std::views::all(std::forward<R>(r)), transform_fn);
+                return jh::ranges::views::transform(
+                        std::views::all(std::forward<R>(r)),
+                        transform_fn
+                );
             }
 
             /**
-             * @brief Enables <tt>range | flatten_closure</tt> syntax.
+             * @brief Enables pipe syntax for <code>flatten</code>.
              *
-             * @tparam R The range type on the left-hand side of the pipe.
-             * @param lhs The range to be flattened.
-             * @param rhs The flatten closure instance.
-             * @return A <tt>std::ranges::transform_view</tt> flattening <tt>lhs</tt>.
+             * @tparam R A type satisfying <code>std::ranges::range</code>.
+             * @param lhs The range on the left-hand side of the pipe.
+             * @param rhs The closure instance representing <code>flatten</code>.
+             * @return   The flattened transformation view.
              *
-             * @details
-             * This overload allows expressions like:
+             * <p>
+             * Allows expressions of the form:
+             * </p>
              * @code
-             * auto v = seq | jh::ranges::views::flatten();
+             * auto v = some_range | jh::ranges::views::flatten();
              * @endcode
-             * which is equivalent to <code>flatten()(seq)</code>.
+             * which is equivalent to:
+             * @code
+             * auto v = jh::ranges::views::flatten(some_range);
+             * @endcode
              */
             template<std::ranges::range R>
             friend constexpr auto operator|(R &&lhs, const flatten_closure &rhs) {
@@ -135,30 +137,36 @@ namespace jh::ranges::views {
         };
 
         /**
-         * @brief Callable function object implementing <tt>flatten</tt>.
+         * @brief Callable function object implementing <code>flatten</code>.
          *
-         * @details
-         * Supports both direct invocation and pipe-based composition.
-         * <ul>
-         *   <li><b>Direct form:</b> <code>flatten(range)</code></li>
-         *   <li><b>Pipe form:</b> <code>range | flatten()</code></li>
-         * </ul>
+         * <p>
+         * Provides both direct and pipe-based interfaces for applying flattening transformation.
+         * Each element of the range is inspected; tuple-like values are flattened,
+         * and all others are forwarded unmodified.
+         * </p>
          *
-         * The adaptor produces a lazy transformation view
-         * that flattens tuple-like elements while leaving other
-         * elements untouched.
+         * <p>
+         * This adaptor preserves the consumption semantics of the source range:
+         * if the input range is non-consuming, the resulting view is reentrant;
+         * if the input is single-pass, the resulting view is also single-pass.
+         * </p>
          */
         struct flatten_fn {
             /**
-             * @brief Direct form of the <tt>flatten</tt> adaptor.
+             * @brief Applies <code>flatten</code> directly to a range.
              *
-             * @tparam R The range type to be flattened.
-             * @param r The input range.
-             * @return A <tt>std::ranges::transform_view</tt> applying flattening lazily.
+             * @tparam R Any <code>std::ranges::viewable_range</code>.
+             * @param r  The range to flatten.
+             * @return   A lazy transformation view flattening tuple-like elements.
              *
-             * @details
-             * Invokes <code>flatten_closure{}(r)</code>, forwarding all arguments
-             * and preserving <code>constexpr</code> semantics.
+             * <p>
+             * Equivalent to <code>flatten_closure{}(r)</code>.
+             * </p>
+             *
+             * <p>
+             * The transformation delegates to <code>jh::ranges::views::transform</code>,
+             * ensuring correct propagation of the input's reentrancy.
+             * </p>
              */
             template<std::ranges::viewable_range R>
             constexpr auto operator()(R &&r) const {
@@ -166,14 +174,15 @@ namespace jh::ranges::views {
             }
 
             /**
-             * @brief Pipe form factory for the <tt>flatten</tt> adaptor.
+             * @brief Produces a closure object for pipe syntax.
              *
-             * @return A <tt>flatten_closure</tt> enabling composition via the pipe operator.
+             * @return A <code>flatten_closure</code> that can be used in pipelines.
              *
-             * @details
-             * This overload allows the adaptor to be used in a pipeline expression:
+             * <p>
+             * This overload enables the form:
+             * </p>
              * @code
-             * auto flat = seq | jh::ranges::views::flatten();
+             * auto flattened = range | jh::ranges::views::flatten();
              * @endcode
              */
             constexpr auto operator()() const noexcept {
@@ -184,12 +193,14 @@ namespace jh::ranges::views {
     } // namespace detail
 
     /**
-     * @brief The user-facing <tt>flatten</tt> adaptor.
+     * @brief User-facing <code>flatten</code> adaptor.
      *
-     * @details
+     * <p>
      * Provides a unified interface for flattening tuple-like elements within a range.
-     * Each element is inspected lazily, and tuple-like elements are wrapped into
-     * <code>jh::meta::flatten_proxy</code> objects.
+     * The adaptor is lazy and purely observational: tuple-like elements are wrapped
+     * into <code>jh::meta::flatten_proxy</code> objects, while other elements are
+     * forwarded unchanged.
+     * </p>
      *
      * Supports both <b>direct</b> and <b>pipe</b> usage forms:
      * <ul>
@@ -199,37 +210,51 @@ namespace jh::ranges::views {
      *
      * <p><b>Behavior:</b></p>
      * <ul>
-     *   <li>If an element models <code>jh::concepts::tuple_like</code>,
-     *       it is flattened into a <code>jh::meta::flatten_proxy</code>.</li>
-     *   <li>Otherwise, the element is passed through unchanged.</li>
-     *   <li>The transformation is lazy, implemented via
-     *       <code>std::ranges::transform_view</code>.</li>
-     *   <li>The resulting element type is <code>jh::meta::flatten_proxy</code>,
-     *       which can be implicitly converted to a standard or structured
-     *       <code>tuple</code> type for binding or tuple algorithms.</li>
+     *   <li>Each element is inspected lazily; if it models
+     *       <code>jh::concepts::tuple_like</code>, it is wrapped into
+     *       <code>jh::meta::flatten_proxy</code>.</li>
+     *   <li>Non–tuple-like elements are left untouched.</li>
+     *   <li>The adaptor delegates to <code>jh::ranges::views::transform</code>,
+     *       which automatically preserves the consumption behavior of the input range:
+     *       <ul>
+     *         <li>If the source is non-consuming, the result remains reentrant.</li>
+     *         <li>If the source is consuming, the result remains single-pass.</li>
+     *       </ul>
+     *   </li>
+     *   <li>No ownership or lifetime semantics are altered.</li>
      * </ul>
      *
      * @note
      * <p>
-     * The flatten adaptor enforces structural flattening detection via structured
-     * bindings. If you are using custom POD types or user-defined array wrappers
-     * that are not intended to behave like tuples, they remain unflattened.
-     * However, if you use standard tuple-like containers such as
-     * <code>std::array</code>, <code>std::tuple</code>, <code>std::pair</code>, or their pod
-     * equivalents:
-     * <code>jh::pod::array</code>, <code>jh::pod::tuple</code>, <code>jh::pod::pair</code>,
-     * these will be automatically flattened.
+     * The flatten adaptor determines flattenability purely by duck typing:
+     * any object that supports structured binding is recursively expanded.
      * </p>
      * <p>
-     * Be cautious when iterating over associative containers such as
-     * <code>std::map</code> or <code>unordered_map</code>:
-     * their iteration elements are <code>std::pair&lt;const Key, T&gt;</code>,
-     * which will also be recognized as tuple-like and thus flattened into a tuple.
-     * Only use <code>flatten</code> if you explicitly want such pair elements to
-     * participate in flattening.
+     * The following are recognized as part of the framework's standard set
+     * of tuple-like types to prevent accidental misuse:
+     * <ul>
+     *   <li><code>std::pair</code>, <code>std::tuple</code>, <code>std::array</code></li>
+     *   <li><code>jh::pod::pair</code>, <code>jh::pod::tuple</code>, <code>jh::pod::array</code></li>
+     *   <li><code>jh::ranges::zip_view</code> element proxies
+     *       (<code>jh::ranges::zip_reference_proxy</code>)</li>
+     * </ul>
+     * </p>
+     * <p>
+     * User-defined POD or aggregate types that do not declare structured binding
+     * are never flattened and are treated as atomic values. Flattening applies
+     * only to types that explicitly declare structured binding.
+     * </p>
+     * <p>
+     * Because such a declaration requires explicit <code>std</code>
+     * specialization, it cannot occur accidentally. Therefore,
+     * <strong>declaring structured binding is considered explicit permission
+     * for recursive deconstruction</strong>, consistent with
+     * <code>jh::concepts::tuple_like</code>.
      * </p>
      *
      * @see jh::meta::flatten_proxy
+     * @see jh::ranges::views::transform
+     * @see jh::concepts::tuple_like
      */
     inline constexpr detail::flatten_fn flatten{};
 

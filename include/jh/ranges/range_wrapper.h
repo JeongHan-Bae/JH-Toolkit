@@ -42,6 +42,7 @@
 #pragma once
 
 #include "jh/conceptual/iterator.h"
+#include "jh/conceptual/range_traits.h"
 #include <ranges>
 
 
@@ -81,14 +82,19 @@ namespace jh::ranges {
                     jh::concepts::iterator_difference_t<Inner>
             >;
 
-            using iterator_category [[maybe_unused]] =
-                    std::conditional_t<
-                            jh::concepts::random_access_iterator<Inner>, std::random_access_iterator_tag,
-                            std::conditional_t<
-                                    jh::concepts::bidirectional_iterator<Inner>, std::bidirectional_iterator_tag,
-                                    std::conditional_t<
-                                            jh::concepts::forward_iterator<Inner>, std::forward_iterator_tag,
-                                            std::input_iterator_tag>>>;
+            using iterator_concept =
+                    decltype([] {
+                        if constexpr (jh::concepts::random_access_iterator<Inner>)
+                            return std::type_identity<std::random_access_iterator_tag>{};
+                        else if constexpr (jh::concepts::bidirectional_iterator<Inner>)
+                            return std::type_identity<std::bidirectional_iterator_tag>{};
+                        else if constexpr (jh::concepts::forward_iterator<Inner>)
+                            return std::type_identity<std::forward_iterator_tag>{};
+                        else
+                            return std::type_identity<std::input_iterator_tag>{};
+                    }())::type;
+
+            using iterator_category [[maybe_unused]] = iterator_concept;
 
             completed_iterator() = default;
 
@@ -319,11 +325,8 @@ namespace jh::ranges {
      */
     template<typename Seq>
     class range_wrapper : public std::ranges::view_interface<range_wrapper<Seq>> {
-        using Stored = std::conditional_t<
-                std::is_reference_v<Seq>,
-                std::reference_wrapper<std::remove_reference_t<Seq>>,
-                Seq>;
-        Stored seq_;
+        using traits = jh::concepts::range_storage_traits<Seq, true>;
+        typename traits::stored_t seq_;
     public:
 
         using inner_iterator = decltype(std::declval<Seq &>().begin());
@@ -331,7 +334,7 @@ namespace jh::ranges {
         using iterator = detail::completed_iterator<inner_iterator, sentinel>;
 
         explicit range_wrapper(Seq &&s)
-                : seq_(wrap(std::forward<Seq>(s))) {}
+                : seq_(traits::wrap(std::forward<Seq>(s))) {}
 
         auto begin() noexcept(noexcept(get().begin())) { return iterator(get().begin()); }
 
@@ -343,26 +346,11 @@ namespace jh::ranges {
         }
 
     private:
-        static auto wrap(auto &&v) {
-            if constexpr (std::is_reference_v<decltype(v)>)
-                return std::ref(v);
-            else
-                return std::forward<decltype(v)>(v);
-        }
 
-        constexpr decltype(auto) get() noexcept {
-            if constexpr (std::is_reference_v<Seq>)
-                return seq_.get();
-            else
-                return (seq_);
-        }
+        constexpr decltype(auto) get() noexcept { return traits::get(seq_); }
 
-        constexpr decltype(auto) get() const noexcept {
-            if constexpr (std::is_reference_v<Seq>)
-                return seq_.get();
-            else
-                return (seq_);
-        }
+        constexpr decltype(auto) get() const noexcept { return traits::get(seq_); }
+
     };
 } // namespace jh::ranges
 
@@ -410,7 +398,7 @@ namespace std::ranges {
      * @see <a href="https://en.cppreference.com/w/cpp/ranges/borrowed_range.html">
      * std::ranges::borrowed_range</a>
      */
-    template <typename SeqType>
+    template<typename SeqType>
     [[maybe_unused]] [[maybe_unused]] inline constexpr bool enable_borrowed_range<jh::ranges::range_wrapper<SeqType>> =
             std::is_lvalue_reference_v<SeqType>;
 } // namespace std::ranges

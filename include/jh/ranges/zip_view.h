@@ -343,8 +343,8 @@ namespace jh::ranges {
         using difference_type   = std::ptrdiff_t;
         using value_type        = std::tuple<std::remove_cvref_t<std::iter_value_t<Iters>>...>;
         using reference         = zip_reference_proxy<std::iter_reference_t<Iters>...>;
-        using iterator_category [[maybe_unused]] = std::input_iterator_tag;
-        using iterator_concept [[maybe_unused]] = std::input_iterator_tag;
+        using iterator_concept  = std::input_iterator_tag;
+        using iterator_category [[maybe_unused]] = iterator_concept;
 
         constexpr reference operator*() const {
             auto packed = tuple_transform([](auto &it) -> decltype(auto) {

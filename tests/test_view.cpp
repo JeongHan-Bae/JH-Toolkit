@@ -14,6 +14,7 @@
 #include <memory_resource>
 
 #include "jh/ranges/views/flatten.h" // force include to compact with 1.3.x-support-dev branch
+#include "jh/ranges/views/common.h"  // same as above
 #include "jh/views"
 #include "jh/pod"
 #include "jh/runtime_arr.h"
@@ -654,4 +655,82 @@ TEST_CASE("collect+to continuous chain to pmr::unordered_map", "[collect][to][pm
     REQUIRE(result[0] == "apple");
     REQUIRE(result[1] == "banana");
     REQUIRE(result[2] == "cherry");
+}
+
+TEST_CASE("flatten + to vector of tuple", "[flatten][to][combine]") {
+    jh::runtime_arr<int> ids(3);
+    jh::runtime_arr<std::string> names(3);
+
+    for (auto [i, x]: ids | jh::ranges::views::enumerate(1))
+        x = static_cast<int>(i * 10);
+    names[0] = "Alice";
+    names[1] = "Bob";
+    names[2] = "Carol";
+
+    // pipeline with flatten and to<>
+    auto result = ids
+                  | jh::ranges::views::enumerate(100)
+                  | jh::ranges::views::zip_pipe(names)
+                  | jh::ranges::views::flatten()
+                  | jh::ranges::views::common()
+                  | jh::ranges::to<std::vector<std::tuple<int, int, std::string>>>();
+
+    REQUIRE(result.size() == 3);
+    REQUIRE(result[0] == std::make_tuple(100, 10, "Alice"));
+    REQUIRE(result[1] == std::make_tuple(101, 20, "Bob"));
+    REQUIRE(result[2] == std::make_tuple(102, 30, "Carol"));
+}
+
+namespace demo{
+    struct mid {
+        long index;
+        int id;
+        std::string name;
+        int value;
+
+        mid(long i, int id_, std::string n, int v)
+                : index(i), id(id_), name(std::move(n)), value(v) {}
+
+        std::pair<int, std::string> as_pair() const {
+            return {static_cast<int>(index), name + ":(" + std::to_string(value) + ", " + std::to_string(id) + ")"};
+        }
+    };
+}
+
+TEST_CASE("flatten + collect + to pmr unordered_map", "[flatten][collect][to][combine]") {
+    jh::runtime_arr<int> ids(3);
+    jh::runtime_arr<std::string> names(3);
+    jh::runtime_arr<int> values(3);
+
+    for (auto [i, x]: ids | jh::ranges::views::enumerate(1))
+        x = static_cast<int>(i * 10);
+
+    for (auto [i, x]: values | jh::ranges::views::enumerate())
+        x = static_cast<int>((i + 1) * 100);
+
+    names[0] = "Alice";
+    names[1] = "Bob";
+    names[2] = "Carol";
+
+    std::pmr::monotonic_buffer_resource pool;
+
+    // [id] -> [(index, id)] -> [((index, id), name, value)] -> [(index, id, name, value)] -> [mid] -> [pair]
+
+    auto pmr_map = ids
+                   | jh::ranges::views::enumerate(100)
+                   | jh::ranges::views::zip_pipe(names, values)
+                   | jh::ranges::views::flatten()
+                   | jh::ranges::collect<std::vector<demo::mid>>()
+                   | jh::ranges::views::transform(&demo::mid::as_pair)
+                   | jh::ranges::to<std::pmr::unordered_map<int, std::string>>(
+            0,
+            std::hash<int>{},
+            std::equal_to<int>{},
+            std::pmr::polymorphic_allocator<std::pair<const int, std::string>>(&pool)
+    );
+
+    REQUIRE(pmr_map.size() == 3);
+    REQUIRE(pmr_map.at(100) == "Alice:(100, 10)");
+    REQUIRE(pmr_map.at(101) == "Bob:(200, 20)");
+    REQUIRE(pmr_map.at(102) == "Carol:(300, 30)");
 }
