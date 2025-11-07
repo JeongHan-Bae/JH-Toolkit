@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file adl_apply.h (meta)
+ * @file adl_apply.h (metax)
  * @brief ADL-enabled universal tuple application utility — extends <code>std::apply</code>
  *        to arbitrary tuple-like structures, including user-defined proxies and view elements.
  * @author

@@ -55,7 +55,7 @@
 #pragma once
 
 #include <ranges>
-#include "jh/meta/flatten_proxy.h"
+#include "jh/metax/flatten_proxy.h"
 #include "jh/ranges/views/transform.h"
 
 namespace jh::ranges::views {

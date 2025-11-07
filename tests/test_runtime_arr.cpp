@@ -2,7 +2,7 @@
 
 #include <catch2/catch_all.hpp>
 #include <memory_resource>
-#include "jh/runtime_arr.h"
+#include "jh/runtime_arr"
 #include <tuple>
 #include <memory>
 #include <vector>

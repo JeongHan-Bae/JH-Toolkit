@@ -57,7 +57,7 @@
 #include <cstddef>
 
 #include "jh/pods/pod_like.h"
-#include "jh/meta/hash.h"
+#include "jh/metax/hash.h"
 
 namespace jh::pod {
 

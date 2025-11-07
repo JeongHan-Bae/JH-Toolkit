@@ -1,7 +1,7 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch_all.hpp>
-#include "jh/sim_pool.h"
-#include "jh/pool.h"
+#include "jh/sim_pool"
+#include "jh/pool"
 #include "jh/macros/platform.h"
 #include <memory>
 #include <thread>

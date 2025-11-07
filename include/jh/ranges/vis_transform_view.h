@@ -317,7 +317,7 @@ namespace jh::ranges {
     template<typename R, typename F>
     vis_transform_view(R &&, F) -> vis_transform_view<R, F>;
 
-}
+} // namespace jh::ranges
 
 namespace std::ranges {
     /**
@@ -363,7 +363,7 @@ namespace std::ranges {
      * std::ranges::borrowed_range</a>
      */
     template<typename R, typename F>
-    inline constexpr bool enable_borrowed_range<
+    [[maybe_unused]] inline constexpr bool enable_borrowed_range<
             jh::ranges::vis_transform_view<R, F>> =
             std::is_lvalue_reference_v<R> || std::ranges::borrowed_range<R>;
-}
+} // namespace std::ranges

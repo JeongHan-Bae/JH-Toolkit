@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "jh/conceptual/sequence.h"
-#include "jh/pods/array.h"
+#include "jh/pod"
 
 namespace test {
     struct NonTemplateSequence {

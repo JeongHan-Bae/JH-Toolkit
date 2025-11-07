@@ -153,7 +153,7 @@
 #pragma once
 
 #include <ranges>
-#include "jh/meta/adl_apply.h"
+#include "jh/metax/adl_apply.h"
 #include "jh/conceptual/closable_container.h"
 
 

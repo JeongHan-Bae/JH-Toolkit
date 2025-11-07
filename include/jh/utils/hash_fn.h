@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "jh/meta/hash.h"
+#include "jh/metax/hash.h"
 
 namespace jh::utils::hash_fn {
     using jh::meta::c_hash;

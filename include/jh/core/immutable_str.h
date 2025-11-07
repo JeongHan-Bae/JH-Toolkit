@@ -203,7 +203,7 @@
 #include <optional>         // for std::optional
 #include <type_traits>      // for std::remove_cvref_t
 #include "jh/locking/const_lock.h"
-#include "jh/pool.h"
+#include "jh/core/pool.h"
 #include "jh/pods/string_view.h"
 
 namespace jh::detail {

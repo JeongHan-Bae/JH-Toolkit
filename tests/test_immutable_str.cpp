@@ -3,8 +3,8 @@
 #include <thread>
 #include <shared_mutex>
 #include <catch2/catch_all.hpp>
-#include "jh/immutable_str.h"
-#include "jh/typing/null_mutex.h"
+#include "jh/immutable_str"
+#include "jh/typed"
 
 namespace test {
     using ImmutablePool = jh::pool<jh::immutable_str>;

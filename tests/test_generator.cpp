@@ -4,7 +4,7 @@
 #include <numeric>
 #include <random>
 #include <catch2/catch_all.hpp>
-#include "jh/asynchronous/generator.h"
+#include "jh/generator"
 #include <type_traits>
 
 // Helper template to check if a class has a given member function

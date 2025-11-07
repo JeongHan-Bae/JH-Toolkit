@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file flatten_proxy.h (meta)
+ * @file flatten_proxy.h (metax)
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief Tuple flattening utilities and proxy wrapper for nested tuple-like types.
  *

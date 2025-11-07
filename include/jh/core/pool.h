@@ -108,7 +108,7 @@
 #include <concepts>         // NOLINT for concepts
 #include <cstdint>          // for std::uint64_t
 #include <utility>          // for std::ignore
-#include "jh/sim_pool.h"
+#include "jh/core/sim_pool.h"
 #include "jh/conceptual/hashable.h"
 
 namespace jh {

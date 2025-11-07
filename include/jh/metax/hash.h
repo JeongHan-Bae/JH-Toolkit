@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file hash.h (meta)
+ * @file hash.h (metax)
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief constexpr-safe, compile-time hash algorithms for meta utilities.
  *
@@ -30,7 +30,7 @@
  * <p>
  * On most platforms, <code>uint8_t</code> and <code>int8_t</code> are type aliases of
  * <code>unsigned char</code> and <code>signed char</code>, respectively.
- * Their pointers can therefore be safely used as <code>const char*</code> for hashing
+ * Their pointers can therefore be safely used as <code>const Char*</code> for hashing
  * and do not require any cast.
  *
  * However, types such as <code>bool</code> and <code>std::byte</code> are not character
@@ -166,4 +166,4 @@ namespace jh::meta {
         }
         return static_cast<std::uint64_t>(-1); // Illegal
     }
-}
+} // namespace jh::meta

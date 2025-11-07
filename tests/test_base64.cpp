@@ -2,6 +2,7 @@
 #include <random>
 #include <catch2/catch_all.hpp>
 #include "jh/utils/base64.h"
+#include "jh/jindallae"
 
 TEST_CASE("Base64 Encode/Decode Roundtrip", "[base64]") {
     std::random_device rd;

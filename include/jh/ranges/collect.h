@@ -185,7 +185,7 @@
 #include <ranges>
 #include "jh/conceptual/collectable_container.h"
 #include "jh/ranges/to.h"
-#include "jh/meta/adl_apply.h"
+#include "jh/metax/adl_apply.h"
 
 
 namespace jh::ranges {
