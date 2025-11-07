@@ -257,31 +257,27 @@ namespace jh::ranges {
             }
 
             // --- sentinel cmp ---
-            template <typename Sentinel>
+            template<typename Sentinel>
             friend constexpr bool operator==(const iterator &it, const Sentinel &sent)
-            noexcept(noexcept(it.current_ == sent))
-            requires requires(const base_iterator &i, const Sentinel &s) { i == s; } {
+            noexcept(noexcept(it.current_ == sent)) {
                 return it.current_ == sent;
             }
 
-            template <typename Sentinel>
-            friend constexpr bool operator!=(const iterator &it, const Sentinel &sent)
-            noexcept(noexcept(!(it == sent)))
-            requires requires(const base_iterator &i, const Sentinel &s) { i == s; } {
-                return !(it == sent);
-            }
-
-            template <typename Sentinel>
+            template<typename Sentinel>
             friend constexpr bool operator==(const Sentinel &sent, const iterator &it)
-            noexcept(noexcept(it == sent))
-            requires requires(const base_iterator &i, const Sentinel &s) { i == s; } {
+            noexcept(noexcept(it == sent)) {
                 return it == sent;
             }
 
-            template <typename Sentinel>
+            template<typename Sentinel>
+            friend constexpr bool operator!=(const iterator &it, const Sentinel &sent)
+            noexcept(noexcept(!(it == sent))) {
+                return !(it == sent);
+            }
+
+            template<typename Sentinel>
             friend constexpr bool operator!=(const Sentinel &sent, const iterator &it)
-            noexcept(noexcept(!(it == sent)))
-            requires requires(const base_iterator &i, const Sentinel &s) { i == s; } {
+            noexcept(noexcept(!(it == sent))) {
                 return !(it == sent);
             }
 
