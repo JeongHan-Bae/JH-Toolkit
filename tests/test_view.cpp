@@ -734,3 +734,21 @@ TEST_CASE("flatten + collect + to pmr unordered_map", "[flatten][collect][to][co
     REQUIRE(pmr_map.at(101) == "Bob:(200, 20)");
     REQUIRE(pmr_map.at(102) == "Carol:(300, 30)");
 }
+
+TEST_CASE("vis_transform pipeline closable with to<vector>", "[vis_transform][closable][to]") {
+    std::vector<int> v{1, 2, 3, 4, 5, 6};
+
+    auto f = [](int x) { return x * 2; };
+
+    // The key property: vis_transform produces a reentrant, closable view
+    // allowing direct collection into a concrete container.
+    auto res = v
+               | jh::ranges::views::vis_transform(f)
+               | jh::ranges::to<std::vector<int>>();
+
+    std::ostringstream out;
+    for (const auto e : res)
+        out << e << " ";
+
+    REQUIRE(out.str() == "2 4 6 8 10 12 ");
+}

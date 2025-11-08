@@ -169,7 +169,7 @@ namespace jh::concepts {
          * @return Stored representation (value or reference) suitable for internal retention.
          */
         static constexpr auto wrap(R &&v) noexcept(
-        std::is_nothrow_constructible_v<stored_t, R&&>
+        std::is_nothrow_constructible_v<stored_t, R &&>
         ) {
             if constexpr (is_lvalue && UseRefWrapper) {
                 if constexpr (std::is_const_v<std::remove_reference_t<R>>)
@@ -199,7 +199,8 @@ namespace jh::concepts {
          * @param v Stored instance.
          * @return Constant / Mutable reference to the source.
          */
-        static constexpr decltype(auto) get(const stored_t &v) noexcept {
+        static constexpr decltype(auto) get(const stored_t &v)
+        noexcept requires (!std::is_reference_v<stored_t>) {
             if constexpr (is_lvalue && UseRefWrapper)
                 return v.get();
             else

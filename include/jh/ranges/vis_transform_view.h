@@ -315,7 +315,9 @@ namespace jh::ranges {
      * @brief Deduction guide for <code>vis_transform_view</code>.
      */
     template<typename R, typename F>
-    vis_transform_view(R &&, F) -> vis_transform_view<R, F>;
+    vis_transform_view(R&&, F)
+    -> vis_transform_view<std::views::all_t<R>, F>;
+
 
 } // namespace jh::ranges
 
