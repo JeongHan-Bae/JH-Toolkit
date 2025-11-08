@@ -43,7 +43,7 @@
  *   <li>Provides zero-overhead interop with <code>std::string_view</code></li>
  *   <li>Supports compile-time construction via <code>from_literal()</code> or <code>"..."_psv</code></li>
  *   <li>No dynamic allocation, no exceptions, fully constexpr evaluable</li>
- *   <li>Enables compile-time hashing (e.g., <code>str_template::cstr</code>)</li>
+ *   <li>Enables compile-time hashing (e.g., <code>jh::meta::t_str</code>)</li>
  * </ul>
  */
 
@@ -93,7 +93,7 @@ namespace jh::pod {
      * <ul>
      *   <li>Typically used as a safe view for <code>immutable_str</code></li>
      *   <li>Can represent string literals or arena-allocated strings</li>
-     *   <li>Compile-time hashing supports <code>str_template::cstr</code></li>
+     *   <li>Compile-time hashing supports <code>jh::meta::t_str</code></li>
      * </ul>
      */
     struct string_view final {
@@ -287,7 +287,7 @@ namespace jh::pod {
          *       <li><code>bytes_view</code> relies on <code>reinterpret_cast</code>, so it cannot be evaluated at compile time.</li>
          *       <li><code>string_view</code> operates directly on characters, so compile-time hashing of string literals
          *           is both <strong>well-defined</strong> and <strong>semantically meaningful</strong>.</li>
-         *       <li>This design enables features such as <code>str_template::cstr</code> to compute hashes fully at compile time.</li>
+         *       <li>This design enables features such as <code>jh::meta::t_str</code> to compute hashes fully at compile time.</li>
          *     </ul></li>
          * </ul>
          */

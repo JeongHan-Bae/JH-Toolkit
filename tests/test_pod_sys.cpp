@@ -835,16 +835,23 @@ TEST_CASE("string_view hash reflects exact character content") {
         auto h2 = sv1.hash(c_hash::djb2);
         auto h3 = sv1.hash(c_hash::sdbm);
         auto h4 = sv1.hash(c_hash::fnv1_64);
+        auto h5 = sv1.hash(c_hash::murmur64);
+        auto h6 = sv1.hash(c_hash::xxhash64);
 
         REQUIRE(h1 != -1);
         REQUIRE(h2 != -1);
         REQUIRE(h3 != -1);
         REQUIRE(h4 != -1);
+        REQUIRE(h5 != -1);
+        REQUIRE(h5 != -1);
+        REQUIRE(h6 != -1);
 
         // Same view, multiple algorithms must differ
         REQUIRE(h1 != h2);
         REQUIRE(h2 != h3);
         REQUIRE(h3 != h4);
+        REQUIRE(h4 != h5);
+        REQUIRE(h5 != h6);
     }
 
     SECTION("string_view vs bytes_view from same buffer") {

@@ -24,25 +24,31 @@
  * contexts, such as type reflection, lookup maps, or <code>consteval</code> identifiers.
  * All implementations avoid heap and STL dependencies.
  *
+ * <h4>Supported constexpr hash algorithms</h4>
+ * <ul>
+ *   <li><b>FNV-1a 64</b> — Simple, fast, and widely used for identifiers.</li>
+ *   <li><b>FNV-1 64</b>  — Variant with multiply-before-xor order.</li>
+ *   <li><b>DJB2</b>      — Classic string hash, small code footprint.</li>
+ *   <li><b>SDBM</b>      — Hash from old DB engines (used by readdir, ndbm).</li>
+ *   <li><b>Murmur64</b>  — Seedless constexpr variant of MurmurHash3.</li>
+ *   <li><b>xxHash64</b>  — Deterministic constexpr-safe xxHash-like algorithm.</li>
+ * </ul>
+ *
  * @details
- * Only <code>const char*</code> input is accepted directly.
+ * All hash functions accept any character type satisfying <code>any_char</code>,
+ * namely <code>char</code>, <code>signed char</code>, and <code>unsigned char</code>.
+ * These can be passed directly as <code>const Char*</code> without casting.
+ *
+ * Other types, such as <code>bool</code> or <code>std::byte</code>,
+ * are not character types and must be explicitly converted via
+ * <code>reinterpret_cast&lt;const char*&gt;</code> if used for hashing.
+ * This restriction ensures semantic clarity and prevents accidental misuse
+ * of non-textual memory as string data in compile-time contexts.
  *
  * <p>
- * On most platforms, <code>uint8_t</code> and <code>int8_t</code> are type aliases of
- * <code>unsigned char</code> and <code>signed char</code>, respectively.
- * Their pointers can therefore be safely used as <code>const Char*</code> for hashing
- * and do not require any cast.
- *
- * However, types such as <code>bool</code> and <code>std::byte</code> are not character
- * types and cannot implicitly represent textual or contiguous byte sequences.
- * They must be explicitly converted via
- * <code>reinterpret_cast&lt;const char*&gt;</code> when used for hashing.
- * This enforces semantic intent and prevents misuse of non-character memory
- * representations in compile-time contexts.
- * </p>
- *
  * For safe reinterpretation of POD objects or contiguous buffers,
  * see <code>jh::pod::bytes_view</code>.
+ * </p>
  *
  * @version 1.3.x
  * @date 2025
@@ -52,61 +58,18 @@
 
 #include <cstdint>
 #include <concepts>
+#include "jh/metax/char.h"
 
 namespace jh::meta {
-
-    /**
-     * @brief Concept representing <tt>character-semantic</tt> 1-byte integral types.
-     *
-     * This concept includes only the fundamental character types that the
-     * implementation treats as one-byte integral entities directly usable as
-     * textual or byte-sequence data.
-     *
-     * Specifically, it accepts:
-     * <ul>
-     *   <li><code>char</code></li>
-     *   <li><code>signed char</code></li>
-     *   <li><code>unsigned char</code></li>
-     * </ul>
-     *
-     * These are the <tt>clean</tt> core character types without cv-qualifiers or references,
-     * and are guaranteed to be exactly 1 byte in size (<tt>sizeof(T) == 1</tt>).
-     *
-     * @note
-     * <code>char8_t</code> is <b>not</b> included.
-     * It is a distinct built-in type introduced by <code>__cpp_char8_t</code> for UTF-8
-     * character support, not considered equivalent to any form of <code>char</code>.
-     * It represents <tt>UTF-8 code units</tt>, not raw bytes, and therefore requires
-     * explicit conversion when hashing.
-     *
-     * @details
-     * This constraint ensures that only raw character data (in the sense of
-     * 1-byte memory representation types) participates in compile-time hashing.
-     * Non-character or higher-level types such as:
-     * <ul>
-     *   <li><code>bool</code></li>
-     *   <li><code>std::byte</code></li>
-     *   <li><code>char8_t</code></li>
-     * </ul>
-     * must be explicitly converted via
-     * <code>reinterpret_cast&lt;const char&#42;&gt;</code>.
-     *
-     * The intent is to enforce semantic correctness and guarantee that hashing
-     * remains <tt>constexpr</tt>-safe, type-clean, and free of undefined behavior
-     * across translation units.
-     */
-    template<typename T>
-    concept any_char =
-    std::same_as<T, char> ||
-    std::same_as<T, signed char> ||
-    std::same_as<T, unsigned char>;
 
     /// @brief Compile-time selectable hash algorithm tag (FNV, DJB2, SDBM, etc.)
     enum class c_hash : std::uint8_t {
         fnv1a64 = 0,  ///< FNV-1a 64-bit hash
         fnv1_64 = 1,  ///< FNV-1 64-bit hash
         djb2 = 2,     ///< DJB2 hash (classic string hash)
-        sdbm = 3      ///< SDBM hash (used in readdir, DBM)
+        sdbm = 3,     ///< SDBM hash (used in readdir, DBM)
+        murmur64 = 4, ///< constexpr-safe MurmurHash variant (seedless)
+        xxhash64 = 5  ///< constexpr xxHash64 variant (seedless)
     };
 
     /// @brief FNV-1a 64-bit hash implementation (default choice)
@@ -151,6 +114,53 @@ namespace jh::meta {
         return hash;
     }
 
+    /// @brief constexpr MurmurHash-like 64-bit variant (seedless)
+    template<any_char Char>
+    constexpr std::uint64_t murmur64(const Char *data, const std::uint64_t size) noexcept {
+        std::uint64_t h = 0x87c37b91114253d5ull;
+        constexpr std::uint64_t c1 = 0x87c37b91114253d5ull;
+        constexpr std::uint64_t c2 = 0x4cf5ad432745937full;
+        for (std::uint64_t i = 0; i < size; ++i) {
+            std::uint64_t k = static_cast<std::uint8_t>(data[i]);
+            k *= c1;
+            k = (k << 31) | (k >> (64 - 31));
+            k *= c2;
+            h ^= k;
+            h = ((h << 27) | (h >> (64 - 27))) * 5 + 0x52dce729;
+        }
+        // Finalization (avalanche)
+        h ^= size;
+        h ^= (h >> 33);
+        h *= 0xff51afd7ed558ccdull;
+        h ^= (h >> 33);
+        h *= 0xc4ceb9fe1a85ec53ull;
+        h ^= (h >> 33);
+        return h;
+    }
+
+    /// @brief constexpr xxHash-like 64-bit variant (seedless)
+    template<any_char Char>
+    constexpr std::uint64_t xxhash64(const Char *data, std::uint64_t len) noexcept {
+        constexpr std::uint64_t PRIME1 = 11400714785074694791ull;
+        constexpr std::uint64_t PRIME2 = 14029467366897019727ull;
+        constexpr std::uint64_t PRIME3 = 1609587929392839161ull;
+        constexpr std::uint64_t PRIME5 = 2870177450012600261ull;
+        std::uint64_t h64 = PRIME5 + len;
+        // no seed, simple accumulation
+        for (std::uint64_t i = 0; i < len; ++i) {
+            h64 += static_cast<std::uint8_t>(data[i]) * PRIME5;
+            h64 = (h64 << 11) | (h64 >> (64 - 11));
+            h64 *= PRIME1;
+        }
+        // final avalanche (same as xxHash)
+        h64 ^= h64 >> 33;
+        h64 *= PRIME2;
+        h64 ^= h64 >> 29;
+        h64 *= PRIME3;
+        h64 ^= h64 >> 32;
+        return h64;
+    }
+
     /// @brief Dispatch to selected hash algorithm based on c_hash
     template<any_char Char>
     constexpr std::uint64_t hash(const c_hash algo, const Char *data, const std::uint64_t size) noexcept {
@@ -163,6 +173,10 @@ namespace jh::meta {
                 return djb2(data, size);
             case c_hash::sdbm:
                 return sdbm(data, size);
+            case c_hash::murmur64:
+                return murmur64(data, size);
+            case c_hash::xxhash64:
+                return xxhash64(data, size);
         }
         return static_cast<std::uint64_t>(-1); // Illegal
     }
