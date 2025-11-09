@@ -82,8 +82,8 @@
 #pragma once
 #include "jh/str_template.h"
 #include "jh/macros/platform.h"
-#include "process_mutex.h"
-#include "ipc_limits.h"
+#include "jh/synchronous/ipc/process_mutex.h"
+#include "jh/synchronous/ipc/ipc_limits.h"
 
 #include <cstring>
 #include <cerrno>

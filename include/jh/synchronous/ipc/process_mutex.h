@@ -127,7 +127,7 @@
 
 #include "jh/str_template.h"
 #include "jh/macros/platform.h"
-#include "ipc_limits.h"
+#include "jh/synchronous/ipc/ipc_limits.h"
 
 #include <algorithm>  // for std::min
 #include <string>

@@ -186,7 +186,7 @@
 
 #include "jh/macros/platform.h"
 #include "jh/str_template.h"
-#include "ipc_limits.h"
+#include "jh/synchronous/ipc/ipc_limits.h"
 #include <string>
 #include <stdexcept>
 #include <filesystem>

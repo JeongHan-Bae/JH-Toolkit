@@ -132,10 +132,10 @@
 #pragma once
 
 #include "jh/str_template.h"
-#include "process_mutex.h"
-#include "process_counter.h"
-#include "process_condition.h"
-#include "ipc_limits.h"
+#include "jh/synchronous/ipc/process_mutex.h"
+#include "jh/synchronous/ipc/process_counter.h"
+#include "jh/synchronous/ipc/process_condition.h"
+#include "jh/synchronous/ipc/ipc_limits.h"
 
 #include <chrono>
 #include <stdexcept>
