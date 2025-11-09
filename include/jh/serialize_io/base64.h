@@ -99,10 +99,10 @@ namespace jh::serio {
 
             base64_encode_unchecked<false>(data, len, buffer.data(), true);
 
-            return std::string(
+            return {
                     std::make_move_iterator(buffer.begin()),
                     std::make_move_iterator(buffer.end())
-            );
+            };
         }
 
         /**
@@ -153,7 +153,7 @@ namespace jh::serio {
          *   <li>These operations ensure POD-safe reinterpretation and provide zero-overhead access to binary data.</li>
          * </ul>
          */
-        [[nodiscard]] inline jh::pod::bytes_view decode(
+        inline jh::pod::bytes_view decode(
                 const std::string &input,
                 std::vector<uint8_t> &output_buffer
         ) {
@@ -190,13 +190,14 @@ namespace jh::serio {
          *       with the standard library and compile-time evaluation where applicable.</li>
          * </ul>
          */
-        [[nodiscard]] inline jh::pod::string_view decode(
+        inline jh::pod::string_view decode(
                 const std::string &input,
                 std::string &output_buffer
         ) {
+            auto temp = decode(input);
             output_buffer = std::string(
-                    std::make_move_iterator(decode(input).begin()),
-                    std::make_move_iterator(decode(input).end())
+                    std::make_move_iterator(temp.begin()),
+                    std::make_move_iterator(temp.end())
             );
             return {output_buffer.data(), output_buffer.size()};
         }
@@ -245,10 +246,10 @@ namespace jh::serio {
 
             base64_encode_unchecked<true>(data, len, buffer.data(), pad);
 
-            return std::string(
+            return {
                     std::make_move_iterator(buffer.begin()),
                     std::make_move_iterator(buffer.end())
-            );
+            };
         }
 
         /**
@@ -301,7 +302,7 @@ namespace jh::serio {
          *   <li>These operations ensure POD-safe reinterpretation and provide zero-overhead access to binary data.</li>
          * </ul>
          */
-        [[nodiscard]] inline jh::pod::bytes_view decode(
+        inline jh::pod::bytes_view decode(
                 const std::string &input,
                 std::vector<uint8_t> &output_buffer
         ) {
@@ -338,13 +339,14 @@ namespace jh::serio {
          *       with the standard library and compile-time evaluation where applicable.</li>
          * </ul>
          */
-        [[nodiscard]] inline jh::pod::string_view decode(
+        inline jh::pod::string_view decode(
                 const std::string &input,
                 std::string &output_buffer
         ) {
+            auto temp = decode(input);
             output_buffer = std::string(
-                    std::make_move_iterator(decode(input).begin()),
-                    std::make_move_iterator(decode(input).end())
+                    std::make_move_iterator(temp.begin()),
+                    std::make_move_iterator(temp.end())
             );
             return {output_buffer.data(), output_buffer.size()};
         }

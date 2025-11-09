@@ -126,3 +126,35 @@ TEST_CASE("Base64 invalid input detection", "[base64][error]") {
         REQUIRE_THROWS_AS(decode(bad), std::runtime_error);
     }
 }
+
+TEST_CASE("Base64 decode into user-provided buffer", "[base64][safety][buffer]") {
+    using namespace jh::serio::base64;
+
+    std::string out;
+    auto view = decode("Qm9i", out); // "Bob"
+
+    REQUIRE(out == "Bob");
+    REQUIRE(view.len == out.size());
+    REQUIRE(std::string(view.data, view.len) == "Bob");
+
+    view = decode("TWFu", out); // "Man"
+    REQUIRE(out == "Man");
+    REQUIRE(std::string(view.data, view.len) == "Man");
+
+    view = decode("QQ==", out); // "A"
+    REQUIRE(out == "A");
+    REQUIRE(std::string(view.data, view.len) == "A");
+}
+
+TEST_CASE("Base64URL decode into user-provided buffer", "[base64url][safety][buffer]") {
+    using namespace jh::serio::base64url;
+
+    std::string out;
+    auto view = decode("SGVsbG8", out); // "Hello"
+    REQUIRE(out == "Hello");
+    REQUIRE(std::string(view.data, view.len) == "Hello");
+
+    view = decode("QQ", out); // "A"
+    REQUIRE(out == "A");
+    REQUIRE(std::string(view.data, view.len) == "A");
+}
