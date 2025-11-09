@@ -202,7 +202,7 @@
 #include <cstdint>          // for std::uint64_t
 #include <optional>         // for std::optional
 #include <type_traits>      // for std::remove_cvref_t
-#include "jh/locking/const_lock.h"
+#include "jh/synchronous/const_lock.h"
 #include "jh/core/pool.h"
 #include "jh/pods/string_view.h"
 
@@ -365,7 +365,7 @@ namespace jh {
          *   <li>Copies exactly <code>sv.size()</code> bytes into an internal immutable buffer, even if not null-terminated.</li>
          *   <li>The provided <code>mtx</code> <b>must</b> guard the same memory region as <code>sv.data()</code>;
          *       using an unrelated mutex leads to undefined behavior.</li>
-         *   <li>Supports both exclusive and shared mutex types, via <code>jh::lock::const_lock</code>.</li>
+         *   <li>Supports both exclusive and shared mutex types, via <code>jh::sync::const_lock</code>.</li>
          *   <li>Recommended for constructing immutable strings from shared or non-terminated data regions.</li>
          *   <li>
          *       <b>Optional optimization:</b><br>
@@ -379,7 +379,7 @@ namespace jh {
          */
         template <jh::concepts::mutex_like M>
         immutable_str(std::string_view sv, M &mtx) {
-            jh::lock::const_lock<M> guard(mtx);  // Scope-based lock, auto-detects shared/exclusive
+            jh::sync::const_lock<M> guard(mtx);  // Scope-based lock, auto-detects shared/exclusive
 
             if (::strnlen(sv.data(), sv.size()) != sv.size()) {
                 throw std::logic_error(
