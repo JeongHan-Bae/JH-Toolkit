@@ -3,9 +3,9 @@
 
 #define JH_ALLOW_PARENT_PATH 1
 
-#include "jh/asynchronous/process_counter.h"
-#include "jh/asynchronous/shared_process_memory.h"
-#include "jh/asynchronous/process_launcher.h"
+#include "jh/synchronous/ipc/process_counter.h"
+#include "jh/synchronous/ipc/shared_process_memory.h"
+#include "jh/synchronous/ipc/process_launcher.h"
 #include "jh/pod"
 
 #include <cmath>
@@ -29,9 +29,9 @@
 // -----------------------------------------------------------------------------
 // process_counter setup
 // -----------------------------------------------------------------------------
-using counter_t       = jh::async::ipc::process_counter<"demo_counter">;
-using priv_counter_t  = jh::async::ipc::process_counter<"demo_counter", true>;
-using counter_launcher = jh::async::ipc::process_launcher<"../examples/process_lock/counter">;
+using counter_t       = jh::sync::ipc::process_counter<"demo_counter">;
+using priv_counter_t  = jh::sync::ipc::process_counter<"demo_counter", true>;
+using counter_launcher = jh::sync::ipc::process_launcher<"../examples/process_lock/counter">;
 
 // -----------------------------------------------------------------------------
 // shared_process_memory setup
@@ -42,15 +42,15 @@ JH_POD_STRUCT(DemoPod,
     double        mul_field;
 );
 
-using shm_t      = jh::async::ipc::shared_process_memory<"demo_shared_pod", DemoPod>;
-using priv_shm_t = jh::async::ipc::shared_process_memory<"demo_shared_pod", DemoPod, true>;
-using pod_writer_launcher = jh::async::ipc::process_launcher<"../examples/process_lock/pod_writer">;
+using shm_t      = jh::sync::ipc::shared_process_memory<"demo_shared_pod", DemoPod>;
+using priv_shm_t = jh::sync::ipc::shared_process_memory<"demo_shared_pod", DemoPod, true>;
+using pod_writer_launcher = jh::sync::ipc::process_launcher<"../examples/process_lock/pod_writer">;
 
 // -----------------------------------------------------------------------------
 // Constants
 // -----------------------------------------------------------------------------
 constexpr int WORKER_COUNT   = 4;
-constexpr int ITERATIONS     = 200'000;
+constexpr int ITERATIONS     = 20'000;
 constexpr std::uint64_t ADD_INC  = 10;
 constexpr double MUL_FACTOR      = 1.0001;
 

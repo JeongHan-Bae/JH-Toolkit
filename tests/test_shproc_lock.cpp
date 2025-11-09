@@ -6,9 +6,9 @@
 #include <chrono>
 #include <atomic>
 #include <random>
-#include "jh/asynchronous/shared_process_mutex.h"
+#include "jh/synchronous/ipc/shared_process_mutex.h"
 
-using namespace jh::async::ipc;
+using namespace jh::sync::ipc;
 using namespace std::chrono_literals;
 
 using test_mutex_t = shared_process_mutex<"test_shared_mutex">;

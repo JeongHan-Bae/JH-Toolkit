@@ -3,7 +3,7 @@
  * @brief Forward-aggregator header for <code>jh::ipc</code>.
  *
  * <p>
- * This header provides a flattened entry point to the <code>jh::async::ipc</code>
+ * This header provides a flattened entry point to the <code>jh::sync::ipc</code>
  * module under the simplified namespace <code>jh::ipc</code>.
  * </p>
  *
@@ -18,17 +18,17 @@
  * <h4>Overview</h4>
  * <ul>
  *   <li>Defines <code>jh::ipc</code> as the user-facing namespace.</li>
- *   <li>Aggregates and flattens the <code>jh::async::ipc</code> hierarchy.</li>
+ *   <li>Aggregates and flattens the <code>jh::sync::ipc</code> hierarchy.</li>
  *   <li>All actual implementation details remain under
  *       <code>jh/asynchronous/ipc.h</code>.</li>
  *   <li>Unlike <code>jh/async</code>, this header exposes symbols directly under
- *       <code>jh::ipc</code> without the <code>jh::async</code> prefix.</li>
+ *       <code>jh::ipc</code> without the <code>jh::sync</code> prefix.</li>
  * </ul>
  */
 #pragma once
 
-#include "jh/asynchronous/ipc.h"
+#include "jh/synchronous/ipc.h"
 
 namespace jh::ipc {
-    using namespace jh::async::ipc;
+    using namespace jh::sync::ipc;
 }

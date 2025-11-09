@@ -8,10 +8,10 @@
 
 #include "jh/macros/platform.h"
 #include "ensure_output.h"  // NOLINT for Windows output
-#include "jh/asynchronous/process_counter.h"
-#include "jh/asynchronous/process_condition.h"
-#include "jh/asynchronous/shared_process_memory.h"
-#include "jh/asynchronous/process_launcher.h"
+#include "jh/synchronous/ipc/process_counter.h"
+#include "jh/synchronous/ipc/process_condition.h"
+#include "jh/synchronous/ipc/shared_process_memory.h"
+#include "jh/synchronous/ipc/process_launcher.h"
 #include "jh/pod"
 
 #include <iostream>
@@ -27,10 +27,10 @@ static EnsureOutput ensure_output_setup;
 // -----------------------------------------------------------------------------
 // Shared types
 // -----------------------------------------------------------------------------
-using counter_t       = jh::async::ipc::process_counter<"demo_counter">;
-using priv_counter_t  = jh::async::ipc::process_counter<"demo_counter", true>;
-using cond_t          = jh::async::ipc::process_condition<"demo_condition">;
-using priv_cond_t     = jh::async::ipc::process_condition<"demo_condition", true>;
+using counter_t       = jh::sync::ipc::process_counter<"demo_counter">;
+using priv_counter_t  = jh::sync::ipc::process_counter<"demo_counter", true>;
+using cond_t          = jh::sync::ipc::process_condition<"demo_condition">;
+using priv_cond_t     = jh::sync::ipc::process_condition<"demo_condition", true>;
 
 // Define shared POD type
 JH_POD_STRUCT(DemoPod,
@@ -39,13 +39,13 @@ JH_POD_STRUCT(DemoPod,
     double        mul_field;
 );
 
-using shm_t      = jh::async::ipc::shared_process_memory<"demo_shared_pod", DemoPod>;
-using priv_shm_t = jh::async::ipc::shared_process_memory<"demo_shared_pod", DemoPod, true>;
+using shm_t      = jh::sync::ipc::shared_process_memory<"demo_shared_pod", DemoPod>;
+using priv_shm_t = jh::sync::ipc::shared_process_memory<"demo_shared_pod", DemoPod, true>;
 
-using counter_launcher  = jh::async::ipc::process_launcher<"process_lock/counter">;
-using sleeper_launcher  = jh::async::ipc::process_launcher<"process_lock/sleeper">;
-using awaker_launcher   = jh::async::ipc::process_launcher<"process_lock/awaker">;
-using pod_writer_launcher = jh::async::ipc::process_launcher<"process_lock/pod_writer">;
+using counter_launcher  = jh::sync::ipc::process_launcher<"process_lock/counter">;
+using sleeper_launcher  = jh::sync::ipc::process_launcher<"process_lock/sleeper">;
+using awaker_launcher   = jh::sync::ipc::process_launcher<"process_lock/awaker">;
+using pod_writer_launcher = jh::sync::ipc::process_launcher<"process_lock/pod_writer">;
 
 // -----------------------------------------------------------------------------
 // Example 1: Shared counter (process_counter)
@@ -54,7 +54,7 @@ void run_counter_example() {
     std::cout << "\n==================== process_counter example ====================\n";
 
     constexpr int worker_count = 4;
-    constexpr int increments_per_worker = 200'000;
+    constexpr int increments_per_worker = 20'000;
 
     counter_t::instance().store(0);
     std::cout << "Launching " << worker_count << " counter workers...\n";
@@ -162,7 +162,7 @@ void run_shared_pod_example() {
 
         constexpr std::uint64_t add_inc  = 10;
         constexpr double mul_factor      = 1.0001;
-        constexpr int iterations         = 200'000;
+        constexpr int iterations         = 20'000;
 
         std::uint64_t expected_add = add_inc * iterations * writer_count;
         double expected_mul = std::pow(mul_factor, iterations * writer_count);

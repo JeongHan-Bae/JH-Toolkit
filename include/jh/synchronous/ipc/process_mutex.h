@@ -16,12 +16,12 @@
  * \endverbatim
  */
 /**
- * @file process_mutex.h (asynchronous)
+ * @file process_mutex.h (ipc)
  * @brief Cross-platform process-wide named mutex with timed try_lock.
  *
  * <h3>Overview</h3>
  * <p>
- * <code>jh::async::ipc::process_mutex</code> is a cross-platform, process-wide synchronization primitive
+ * <code>jh::sync::ipc::process_mutex</code> is a cross-platform, process-wide synchronization primitive
  * identified by a <strong>compile-time string literal</strong>. Each unique literal corresponds to a unique
  * OS-level named semaphore.
  * </p>
@@ -55,7 +55,7 @@
  *       <li><b>Linux / Windows / WASM</b>: extended portable limit = <b>128</b>.</li>
  *     </ul>
  *     The limit is automatically enforced at <em>compile time</em> by
- *     <code>jh::async::ipc::limits::valid_object_name</code>.
+ *     <code>jh::sync::ipc::limits::valid_object_name</code>.
  *   </li>
  *   <li>Prefixes are applied automatically:
  *     <ul>
@@ -127,7 +127,7 @@
 
 #include "jh/str_template.h"
 #include "jh/macros/platform.h"
-#include "jh/asynchronous/ipc_limits.h"
+#include "ipc_limits.h"
 
 #include <algorithm>  // for std::min
 #include <string>
@@ -147,14 +147,14 @@
 #if !IS_WINDOWS
 #include <sys/stat.h>
 
-namespace jh::async::ipc::detail {
+namespace jh::sync::ipc::detail {
     static constexpr mode_t process_mutex_permissions =
             JH_PROCESS_MUTEX_SHARED ? static_cast<mode_t>(0666) : static_cast<mode_t>(0644);
 }
 #endif
 
 
-namespace jh::async::ipc {
+namespace jh::sync::ipc {
 
     /**
      * @class process_mutex
@@ -162,7 +162,7 @@ namespace jh::async::ipc {
      *
      * <h4>Overview</h4>
      * <p>
-     * <code>jh::async::ipc::process_mutex</code> is a low-level inter-process synchronization
+     * <code>jh::sync::ipc::process_mutex</code> is a low-level inter-process synchronization
      * primitive that mirrors the behavior of <code>std::timed_mutex</code>, extended to
      * operate across process boundaries via OS-level named semaphores.
      * Each unique template literal <code>S</code> defines a globally visible named mutex.
@@ -204,7 +204,7 @@ namespace jh::async::ipc {
      * <p>
      * Use RAII-style management whenever possible:
      * @code
-     * auto& m = jh::async::ipc::process_mutex<"example">::instance();
+     * auto& m = jh::sync::ipc::process_mutex<"example">::instance();
      * std::lock_guard guard(m); // automatically unlocks on scope exit
      * @endcode
      * <p>
@@ -524,4 +524,4 @@ namespace jh::async::ipc {
         }
     };
 
-} // namespace jh::async::ipc
+} // namespace jh::sync::ipc

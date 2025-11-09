@@ -3,8 +3,8 @@
 
 #define JH_ALLOW_PARENT_PATH 1
 
-#include "jh/asynchronous/process_condition.h"
-#include "jh/asynchronous/process_launcher.h"
+#include "jh/synchronous/ipc/process_condition.h"
+#include "jh/synchronous/ipc/process_launcher.h"
 #include <chrono>
 #include <iostream>
 #include <vector>
@@ -21,10 +21,10 @@
  * </ul>
  */
 
-using cond_t = jh::async::ipc::process_condition<"demo_condition">;
-using priv_cond_t = jh::async::ipc::process_condition<"demo_condition", true>;
-using sleeper_launcher = jh::async::ipc::process_launcher<"../examples/process_lock/sleeper">;
-using awaker_launcher  = jh::async::ipc::process_launcher<"../examples/process_lock/awaker">;
+using cond_t = jh::sync::ipc::process_condition<"demo_condition">;
+using priv_cond_t = jh::sync::ipc::process_condition<"demo_condition", true>;
+using sleeper_launcher = jh::sync::ipc::process_launcher<"../examples/process_lock/sleeper">;
+using awaker_launcher  = jh::sync::ipc::process_launcher<"../examples/process_lock/awaker">;
 
 TEST_CASE("process_condition notify_all wakes multiple sleepers") {
     constexpr int sleeper_count = 4;

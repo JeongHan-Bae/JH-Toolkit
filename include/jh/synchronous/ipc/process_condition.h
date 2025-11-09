@@ -16,12 +16,12 @@
  * \endverbatim
  */
 /**
- * @file process_condition.h (asynchronous)
+ * @file process_condition.h (ipc)
  * @brief Cross-process condition variable primitive implemented via shared memory or named events.
  *
  * <h3>Overview</h3>
  * <p>
- * <code>jh::async::ipc::process_condition</code> is an inter-process signaling primitive
+ * <code>jh::sync::ipc::process_condition</code> is an inter-process signaling primitive
  * modeled after <code>pthread_cond_t</code> / <code>std::condition_variable_any</code>.
  * It provides a minimal, globally visible synchronization point usable across processes,
  * implemented entirely via OS-named IPC mechanisms.
@@ -99,8 +99,8 @@
 #pragma once
 #include "jh/str_template.h"
 #include "jh/macros/platform.h"
-#include "jh/asynchronous/process_mutex.h"
-#include "jh/asynchronous/ipc_limits.h"
+#include "process_mutex.h"
+#include "ipc_limits.h"
 
 #include <chrono>
 #include <stdexcept>
@@ -118,7 +118,7 @@
 #include <pthread.h>
 #endif
 
-namespace jh::async::ipc {
+namespace jh::sync::ipc {
 
     using jh::str_template::CStr;
 
@@ -457,4 +457,4 @@ namespace jh::async::ipc {
         static void unlink() requires(!HighPriv) = delete;
     };
 
-} // namespace jh::async::ipc
+} // namespace jh::sync::ipc

@@ -11,7 +11,7 @@
  *
  * <h3>Details</h3>
  * <ul>
- *   <li>Synchronization is achieved using <code>jh::async::ipc::process_mutex</code>.</li>
+ *   <li>Synchronization is achieved using <code>jh::sync::ipc::process_mutex</code>.</li>
  *   <li>The <code>try_lock_for()</code> call ensures that the reader waits up to
  *       2 seconds to acquire the lock before opening the file.</li>
  *   <li>The timing of <code>std::ifstream</code> open is measured in
@@ -33,14 +33,14 @@
  * </p>
  */
 
-#include "jh/asynchronous/process_mutex.h"
+#include "jh/synchronous/ipc/process_mutex.h"
 #include <fstream>
 #include <iostream>
 #include <thread>
 
 using namespace std::chrono_literals;
 using clock_t_ = std::chrono::steady_clock;
-using mutex_t = jh::async::ipc::process_mutex<"demo_mutex">;
+using mutex_t = jh::sync::ipc::process_mutex<"demo_mutex">;
 
 /**
  * @brief Entry point of the reader example.

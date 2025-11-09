@@ -16,12 +16,12 @@
  * \endverbatim
  */
 /**
- * @file process_counter.h (asynchronous)
+ * @file process_counter.h (ipc)
  * @brief Cross-process shared integer counter implemented via named shared memory.
  *
  * <h3>Overview</h3>
  * <p>
- * <code>jh::async::ipc::process_counter</code> provides a process-visible 64-bit integer
+ * <code>jh::sync::ipc::process_counter</code> provides a process-visible 64-bit integer
  * stored in OS-level shared memory and synchronized by a per-instance
  * <code>process_mutex&lt;S + ".loc"&gt;</code>.
  * It behaves as a globally accessible atomic counter with read–modify–write semantics
@@ -58,7 +58,7 @@
  *     </ul>
  *   </li>
  *   <li>The limit is verified at compile time using
- *       <code>jh::async::ipc::limits::valid_object_name&lt;S, limits::max_name_length - 4&gt;</code>,
+ *       <code>jh::sync::ipc::limits::valid_object_name&lt;S, limits::max_name_length - 4&gt;</code>,
  *       where <code>-4</code> reserves space for the <code>".loc"</code> suffix used by its mutex.</li>
  * </ul>
  *
@@ -82,8 +82,8 @@
 #pragma once
 #include "jh/str_template.h"
 #include "jh/macros/platform.h"
-#include "jh/asynchronous/process_mutex.h"
-#include "jh/asynchronous/ipc_limits.h"
+#include "process_mutex.h"
+#include "ipc_limits.h"
 
 #include <cstring>
 #include <cerrno>
@@ -101,7 +101,7 @@
 #endif
 
 
-namespace jh::async::ipc {
+namespace jh::sync::ipc {
 
     using jh::str_template::CStr;
 
@@ -440,4 +440,4 @@ namespace jh::async::ipc {
         static void unlink() requires(!HighPriv) = delete;
     };
 
-} // namespace jh::async::ipc
+} // namespace jh::sync::ipc

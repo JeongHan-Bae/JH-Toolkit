@@ -16,14 +16,14 @@
  * \endverbatim
  */
 /**
- * @file ipc_limits.h (asynchronous)
+ * @file ipc_limits.h (ipc)
  * @brief Compile-time validation utilities for IPC object naming and POSIX-style path safety.
  *
  * <h3>Overview</h3>
  * <p>
  * This header defines <code>consteval</code> (compile-time evaluated) utilities
  * to enforce platform-aware constraints for inter-process communication (IPC) primitives
- * implemented under <code>jh::async::ipc</code>.
+ * implemented under <code>jh::sync::ipc</code>.
  * </p>
  *
  * <p>
@@ -69,7 +69,7 @@
 #define JH_ALLOW_PARENT_PATH 0
 #endif
 
-namespace jh::async::ipc::limits {
+namespace jh::sync::ipc::limits {
 
     // BSD-derived systems have strict 31-byte limit (including '/')
 #if IS_DARWIN || IS_FREEBSD
@@ -173,4 +173,4 @@ namespace jh::async::ipc::limits {
         return true;
     }
 
-} // namespace jh::async::ipc::limits
+} // namespace jh::sync::ipc::limits

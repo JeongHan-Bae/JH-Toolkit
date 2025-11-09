@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file process_launcher.h (asynchronous)
+ * @file process_launcher.h (ipc)
  * @brief Cross-platform process launcher aligned with std::thread semantics.
  *
  * <h3>Rationale</h3>
@@ -186,7 +186,7 @@
 
 #include "jh/macros/platform.h"
 #include "jh/str_template.h"
-#include "jh/asynchronous/ipc_limits.h"
+#include "ipc_limits.h"
 #include <string>
 #include <stdexcept>
 #include <filesystem>
@@ -202,7 +202,7 @@
 #endif
 
 
-namespace jh::async::ipc {
+namespace jh::sync::ipc {
 
     /**
      * @brief Cross-platform process launcher.
@@ -464,4 +464,4 @@ namespace jh::async::ipc {
         }
     };
 
-} // namespace jh::async::ipc
+} // namespace jh::sync::ipc

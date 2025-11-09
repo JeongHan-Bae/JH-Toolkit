@@ -1,16 +1,16 @@
 /**
- * @file ipc.h (asynchronous)
- * @brief Aggregated header for inter-process communication primitives under <code>jh::async</code>.
+ * @file ipc.h (synchronous)
+ * @brief Aggregated header for inter-process communication primitives under <code>jh::sync</code>.
  *
  * <p>
- * This header collects all IPC-related asynchronous primitives into a single entry point:
+ * This header collects all IPC-related synchronous primitives into a single entry point:
  * </p>
  *
- * <pre><code>#include &lt;jh/asynchronous/ipc.h&gt;</code></pre>
+ * <pre><code>#include &lt;jh/synchronous/ipc.h&gt;</code></pre>
  *
  * <p>
  * It includes and re-exports all IPC components under
- * <code>jh::async::ipc</code>, such as shared-memory synchronization and
+ * <code>jh::sync::ipc</code>, such as shared-memory synchronization and
  * inter-process coordination utilities.
  * </p>
  *
@@ -34,7 +34,7 @@
  * <h4>Philosophy</h4>
  * <p>
  * Unlike <b>Boost.Interprocess</b>, which centralizes resource management within a
- * managed shared memory segment, the <code>jh::async::ipc</code> system implements
+ * managed shared memory segment, the <code>jh::sync::ipc</code> system implements
  * <b>compile-time named</b>, <b>process-independent</b> primitives built directly
  * on OS-level shared memory and semaphores.
  * </p>
@@ -55,9 +55,9 @@
  *
  * <h4>Compile-time naming contract</h4>
  * <p>
- * All IPC primitives in <code>jh::async::ipc</code> rely on a
+ * All IPC primitives in <code>jh::sync::ipc</code> rely on a
  * <strong>compile-time naming convention</strong> enforced by
- * <code>jh::async::ipc::limits::valid_object_name</code>.
+ * <code>jh::sync::ipc::limits::valid_object_name</code>.
  * </p>
  * <ul>
  *   <li>Each synchronization object (e.g., semaphore, shared memory region, condition)
@@ -75,20 +75,13 @@
  * and provides a static coordination topology — effectively
  * <b>compile-time declared IPC fabric</b>.
  * </p>
- *
- * <h4>Structure Policy</h4>
- * <p>
- * The <code>jh/asynchronous/</code> directory remains <b>flat</b> by design.
- * Even though <code>ipc</code>-related components could form a submodule in the future,
- * this header always serves as the navigation and aggregation point for IPC facilities.
- * </p>
  */
 #pragma once
 
-#include "jh/asynchronous/ipc_limits.h"
-#include "jh/asynchronous/process_mutex.h"
-#include "jh/asynchronous/process_condition.h"
-#include "jh/asynchronous/process_counter.h"
-#include "jh/asynchronous/shared_process_memory.h"
-#include "jh/asynchronous/shared_process_mutex.h"
-#include "jh/asynchronous/process_launcher.h"
+#include "jh/synchronous/ipc/ipc_limits.h"
+#include "jh/synchronous/ipc/process_mutex.h"
+#include "jh/synchronous/ipc/process_condition.h"
+#include "jh/synchronous/ipc/process_counter.h"
+#include "jh/synchronous/ipc/shared_process_memory.h"
+#include "jh/synchronous/ipc/shared_process_mutex.h"
+#include "jh/synchronous/ipc/process_launcher.h"

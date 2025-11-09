@@ -3,7 +3,7 @@
  * @brief Worker process that performs randomized but deterministic updates on a shared POD object.
  */
 
-#include "jh/asynchronous/shared_process_memory.h"
+#include "jh/synchronous/ipc/shared_process_memory.h"
 #include "jh/pod"
 #include <cmath>
 #include <thread>
@@ -23,7 +23,7 @@ JH_POD_STRUCT(DemoPod,
 // -----------------------------------------------------------------------------
 // Shared memory binding
 // -----------------------------------------------------------------------------
-using shm_t = jh::async::ipc::shared_process_memory<"demo_shared_pod", DemoPod>;
+using shm_t = jh::sync::ipc::shared_process_memory<"demo_shared_pod", DemoPod>;
 
 // -----------------------------------------------------------------------------
 // Main worker logic
@@ -34,7 +34,7 @@ int main() {
     constexpr std::uint64_t xor_mask   = 0xA5A5A5A5A5A5A5A5ULL;
     constexpr std::uint64_t add_inc    = 10;
     constexpr double mul_factor        = 1.0001;
-    constexpr int iterations           = 200'000;
+    constexpr int iterations           = 20'000;
 
     // Define operation types
     enum class OpType { Xor, Add, Mul };

@@ -16,12 +16,12 @@
  * \endverbatim
  */
 /**
- * @file shared_process_memory.h (asynchronous)
+ * @file shared_process_memory.h (ipc)
  * @brief Cross-process shared-memory container for POD-like objects.
  *
  * <h3>Overview</h3>
  * <p>
- * <code>jh::async::ipc::shared_process_memory</code> exposes a process-visible,
+ * <code>jh::sync::ipc::shared_process_memory</code> exposes a process-visible,
  * named shared-memory region containing a single POD-like object of type <code>T</code>.
  * All participating processes reference the same mapped storage, coordinated through
  * a pair of inter-process mutexes.
@@ -109,8 +109,8 @@
 #include "jh/str_template.h"
 #include "jh/macros/platform.h"
 #include "jh/pods/pod_like.h"
-#include "jh/asynchronous/process_mutex.h"
-#include "jh/asynchronous/ipc_limits.h"
+#include "process_mutex.h"
+#include "ipc_limits.h"
 
 #include <cstring>
 #include <cerrno>
@@ -128,7 +128,7 @@
 #endif
 
 
-namespace jh::async::ipc {
+namespace jh::sync::ipc {
 
     using jh::str_template::CStr;
     using jh::pod::cv_free_pod_like;
@@ -350,4 +350,4 @@ namespace jh::async::ipc {
         static void unlink() requires(!HighPriv) = delete;
     };
 
-} // namespace jh::async::ipc
+} // namespace jh::sync::ipc

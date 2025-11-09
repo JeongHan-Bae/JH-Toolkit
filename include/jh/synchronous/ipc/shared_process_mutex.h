@@ -16,12 +16,12 @@
  * \endverbatim
  */
 /**
- * @file shared_process_mutex.h (asynchronous)
+ * @file shared_process_mutex.h (ipc)
  * @brief Cross-process shared (read/write) timed mutex built from process primitives.
  *
  * <h3>Overview</h3>
  * <p>
- * <code>jh::async::ipc::shared_process_mutex</code> is a fully process-visible synchronization primitive
+ * <code>jh::sync::ipc::shared_process_mutex</code> is a fully process-visible synchronization primitive
  * providing both shared and exclusive locking semantics, similar to
  * <code>std::shared_timed_mutex</code>, but implemented entirely from process-named OS primitives.
  * It enables multiple participants — threads, coroutines, or processes — to coordinate
@@ -44,9 +44,9 @@
  * <p>
  * The implementation is composed of three fundamental process-level synchronization primitives:
  * <ul>
- *   <li><code>#include "jh/asynchronous/process_mutex.h"</code> — built upon <b>named semaphore</b>.</li>
- *   <li><code>#include "jh/asynchronous/process_counter.h"</code> — built upon <b>shared memory</b>.</li>
- *   <li><code>#include "jh/asynchronous/process_condition.h"</code> — built upon <b>shared memory</b>.</li>
+ *   <li><code>#include "jh/synchronous/process_mutex.h"</code> — built upon <b>named semaphore</b>.</li>
+ *   <li><code>#include "jh/synchronous/process_counter.h"</code> — built upon <b>shared memory</b>.</li>
+ *   <li><code>#include "jh/synchronous/process_condition.h"</code> — built upon <b>shared memory</b>.</li>
  * </ul>
  * </p>
  *
@@ -132,17 +132,17 @@
 #pragma once
 
 #include "jh/str_template.h"
-#include "jh/asynchronous/process_mutex.h"
-#include "jh/asynchronous/process_counter.h"
-#include "jh/asynchronous/process_condition.h"
-#include "jh/asynchronous/ipc_limits.h"
+#include "process_mutex.h"
+#include "process_counter.h"
+#include "process_condition.h"
+#include "ipc_limits.h"
 
 #include <chrono>
 #include <stdexcept>
 #include <iostream>
 #include <thread>
 
-namespace jh::async::ipc {
+namespace jh::sync::ipc {
 
     using jh::str_template::CStr;
 
@@ -155,7 +155,7 @@ namespace jh::async::ipc {
      *
      * <h4>Overview</h4>
      * <p>
-     * <code>jh::async::ipc::shared_process_mutex</code> is a process-visible synchronization primitive
+     * <code>jh::sync::ipc::shared_process_mutex</code> is a process-visible synchronization primitive
      * providing shared, exclusive, and (optionally) upgradeable locking semantics,
      * similar to <code>std::shared_timed_mutex</code> but implemented from
      * process-level IPC primitives.
@@ -521,4 +521,4 @@ namespace jh::async::ipc {
     requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     thread_local bool shared_process_mutex<S, HighPriv>::has_prior_lock_ = false;
 
-} // namespace jh::async::ipc
+} // namespace jh::sync::ipc

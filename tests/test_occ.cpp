@@ -1,14 +1,14 @@
 #define CATCH_CONFIG_MAIN
 
 #include <catch2/catch_all.hpp>
-#include "jh/asynchronous/occ_box.h"
+#include "jh/concurrent/occ_box.h"
 #include <thread>
 #include <chrono>    // NOLINT force include for std::chrono_literals
 #include <vector>
 #include <atomic>
 #include <string>
 
-using namespace jh::async;
+using namespace jh::conc;
 
 namespace test {
 

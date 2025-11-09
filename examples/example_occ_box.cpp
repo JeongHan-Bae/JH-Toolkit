@@ -1,6 +1,6 @@
 /**
  * @file example_occ_box.cpp
- * @brief Demonstrates the usage of <code>jh::async::occ_box</code> in <code>jh-toolkit</code>.
+ * @brief Demonstrates the usage of <code>jh::conc::occ_box</code> in <code>jh-toolkit</code>.
  */
 
 #include <iostream>
@@ -10,7 +10,7 @@
 #include <chrono>    // NOLINT force include for std::chrono_literals
 #include <atomic>
 #include <random>
-#include "jh/asynchronous/occ_box.h"
+#include "jh/concurrent/occ_box.h"
 
 namespace example {
 
@@ -44,7 +44,7 @@ namespace example {
     void pointer_replacement_no_copy() {
         std::cout << "\n\U0001F539 Pointer Replacement (No Copy):\n";
 
-        jh::async::occ_box<Foo> box(10, "original");
+        jh::conc::occ_box<Foo> box(10, "original");
 
         // Replace with a *new object* instead of copying the old one
         box.write_ptr([](const std::shared_ptr<Foo> &old) {
@@ -92,7 +92,7 @@ namespace example {
         std::cout << "\n\U0001F539 Deterministic OCC with Backoff:\n";
         using namespace std::chrono_literals;
 
-        jh::async::occ_box<int> box(40);    ///< Initial value of the box
+        jh::conc::occ_box<int> box(40);    ///< Initial value of the box
         std::atomic<bool> start{false};  ///< Synchronization flag for simultaneous start
 
         // Per-thread attempt counters
@@ -198,10 +198,10 @@ namespace example {
     void apply_to_example() {
         std::cout << "\n\U0001F539 Apply-To Example (Atomic Transfer):\n";
 
-        jh::async::occ_box<int> accountA(100);
-        jh::async::occ_box<int> accountB(200);
+        jh::conc::occ_box<int> accountA(100);
+        jh::conc::occ_box<int> accountB(200);
 
-        bool ok = jh::async::apply_to(
+        bool ok = jh::conc::apply_to(
                 std::tie(accountA, accountB),
                 std::make_tuple(
                         [](int &a) { a -= 50; },  // withdraw
@@ -246,10 +246,10 @@ namespace example {
     void apply_to_ptr_example() {
         std::cout << "\n\U0001F539 Apply-To Example (Pointer Version, Foo):\n";
 
-        jh::async::occ_box<Foo> userA(1, "Alice");
-        jh::async::occ_box<Foo> userB(2, "Bob");
+        jh::conc::occ_box<Foo> userA(1, "Alice");
+        jh::conc::occ_box<Foo> userB(2, "Bob");
 
-        bool ok = jh::async::apply_to(
+        bool ok = jh::conc::apply_to(
                 std::tie(userA, userB),
                 std::make_tuple(
                         [](const std::shared_ptr<Foo> &a) {
@@ -297,12 +297,12 @@ namespace example {
     void apply_to_with_captures_example() {
         std::cout << "\n\U0001F539 Apply-To Example (Lambda Capture for Parameters):\n";
 
-        jh::async::occ_box<int> accountA(300);
-        jh::async::occ_box<int> accountB(100);
+        jh::conc::occ_box<int> accountA(300);
+        jh::conc::occ_box<int> accountB(100);
 
         int amount = 75; // external variable
 
-        bool ok = jh::async::apply_to(
+        bool ok = jh::conc::apply_to(
                 std::tie(accountA, accountB),
                 std::make_tuple(
                         [=](int &a) { a -= amount; },  // capture amount
