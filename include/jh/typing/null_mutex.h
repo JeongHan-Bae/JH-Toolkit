@@ -44,10 +44,10 @@
  *
  * <p><b>Typical usage:</b></p>
  * @code
- * using namespace jh;
  *
- * auto s = immutable_str::safe_from("text", typed::null_mutex);
- * lock::const_lock guard(typed::null_mutex);  // No-op
+ * auto s = jh::safe_from("text", typed::null_mutex);
+ * // returns std::shared_ptr&lt;jh::immutable_str&gt;
+ * jh::sync::const_lock guard(typed::null_mutex);  // No-op
  * @endcode
  *
  * @version <pre>1.3.x</pre>

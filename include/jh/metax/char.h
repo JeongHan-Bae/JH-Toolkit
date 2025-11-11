@@ -1,4 +1,3 @@
-
 /**
  * \verbatim
  * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;

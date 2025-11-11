@@ -3,7 +3,6 @@
 #include <random>
 #include <catch2/catch_all.hpp>
 #include "jh/serio"
-#include "jh/jindallae"
 
 TEST_CASE("Base64 Encode/Decode Roundtrip", "[base64]") {
     std::random_device rd;
@@ -122,7 +121,7 @@ TEST_CASE("Base64 invalid input detection", "[base64][error]") {
     }
 
     SECTION("Null bytes inside input") {
-        std::string bad = "AB\0CD==";
+        std::string bad = {'A', 'B', '\0', 'C', 'D', '=', '='};
         REQUIRE_THROWS_AS(decode(bad), std::runtime_error);
     }
 }
@@ -157,4 +156,37 @@ TEST_CASE("Base64URL decode into user-provided buffer", "[base64url][safety][buf
     view = decode("QQ", out); // "A"
     REQUIRE(out == "A");
     REQUIRE(std::string(view.data, view.len) == "A");
+}
+
+TEST_CASE("Base64 decode into user-provided vector<uint8_t> buffer", "[base64][safety][buffer]") {
+    using namespace jh::serio::base64;
+
+    std::vector<uint8_t> out;
+    auto view = decode("Qm9i", out); // "Bob"
+
+    REQUIRE(out == std::vector<uint8_t>({'B', 'o', 'b'}));
+    REQUIRE(view.len == out.size());
+    REQUIRE(std::string(reinterpret_cast<const char *>(view.data), view.len) == "Bob");
+
+    view = decode("TWFu", out); // "Man"
+    REQUIRE(out == std::vector<uint8_t>({'M', 'a', 'n'}));
+    REQUIRE(std::string(reinterpret_cast<const char *>(view.data), view.len) == "Man");
+
+    view = decode("QQ==", out); // "A"
+    REQUIRE(out == std::vector<uint8_t>({'A'}));
+    REQUIRE(std::string(reinterpret_cast<const char *>(view.data), view.len) == "A");
+}
+
+TEST_CASE("Base64URL decode into user-provided vector<uint8_t> buffer", "[base64url][safety][buffer]") {
+    using namespace jh::serio::base64url;
+
+    std::vector<uint8_t> out;
+    auto view = decode("SGVsbG8", out); // "Hello"
+    REQUIRE(out == std::vector<uint8_t>({'H', 'e', 'l', 'l', 'o'}));
+    REQUIRE(view.len == out.size());
+    REQUIRE(std::string(reinterpret_cast<const char *>(view.data), view.len) == "Hello");
+
+    view = decode("QQ", out); // "A"
+    REQUIRE(out == std::vector<uint8_t>({'A'}));
+    REQUIRE(std::string(reinterpret_cast<const char *>(view.data), view.len) == "A");
 }

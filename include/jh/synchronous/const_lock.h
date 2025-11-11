@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file const_lock.h (locking)
+ * @file const_lock.h (synchronous)
  * @brief Scope-based const-locking utility for mutex-like synchronization primitives.
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
