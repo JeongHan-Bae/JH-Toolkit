@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file process_launcher.h (ipc)
+ * @file process_launcher.h (synchronous/ipc)
  * @brief Cross-platform process launcher aligned with std::thread semantics.
  *
  * <h3>Rationale</h3>
@@ -54,7 +54,7 @@
  *   <li>If <strong>true</strong>:
  *     <ul>
  *       <li>On Windows, <code>".exe"</code> is appended automatically
- *           (so <code>"writer"</code> → <code>"writer.exe"</code>).</li>
+ *           (so <code>"writer"</code> &rarr; <code>"writer.exe"</code>).</li>
  *       <li>On POSIX, the path is used directly (no extension manipulation).</li>
  *     </ul>
  *   </li>
@@ -185,7 +185,7 @@
 #endif
 
 #include "jh/macros/platform.h"
-#include "jh/str_template.h"
+#include "jh/metax/t_str.h"
 #include "jh/synchronous/ipc/ipc_limits.h"
 #include <string>
 #include <stdexcept>
@@ -227,7 +227,7 @@ namespace jh::sync::ipc {
      * @tparam IsBinary Distinguishes binary executables from scripts (Windows only).
      *           <ul>
      *             <li>If <strong>true</strong>: <code>".exe"</code> is appended automatically
-     *                 on Windows (e.g. <code>"writer"</code> → <code>"writer.exe"</code>).</li>
+     *                 on Windows (e.g. <code>"writer"</code> &rarr; <code>"writer.exe"</code>).</li>
      *             <li>If <strong>false</strong>: the path is used as-is
      *                 (e.g. <code>"script.ps1"</code>, <code>"runner.bat"</code>).</li>
      *             <li>On POSIX systems, this parameter has no effect: the given string
@@ -265,7 +265,7 @@ namespace jh::sync::ipc {
      * and parameter combination.
      * </p>
      */
-    template<jh::str_template::CStr Path, bool IsBinary = true>
+    template<jh::meta::TStr Path, bool IsBinary = true>
     requires (limits::valid_relative_path<Path>())
     class process_launcher final {
     public:

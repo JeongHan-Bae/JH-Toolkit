@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file shared_process_mutex.h (ipc)
+ * @file shared_process_mutex.h (synchronous/ipc)
  * @brief Cross-process shared (read/write) timed mutex built from process primitives.
  *
  * <h3>Overview</h3>
@@ -131,7 +131,7 @@
 
 #pragma once
 
-#include "jh/str_template.h"
+#include "jh/metax/t_str.h"
 #include "jh/synchronous/ipc/process_mutex.h"
 #include "jh/synchronous/ipc/process_counter.h"
 #include "jh/synchronous/ipc/process_condition.h"
@@ -144,9 +144,9 @@
 
 namespace jh::sync::ipc {
 
-    using jh::str_template::CStr;
+    using jh::meta::TStr;
 
-    template <CStr S, bool HighPriv = false>
+    template <TStr S, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     class shared_process_mutex;
 
@@ -216,14 +216,14 @@ namespace jh::sync::ipc {
      *   <li>Unlink removes all associated IPC objects: <code>.exc</code>, <code>.cond</code>, <code>.cnt</code>, and <code>.pri</code>.</li>
      * </ul>
      */
-    template <CStr S, bool HighPriv>
+    template <TStr S, bool HighPriv>
     requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     class shared_process_mutex final {
     private:
-        using exc_t  = process_mutex<S + CStr{".exc"}, HighPriv>;
-        using cond_t = process_condition<S + CStr{".cond"}, HighPriv>;
-        using cnt_t  = process_counter<S + CStr{".cnt"}, HighPriv>;
-        using pri_t = process_mutex<S + CStr{".pri"}, HighPriv>;
+        using exc_t  = process_mutex<S + TStr{".exc"}, HighPriv>;
+        using cond_t = process_condition<S + TStr{".cond"}, HighPriv>;
+        using cnt_t  = process_counter<S + TStr{".cnt"}, HighPriv>;
+        using pri_t = process_mutex<S + TStr{".pri"}, HighPriv>;
         thread_local static bool has_shared_lock_;
         thread_local static bool has_exclusive_lock_;
         thread_local static bool has_prior_lock_;
@@ -509,15 +509,15 @@ namespace jh::sync::ipc {
         static void unlink() requires (!HighPriv) = delete;
     };
 
-    template <CStr S, bool HighPriv>
+    template <TStr S, bool HighPriv>
     requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     thread_local bool shared_process_mutex<S, HighPriv>::has_shared_lock_ = false;
 
-    template <CStr S, bool HighPriv>
+    template <TStr S, bool HighPriv>
     requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     thread_local bool shared_process_mutex<S, HighPriv>::has_exclusive_lock_ = false;
 
-    template <CStr S, bool HighPriv>
+    template <TStr S, bool HighPriv>
     requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     thread_local bool shared_process_mutex<S, HighPriv>::has_prior_lock_ = false;
 

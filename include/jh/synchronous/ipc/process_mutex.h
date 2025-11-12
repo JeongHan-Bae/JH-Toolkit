@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file process_mutex.h (ipc)
+ * @file process_mutex.h (synchronous/ipc)
  * @brief Cross-platform process-wide named mutex with timed try_lock.
  *
  * <h3>Overview</h3>
@@ -125,7 +125,7 @@
 #define JH_PROCESS_MUTEX_SHARED false
 #endif
 
-#include "jh/str_template.h"
+#include "jh/metax/t_str.h"
 #include "jh/macros/platform.h"
 #include "jh/synchronous/ipc/ipc_limits.h"
 
@@ -214,16 +214,16 @@ namespace jh::sync::ipc {
      * @tparam S Bare name string (letters, digits, dot, dash, underscore).
      * @tparam HighPriv If true, exposes <code>unlink()</code> for POSIX.
      */
-    template <jh::str_template::CStr S, bool HighPriv = false>
+    template <jh::meta::TStr S, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length>())
     class process_mutex final{
     private:
 #if IS_WINDOWS
         HANDLE handle_{}; ///< OS handle for Windows
-        static constexpr auto full_name_ = jh::str_template::cstr{"Local\\"} + S;
+        static constexpr auto full_name_ = jh::meta::t_str{"Local\\"} + S;
 #else
         sem_t* sem_{}; ///< POSIX semaphore handle
-        static constexpr auto full_name_ = jh::str_template::cstr{"/"} + S;
+        static constexpr auto full_name_ = jh::meta::t_str{"/"} + S;
 #endif
 
     public:

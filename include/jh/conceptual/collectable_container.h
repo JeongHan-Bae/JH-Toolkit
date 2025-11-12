@@ -148,6 +148,7 @@
 
 #include <cstdint>
 #include "jh/conceptual/closable_container.h"
+#include "jh/conceptual/tuple_like.h"
 
 
 namespace jh::concepts::detail {

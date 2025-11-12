@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file shared_process_memory.h (ipc)
+ * @file shared_process_memory.h (synchronous/ipc)
  * @brief Cross-process shared-memory container for POD-like objects.
  *
  * <h3>Overview</h3>
@@ -106,7 +106,7 @@
  */
 
 #pragma once
-#include "jh/str_template.h"
+#include "jh/metax/t_str.h"
 #include "jh/macros/platform.h"
 #include "jh/pods/pod_like.h"
 #include "jh/synchronous/ipc/process_mutex.h"
@@ -130,7 +130,7 @@
 
 namespace jh::sync::ipc {
 
-    using jh::str_template::CStr;
+    using jh::meta::TStr;
     using jh::pod::cv_free_pod_like;
 
     /**
@@ -144,19 +144,19 @@ namespace jh::sync::ipc {
      * @tparam T POD-like type satisfying <code>cv_free_pod_like</code>.
      * @tparam HighPriv Enables privileged operations (e.g. <code>unlink()</code>).
      */
-    template <CStr S, cv_free_pod_like T, bool HighPriv = false>
+    template <TStr S, cv_free_pod_like T, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length - 4>())
     class shared_process_memory final {
     private:
 
 #if IS_WINDOWS
-        static constexpr auto shm_name_  = jh::str_template::cstr{"Global\\"} + S;
+        static constexpr auto shm_name_  = jh::meta::t_str{"Global\\"} + S;
 #else
-        static constexpr auto shm_name_  = jh::str_template::cstr{"/"} + S;
+        static constexpr auto shm_name_  = jh::meta::t_str{"/"} + S;
         static constexpr mode_t shm_mode = JH_PROCESS_MUTEX_SHARED ? 0666 : 0644;
 #endif
 
-        using lock_t = process_mutex<S + jh::str_template::cstr{".loc"}, HighPriv>;
+        using lock_t = process_mutex<S + jh::meta::t_str{".loc"}, HighPriv>;
 
         struct shm_data {
             alignas(alignof(T)) T obj;

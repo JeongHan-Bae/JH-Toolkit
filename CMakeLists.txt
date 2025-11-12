@@ -112,10 +112,8 @@ if (ENABLE_POD)
     )
 
     # Install forwarding header 'pod' (no extension, so must use FILES)
-    # Install aggregator header 'pod.h'
     install(FILES
             ${CMAKE_SOURCE_DIR}/include/jh/pod
-            ${CMAKE_SOURCE_DIR}/include/jh/pod.h
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh
     )
 

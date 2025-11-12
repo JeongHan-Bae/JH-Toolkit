@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file process_condition.h (ipc)
+ * @file process_condition.h (synchronous/ipc)
  * @brief Cross-process condition variable primitive implemented via shared memory or named events.
  *
  * <h3>Overview</h3>
@@ -97,7 +97,7 @@
  */
 
 #pragma once
-#include "jh/str_template.h"
+#include "jh/metax/t_str.h"
 #include "jh/macros/platform.h"
 #include "jh/synchronous/ipc/process_mutex.h"
 #include "jh/synchronous/ipc/ipc_limits.h"
@@ -120,7 +120,7 @@
 
 namespace jh::sync::ipc {
 
-    using jh::str_template::CStr;
+    using jh::meta::TStr;
 
     /**
      * @brief Cross-process condition variable primitive (POSIX / Win32).
@@ -196,15 +196,15 @@ namespace jh::sync::ipc {
      *   <li>Windows implementation provides approximate equivalence, not strict parity.</li>
      * </ul>
      */
-    template <CStr S, bool HighPriv = false>
+    template <TStr S, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length>())
     class process_condition final {
     private:
 #if IS_WINDOWS
-        static constexpr auto shm_name_  = jh::str_template::cstr{"Global\\"} + S;
+        static constexpr auto shm_name_  = jh::meta::t_str{"Global\\"} + S;
         HANDLE event_ = nullptr;
 #else
-        static constexpr auto shm_name_ = jh::str_template::cstr{"/"} + S;
+        static constexpr auto shm_name_ = jh::meta::t_str{"/"} + S;
         static constexpr mode_t shm_mode = JH_PROCESS_MUTEX_SHARED ? 0666 : 0644;
 
         struct cond_data {

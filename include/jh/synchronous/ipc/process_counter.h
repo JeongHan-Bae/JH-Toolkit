@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file process_counter.h (ipc)
+ * @file process_counter.h (synchronous/ipc)
  * @brief Cross-process shared integer counter implemented via named shared memory.
  *
  * <h3>Overview</h3>
@@ -80,7 +80,7 @@
  */
 
 #pragma once
-#include "jh/str_template.h"
+#include "jh/metax/t_str.h"
 #include "jh/macros/platform.h"
 #include "jh/synchronous/ipc/process_mutex.h"
 #include "jh/synchronous/ipc/ipc_limits.h"
@@ -103,7 +103,7 @@
 
 namespace jh::sync::ipc {
 
-    using jh::str_template::CStr;
+    using jh::meta::TStr;
 
     /**
      * @brief Cross-process integer counter stored in shared memory (POSIX / Win32).
@@ -184,19 +184,19 @@ namespace jh::sync::ipc {
      *       subsequent accesses reuse the same shared mapping.</li>
      * </ul>
      */
-    template <CStr S, bool HighPriv = false>
+    template <TStr S, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length - 4>())
     class process_counter final {
     private:
 
 #if IS_WINDOWS
-        static constexpr auto shm_name_  = jh::str_template::cstr{"Global\\"} + S;
+        static constexpr auto shm_name_  = jh::meta::t_str{"Global\\"} + S;
 #else
-        static constexpr auto shm_name_  = jh::str_template::cstr{"/"} + S;
+        static constexpr auto shm_name_  = jh::meta::t_str{"/"} + S;
         static constexpr mode_t shm_mode = JH_PROCESS_MUTEX_SHARED ? 0666 : 0644;
 #endif
 
-        using lock_t = process_mutex<S + jh::str_template::cstr{".loc"}, HighPriv>;
+        using lock_t = process_mutex<S + jh::meta::t_str{".loc"}, HighPriv>;
 
         struct counter_data {
             alignas(alignof(std::uint64_t)) std::uint64_t value;

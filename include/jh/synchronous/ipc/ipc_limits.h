@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file ipc_limits.h (ipc)
+ * @file ipc_limits.h (synchronous/ipc)
  * @brief Compile-time validation utilities for IPC object naming and POSIX-style path safety.
  *
  * <h3>Overview</h3>
@@ -61,7 +61,7 @@
 
 #pragma once
 
-#include "jh/str_template.h"
+#include "jh/metax/t_str.h"
 #include "jh/macros/platform.h"
 #include <cstdint>
 
@@ -114,7 +114,7 @@ namespace jh::sync::ipc::limits {
      *
      * @return <code>true</code> if the name is valid, otherwise <code>false</code>.
      */
-    template<jh::str_template::CStr S, std::uint64_t MaxLen = max_name_length>
+    template<jh::meta::TStr S, std::uint64_t MaxLen = max_name_length>
     consteval bool valid_object_name() {
         if (S.size() < 1) return false;
         if (S.size() > MaxLen) return false;
@@ -134,14 +134,14 @@ namespace jh::sync::ipc::limits {
      *   <li>No "./" segments.</li>
      *   <li><code>".."</code> segments:
      *     <ul>
-     *       <li>When <code>JH_ALLOW_PARENT_PATH == 0</code> → forbidden.</li>
-     *       <li>When <code>JH_ALLOW_PARENT_PATH == 1</code> → leading "../" allowed but cannot occupy entire path, and no ".." after content begins.</li>
+     *       <li>When <code>JH_ALLOW_PARENT_PATH == 0</code> &rarr; forbidden.</li>
+     *       <li>When <code>JH_ALLOW_PARENT_PATH == 1</code> &rarr; leading "../" allowed but cannot occupy entire path, and no ".." after content begins.</li>
      *     </ul>
      *   </li>
      *   <li>Allowed characters: <code>[A-Za-z0-9_.-/]</code>.</li>
      * </ul>
      */
-    template<jh::str_template::CStr S>
+    template<jh::meta::TStr S>
     consteval bool valid_relative_path() {
         if (S.size() < 1) return false;
         if (S.size() > 128) return false;

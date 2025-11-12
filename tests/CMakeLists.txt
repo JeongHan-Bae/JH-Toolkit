@@ -24,7 +24,7 @@ set(TESTS
         test_view          test_view.cpp          jh-toolkit
         test_pods          test_pod_sys.cpp       jh-toolkit
         test_base64        test_base64.cpp        jh-toolkit
-        test_str_template  test_str_template.cpp  jh-toolkit
+        test_t_str         test_t_str.cpp         jh-toolkit
         test_process_lock  test_process_lock.cpp  jh-toolkit
         test_occ           test_occ.cpp           jh-toolkit
         test_proc_mapping  test_proc_mapping.cpp  jh-toolkit

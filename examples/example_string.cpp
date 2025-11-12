@@ -38,7 +38,9 @@
 #include <cstdint>
 #include <cstddef>
 #include "ensure_output.h"
-#include "jh/pod.h"
+#include "jh/pod"
+#include "jh/concepts"
+#include "jh/jindallae"
 
 #if IS_WINDOWS
 static EnsureOutput ensure_output_setup;
