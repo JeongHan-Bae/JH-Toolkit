@@ -110,7 +110,7 @@
 #include <sstream>
 #include <iomanip>
 #include "jh/typing/monostate.h"
-#include "jh/utils/base64.h"
+#include "jh/serialize_io/base64.h"
 #include "jh/macros/type_name.h"
 #include "jh/pods/array.h"
 #include "jh/pods/bits.h"
@@ -243,7 +243,7 @@ namespace jh::pod {
 
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::bytes_view bv) {
         os << "base64'";
-        const auto encoded = jh::utils::base64::encode(reinterpret_cast<const uint8_t *>(bv.data), bv.len);
+        const auto encoded = jh::serio::base64::encode(reinterpret_cast<const uint8_t *>(bv.data), bv.len);
         os << encoded;
         os << "'";
         return os;
@@ -262,7 +262,7 @@ namespace jh::pod {
 
     inline std::ostream &operator<<(std::ostream &os, const string_view &sv) {
         os << "string_view\"";
-        const auto buffer = std::string_view{sv.data, sv.len};
+        const auto buffer = std::string_view(sv);
         os << buffer;
         os << "\"";
         return os;

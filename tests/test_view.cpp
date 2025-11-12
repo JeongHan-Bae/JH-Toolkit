@@ -1,12 +1,24 @@
 #define CATCH_CONFIG_MAIN
+
 #include <catch2/catch_all.hpp>
 #include <vector>
 #include <string>
 #include <sstream>
+#include <vector>
+#include <string>
+#include <type_traits>
+#include <set>
+#include <list>
+#include <deque>
+#include <stack>
+#include <memory_resource>
 
+#include "jh/ranges/views/flatten.h" // force include to compact with 1.3.x-support-dev branch
+#include "jh/ranges/views/common.h"  // same as above
 #include "jh/views"
 #include "jh/pod"
-#include "jh/runtime_arr.h"
+#include "jh/runtime_arr"
+#include "jh/ranges_ext"    // temporarily located ranges_ext tests here for 1.3.x series
 
 // ------------------------------
 //  local helper types
@@ -95,7 +107,7 @@ TEST_CASE("enumerate write then read", "[enumerate][rw]") {
 
     MyWritableSeq seq{};
     for (auto [i, x]: jh::views::enumerate(seq, 100)) {
-        x = i * 10;
+        x = static_cast<int>(i * 10);
     }
 
     std::ostringstream out;
@@ -108,9 +120,10 @@ TEST_CASE("enumerate write then read", "[enumerate][rw]") {
 
 /// @brief test for immovable range
 TEST_CASE("enumerate immovable seq", "[enumerate][immov]") {
-    jh::runtime_arr<int> arr{3};
+    jh::runtime_arr<int> arr(3);
+    REQUIRE(arr.size() == 3);
     for (auto [i, x]: jh::views::enumerate(arr, 0)) {
-        x = i + 1;
+        x = static_cast<int>(i + 1);
     }
 
     std::ostringstream out;
@@ -274,7 +287,7 @@ TEST_CASE("zip multiple sequences with pipes", "[zip][pipe][multi]") {
     // ------------------------------------------------------
     std::ostringstream out;
 
-    for (auto [pair, word, price, grade] :
+    for (auto [pair, word, price, grade]:
             ids
             | jh::views::enumerate(100)
             | jh::views::zip_pipe(words, prices, grades)) {
@@ -289,4 +302,453 @@ TEST_CASE("zip multiple sequences with pipes", "[zip][pipe][multi]") {
             "(100,10,apple,1.1,A) "
             "(101,20,banana,2.2,B) "
             "(102,30,carrot,3.3,C) ");
+}
+
+TEST_CASE("adapt runtime_arr streamable", "[adapt][runtime_arr]") {
+    jh::runtime_arr<int> arr(3);
+    for (auto [i, x]: arr | jh::ranges::views::enumerate(1)) {
+        x = static_cast<int>(i * 10);
+    }
+
+    std::ostringstream out;
+    for (auto x: arr | jh::ranges::adapt() | std::views::all) {
+        out << x << " ";
+    }
+    // check arr can be adapted and streamed correctly
+    // (non-copyable ranges are normally reject by std::views::all)
+
+    REQUIRE(out.str() == "10 20 30 ");
+}
+
+TEST_CASE("flatten after enumerate+zip_pipe", "[flatten][zip][enumerate]") {
+    jh::runtime_arr<int> ids(3);
+    jh::runtime_arr<std::string> names(3);
+
+    for (auto [i, x]: ids | jh::ranges::views::enumerate(1))
+        x = static_cast<int>(i * 10);
+    names[0] = "Alice";
+    names[1] = "Bob";
+    names[2] = "Carol";
+
+    auto zipped =
+            ids | jh::ranges::views::enumerate(100) | jh::ranges::views::zip_pipe(names);
+
+    // flatten the nested tuples into single-level tuples
+    std::ostringstream out;
+    for (auto e: zipped | jh::ranges::views::flatten()) {
+        auto [i, v, n] = e;
+        out << "(" << i << "," << v << "," << n << ") ";
+    }
+
+    REQUIRE(out.str() == "(100,10,Alice) (101,20,Bob) (102,30,Carol) ");
+}
+
+TEST_CASE("adapt: direct call vs pipe form equivalence", "[adapt][equiv]") {
+    jh::runtime_arr<int> arr(3);
+    for (auto [i, x]: arr | jh::ranges::views::enumerate(1))
+        x = static_cast<int>(i * 10);
+
+    // direct call
+    auto r1 = jh::ranges::adapt(arr);
+    std::ostringstream out1;
+    for (auto x: r1) out1 << x << " ";
+
+    // pipe form
+    std::ostringstream out2;
+    for (auto x: arr | jh::ranges::adapt()) out2 << x << " ";
+
+    REQUIRE(out1.str() == out2.str());
+    REQUIRE(out1.str() == "10 20 30 ");
+}
+
+TEST_CASE("flatten: direct call vs pipe form equivalence", "[flatten][equiv]") {
+    jh::runtime_arr<int> a(3);
+    jh::runtime_arr<std::string> b(3);
+
+    for (auto [i, x]: a | jh::ranges::views::enumerate(1))
+        x = static_cast<int>(i * 10);
+    b[0] = "A";
+    b[1] = "B";
+    b[2] = "C";
+
+    // Build zipped enumerate view
+    auto zipped = jh::ranges::views::zip(
+            jh::ranges::views::enumerate(a, 100),
+            b
+    );
+
+    // direct flatten
+    std::ostringstream out1;
+    for (auto e: jh::ranges::views::flatten(zipped)) {
+        auto [i, v, s] = e;
+        out1 << "(" << i << "," << v << "," << s << ") ";
+    }
+
+    // pipe flatten
+    std::ostringstream out2;
+    for (auto e: zipped | jh::ranges::views::flatten()) {
+        auto [i, v, s] = e;
+        out2 << "(" << i << "," << v << "," << s << ") ";
+    }
+
+    REQUIRE(out1.str() == out2.str());
+    REQUIRE(out1.str() == "(100,10,A) (101,20,B) (102,30,C) ");
+}
+
+TEST_CASE("flatten deep nested enumerate+zip_pipe", "[flatten][nested]") {
+    jh::runtime_arr<int> ids(3);
+    jh::runtime_arr<std::string> names(3);
+    jh::runtime_arr arrays = {
+            jh::pod::array{{10, 20, 30}},
+            jh::pod::array{{40, 50, 60}},
+            jh::pod::array{{70, 80, 90}}
+    };
+    for (auto [i, x]: ids | jh::ranges::views::enumerate(1))
+        x = static_cast<int>(i * 10);
+    names[0] = "A";
+    names[1] = "B";
+    names[2] = "C";
+
+    // inner enumerate for duplication
+    auto inner = ids | jh::ranges::views::enumerate(10);
+
+    // deep nested: ( (i,v), name, (j,v2) )
+    auto zipped =
+            ids | jh::ranges::views::enumerate(100)
+            | jh::ranges::views::zip_pipe(names, inner, arrays);
+
+    std::ostringstream out;
+    for (auto e: zipped | jh::ranges::views::flatten()) {
+        auto [i, v, n, j, v2, a0, a1, a2] = e;
+        out << "(" << i << "," << v << "," << n << "," << j << ","
+            << v2 << "," << a0 << "," << a1 << "," << a2 << ") ";
+    }
+
+    REQUIRE(out.str() ==
+            "(100,10,A,10,10,10,20,30) (101,20,B,11,20,40,50,60) (102,30,C,12,30,70,80,90) ");
+}
+
+TEST_CASE("constexpr flatten_proxy recursion and tuple_materialize", "[flatten][meta][constexpr]") {
+    using jh::meta::flatten_proxy;
+    using jh::pod::make_tuple;
+
+    constexpr auto t = std::tuple{
+            std::tuple{1, 2},
+            make_tuple(3, 4),
+            std::tuple{make_tuple(5, 6), 7},
+    };
+
+    constexpr auto fp = flatten_proxy{t};
+
+    constexpr auto m = jh::meta::tuple_materialize(t);
+
+    static_assert(std::tuple_size_v<decltype(fp)> == 7);
+    static_assert(std::tuple_size_v<decltype(m)> == 7);
+
+    constexpr auto check = []<typename Tup>(const Tup &tup) {
+        const auto &[a, b, c, d, e, f, g] = tup;
+        return a == 1 && b == 2 && c == 3 && d == 4 && e == 5 && f == 6 && g == 7;
+    };
+
+    static_assert(check(fp));
+    static_assert(check(m));
+
+    std::ostringstream out;
+    const auto [a, b, c, d, e, f, g] = fp;
+    out << a << "," << b << "," << c << "," << d << "," << e << "," << f << "," << g;
+    REQUIRE(out.str() == "1,2,3,4,5,6,7");
+}
+
+struct DeclaredOnly {
+    using value_type = double;
+};
+
+struct DeducedOnly {
+    int *begin();
+
+    int *end();
+};
+
+struct CompatibleProxy {
+    using value_type = bool;
+
+    struct proxy {
+        operator bool() const { return true; }
+    };
+
+    proxy *begin();
+
+    proxy *end();
+};
+
+struct Conflict {
+    using value_type = int;
+
+    struct proxy {
+        operator std::string() const { return {}; }
+    };
+
+    proxy *begin();
+
+    proxy *end();
+};
+
+struct Voidish {
+};
+
+class my_vector : public std::vector<char> {
+};
+
+template<>
+struct jh::container_deduction<my_vector> {
+    using value_type = unsigned char;
+};
+
+// ---- static trait checks ----
+static_assert(std::same_as<jh::concepts::container_value_t<DeclaredOnly>, double>);
+static_assert(std::same_as<jh::concepts::container_value_t<DeducedOnly>, int>);
+static_assert(std::same_as<jh::concepts::container_value_t<CompatibleProxy>, bool>);
+static_assert(std::same_as<jh::concepts::container_value_t<Conflict>, void>);
+static_assert(std::same_as<jh::concepts::container_value_t<Voidish>, void>);
+static_assert(std::same_as<jh::concepts::container_value_t<my_vector>, unsigned char>);
+
+// ---- closable_container_for static checks ----
+static_assert(jh::concepts::closable_container_for<std::vector<int>, std::vector<int>>);
+static_assert(jh::concepts::closable_container_for<std::set<int>, std::vector<int>>);
+static_assert(jh::concepts::closable_container_for<std::vector<double>, std::vector<int>>);
+static_assert(!jh::concepts::closable_container_for<std::vector<std::string>, std::vector<int>>);
+
+// =======================================================
+//  dynamic collect / to verification
+// =======================================================
+
+TEST_CASE("collect and to dynamic examples", "[collect][to][dynamic]") {
+    std::vector<int> v = {1, 2, 3};
+
+    // normal
+    auto s = jh::ranges::to<std::set<int>>(v);
+    auto dq = jh::ranges::to<std::deque<double>>(v);
+    auto st = jh::ranges::to<std::stack<int>>(v);
+    REQUIRE(s.size() == 3);
+    REQUIRE(dq.size() == 3);
+    REQUIRE(st.size() == 3);
+
+    // allocator-aware
+    std::pmr::monotonic_buffer_resource pool;
+    std::pmr::polymorphic_allocator<int> alloc(&pool);
+    auto pmr_vec = jh::ranges::to<std::pmr::vector<int>>(v, alloc);
+    auto p2 = v | jh::ranges::to<std::pmr::vector<int>>(alloc);
+    REQUIRE(pmr_vec.size() == v.size());
+    REQUIRE(p2.size() == v.size());
+
+    // pipeline sanity
+    std::vector<int> input = {1, 2, 3};
+    std::vector<char> other = {'a', 'b', 'c'};
+
+    // collect and adapt chain
+    auto aaaa = input
+                | jh::ranges::to<std::vector<int>>()
+                | jh::ranges::collect<std::set<int>>()
+                | jh::ranges::adapt();
+
+    std::ostringstream out_a;
+    for (auto x: aaaa) out_a << x << " ";
+    REQUIRE(out_a.str() == "1 2 3 ");
+
+    // flatten and zip
+    auto bbbb = input
+                | jh::ranges::views::zip(other)
+                | jh::ranges::to<std::vector<std::tuple<int, char>>>();
+
+    std::ostringstream out_b;
+    for (auto &[a, b]: bbbb)
+        out_b << "(" << a << "," << b << ") ";
+    REQUIRE(out_b.str() == "(1,a) (2,b) (3,c) ");
+
+    // enumerate + flatten
+    std::ostringstream out_c;
+    for (auto &&[i, ch0, ch1]:
+            input
+            | jh::ranges::views::zip(other)
+            | jh::ranges::views::enumerate(100)
+            | jh::ranges::views::flatten()) {
+        out_c << i << ":(" << ch0 << "," << ch1 << ") ";
+    }
+    REQUIRE(out_c.str() == "100:(1,a) 101:(2,b) 102:(3,c) ");
+
+    // collect + to chained
+    auto rg = input
+              | jh::ranges::views::zip(other)
+              | jh::ranges::views::enumerate(100)
+              | jh::ranges::views::flatten()
+              | jh::ranges::collect<std::vector<std::tuple<int, char, char>>>()
+              | jh::ranges::to<std::deque<std::tuple<int, char, char>>>();
+
+    REQUIRE(rg.size() == 3);
+    auto [i0, c0, c1] = rg.front();
+    REQUIRE(i0 == 100);
+}
+
+TEST_CASE("collect to unordered_map from vector of tuple", "[collect][unordered_map]") {
+    // ------------------------------------------------------
+    // Prepare input: vector of tuple<key, value>
+    // ------------------------------------------------------
+    std::vector<std::tuple<std::string, int>> pairs = {
+            {"apple",  10},
+            {"banana", 20},
+            {"carrot", 30}
+    };
+
+    // ------------------------------------------------------
+    // Use collect() to produce unordered_map
+    // ------------------------------------------------------
+    auto map1 = pairs | jh::ranges::collect<std::unordered_map<std::string, int>>();
+
+    REQUIRE(map1.size() == 3);
+    REQUIRE(map1["apple"] == 10);
+    REQUIRE(map1["banana"] == 20);
+    REQUIRE(map1["carrot"] == 30);
+
+    // ------------------------------------------------------
+    // Check that collect<> also works directly
+    // ------------------------------------------------------
+    auto map2 = jh::ranges::collect<std::unordered_map<std::string, int>>(pairs);
+    REQUIRE(map2 == map1);
+
+    // ------------------------------------------------------
+    // Pipeline chain with adapt (ensures it's view-compatible)
+    // ------------------------------------------------------
+    std::ostringstream out;
+    for (auto &&[k, v]: pairs
+                        | jh::ranges::collect<std::unordered_map<std::string, int>>()
+                        | jh::ranges::adapt()) {
+        out << "(" << k << "," << v << ") ";
+    }
+
+    // The order of unordered_map is unspecified — just check presence
+    std::string result = out.str();
+    REQUIRE(result.find("(apple,10)") != std::string::npos);
+    REQUIRE(result.find("(banana,20)") != std::string::npos);
+    REQUIRE(result.find("(carrot,30)") != std::string::npos);
+}
+
+TEST_CASE("collect+to continuous chain to pmr::unordered_map", "[collect][to][pmr][unordered_map]") {
+    std::vector<std::string> input = {
+            {"apple"},
+            {"banana"},
+            {"cherry"}
+    };
+
+    std::pmr::monotonic_buffer_resource pool;
+    std::pmr::polymorphic_allocator<std::pair<const std::string, int>> alloc(&pool);
+
+    auto result = input
+                  | jh::ranges::views::enumerate()
+                  | jh::ranges::collect<std::vector<std::pair<size_t, std::string>>>()
+                  | jh::ranges::to<std::pmr::unordered_map<size_t, std::string>>(
+            0,
+            std::hash<size_t>{},
+            std::equal_to<size_t>{},
+            alloc
+    );
+    REQUIRE(result.size() == 3);
+    REQUIRE(result[0] == "apple");
+    REQUIRE(result[1] == "banana");
+    REQUIRE(result[2] == "cherry");
+}
+
+TEST_CASE("flatten + to vector of tuple", "[flatten][to][combine]") {
+    jh::runtime_arr<int> ids(3);
+    jh::runtime_arr<std::string> names(3);
+
+    for (auto [i, x]: ids | jh::ranges::views::enumerate(1))
+        x = static_cast<int>(i * 10);
+    names[0] = "Alice";
+    names[1] = "Bob";
+    names[2] = "Carol";
+
+    // pipeline with flatten and to<>
+    auto result = ids
+                  | jh::ranges::views::enumerate(100)
+                  | jh::ranges::views::zip_pipe(names)
+                  | jh::ranges::views::flatten()
+                  | jh::ranges::views::common()
+                  | jh::ranges::to<std::vector<std::tuple<int, int, std::string>>>();
+
+    REQUIRE(result.size() == 3);
+    REQUIRE(result[0] == std::make_tuple(100, 10, "Alice"));
+    REQUIRE(result[1] == std::make_tuple(101, 20, "Bob"));
+    REQUIRE(result[2] == std::make_tuple(102, 30, "Carol"));
+}
+
+namespace demo{
+    struct mid {
+        long index;
+        int id;
+        std::string name;
+        int value;
+
+        mid(long i, int id_, std::string n, int v)
+                : index(i), id(id_), name(std::move(n)), value(v) {}
+
+        std::pair<int, std::string> as_pair() const {
+            return {static_cast<int>(index), name + ":(" + std::to_string(value) + ", " + std::to_string(id) + ")"};
+        }
+    };
+}
+
+TEST_CASE("flatten + collect + to pmr unordered_map", "[flatten][collect][to][combine]") {
+    jh::runtime_arr<int> ids(3);
+    jh::runtime_arr<std::string> names(3);
+    jh::runtime_arr<int> values(3);
+
+    for (auto [i, x]: ids | jh::ranges::views::enumerate(1))
+        x = static_cast<int>(i * 10);
+
+    for (auto [i, x]: values | jh::ranges::views::enumerate())
+        x = static_cast<int>((i + 1) * 100);
+
+    names[0] = "Alice";
+    names[1] = "Bob";
+    names[2] = "Carol";
+
+    std::pmr::monotonic_buffer_resource pool;
+
+    // [id] -> [(index, id)] -> [((index, id), name, value)] -> [(index, id, name, value)] -> [mid] -> [pair]
+
+    auto pmr_map = ids
+                   | jh::ranges::views::enumerate(100)
+                   | jh::ranges::views::zip_pipe(names, values)
+                   | jh::ranges::views::flatten()
+                   | jh::ranges::collect<std::vector<demo::mid>>()
+                   | jh::ranges::views::transform(&demo::mid::as_pair)
+                   | jh::ranges::to<std::pmr::unordered_map<int, std::string>>(
+            0,
+            std::hash<int>{},
+            std::equal_to<int>{},
+            std::pmr::polymorphic_allocator<std::pair<const int, std::string>>(&pool)
+    );
+
+    REQUIRE(pmr_map.size() == 3);
+    REQUIRE(pmr_map.at(100) == "Alice:(100, 10)");
+    REQUIRE(pmr_map.at(101) == "Bob:(200, 20)");
+    REQUIRE(pmr_map.at(102) == "Carol:(300, 30)");
+}
+
+TEST_CASE("vis_transform pipeline closable with to<vector>", "[vis_transform][closable][to]") {
+    std::vector<int> v{1, 2, 3, 4, 5, 6};
+
+    auto f = [](int x) { return x * 2; };
+
+    // The key property: vis_transform produces a reentrant, closable view
+    // allowing direct collection into a concrete container.
+    auto res = v
+               | jh::ranges::views::vis_transform(f)
+               | jh::ranges::to<std::vector<int>>();
+
+    std::ostringstream out;
+    for (const auto e : res)
+        out << e << " ";
+
+    REQUIRE(out.str() == "2 4 6 8 10 12 ");
 }

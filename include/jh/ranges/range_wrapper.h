@@ -42,6 +42,7 @@
 #pragma once
 
 #include "jh/conceptual/iterator.h"
+#include "jh/conceptual/range_traits.h"
 #include <ranges>
 
 
@@ -81,14 +82,19 @@ namespace jh::ranges {
                     jh::concepts::iterator_difference_t<Inner>
             >;
 
-            using iterator_category [[maybe_unused]] =
-                    std::conditional_t<
-                            jh::concepts::random_access_iterator<Inner>, std::random_access_iterator_tag,
-                            std::conditional_t<
-                                    jh::concepts::bidirectional_iterator<Inner>, std::bidirectional_iterator_tag,
-                                    std::conditional_t<
-                                            jh::concepts::forward_iterator<Inner>, std::forward_iterator_tag,
-                                            std::input_iterator_tag>>>;
+            using iterator_concept =
+                    decltype([] {
+                        if constexpr (jh::concepts::random_access_iterator<Inner>)
+                            return std::type_identity<std::random_access_iterator_tag>{};
+                        else if constexpr (jh::concepts::bidirectional_iterator<Inner>)
+                            return std::type_identity<std::bidirectional_iterator_tag>{};
+                        else if constexpr (jh::concepts::forward_iterator<Inner>)
+                            return std::type_identity<std::forward_iterator_tag>{};
+                        else
+                            return std::type_identity<std::input_iterator_tag>{};
+                    }())::type;
+
+            using iterator_category [[maybe_unused]] = iterator_concept;
 
             completed_iterator() = default;
 
@@ -140,6 +146,18 @@ namespace jh::ranges {
 
             friend constexpr bool operator!=(const Sentinel &a, const completed_iterator &b)
             noexcept(noexcept(!(a == b))) {
+                return !(a == b);
+            }
+
+            // ---- Self comparison (iterator vs iterator) ----
+            friend constexpr bool operator==(const completed_iterator &a, const completed_iterator &b)
+            noexcept(noexcept(static_cast<const Inner &>(a) == static_cast<const Inner &>(b)))requires requires(
+                    const Inner &x, const Inner &y) { x == y; } {
+                return static_cast<const Inner &>(a) == static_cast<const Inner &>(b);
+            }
+
+            friend constexpr bool operator!=(const completed_iterator &a, const completed_iterator &b)
+            noexcept(noexcept(!(a == b)))requires requires(const Inner &x, const Inner &y) { x == y; } {
                 return !(a == b);
             }
 
@@ -281,7 +299,7 @@ namespace jh::ranges {
                 return a - static_cast<const Inner &>(b);
             }
         };
-    }
+    } // namespace detail
 
     /**
      * @brief Lightweight adapter that exposes any sequence as a standard range.
@@ -298,14 +316,17 @@ namespace jh::ranges {
      * it defines STL-compatible iterator traits.
      *
      * @tparam Seq Sequence-like type satisfying <code>jh::concepts::sequence</code>.
+     *
+     * @note
+     * If the sequence's <code>begin()</code> and <code>end()</code> types are identical,
+     * the wrapper transparently returns a <code>completed_iterator</code> for both.
+     * This allows the resulting view to model <code>std::ranges::common_range</code>,
+     * enabling tighter interoperability with standard range algorithms.
      */
     template<typename Seq>
     class range_wrapper : public std::ranges::view_interface<range_wrapper<Seq>> {
-        using Stored = std::conditional_t<
-                std::is_reference_v<Seq>,
-                std::reference_wrapper<std::remove_reference_t<Seq>>,
-                Seq>;
-        Stored seq_;
+        using traits = jh::concepts::range_storage_traits<Seq, true>;
+        typename traits::stored_t seq_;
     public:
 
         using inner_iterator = decltype(std::declval<Seq &>().begin());
@@ -313,32 +334,71 @@ namespace jh::ranges {
         using iterator = detail::completed_iterator<inner_iterator, sentinel>;
 
         explicit range_wrapper(Seq &&s)
-                : seq_(wrap(std::forward<Seq>(s))) {}
+                : seq_(traits::wrap(std::forward<Seq>(s))) {}
 
         auto begin() noexcept(noexcept(get().begin())) { return iterator(get().begin()); }
 
-        auto end() noexcept(noexcept(get().end())) { return get().end(); }
+        auto end() noexcept(noexcept(get().end())) {
+            if constexpr (std::same_as<inner_iterator, sentinel>)
+                return iterator(get().end());
+            else
+                return get().end();
+        }
 
     private:
-        static auto wrap(auto &&v) {
-            if constexpr (std::is_reference_v<decltype(v)>)
-                return std::ref(v);
-            else
-                return std::forward<decltype(v)>(v);
-        }
 
-        constexpr decltype(auto) get() noexcept {
-            if constexpr (std::is_reference_v<Seq>)
-                return seq_.get();
-            else
-                return (seq_);
-        }
+        constexpr decltype(auto) get() noexcept { return traits::get(seq_); }
 
-        constexpr decltype(auto) get() const noexcept {
-            if constexpr (std::is_reference_v<Seq>)
-                return seq_.get();
-            else
-                return (seq_);
-        }
+        constexpr decltype(auto) get() const noexcept { return traits::get(seq_); }
+
     };
-}
+} // namespace jh::ranges
+
+
+namespace std::ranges {
+    /**
+     * @brief Legal specialization of <code>std::ranges::enable_borrowed_range</code>.
+     *
+     * <p>
+     * This specialization is <b>explicitly permitted</b> by the C++ standard.
+     * User code may provide template specializations for certain customization points
+     * declared under the <code>std::ranges</code> namespace, including
+     * <code>std::ranges::enable_borrowed_range</code>, to indicate that a custom range
+     * type models the borrowed-range property.
+     * </p>
+     *
+     * <h4>About Clang-Tidy false positives</h4>
+     * <p>
+     * Static analyzers such as <b>Clang-Tidy</b> may emit a warning:
+     * <em>"Modification of 'std' namespace can result in undefined behavior"</em>.
+     * This warning is triggered because Clang-Tidy heuristically treats
+     * <b>any</b> declaration inside a user-written <code>namespace std</code> block
+     * as a modification of the standard namespace, without recognizing that
+     * <em>nested namespaces</em> like <code>std::ranges</code> define a separate,
+     * standards-sanctioned customization domain.
+     * </p>
+     *
+     * <p>
+     * Concretely:
+     * </p>
+     * <ul>
+     *   <li>Specializations such as <code>std::tuple_element&lt;&gt;</code> are recognized
+     *       by Clang-Tidy as explicitly allowed and thus do <b>not</b> trigger the warning.</li>
+     *   <li>Specializations inside nested subnamespaces (e.g.
+     *       <code>std::ranges::enable_borrowed_range&lt;T&gt;</code>) are equally legal
+     *       under the standard, but Clang-Tidy does not check the whitelist at that depth
+     *       and therefore incorrectly flags them as potential UB.</li>
+     * </ul>
+     *
+     * <p>
+     * This is a <b>false positive</b> — the specialization is <em>fully standard-compliant</em>
+     * and does <b>not</b> constitute undefined behavior.
+     * </p>
+     *
+     * @see <a href="https://en.cppreference.com/w/cpp/ranges/borrowed_range.html">
+     * std::ranges::borrowed_range</a>
+     */
+    template<typename SeqType>
+    [[maybe_unused]] [[maybe_unused]] inline constexpr bool enable_borrowed_range<jh::ranges::range_wrapper<SeqType>> =
+            std::is_lvalue_reference_v<SeqType>;
+} // namespace std::ranges

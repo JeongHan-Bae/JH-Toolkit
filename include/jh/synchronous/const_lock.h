@@ -16,12 +16,12 @@
  * \endverbatim
  */
 /**
- * @file const_lock.h (locking)
+ * @file const_lock.h (synchronous)
  * @brief Scope-based const-locking utility for mutex-like synchronization primitives.
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * <p>
- * This header defines <code>jh::lock::const_lock</code>, a lightweight RAII-style
+ * This header defines <code>jh::sync::const_lock</code>, a lightweight RAII-style
  * synchronization helper that enforces immutability barriers for shared or exclusive access.
  * It provides a unified locking abstraction compatible with all types satisfying
  * <code>jh::concepts::mutex_like</code>.
@@ -48,12 +48,12 @@
  *
  * @code
  * std::shared_mutex sm;
- * jh::lock::const_lock guard(sm);  // Acquires shared lock automatically
+ * jh::sync::const_lock guard(sm);  // Acquires shared lock automatically
  *
  * std::mutex m;
- * jh::lock::const_lock exclusive_guard(m);  // Acquires exclusive lock
+ * jh::sync::const_lock exclusive_guard(m);  // Acquires exclusive lock
  *
- * jh::lock::const_lock dummy(jh::typed::null_mutex);  // No-op
+ * jh::sync::const_lock dummy(jh::typed::null_mutex);  // No-op
  * @endcode
  *
  * @version <pre>1.3.x</pre>
@@ -63,7 +63,7 @@
 #pragma once
 #include "jh/conceptual/mutex_like.h"
 
-namespace jh::lock {
+namespace jh::sync {
 
     /**
      * @class const_lock
@@ -87,6 +87,12 @@ namespace jh::lock {
      * Intended for const or read-only critical sections where immutability
      * must be preserved across threads.
      * </p>
+     *
+     * @note This guard is conceptually a <b>read-protection mechanism</b>.
+     *       Performing any write or mutable operation within a <code>const_lock</code>
+     *       protected scope constitutes <b>undefined behavior (UB)</b>.
+     *       Even if the underlying mutex is exclusive-only (e.g. <code>std::mutex</code>),
+     *       the logical semantics remain read-only protection.
      *
      * @tparam Mutex Any type satisfying <code>jh::concepts::mutex_like</code>.
      */
@@ -132,4 +138,4 @@ namespace jh::lock {
         }
     };
 
-} // namespace jh::lock
+} // namespace jh::sync

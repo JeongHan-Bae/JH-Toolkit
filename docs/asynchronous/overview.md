@@ -20,10 +20,6 @@
 It integrates **coroutine-level asynchronous flow** and **system-level concurrency control**
 under a consistent, header-only design.
 
-Currently (v1.3.x), the module provides `generator` — a bidirectional coroutine generator.
-The upcoming **1.4.0-dev** branch extends this layer with advanced primitives including
-**optimistic concurrency (OCC)**, **process synchronization**, and **process management**.
-
 ---
 
 ## 🔹 Core Components
@@ -31,16 +27,12 @@ The upcoming **1.4.0-dev** branch extends this layer with advanced primitives in
 | Component                          | Header                                 | Status       | Description                                                    |
 |------------------------------------|----------------------------------------|--------------|----------------------------------------------------------------|
 | [`generator<T, U>`](generator.md)  | `<jh/asynchronous/generator.h>`        | ✅ Stable     | Coroutine generator with yield/send semantics.                 |
-| `occ_box<T>`                       | `<jh/asynchronous/occ_box.h>`          | 🚧 1.4.0-dev | Optimistic Concurrency Control box for atomic snapshots.       |
-| `process_mutex<Name>`              | `<jh/asynchronous/process_mutex.h>`    | 🚧 1.4.0-dev | Cross-platform named mutex for inter-process synchronization.  |
-| `process_launcher<Path, IsBinary>` | `<jh/asynchronous/process_launcher.h>` | 🚧 1.4.0-dev | Unified process launcher aligned with `std::thread` semantics. |
 
 ---
 
 ## 🧩 Module Summary
 
 * **Current focus:** coroutine-based asynchronous iteration (`generator<T, U>`).
-* **Upcoming (1.4.0-dev):** concurrency primitives — `occ_box`, `process_mutex`, `process_launcher`.
 * **Aggregated header `<jh/async>`:** will be introduced in 1.4.0.
   Until then, include individual headers from `jh/asynchronous/`.
 

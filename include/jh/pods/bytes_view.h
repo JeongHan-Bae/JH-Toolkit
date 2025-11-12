@@ -46,7 +46,7 @@
 #include <cstring> // for memcmp, memcpy
 
 #include "jh/pods/pod_like.h"
-#include "jh/utils/hash_fn.h"
+#include "jh/metax/hash.h"
 
 namespace jh::pod {
 
@@ -263,9 +263,9 @@ namespace jh::pod {
          *       contexts due to its reliance on pointer reinterpretation. It is intended for runtime use.
          */
         [[nodiscard]] constexpr std::uint64_t
-        hash(jh::utils::hash_fn::c_hash hash_method = jh::utils::hash_fn::c_hash::fnv1a64) const noexcept {
+        hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64) const noexcept {
             if (!data) return static_cast<std::uint64_t>(-1);
-            return jh::utils::hash_fn::hash(
+            return jh::meta::hash(
                     hash_method,
                     reinterpret_cast<const char *>(data),
                     len

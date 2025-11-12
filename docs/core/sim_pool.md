@@ -1,6 +1,6 @@
 # 🧱 **JH Toolkit — `jh::sim_pool` API Reference**
 
-📁 **Header:** `<jh/sim_pool.h>`  
+📁 **Header:** `<jh/core/sim_pool.h>`  
 🔄 **Forwarding Header:** `<jh/sim_pool>`  
 📦 **Namespace:** `jh`  
 📅 **Version:** 1.3.x → 1.4.0-dev (2025)  
@@ -8,7 +8,7 @@
 
 <div align="right">
 
-[![Back to README](https://img.shields.io/badge/Back_to_README-blue?style=flat-square)](../README.md)
+[![Back to README](https://img.shields.io/badge/Back_to_README-blue?style=flat-square)](../../README.md)
 
 </div>
 

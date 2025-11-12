@@ -1,14 +1,20 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch_all.hpp>
-#include "jh/sim_pool.h"
-#include "jh/pool.h"
+#include "jh/sim_pool"
+#include "jh/pool"
 #include "jh/macros/platform.h"
 #include <memory>
 #include <thread>
-#include <iostream>
 
 #if IS_WINDOWS
 #include <cstdlib>
+
+extern "C" void disable_debug_heap_before_crt() {
+    ::putenv(const_cast<char*>("_NO_DEBUG_HEAP=1"));
+}
+#pragma section(".CRT$XIB", long, read)
+__attribute__((section(".CRT$XIB")))
+void (*p_disable_debug_heap)(void) = disable_debug_heap_before_crt;
 
 // Disable Windows UCRT debug heap in MSYS2 / MinGW-UCRT environment.
 // Prevents spurious heap corruption (0xC0000374) during multi-threaded tests.
@@ -23,7 +29,7 @@ static struct DisableWinDebugHeap {
 
 
 namespace test {
-    // 🎯 Test Object
+    // Test Object
     struct TestObject {
         int value;
 
@@ -50,7 +56,7 @@ namespace test {
         }
     };
 
-    // 🎯 Custom Hash Function
+    // Custom Hash Function
     struct TestObjectHash {
         std::size_t operator()(const std::weak_ptr<TestObject> &ptr) const noexcept {
             if (const auto sp = ptr.lock()) {
@@ -60,7 +66,7 @@ namespace test {
         }
     };
 
-    // 🎯 Custom Equality Function (Expired weak_ptrs are considered different)
+    // Custom Equality Function (Expired weak_ptrs are considered different)
     struct TestObjectEq {
         bool operator()(const std::weak_ptr<TestObject> &lhs, const std::weak_ptr<TestObject> &rhs) const noexcept {
             const auto sp1 = lhs.lock();
@@ -74,7 +80,7 @@ namespace test {
     using DeducedPool = jh::pool<AutoPoolingObject>;
 } // namespace test
 
-// ✅ Basic Functionality Test
+// Basic Functionality Test
 TEST_CASE("sim_pool basic functionality") {
     test::CustomizedPool pool;
 
@@ -82,9 +88,9 @@ TEST_CASE("sim_pool basic functionality") {
     auto obj2 = pool.acquire(10);
     auto obj3 = pool.acquire(20);
 
-    REQUIRE(obj1 == obj2); // 🎯 Objects with the same value should be reused
-    REQUIRE(obj1 != obj3); // 🎯 Different values should not be reused
-    REQUIRE(pool.size() == 2); // 🎯 The pool should contain only two unique objects
+    REQUIRE(obj1 == obj2); // Objects with the same value should be reused
+    REQUIRE(obj1 != obj3); // Different values should not be reused
+    REQUIRE(pool.size() == 2); // The pool should contain only two unique objects
 }
 
 TEST_CASE("pool basic functionality") {
@@ -94,12 +100,12 @@ TEST_CASE("pool basic functionality") {
     auto obj2 = pool.acquire(10);
     auto obj3 = pool.acquire(20);
 
-    REQUIRE(obj1 == obj2); // 🎯 Objects with the same value should be reused
-    REQUIRE(obj1 != obj3); // 🎯 Different values should not be reused
-    REQUIRE(pool.size() == 2); // 🎯 The pool should contain only two unique objects
+    REQUIRE(obj1 == obj2); // Objects with the same value should be reused
+    REQUIRE(obj1 != obj3); // Different values should not be reused
+    REQUIRE(pool.size() == 2); // The pool should contain only two unique objects
 }
 
-// ✅ Cleanup Test (Effect of Eq)
+// Cleanup Test (Effect of Eq)
 TEST_CASE("sim_pool cleanup") {
     test::CustomizedPool pool;
 
@@ -108,17 +114,17 @@ TEST_CASE("sim_pool cleanup") {
 
     REQUIRE(pool.size() == 2);
 
-    obj1.reset(); // 🎯 Release shared_ptrs
+    obj1.reset(); // Release shared_ptrs
     obj2.reset();
 
-    REQUIRE(pool.size() == 2); // 🎯 Expired weak_ptrs are still in the pool (not automatically cleaned up)
+    REQUIRE(pool.size() == 2); // Expired weak_ptrs are still in the pool (not automatically cleaned up)
 
-    pool.cleanup(); // 🎯 Manually trigger cleanup
+    pool.cleanup(); // Manually trigger cleanup
 
-    REQUIRE(pool.size() == 0); // 🎯 The pool should now be empty
+    REQUIRE(pool.size() == 0); // The pool should now be empty
 }
 
-// ✅ Cleanup Test (Effect of Eq)
+// Cleanup Test (Effect of Eq)
 TEST_CASE("pool cleanup") {
     test::DeducedPool pool;
 
@@ -127,59 +133,59 @@ TEST_CASE("pool cleanup") {
 
     REQUIRE(pool.size() == 2);
 
-    obj1.reset(); // 🎯 Release shared_ptrs
+    obj1.reset(); // Release shared_ptrs
     obj2.reset();
 
-    REQUIRE(pool.size() == 2); // 🎯 Expired weak_ptrs are still in the pool (not automatically cleaned up)
+    REQUIRE(pool.size() == 2); // Expired weak_ptrs are still in the pool (not automatically cleaned up)
 
-    pool.cleanup(); // 🎯 Manually trigger cleanup
+    pool.cleanup(); // Manually trigger cleanup
 
-    REQUIRE(pool.size() == 0); // 🎯 The pool should now be empty
+    REQUIRE(pool.size() == 0); // The pool should now be empty
 }
 
-// ✅ Dynamic Expansion & Contraction Test
+// Dynamic Expansion & Contraction Test
 TEST_CASE("sim_pool dynamic expansion and contraction") {
-    test::CustomizedPool pool(4); // 🎯 Initial reserved_size = 4
+    test::CustomizedPool pool(4); // Initial reserved_size = 4
 
     std::vector<std::shared_ptr<test::TestObject> > objects;
     objects.reserve(10);
     for (int i = 0; i < 10; ++i) {
-        objects.push_back(pool.acquire(i)); // 🎯 Store shared_ptrs
+        objects.push_back(pool.acquire(i)); // Store shared_ptrs
     }
 
-    REQUIRE(pool.size() == 10); // 🎯 10 unique objects
-    REQUIRE(pool.reserved_size() >= 16); // 🎯 Expansion triggered (reserved_size *= 2)
+    REQUIRE(pool.size() == 10); // 10 unique objects
+    REQUIRE(pool.reserved_size() >= 16); // Expansion triggered (reserved_size *= 2)
 
     for (auto &obj: objects) {
-        obj.reset(); // 🎯 Release all shared_ptrs
+        obj.reset(); // Release all shared_ptrs
     }
 
-    pool.cleanup(); // 🎯 Trigger shrinkage
-    REQUIRE(pool.reserved_size() <= 16); // 🎯 Shrinkage triggered (reserved_size /= 2)
+    pool.cleanup(); // Trigger shrinkage
+    REQUIRE(pool.reserved_size() <= 16); // Shrinkage triggered (reserved_size /= 2)
 }
 
-// ✅ Dynamic Expansion & Contraction Test
+// Dynamic Expansion & Contraction Test
 TEST_CASE("pool dynamic expansion and contraction") {
-    test::DeducedPool pool(4); // 🎯 Initial reserved_size = 4
+    test::DeducedPool pool(4); // Initial reserved_size = 4
 
     std::vector<std::shared_ptr<test::AutoPoolingObject> > objects;
     objects.reserve(10);
     for (int i = 0; i < 10; ++i) {
-        objects.push_back(pool.acquire(i)); // 🎯 Store shared_ptrs
+        objects.push_back(pool.acquire(i)); // Store shared_ptrs
     }
 
-    REQUIRE(pool.size() == 10); // 🎯 10 unique objects
-    REQUIRE(pool.reserved_size() >= 16); // 🎯 Expansion triggered (reserved_size *= 2)
+    REQUIRE(pool.size() == 10); // 10 unique objects
+    REQUIRE(pool.reserved_size() >= 16); // Expansion triggered (reserved_size *= 2)
 
     for (auto &obj: objects) {
-        obj.reset(); // 🎯 Release all shared_ptrs
+        obj.reset(); // Release all shared_ptrs
     }
 
-    pool.cleanup(); // 🎯 Trigger shrinkage
-    REQUIRE(pool.reserved_size() <= 16); // 🎯 Shrinkage triggered (reserved_size /= 2)
+    pool.cleanup(); // Trigger shrinkage
+    REQUIRE(pool.reserved_size() <= 16); // Shrinkage triggered (reserved_size /= 2)
 }
 
-// ✅ Move Semantics Test
+// Move Semantics Test
 TEST_CASE("sim_pool move semantics") {
     test::CustomizedPool pool1;
     auto obj1 = pool1.acquire(10);
@@ -187,20 +193,20 @@ TEST_CASE("sim_pool move semantics") {
 
     REQUIRE(pool1.size() == 2);
 
-    test::CustomizedPool pool2 = std::move(pool1); // 🎯 Move constructor
+    test::CustomizedPool pool2 = std::move(pool1); // Move constructor
 
     REQUIRE(pool2.size() == 2);
-    REQUIRE(pool1.size() == 0); // 🎯 pool1 should now be empty
+    REQUIRE(pool1.size() == 0); // pool1 should now be empty
 
     test::CustomizedPool pool3;
-    pool3 = std::move(pool2); // 🎯 Move assignment
+    pool3 = std::move(pool2); // Move assignment
 
     REQUIRE(pool3.size() == 2);
-    REQUIRE(pool2.size() == 0); // 🎯 pool2 should now be empty
+    REQUIRE(pool2.size() == 0); // pool2 should now be empty
 
     pool3.clear();
-    REQUIRE(pool3.size() == 0); // 🎯 pool3 should now be empty
-    REQUIRE(pool3.reserved_size() == test::CustomizedPool::MIN_RESERVED_SIZE); // 🎯 reserved_size should be reset
+    REQUIRE(pool3.size() == 0); // pool3 should now be empty
+    REQUIRE(pool3.reserved_size() == test::CustomizedPool::MIN_RESERVED_SIZE); // reserved_size should be reset
 }
 
 TEST_CASE("pool move semantics") {
@@ -210,23 +216,23 @@ TEST_CASE("pool move semantics") {
 
     REQUIRE(pool1.size() == 2);
 
-    test::DeducedPool pool2 = std::move(pool1); // 🎯 Move constructor
+    test::DeducedPool pool2 = std::move(pool1); // Move constructor
 
     REQUIRE(pool2.size() == 2);
-    REQUIRE(pool1.size() == 0); // 🎯 pool1 should now be empty
+    REQUIRE(pool1.size() == 0); // pool1 should now be empty
 
     test::DeducedPool pool3;
-    pool3 = std::move(pool2); // 🎯 Move assignment
+    pool3 = std::move(pool2); // Move assignment
 
     REQUIRE(pool3.size() == 2);
-    REQUIRE(pool2.size() == 0); // 🎯 pool2 should now be empty
+    REQUIRE(pool2.size() == 0); // pool2 should now be empty
 
     pool3.clear();
-    REQUIRE(pool3.size() == 0); // 🎯 pool3 should now be empty
-    REQUIRE(pool3.reserved_size() == test::DeducedPool::MIN_RESERVED_SIZE); // 🎯 reserved_size should be reset
+    REQUIRE(pool3.size() == 0); // pool3 should now be empty
+    REQUIRE(pool3.reserved_size() == test::DeducedPool::MIN_RESERVED_SIZE); // reserved_size should be reset
 }
 
-// ✅ Multithreading Test (128 Iterations for Data Race Detection): Not storing shared_ptr
+// Multithreading Test (128 Iterations for Data Race Detection): Not storing shared_ptr
 TEST_CASE("sim_pool multithreading without storing shared_ptr") {
     test::CustomizedPool pool;
     constexpr int total_tests = 128;
@@ -242,7 +248,7 @@ TEST_CASE("sim_pool multithreading without storing shared_ptr") {
                 workers.emplace_back([&pool] {
                     for (int i = 0; i < OBJECTS_PER_THREAD; ++i) {
                         pool.acquire(i);
-                        // 🎯 Not storing shared_ptr, not calling REQUIRE_NOTHROW() otherwise might cause dangling pointers
+                        // Not storing shared_ptr, not calling REQUIRE_NOTHROW() otherwise might cause dangling pointers
                     }
                 });
             }
@@ -251,18 +257,18 @@ TEST_CASE("sim_pool multithreading without storing shared_ptr") {
                 w.join();
             }
 
-            // 🎯 Since shared_ptrs are not stored, weak_ptrs may become expired,
+            // Since shared_ptrs are not stored, weak_ptrs may become expired,
             // but size() does not necessarily become 0 until expand_and_cleanup is triggered
             REQUIRE(pool.size() <= OBJECTS_PER_THREAD * THREADS);
-            pool.cleanup_shrink(); // 🎯 Explicit cleanup
+            pool.cleanup_shrink(); // Explicit cleanup
             REQUIRE(pool.reserved_size() == test::CustomizedPool::MIN_RESERVED_SIZE);
-            // 🎯 reserved_size should remain unchanged
-            REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
+            // reserved_size should remain unchanged
+            REQUIRE(pool.size() == 0); // After cleanup, the pool should be empty
         }
     }
 }
 
-// ✅ Multithreading Test (128 Iterations for Data Race Detection): Not storing shared_ptr
+// Multithreading Test (128 Iterations for Data Race Detection): Not storing shared_ptr
 TEST_CASE("pool multithreading without storing shared_ptr") {
     test::DeducedPool pool;
     constexpr int total_tests = 128;
@@ -278,7 +284,7 @@ TEST_CASE("pool multithreading without storing shared_ptr") {
                 workers.emplace_back([&pool] {
                     for (int i = 0; i < OBJECTS_PER_THREAD; ++i) {
                         pool.acquire(i);
-                        // 🎯 Not storing shared_ptr, not calling REQUIRE_NOTHROW() otherwise might cause dangling pointers
+                        // Not storing shared_ptr, not calling REQUIRE_NOTHROW() otherwise might cause dangling pointers
                     }
                 });
             }
@@ -287,18 +293,18 @@ TEST_CASE("pool multithreading without storing shared_ptr") {
                 w.join();
             }
 
-            // 🎯 Since shared_ptrs are not stored, weak_ptrs may become expired,
+            // Since shared_ptrs are not stored, weak_ptrs may become expired,
             // but size() does not necessarily become 0 until expand_and_cleanup is triggered
             REQUIRE(pool.size() <= OBJECTS_PER_THREAD * THREADS);
-            pool.cleanup_shrink(); // 🎯 Explicit cleanup
+            pool.cleanup_shrink(); // Explicit cleanup
             REQUIRE(pool.reserved_size() == test::DeducedPool::MIN_RESERVED_SIZE);
-            // 🎯 reserved_size should remain unchanged
-            REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
+            // reserved_size should remain unchanged
+            REQUIRE(pool.size() == 0); // After cleanup, the pool should be empty
         }
     }
 }
 
-// ✅ Multithreading Test (128 Iterations for Data Race Detection): Storing shared_ptr
+// Multithreading Test (128 Iterations for Data Race Detection): Storing shared_ptr
 TEST_CASE("sim_pool multithreading with storing shared_ptr") {
     test::CustomizedPool pool;
     constexpr int total_tests = 128;
@@ -316,10 +322,10 @@ TEST_CASE("sim_pool multithreading with storing shared_ptr") {
             for (int t = 0; t < THREADS; ++t) {
                 workers.emplace_back([&pool, &stored_objects, &stored_mutex, t] {
                     for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) {
-                        // 🎯 Avoid duplicate values
+                        // Avoid duplicate values
                         {
                             auto obj = pool.acquire(i);
-                            // 🎯 Protect stored_objects with std::lock_guard
+                            // Protect stored_objects with std::lock_guard
                             std::lock_guard lock(stored_mutex);
                             stored_objects.push_back(obj);
                         }
@@ -331,18 +337,18 @@ TEST_CASE("sim_pool multithreading with storing shared_ptr") {
                 w.join();
             }
 
-            REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS); // 🎯 Ensure all objects are alive
-            REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS / 2); // 🎯 Ensure reserved_size has expanded
+            REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS); // Ensure all objects are alive
+            REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS / 2); // Ensure reserved_size has expanded
 
-            stored_objects.clear(); // 🎯 Release all shared_ptrs
-            pool.cleanup(); // 🎯 Trigger cleanup
+            stored_objects.clear(); // Release all shared_ptrs
+            pool.cleanup(); // Trigger cleanup
             REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS);
-            REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
+            REQUIRE(pool.size() == 0); // After cleanup, the pool should be empty
         }
     }
 }
 
-// ✅ Multithreading Test (128 Iterations for Data Race Detection): Storing shared_ptr
+// Multithreading Test (128 Iterations for Data Race Detection): Storing shared_ptr
 TEST_CASE("pool multithreading with storing shared_ptr") {
     test::DeducedPool pool;
     constexpr int total_tests = 128;
@@ -360,10 +366,10 @@ TEST_CASE("pool multithreading with storing shared_ptr") {
             for (int t = 0; t < THREADS; ++t) {
                 workers.emplace_back([&pool, &stored_objects, &stored_mutex, t]() {
                     for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) {
-                        // 🎯 Avoid duplicate values
+                        // Avoid duplicate values
                         {
                             auto obj = pool.acquire(i);
-                            // 🎯 Protect stored_objects with std::lock_guard
+                            // Protect stored_objects with std::lock_guard
                             std::lock_guard lock(stored_mutex);
                             stored_objects.push_back(obj);
                         }
@@ -375,13 +381,40 @@ TEST_CASE("pool multithreading with storing shared_ptr") {
                 w.join();
             }
 
-            REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS); // 🎯 Ensure all objects are alive
-            REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS / 2); // 🎯 Ensure reserved_size has expanded
+            REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS); // Ensure all objects are alive
+            REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS / 2); // Ensure reserved_size has expanded
 
-            stored_objects.clear(); // 🎯 Release all shared_ptrs
-            pool.cleanup(); // 🎯 Trigger cleanup
+            stored_objects.clear(); // Release all shared_ptrs
+            pool.cleanup(); // Trigger cleanup
             REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS);
-            REQUIRE(pool.size() == 0); // 🎯 After cleanup, the pool should be empty
+            REQUIRE(pool.size() == 0); // After cleanup, the pool should be empty
         }
     }
+}
+
+/**
+ * @note
+ * std::string itself is <b>not</b> an immutable type — its internal buffer may change.
+ * This test only demonstrates that it <b>can</b> be pooled because it satisfies
+ * <code>std::hash&lt;std::string&gt;</code> and <code>operator==</code<.
+ * For stable, non-static, content-based pooling, use <code>jh::pool&lt;jh::immutable_str&gt;<code> instead.
+*/
+TEST_CASE("pool with std::string") {
+    jh::pool<std::string> pool;
+
+    auto hello1 = pool.acquire("hello");
+    auto hello2 = pool.acquire("hello");
+    auto world  = pool.acquire("world");
+
+    REQUIRE(hello1 == hello2);   // identical strings should be reused
+    REQUIRE(hello1 != world);    // distinct strings should not be reused
+    REQUIRE(pool.size() == 2);   // only two unique entries in the pool
+
+    hello1.reset();
+    hello2.reset();
+    world.reset();
+
+    REQUIRE(pool.size() == 2);   // expired entries remain until cleanup
+    pool.cleanup();
+    REQUIRE(pool.size() == 0);   // after cleanup, pool becomes empty
 }

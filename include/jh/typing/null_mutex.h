@@ -44,10 +44,10 @@
  *
  * <p><b>Typical usage:</b></p>
  * @code
- * using namespace jh;
  *
- * auto s = immutable_str::safe_from("text", typed::null_mutex);
- * lock::const_lock guard(typed::null_mutex);  // No-op
+ * auto s = jh::safe_from("text", typed::null_mutex);
+ * // returns std::shared_ptr&lt;jh::immutable_str&gt;
+ * jh::sync::const_lock guard(typed::null_mutex);  // No-op
  * @endcode
  *
  * @version <pre>1.3.x</pre>
@@ -93,7 +93,7 @@ namespace jh::typed {
      *
      * @see jh::typed::null_mutex
      * @see jh::concepts::mutex_like
-     * @see jh::lock::const_lock
+     * @see jh::sync::const_lock
      */
     struct null_mutex_t {
 
@@ -143,6 +143,12 @@ namespace jh::typed {
      * auto s = jh::safe_from(thread_local_string, jh::typed::null_mutex);
      * // returns std::shared_ptr&lt;jh::immutable_str&gt;
      * @endcode
+     *
+     * @note
+     * <b>Semantic intent:</b> Using <code>null_mutex</code> explicitly declares that
+     * the protected resource is owned and accessed by a <b>single thread</b> only.
+     * It serves as a formal statement of exclusive single-thread ownership rather
+     * than an omission of synchronization.
      *
      * <p>
      * This singleton should be used instead of creating local instances.

@@ -1,10 +1,9 @@
 #define CATCH_CONFIG_MAIN
 
-#include <iostream>
 #include <numeric>
 #include <random>
 #include <catch2/catch_all.hpp>
-#include "jh/asynchronous/generator.h"
+#include "jh/generator"
 #include <type_traits>
 
 // Helper template to check if a class has a given member function
@@ -549,7 +548,6 @@ TEST_CASE("Ranged-For Loop test") {
             int expected_value = start;
             for (const auto a: generator) {
                 REQUIRE(a == expected_value);
-                std::cout << "Generated: " << a << " | Expected: " << expected_value << std::endl;
                 ++expected_value;
             }
 
@@ -582,7 +580,6 @@ TEST_CASE("Ranged-For Range Loop test") {
 
             std::ranges::for_each(range_, [&](const int a) {
                 REQUIRE(a == expected_value);
-                std::cout << "Generated: " << a << " | Expected: " << expected_value << std::endl;
                 ++expected_value;
             });
 
@@ -614,7 +611,6 @@ TEST_CASE("Iterator For Loop test") {
             int expected_value = start;
             for (auto iter = generator.begin(); iter != jh::async::generator<int, jh::typed::monostate>::end(); ++iter) {
                 REQUIRE(*iter == expected_value);
-                std::cout << "Generated: " << *iter << " | Expected: " << expected_value << std::endl;
                 ++expected_value;
             }
 

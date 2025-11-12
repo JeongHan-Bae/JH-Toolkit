@@ -241,62 +241,6 @@ namespace jh {
 } // namespace jh
 
 namespace jh::concepts {
-    /**
-     * @brief Trait to detect whether a type declares a <code>value_type</code>.
-     *
-     * @details
-     * <code>jh::concepts::has_value_type<&lt;T&gt;</code> is a lightweight compile-time detector
-     * that checks if a type <code>T</code> provides a nested member
-     * <code>typename T::value_type</code>.
-     * It is commonly used when adapting both STL-style containers and custom
-     * JH containers to generic algorithms that rely on <code>value_type</code>
-     * for type deduction.
-     *
-     * <h4>Behavior</h4>
-     * <ul>
-     *   <li>Evaluates to <code>std::true_type</code> if <code>T::value_type</code> is valid.</li>
-     *   <li>Evaluates to <code>std::false_type</code> otherwise.</li>
-     * </ul>
-     *
-     * <h4>Helper Constant</h4>
-     * <p>
-     * The convenience variable template <code>has_value_type_v&lt;T&gt;</code> provides a
-     * direct <code>bool</code> constant expression equivalent to
-     * <code>has_value_type&lt;T&gt;::value</code>.
-     * </p>
-     *
-     * <h4>Usage Example</h4>
-     * @code
-     * static_assert(jh::concepts::has_value_type<_v&lt;std::vector&lt;int&gt;&gt;);     // true
-     * static_assert(!jh::concepts::has_value_type<_v&lt;int&gt;);                 // false
-     * @endcode
-     *
-     * <h4>Design Notes</h4>
-     * <ul>
-     *   <li>Implemented using <code>std::void_t</code> SFINAE pattern.</li>
-     *   <li>Does not instantiate <code>T</code>; safe for incomplete types.</li>
-     *   <li>Serves as a low-level building block for iterator and sequence traits.</li>
-     * </ul>
-     *
-     * @tparam T The type being tested for a nested <code>value_type</code>.
-     * @see jh::concepts::iterator_t, jh::concepts::sequence_value_t
-     */
-    template<typename T, typename = void>
-    struct has_value_type : std::false_type {
-    };
-
-    template<typename T>
-    struct has_value_type<T, std::void_t<typename T::value_type> > : std::true_type {
-    };
-
-    /**
-     * @brief Convenience constant for <code>has_value_type</code>.
-     * @details
-     * Equivalent to <code>has_value_type&lt;T&gt;::value</code>,
-     * provided for readability in template metaprogramming.
-     */
-    template<typename T>
-    inline constexpr bool has_value_type_v = has_value_type<T>::value;
 
     namespace detail {
 
@@ -305,15 +249,24 @@ namespace jh::concepts {
             using value_type = void;
         };
 
-        template<typename I> requires has_value_type_v<I>
+        template<typename I> requires requires { typename I::value_type; }
         struct iterator_value_impl<I> {
+        private:
             using value_type = typename I::value_type;
-            using ref_type = decltype(*std::declval<I &>());
+            using deref_type = decltype(*std::declval<I&>());
 
-            static_assert(std::convertible_to<ref_type, value_type>,
-                          "iterator's operator*() must be convertible to its value_type");
+            static constexpr bool compatible =
+                    (std::common_reference_with<
+                            std::remove_cvref_t<deref_type>,
+                            std::remove_cvref_t<value_type>
+                    > || std::convertible_to<deref_type, value_type>);
 
-            using type = value_type;
+        public:
+            using type = std::conditional_t<
+                    compatible,
+                    value_type,
+                    void
+            >;
         };
 
         template<typename I>
@@ -333,16 +286,21 @@ namespace jh::concepts {
 
         template<typename I> requires requires { typename I::reference; }
         struct iterator_reference_impl<I> {
+        private:
             using reference_type = typename I::reference;
             using deref_type = decltype(*std::declval<I &>());
 
-            static_assert(
-                    std::convertible_to<deref_type, reference_type> ||
-                    std::convertible_to<reference_type, deref_type>,
-                    "iterator::reference must be consistent with decltype(*it)"
-            );
-
-            using type = reference_type;
+            static constexpr bool compatible =
+                    (std::common_reference_with<
+                            std::remove_cvref_t<deref_type>,
+                            std::remove_cvref_t<reference_type>
+                    > || std::convertible_to<deref_type, reference_type>);
+        public:
+            using type = std::conditional_t<
+                    compatible,
+                    reference_type,
+                    void
+            >;
         };
 
         template<typename I>
@@ -416,8 +374,14 @@ namespace jh::concepts {
     } && requires(I &&it) {
         detail::adl_iter_move(std::forward<I>(it));
     } &&
-                                 std::convertible_to<std::remove_cvref_t<jh::concepts::iterator_reference_t<I>>, jh::concepts::iterator_value_t<I>> &&
-                                 std::convertible_to<std::remove_cvref_t<jh::concepts::iterator_rvalue_reference_t<I>>, jh::concepts::iterator_value_t<I>>;
+            std::common_reference_with<
+                    std::remove_cvref_t<iterator_reference_t<I>>,
+                    iterator_value_t<I>
+            > &&
+            std::common_reference_with<
+                    std::remove_cvref_t<iterator_rvalue_reference_t<I>>,
+                    iterator_value_t<I>
+            >;
 
     /**
      * @brief Concept for types that support indirect write operations through dereference.

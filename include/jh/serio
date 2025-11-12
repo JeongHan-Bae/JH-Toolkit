@@ -1,0 +1,34 @@
+/**
+ * @file serio
+ * @brief Forward-aggregator header for <code>jh::serio</code> — the Serialization I/O utilities.
+ *
+ * <p>
+ * This header serves as the unified include point for all serialization and deserialization
+ * helpers within the <code>jh::serio</code> (Serialization I/O) module.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/serio&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it includes the underlying codec and I/O implementations from
+ * <code>jh/serialize_io/</code>, providing a consolidated entry for encoding/decoding utilities
+ * such as Base64 and related formats.
+ * </p>
+ *
+ * <h4>Overview</h4>
+ * <ul>
+ *   <li>Defines <code>jh::serio</code> as the user-facing namespace for serialization helpers.</li>
+ *   <li>Aggregates all Serialization I/O codecs (e.g. Base64, Base64URL, and future formats).</li>
+ *   <li>Focuses on type-safe, constexpr-enabled, and cross-language serialization utilities.</li>
+ * </ul>
+ *
+ * <h4>Design Note</h4>
+ * <p>
+ * <code>jh::serio</code> unifies binary–text serialization tools into a single, consistent
+ * interface, minimizing low-level boilerplate and ensuring strong validation and portability.
+ * </p>
+ */
+
+#pragma once
+
+#include "jh/serialize_io/base64.h"

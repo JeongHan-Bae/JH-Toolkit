@@ -1,14 +1,14 @@
 # 🧱 **JH Toolkit — `jh::pool` API Reference**
 
-📁 **Header:** `<jh/pool.h>`  
+📁 **Header:** `<jh/core/pool.h>`  
 🔄 **Forwarding Header:** `<jh/pool>`  
 📦 **Namespace:** `jh`  
-📅 **Version:** 1.3.x → 1.4.0-dev (2025)  
+📅 **Version:** 1.3.5+ (2025)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
 
-[![Back to README](https://img.shields.io/badge/Back_to_README-blue?style=flat-square)](../README.md)
+[![Back to README](https://img.shields.io/badge/Back_to_README-blue?style=flat-square)](../../README.md)
 
 </div>
 
@@ -16,66 +16,82 @@
 
 ## ⚙️ Overview
 
-`jh::pool<T>` is a **duck-typed specialization** of [`jh::sim_pool`](sim_pool.md),
-providing automatic hashing and equality deduction for immutable or structurally immutable types.  
+`jh::pool<T>` is a **duck-typed adapter** of [`jh::sim_pool`](sim_pool.md),
+providing automatic hashing and equality deduction for immutable or structurally immutable types.
 
-It offers the same non-intrusive, weak-pointer–observed deduplication system as `sim_pool`,
-but without the need to explicitly specify hash and equality functors for compatible types.  
+It infers both **hashing** and **equality** semantics for any type `T` that
+implements a valid hashing method (see [`jh::hash`](../conceptual/hashable.md))
+and supports logical equality comparison (`operator==()`).
+
+This enables seamless, content-based deduplication of shared immutable objects
+without manually specifying hash or equality functors.
+
+---
+
+## 🔹 Automatic Type Deduction (since 1.3.5)
+
+From **version 1.3.5**, `jh::pool` supports full *duck-typed deduction*
+through [`jh::hash<T>`](../conceptual/hashable.md).
+
+For any type `T` that:
+
+* is [`extended_hashable`](../conceptual/hashable.md) —
+  meaning it defines `std::hash<T>`, an ADL-discoverable `hash(const T&)`, or a member `T::hash()`, and
+* **supports equality comparison** via a logical `operator==()`,
+
+the specialization `jh::pool<T>` automatically binds:
+
+```cpp
+jh::weak_ptr_hash<T>  // uses jh::hash<T> for content-based hashing
+jh::weak_ptr_eq<T>    // delegates equality to T::operator==()
+```
+
+This allows the pool to recognize and merge logically equivalent objects
+without requiring explicit hash or equality configuration.
+
+> `jh::hash<T>` is a **deduction template**, not a registration point.  
+> It automatically selects from `std::hash`, ADL `hash()`, or `T::hash()`
+> — see [hashable.md](../conceptual/hashable.md) for complete rules.
 
 ---
 
 ## 🔹 Core Characteristics
 
-| Property             | Description                                                        |
-|----------------------|--------------------------------------------------------------------|
-| **Base type**        | Inherits from `jh::sim_pool<T, weak_ptr_hash<T>, weak_ptr_eq<T>>`  |
-| **Ownership model**  | Observes shared objects via `std::weak_ptr` (non-owning)           |
-| **Deduplication**    | Automatic via `hash()` and `operator==()`                          |
-| **Thread safety**    | Same as `sim_pool` — concurrent read/write via `std::shared_mutex` |
-| **Cleanup model**    | Event-driven, adaptive, identical to `sim_pool`                    |
-| **Capacity policy**  | Doubles or halves adaptively; minimum 16                           |
-| **Type requirement** | Type `T` must provide both `hash()` and `operator==()`             |
-| **Lifetime model**   | Pool and object lifetimes fully decoupled                          |
+| Property             | Description                                                       |
+|----------------------|-------------------------------------------------------------------|
+| **Base type**        | Inherits from `jh::sim_pool<T, weak_ptr_hash<T>, weak_ptr_eq<T>>` |
+| **Ownership model**  | Observes shared objects via `std::weak_ptr` (non-owning).         |
+| **Deduplication**    | Content-based, using `jh::hash<T>` and `operator==()`.            |
+| **Thread safety**    | Same as `sim_pool` — concurrent access via `std::shared_mutex`.   |
+| **Cleanup model**    | Event-driven and opportunistic, identical to `sim_pool`.          |
+| **Capacity policy**  | Adaptive resizing (doubling/halving, floor at 16).                |
+| **Type requirement** | Type must be *extended-hashable* and support equality comparison. |
 
 ---
 
 ## 🧭 Design Rationale
 
-`jh::pool` provides a simplified interface to `jh::sim_pool`,
-automatically applying weak-pointer–aware hashing and equality semantics for
-types that define `T::hash()` and `T::operator==()`.
+`jh::pool` serves as a **semantic alias** for [`jh::sim_pool`](sim_pool.md),
+removing the need to specify hash and equality traits manually.
 
-It is designed for **immutable identity types**,
-where `hash()` and `operator==()` define complete logical equivalence.
+It targets **immutable or structurally immutable** types —
+where equality (`operator==`) and hashing (`hash()`) fully define identity semantics.  
+Objects representing the same logical value are unified into one shared instance
+while remaining independently managed through `std::shared_ptr`.
 
-This class acts as a **semantic alias** for the most common `sim_pool` configurations,
-eliminating repetitive boilerplate for hash/equality wrappers.
-
----
-
-## 🔹 Hashing & Equality Inference
-
-| Mechanism    | Behavior                                                                                               |
-|--------------|--------------------------------------------------------------------------------------------------------|
-| **Hashing**  | Automatically deduced from `T::hash() const noexcept`.                                                 |
-| **Equality** | Delegated via `jh::weak_ptr_eq<T>`, which locks `weak_ptr` and forwards to `T::operator==()`.          |
-| **Fallback** | No fallback to `std::hash<T>` specialization — user must explicitly use `jh::sim_pool` for such cases. |
+This design guarantees deterministic, thread-safe deduplication
+without ownership coupling or intrusive lifetime management.
 
 ---
 
-### ⚠️ Important Notes
+## 🔹 Hashing & Equality Behavior
 
-1. **Automatic hashing requires `T::hash()`.**
-   If the type only defines `std::hash<T>`, it is **not automatically supported**.
-   Use `jh::sim_pool<T, YourHash, weak_ptr_eq<T>>` instead for such types.
-
-2. **Equality semantics** reuse `T::operator==()` transparently through `weak_ptr_eq<T>`.
-   The pool itself performs no comparison logic beyond pointer locking.
-
-3. **Future expansion:**
-   `jh::weak_ptr_hash` may support detection of `std::hash<T>` in a later release.
-   This extension is currently *planned but not implemented*,
-   and will be documented when added.
+| Mechanism      | Behavior                                                                         |
+|----------------|----------------------------------------------------------------------------------|
+| **Hashing**    | Automatically deduced through [`jh::hash<T>`](../conceptual/hashable.md).        |
+| **Equality**   | Delegated to `T::operator==()` via `jh::weak_ptr_eq<T>`.                         |
+| **Weak model** | Uses `std::weak_ptr` for observation; lifetimes remain independent of the pool.  |
+| **Fallback**   | Non-hashable types must use `jh::sim_pool` with explicit hash/equality functors. |
 
 ---
 
