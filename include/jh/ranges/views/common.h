@@ -126,6 +126,8 @@ namespace jh::ranges::views {
              *
              * <p><b>Behavior:</b></p>
              * <ul>
+             *   <li>If <code>R</code> already models <code>std::ranges::common_range</code>,
+             *       it is returned directly (passed through without wrapping).</li>
              *   <li>If <code>R</code> satisfies <code>jh::concepts::sequence</code>:
              *       <ol>
              *         <li>Objects fully compatible with <code>std::views::all</code>
@@ -150,6 +152,9 @@ namespace jh::ranges::views {
             template<typename R>
             requires (jh::concepts::sequence<R> || std::ranges::range<R>)
             constexpr auto operator()(R &&r) const {
+                if constexpr (std::ranges::common_range<R>) {
+                    return std::forward<R>(r);
+                }
                 if constexpr (jh::concepts::sequence<R>)
                     return std::ranges::common_view{
                             std::views::all(jh::to_range(std::forward<R>(r)))
