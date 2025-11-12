@@ -62,8 +62,9 @@
 #include <utility>
 #include <string_view>
 #include <cstdint>
-#include "pods/array.h"
-#include "pods/string_view.h"
+#include "jh/pods/array.h"
+#include "jh/pods/string_view.h"
+#include "jh/metax/hash.h"
 
 namespace jh::str_template {
     /**
@@ -182,7 +183,7 @@ namespace jh::str_template {
          * Used by <code>cstr::hash()</code> for computing static hash values
          * of compile-time strings.
          */
-        using c_hash = jh::utils::hash_fn::c_hash;
+        using c_hash = jh::meta::c_hash;
 
     private:
 

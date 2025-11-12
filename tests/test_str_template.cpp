@@ -101,7 +101,7 @@ TEST_CASE("cstr concatenation") {
  * </ul>
  */
 TEST_CASE("cstr hash and equality semantics") {
-    using jh::utils::hash_fn::c_hash;
+    using jh::meta::c_hash;
     constexpr cstr a("a_string");
     constexpr cstr b("a_string");
     constexpr cstr c("another_string");
