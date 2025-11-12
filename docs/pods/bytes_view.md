@@ -2,7 +2,7 @@
 
 📁 **Header:** `<jh/pods/bytes_view.h>`  
 📦 **Namespace:** `jh::pod`  
-📅 **Version:** 1.3.4+  
+📅 **Version:** 1.3.5+  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -346,58 +346,47 @@ so their internal memory layout is byte-compatible and deterministic.
 
 ```cpp
 constexpr std::uint64_t
-hash(jh::utils::hash_fn::c_hash hash_method = jh::utils::hash_fn::c_hash::fnv1a64) const noexcept;
+hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64) const noexcept;
 ```
 
 **Purpose:**
-Computes a deterministic 64-bit hash of the observed byte region.
+Computes a deterministic 64-bit hash of the observed byte region using
+the compile-time algorithms provided by [`jh::meta::hash`](../metax/hash.md).
 
-| Aspect    | Description                                         |
-|-----------|-----------------------------------------------------|
-| Input     | Raw bytes (`data`, `len`) only — no type semantics. |
-| Return    | 64-bit hash; returns `-1` if `data == nullptr`.     |
-| Algorithm | Selectable via `jh::utils::hash_fn::c_hash`.        |
-| Default   | `fnv1a64`.                                          |
-| Consteval | ❌ **Never permitted** — runtime-only semantics.     |
-
-#### Notes
-
-* `bytes_view` represents **runtime memory** — memory that may not exist
-  or may change between executions.
-  Hashing such data at compile time would be **semantically meaningless**,
-  even if technically possible.
-* The restriction is **intentional**:
-  `bytes_view::hash()` cannot be evaluated in `consteval` or `constexpr` compile-time contexts,
-  because its purpose is to analyze or fingerprint **live program memory**, not literals.
-* This design enforces a clean separation between compile-time symbolic data
-  (handled by `string_view` and `immutable_str`)
-  and runtime binary memory (handled by `bytes_view`).
-
-#### Supported algorithms
-
-| Enum value | Algorithm     | Description                       |
-|------------|---------------|-----------------------------------|
-| `fnv1a64`  | FNV-1a 64-bit | Default, stable, well-distributed |
-| `fnv1_64`  | FNV-1 64-bit  | Legacy variant                    |
-| `djb2`     | DJB2 classic  | Fast string-style hash            |
-| `sdbm`     | SDBM hash     | Used in DBM and POSIX `readdir`   |
+| Aspect     | Description                                                          |
+|------------|----------------------------------------------------------------------|
+| Input      | Raw bytes (`data`, `len`) only — no type semantics.                  |
+| Return     | 64-bit hash; returns `0xFFFFFFFFFFFFFFFF` if empty.                  |
+| Algorithm  | Selected via `jh::meta::c_hash`.                                     |
+| Default    | `fnv1a64`.                                                           |
+| Evaluation | `constexpr`-enabled, but meaningful only at runtime for live memory. |
 
 **Example:**
 
 ```cpp
+#include <jh/pods/bytes_view.h>
+#include <jh/metax/hash.h>
+
 auto bv = jh::pod::bytes_view::from(buffer, 64);
-auto h1 = bv.hash(); // FNV-1a
-auto h2 = bv.hash(jh::utils::hash_fn::c_hash::sdbm);
+
+// Default: FNV-1a 64-bit
+auto h1 = bv.hash();
+
+// Explicit: xxHash64 variant
+auto h2 = bv.hash(jh::meta::c_hash::xxhash64);
 ```
 
-* Deterministic, platform-independent.  
-* Returns `0xFFFFFFFFFFFFFFFF` if `data == nullptr`.  
-* Not cryptographically secure.  
+**Design Notes:**
 
-> ⚠️ **Runtime-only semantic guarantee:**
-> `bytes_view::hash()` is constexpr-optimized for inlining,
-> but its result is defined **only at runtime**.
-> This is not a limitation — it is a **semantic boundary** of the runtime observation model.
+* Uses the same deterministic, constexpr-safe algorithms
+  described in [`jh::meta::hash`](../metax/hash.md).
+* Operates purely on raw memory — does not consider endianness or type identity.
+* Always defined as a runtime operation semantically,
+  even though the implementation is `constexpr` for optimization.
+* Ideal for hashing POD data blocks, network packets, or binary protocol fields.
+
+**Supported Algorithms:** see
+👉 [`jh::meta::hash` — Core Components](../metax/hash.md#-core-components)
 
 ---
 
@@ -557,7 +546,7 @@ printing support requires the `stringify` header.
 > The Base64 output pattern (`base64'...'`) is **not a stable format**
 > and may change in future releases.
 > For guaranteed Base64 encoding, use
-> [`jh::utils::base64::encode`](../utils/base64.md) directly.
+> [`jh::serio::base64::encode`](../serialize_io/base64.md) directly.
 
 ---
 

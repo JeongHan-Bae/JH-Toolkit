@@ -1,14 +1,14 @@
 # 🧱 **JH Toolkit — `jh::immutable_str` API Reference**
 
-📁 **Header:** `<jh/immutable_str.h>`  
+📁 **Header:** `<jh/core/immutable_str.h>`  
 🔄 **Forwarding Header:** `<jh/immutable_str>`  
 📦 **Namespace:** `jh`  
-📅 **Version:** 1.3.x → 1.4.0-dev (2025)  
+📅 **Version:** 1.3.5+ (2025)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
 
-[![Back to README](https://img.shields.io/badge/%20Back%20to%20README-blue?style=flat-square)](../README.md)
+[![Back to README](https://img.shields.io/badge/%20Back%20to%20README-blue?style=flat-square)](../../README.md)
 
 </div>
 
@@ -101,37 +101,161 @@ A `nullptr` input becomes an empty string.
 
 ---
 
-### From String View (Safe Mode)
+### From String View (Safe Mode, since 1.3.5)
 
 ```cpp
 std::string buffer = "Config Value";
 std::mutex buffer_lock;
 
-jh::immutable_str imm(buffer, buffer_lock);
+jh::immutable_str imm(std::string_view(buffer), buffer_lock);
 ```
 
-Constructs an immutable copy from a `std::string_view` protected by a **mutex**.  
+Starting from **v1.3.5**, `jh::immutable_str` provides a general-form safe constructor:
 
-**Safety requirements**
+```cpp
+template <jh::concepts::mutex_like M>
+immutable_str(std::string_view sv, M &mtx);
+```
 
-* The provided `std::mutex` **must** protect the same memory region referenced by the view.  
-  The constructor locks the mutex to prevent concurrent modification —
-  if another thread can still write to that buffer, behavior is **undefined**.
-* If the string view contains any embedded null characters (`'\0'`),
-  the constructor throws `std::logic_error`.  
-  `immutable_str` strictly accepts **semantically valid text strings**, not raw buffers.
+This overload accepts **any synchronization type satisfying**
+[`jh::concepts::mutex_like`](../conceptual/mutex_like.md) —
+including `std::mutex`, `std::shared_mutex`, or the semantic placeholder `jh::typed::null_mutex`
+of type [`jh::typed::null_mutex_t`](../typing/null_mutex.md).
+
+It allows safe, deterministic construction of an immutable copy from a **bounded string view**.
+During initialization, the source region is locked by a **scope-based guard**:
+
+```cpp
+jh::sync::const_lock<M> guard(mtx);  // Scope-based lock, auto-detects shared/exclusive
+```
+
+[`jh::sync::const_lock`](../synchronous/const_lock.md) automatically detects
+whether the mutex supports shared locking and applies the appropriate lock mode.
+This ensures correct behavior across both read/write mutex families without code changes.
 
 ---
 
-### Shared Ownership
+#### Example — Partial View Construction
+
+```cpp
+std::string text = "Hello world";
+std::mutex text_lock;
+
+auto space_pos = text.find(' ');
+std::string_view partial(text.data(), space_pos);
+
+jh::immutable_str imm(partial, text_lock);  // Copies only "Hello"
+```
+
+The constructor copies only the bytes within the provided `string_view`.
+This allows *substring-based immutability* — a controlled copy of just the desired range
+from a larger buffer, without additional allocation or slicing overhead.
+
+---
+
+#### Thread Safety and Lock Semantics
+
+| Condition                | Behavior                                                                                                  |
+|--------------------------|-----------------------------------------------------------------------------------------------------------|
+| **Concurrent access**    | The mutex is locked for the full duration of the copy.                                                    |
+| **Embedded null check**  | Uses `::strnlen()` to verify that the view contains no `'\0'` bytes. Throws `std::logic_error` otherwise. |
+| **Lifetime requirement** | The provided mutex **must** guard the same memory region referenced by `sv.data()`.                       |
+| **Compatibility**        | Works with `std::mutex`, `std::shared_mutex`, and any `mutex_like` object.                                |
+
+---
+
+#### No-Lock Mode (Single-Thread / Static Data)
+
+If your source buffer is **thread-local** or **permanently immutable across threads**,
+locking introduces no benefit. In such cases, instead of declaring a fake mutex,
+use the global [`jh::typed::null_mutex`](../typing/null_mutex.md):
+
+```cpp
+#include <jh/typed>
+
+jh::immutable_str imm(std::string_view("Hello, world"), jh::typed::null_mutex);
+```
+
+`null_mutex` is a **duck-typed, zero-cost mutex substitute**:
+it satisfies all `mutex_like` concepts but performs **no actual locking**.
+Every lock operation is a compile-time no-op, fully optimized away.
+
+This makes your intent explicit —
+you are stating that the underlying data is either single-thread confined
+or globally immutable and therefore safe for concurrent reads.
+
+> ⚠️ **Important:**
+> Always ensure that the mutex (real or null) semantically protects the memory region you pass.
+> Passing an unrelated or unlocked mutex violates the safety contract.
+
+---
+
+### Shared Ownership Factories
+
+#### `jh::make_atomic`
 
 ```cpp
 auto shared = jh::make_atomic("JH Toolkit");
 auto copy   = shared; // reference-counted, safe to share
 ```
 
-Uses `atomic_str_ptr` (`std::shared_ptr<immutable_str>`) for thread-safe sharing.  
-Recommended for registry or cache storage.  
+Creates a `std::shared_ptr<immutable_str>` (`atomic_str_ptr`) from a null-terminated C-string.
+The preferred method for constructing immutable strings intended for shared caches or registries.
+
+---
+
+#### `jh::safe_from` *(since 1.3.5)*
+
+```cpp
+std::string config = "Host=localhost;Port=3306";
+std::mutex config_lock;
+
+auto key_view = std::string_view(config.data(), config.find('='));
+auto key = jh::safe_from(key_view, config_lock);
+```
+
+`safe_from` mirrors the constructor above but returns a managed shared pointer:
+
+```cpp
+template <jh::concepts::mutex_like M>
+atomic_str_ptr safe_from(std::string_view sv, M &mtx);
+```
+
+It performs the same thread-safe initialization via
+[`jh::sync::const_lock`](../synchronous/const_lock.md),
+ensuring atomic, exception-safe construction of an immutable string from a protected memory region.
+
+**Key features**
+
+* Accepts any `mutex_like` object — including [`jh::typed::null_mutex`](../typing/null_mutex.md) for no-lock semantics.
+* Supports **substring construction** through arbitrary `std::string_view` bounds.
+* Validates that no embedded null characters exist using `::strnlen()`.
+* Ensures consistent locking semantics with the primary constructor.
+
+---
+
+#### Example — Safe Substring Creation
+
+```cpp
+std::string data = "Path:/usr/local/bin";
+std::mutex m;
+
+auto view = std::string_view(data.data() + 5, 13); // "/usr/local/bin"
+auto path = jh::safe_from(view, m);
+```
+
+---
+
+#### Comparison
+
+| Feature                    | `make_atomic`       | `safe_from`                     |
+|----------------------------|---------------------|---------------------------------|
+| Input type                 | `const char*`       | `std::string_view + M`          |
+| Locking                    | None                | Scoped (`jh::sync::const_lock`) |
+| Supports substrings        | ❌ No                | ✅ Yes                           |
+| Embedded null check        | Implicit (`strlen`) | Explicit (`::strnlen`)          |
+| Thread-safe initialization | ❌ User-guaranteed   | ✅ Built-in                      |
+| No-lock mode               | N/A                 | ✅ via `jh::typed::null_mutex`   |
 
 ---
 
@@ -251,7 +375,7 @@ and integrates seamlessly with the toolkit's pool and atomic systems.
 > ```cpp
 > #include <jh/immutable_str>
 > // or
-> #include <jh/immutable_str.h>
+> #include <jh/core/immutable_str.h>
 > ```
 >
 > Both forms are functionally identical.
