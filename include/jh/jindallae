@@ -23,6 +23,8 @@
  *       similar in philosophy to Boost.Hana.</li>
  * </ul>
  *
+ * <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/jindallae.svg" alt="Jindallae mascot" width="64">
+ *
  * <h4>Design Note</h4>
  * <p>
  * <code>jh::jindallae</code> is functionally identical to <code>jh::meta</code>,

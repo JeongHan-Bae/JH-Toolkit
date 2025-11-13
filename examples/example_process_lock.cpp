@@ -6,9 +6,8 @@
 
 #include "jh/macros/platform.h"
 #include "ensure_output.h"  // NOLINT for Windows output
-#include "jh/synchronous/ipc/process_mutex.h"
-#include "jh/synchronous/ipc/process_launcher.h"
 #include <iostream>
+#include "jh/ipc"
 
 #if IS_WINDOWS
 static EnsureOutput ensure_output_setup;

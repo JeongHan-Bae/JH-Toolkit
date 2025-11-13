@@ -23,6 +23,8 @@
  *   <li>Encapsulates the duck-typing–based recognition system for type semantics and composition.</li>
  * </ul>
  *
+ * <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Oree.svg" alt="Oree mascot" width="64">
+ *
  * <h4>Design Note</h4>
  * <p>
  * <code>jh::concepts</code> establishes the meta-structural layer of the JH Toolkit,
