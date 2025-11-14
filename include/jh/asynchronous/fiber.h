@@ -43,6 +43,29 @@
  * reaches its final suspend point. The type does not integrate with an external scheduler
  * and does not provide automatic continuation handling.
  * </p>
+ *
+ * <h4>Platform Notes</h4>
+ * <p>
+ * This implementation follows the C++20 coroutine specification and behaves
+ * consistently across standard-compliant runtimes (libc++, libstdc++).
+ * On POSIX platforms (Linux, macOS), <code>jh::async::fiber</code> is fully
+ * supported and exhibits stable, well-defined behavior.
+ * </p>
+ *
+ * <p>
+ * Windows is treated differently. The only Windows toolchains supported by this
+ * project are MinGW and MinGW-Clang, both of which rely on the UCRT coroutine
+ * runtime. The UCRT implementation currently lacks complete support for
+ * <b>suspend-only control-flow coroutines</b>—that is, coroutines that use
+ * <code>co_await</code> for suspension but do not use <code>co_yield</code> or
+ * produce values. This category includes fibers by design.
+ * </p>
+ *
+ * <p>
+ * Due to these runtime limitations, <code>jh::async::fiber</code> is <b>not
+ * provided</b> on Windows, and all related tests are disabled for MinGW-based
+ * configurations. Other <code>jh::async</code> facilities remain available.
+ * </p>
  */
 
 #pragma once
@@ -106,7 +129,6 @@ namespace jh::async {
     class fiber final {
     public:
 
-        bool done_flag = false; ///< flag to prevent UCRT unexpected done() check after destroy
         /**
          * <h4>Promise Type</h4>
          *
@@ -320,7 +342,7 @@ namespace jh::async {
          * @return <code>true</code> if the coroutine is finished; otherwise <code>false</code>.
          */
         [[nodiscard]] bool done() const noexcept {
-            return (!co_ro || done_flag);
+            return (!co_ro || co_ro.done());
         }
 
         /**
@@ -337,13 +359,8 @@ namespace jh::async {
         bool resume() // NOLINT (readability-const-return-type)
         {
             if (done()) return false;
-
             co_ro.resume();
-
-            if (co_ro.done())
-                done_flag = true;
-
-            return !done_flag;
+            return !co_ro.done();
         }
 
         std::coroutine_handle<promise_type> co_ro; ///< Handle to the coroutine.

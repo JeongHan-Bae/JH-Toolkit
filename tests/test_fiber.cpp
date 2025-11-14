@@ -7,6 +7,9 @@
 #include <string>
 
 #include "jh/async"
+#include "jh/macros/platform.h"
+
+#if !IS_WINDOWS
 
 TEST_CASE("Basic Order") {
     std::ostringstream out;
@@ -224,3 +227,10 @@ TEST_CASE("Lambda Fiber") {
 
     REQUIRE(out.str() == expected);
 }
+
+#else
+TEST_CASE("Empty For MINGW"){
+    REQUIRE(1);
+    // Suspend only (no yield) coroutines are not complete on UCRT
+}
+#endif
