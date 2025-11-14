@@ -37,4 +37,5 @@
 #include "jh/metax/char.h"
 #include "jh/metax/flatten_proxy.h"
 #include "jh/metax/hash.h"
+#include "jh/metax/lookup_map.h"
 #include "jh/metax/t_str.h"

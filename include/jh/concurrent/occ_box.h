@@ -124,6 +124,8 @@
 #define JH_OCC_ENABLE_MULTI_COMMIT 1
 #endif
 
+#include "jh/detail/shared_ptr_atomic_shim.h"
+
 #include <memory>
 #include <atomic>
 #include <concepts>
@@ -207,8 +209,8 @@ namespace jh::conc {
     public:
         /// @brief Copy constructor: manually resets flag_ to false, cannot use =default.
         occ_box(const occ_box &other) noexcept {
-            auto st = std::atomic_load_explicit(&other.state_, std::memory_order_acquire);
-            std::atomic_store_explicit(&state_, st, std::memory_order_release);
+            auto st = jh::detail::atomic::load(&other.state_, std::memory_order_acquire);
+            jh::detail::atomic::store(&state_, st, std::memory_order_release);
 #if JH_OCC_ENABLE_MULTI_COMMIT
             flag_.store(false, std::memory_order_release);
 #endif
@@ -217,8 +219,8 @@ namespace jh::conc {
         /// @brief Copy assignment: manually resets flag_ to false, cannot use =default.
         occ_box &operator=(const occ_box &other) noexcept {
             if (this != &other) {
-                auto st = std::atomic_load_explicit(&other.state_, std::memory_order_acquire);
-                std::atomic_store_explicit(&state_, st, std::memory_order_release);
+                auto st = jh::detail::atomic::load(&other.state_, std::memory_order_acquire);
+                jh::detail::atomic::store(&state_, st, std::memory_order_release);
 #if JH_OCC_ENABLE_MULTI_COMMIT
                 flag_.store(false, std::memory_order_release);
 #endif
@@ -228,8 +230,8 @@ namespace jh::conc {
 
         /// @brief Move constructor: transfers state but resets flag_ to false, cannot use =default.
         occ_box(occ_box &&other) noexcept {
-            auto st = std::atomic_load_explicit(&other.state_, std::memory_order_acquire);
-            std::atomic_store_explicit(&state_, st, std::memory_order_release);
+            auto st = jh::detail::atomic::load(&other.state_, std::memory_order_acquire);
+            jh::detail::atomic::store(&state_, st, std::memory_order_release);
 #if JH_OCC_ENABLE_MULTI_COMMIT
             flag_.store(false, std::memory_order_release);
 #endif
@@ -238,8 +240,8 @@ namespace jh::conc {
         /// @brief Move assignment: transfers state but resets flag_ to false, cannot use =default.
         occ_box &operator=(occ_box &&other) noexcept {
             if (this != &other) {
-                auto st = std::atomic_load_explicit(&other.state_, std::memory_order_acquire);
-                std::atomic_store_explicit(&state_, st, std::memory_order_release);
+                auto st = jh::detail::atomic::load(&other.state_, std::memory_order_acquire);
+                jh::detail::atomic::store(&state_, st, std::memory_order_release);
 #if JH_OCC_ENABLE_MULTI_COMMIT
                 flag_.store(false, std::memory_order_release);
 #endif
@@ -258,7 +260,7 @@ namespace jh::conc {
          * with version = 0.
          */
         explicit occ_box(std::shared_ptr<T> ptr) {
-            std::atomic_store_explicit(
+            jh::detail::atomic::store(
                     &state_,
                     std::make_shared<state>(state{0, std::move(ptr)}),
                     std::memory_order_release
@@ -277,7 +279,7 @@ namespace jh::conc {
         template<typename... Args>
         explicit occ_box(Args &&... args) {
             auto init = std::make_shared<T>(std::forward<Args>(args)...);
-            std::atomic_store_explicit(
+            jh::detail::atomic::store(
                     &state_,
                     std::make_shared<state>(state{0, std::move(init)}),
                     std::memory_order_release
@@ -329,9 +331,9 @@ namespace jh::conc {
                  (!std::same_as<std::invoke_result_t<F, const T &, Args...>, void>)
         [[nodiscard]] auto read(F &&f, Args &&... args) const {
             while (true) {
-                auto st1 = std::atomic_load_explicit(&state_, std::memory_order_acquire);
+                auto st1 = jh::detail::atomic::load(&state_, std::memory_order_acquire);
                 auto result = std::invoke(f, *st1->data, std::forward<Args>(args)...);
-                auto st2 = std::atomic_load_explicit(&state_, std::memory_order_acquire);
+                auto st2 = jh::detail::atomic::load(&state_, std::memory_order_acquire);
 #if JH_OCC_ENABLE_MULTI_COMMIT
                 if (std::atomic_load_explicit(&flag_, std::memory_order_acquire)) {
                     continue;
@@ -384,9 +386,9 @@ namespace jh::conc {
             using R = std::invoke_result_t<F, const T &, Args...>;
 
             { // first attempt
-                auto st1 = std::atomic_load_explicit(&state_, std::memory_order_acquire);
+                auto st1 = jh::detail::atomic::load(&state_, std::memory_order_acquire);
                 R result = std::invoke(std::forward<F>(f), *st1->data, std::forward<Args>(args)...);
-                auto st2 = std::atomic_load_explicit(&state_, std::memory_order_acquire);
+                auto st2 = jh::detail::atomic::load(&state_, std::memory_order_acquire);
 #if JH_OCC_ENABLE_MULTI_COMMIT
                 if (!std::atomic_load_explicit(&flag_, std::memory_order_acquire) && (st1 == st2)) {
                     return result;
@@ -397,9 +399,9 @@ namespace jh::conc {
             }
 
             for (std::uint32_t i = 1; i < static_cast<std::uint32_t>(retries); ++i) {
-                auto st1 = std::atomic_load_explicit(&state_, std::memory_order_acquire);
+                auto st1 = jh::detail::atomic::load(&state_, std::memory_order_acquire);
                 R result = std::invoke(std::forward<F>(f), *st1->data, std::forward<Args>(args)...);
-                auto st2 = std::atomic_load_explicit(&state_, std::memory_order_acquire);
+                auto st2 = jh::detail::atomic::load(&state_, std::memory_order_acquire);
 #if JH_OCC_ENABLE_MULTI_COMMIT
                 if (std::atomic_load_explicit(&flag_, std::memory_order_acquire)) {
                     continue;
@@ -461,7 +463,7 @@ namespace jh::conc {
                  std::same_as<std::invoke_result_t<F, T &, Args...>, void>
         void write(F &&f, Args &&... args) {
             while (true) {
-                auto old = std::atomic_load_explicit(&state_, std::memory_order_acquire);
+                auto old = jh::detail::atomic::load(&state_, std::memory_order_acquire);
                 auto new_data = std::make_shared<T>(*old->data);
                 std::invoke(std::forward<F>(f), *new_data, std::forward<Args>(args)...);
 
@@ -473,7 +475,7 @@ namespace jh::conc {
                     continue;
                 }
 #endif
-                if (std::atomic_compare_exchange_strong_explicit(
+                if (jh::detail::atomic::cas(
                         &state_, &expected, new_state,
                         std::memory_order_acq_rel, std::memory_order_acquire)) {
                     return;
@@ -530,7 +532,7 @@ namespace jh::conc {
                  std::same_as<std::invoke_result_t<F, T &, Args...>, void>
         [[nodiscard]] bool try_write(F &&f, std::uint16_t retries = 1, Args &&... args) {
             { // first attempt
-                auto old = std::atomic_load_explicit(&state_, std::memory_order_acquire);
+                auto old = jh::detail::atomic::load(&state_, std::memory_order_acquire);
                 auto new_data = std::make_shared<T>(*old->data);
                 std::invoke(std::forward<F>(f), *new_data, std::forward<Args>(args)...);
 
@@ -538,13 +540,13 @@ namespace jh::conc {
                 auto expected = old;
 #if JH_OCC_ENABLE_MULTI_COMMIT
                 if (!std::atomic_load_explicit(&flag_, std::memory_order_acquire)
-                    && (std::atomic_compare_exchange_strong_explicit(
+                    && (jh::detail::atomic::cas(
                         &state_, &expected, new_state,
                         std::memory_order_acq_rel, std::memory_order_acquire))) {
                     return true;
                 }
 #else
-                if (std::atomic_compare_exchange_strong_explicit(
+                if (jh::detail::atomic::cas(
                         &state_, &expected, new_state,
                         std::memory_order_acq_rel, std::memory_order_acquire)) {
                     return true;
@@ -553,13 +555,13 @@ namespace jh::conc {
 
             }
             for (std::uint32_t i = 1; i < static_cast<std::uint32_t>(retries); ++i) {
-                auto old = std::atomic_load_explicit(&state_, std::memory_order_acquire);
+                auto old = jh::detail::atomic::load(&state_, std::memory_order_acquire);
                 auto new_data = std::make_shared<T>(*old->data);
                 std::invoke(std::forward<F>(f), *new_data, std::forward<Args>(args)...);
 
                 auto new_state = std::make_shared<state>(state{old->version + 1, std::move(new_data)});
                 auto expected = old;
-                if (std::atomic_compare_exchange_strong_explicit(
+                if (jh::detail::atomic::cas(
                         &state_, &expected, new_state,
                         std::memory_order_acq_rel, std::memory_order_acquire)) {
                     return true;
@@ -605,7 +607,7 @@ namespace jh::conc {
                  std::same_as<std::invoke_result_t<F, const std::shared_ptr<T> &, Args...>, std::shared_ptr<T>>
         void write_ptr(F &&f, Args &&... args) {
             while (true) {
-                auto old = std::atomic_load_explicit(&state_, std::memory_order_acquire);
+                auto old = jh::detail::atomic::load(&state_, std::memory_order_acquire);
                 auto new_data = std::invoke(std::forward<F>(f), old->data, std::forward<Args>(args)...);
                 auto new_state = std::make_shared<state>(state{old->version + 1, std::move(new_data)});
 
@@ -615,7 +617,7 @@ namespace jh::conc {
                     continue;
                 }
 #endif
-                if (std::atomic_compare_exchange_strong_explicit(
+                if (jh::detail::atomic::cas(
                         &state_, &expected, new_state,
                         std::memory_order_acq_rel, std::memory_order_acquire)) {
                     return;
@@ -664,20 +666,20 @@ namespace jh::conc {
                  std::same_as<std::invoke_result_t<F, const std::shared_ptr<T> &, Args...>, std::shared_ptr<T>>
         [[nodiscard]] bool try_write_ptr(F &&f, std::uint16_t retries = 1, Args &&... args) {
             { // first attempt
-                auto old = std::atomic_load_explicit(&state_, std::memory_order_acquire);
+                auto old = jh::detail::atomic::load(&state_, std::memory_order_acquire);
                 auto new_data = std::invoke(std::forward<F>(f), old->data, std::forward<Args>(args)...);
                 auto new_state = std::make_shared<state>(state{old->version + 1, std::move(new_data)});
 
                 auto expected = old;
 #if JH_OCC_ENABLE_MULTI_COMMIT
                 if (!std::atomic_load_explicit(&flag_, std::memory_order_acquire)
-                    && (std::atomic_compare_exchange_strong_explicit(
+                    && (jh::detail::atomic::cas(
                         &state_, &expected, new_state,
                         std::memory_order_acq_rel, std::memory_order_acquire))) {
                     return true;
                 }
 #else
-                if (std::atomic_compare_exchange_strong_explicit(
+                if (jh::detail::atomic::cas(
                         &state_, &expected, new_state,
                         std::memory_order_acq_rel, std::memory_order_acquire)) {
                     return true;
@@ -685,7 +687,7 @@ namespace jh::conc {
 #endif
             }
             for (std::uint32_t i = 1; i < static_cast<std::uint32_t>(retries); ++i) {
-                auto old = std::atomic_load_explicit(&state_, std::memory_order_acquire);
+                auto old = jh::detail::atomic::load(&state_, std::memory_order_acquire);
                 auto new_data = std::invoke(std::forward<F>(f), old->data, std::forward<Args>(args)...);
                 auto new_state = std::make_shared<state>(state{old->version + 1, std::move(new_data)});
 
@@ -695,7 +697,7 @@ namespace jh::conc {
                     continue;
                 }
 #endif
-                if (std::atomic_compare_exchange_strong_explicit(
+                if (jh::detail::atomic::cas(
                         &state_, &expected, new_state,
                         std::memory_order_acq_rel, std::memory_order_acquire)) {
                     return true;
@@ -721,7 +723,7 @@ namespace jh::conc {
          * </ul>
          */
         [[nodiscard]] std::uint64_t get_version() const noexcept {
-            return std::atomic_load_explicit(&state_, std::memory_order_acquire)->version;
+            return jh::detail::atomic::load(&state_, std::memory_order_acquire)->version;
         }
     };
 
@@ -771,7 +773,7 @@ namespace jh::conc {
 
             // Step 1. Capture old states
             auto old_states = std::tuple{
-                    std::atomic_load_explicit(&std::get<I>(boxes_tuple).state_, std::memory_order_acquire)...
+                    jh::detail::atomic::load(&std::get<I>(boxes_tuple).state_, std::memory_order_acquire)...
             };
 
             // Step 2. Create deep copies of the underlying values
@@ -795,13 +797,13 @@ namespace jh::conc {
             };
 
             // Step 5. Validate that states were not concurrently modified
-            bool ok = ((std::atomic_load_explicit(&std::get<I>(boxes_tuple).state_, std::memory_order_acquire)
+            bool ok = ((jh::detail::atomic::load(&std::get<I>(boxes_tuple).state_, std::memory_order_acquire)
                         == std::get<I>(old_states)) && ...);
             if (!ok) return false;
 
             // Step 6. Commit all new states with CAS
             bool cas_ok = true;
-            ((cas_ok &= std::atomic_compare_exchange_strong_explicit(
+            ((cas_ok &= jh::detail::atomic::cas(
                     &std::get<I>(boxes_tuple).state_,
                     &std::get<I>(old_states),
                     std::get<I>(new_states),
@@ -859,7 +861,7 @@ namespace jh::conc {
 
             // Step 1. Capture old states
             auto old_states = std::tuple{
-                    std::atomic_load_explicit(&std::get<I>(boxes_tuple).state_, std::memory_order_acquire)...
+                    jh::detail::atomic::load(&std::get<I>(boxes_tuple).state_, std::memory_order_acquire)...
             };
 
             // Step 2. Invoke user functions to generate new shared_ptr<T>
@@ -878,13 +880,13 @@ namespace jh::conc {
             };
 
             // Step 4. Validate that states were not concurrently modified
-            bool ok = ((std::atomic_load_explicit(&std::get<I>(boxes_tuple).state_, std::memory_order_acquire)
+            bool ok = ((jh::detail::atomic::load(&std::get<I>(boxes_tuple).state_, std::memory_order_acquire)
                         == std::get<I>(old_states)) && ...);
             if (!ok) return false;
 
             // Step 5. Commit all new states with CAS
             bool cas_ok = true;
-            ((cas_ok &= std::atomic_compare_exchange_strong_explicit(
+            ((cas_ok &= jh::detail::atomic::cas(
                     &std::get<I>(boxes_tuple).state_,
                     &std::get<I>(old_states),
                     std::get<I>(new_states),

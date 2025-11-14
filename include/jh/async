@@ -25,4 +25,5 @@
  */
 #pragma once
 
+#include "jh/asynchronous/fiber.h"
 #include "jh/asynchronous/generator.h"

@@ -21,7 +21,7 @@ set(TESTS
         test_sequence      test_sequence.cpp      jh-toolkit
         test_pool          test_pool.cpp          jh-toolkit
         test_runtime_arr   test_runtime_arr.cpp   jh-toolkit-static
-        test_view          test_view.cpp          jh-toolkit
+        test_ranges        test_ranges.cpp        jh-toolkit
         test_pods          test_pod_sys.cpp       jh-toolkit
         test_base64        test_base64.cpp        jh-toolkit
         test_t_str         test_t_str.cpp         jh-toolkit
@@ -30,6 +30,8 @@ set(TESTS
         test_proc_mapping  test_proc_mapping.cpp  jh-toolkit
         test_proc_cond     test_proc_cond.cpp     jh-toolkit
         test_shproc_lock   test_shproc_lock.cpp   jh-toolkit
+        test_fiber         test_fiber.cpp         jh-toolkit
+        test_lookup_map    test_lookup_map.cpp    jh-toolkit
 )
 
 # Get total number of entries
