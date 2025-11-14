@@ -105,6 +105,8 @@ namespace jh::async {
      */
     class fiber final {
     public:
+
+        bool done_flag = false; ///< flag to prevent UCRT unexpected done() check after destroy
         /**
          * <h4>Promise Type</h4>
          *
@@ -318,7 +320,7 @@ namespace jh::async {
          * @return <code>true</code> if the coroutine is finished; otherwise <code>false</code>.
          */
         [[nodiscard]] bool done() const noexcept {
-            return (!co_ro || co_ro.done());
+            return (!co_ro || done_flag);
         }
 
         /**
@@ -335,8 +337,13 @@ namespace jh::async {
         bool resume() // NOLINT (readability-const-return-type)
         {
             if (done()) return false;
+
             co_ro.resume();
-            return !co_ro.done();
+
+            if (co_ro.done())
+                done_flag = true;
+
+            return !done_flag;
         }
 
         std::coroutine_handle<promise_type> co_ro; ///< Handle to the coroutine.
