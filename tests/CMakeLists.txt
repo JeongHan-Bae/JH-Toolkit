@@ -32,6 +32,7 @@ set(TESTS
         test_shproc_lock   test_shproc_lock.cpp   jh-toolkit
         test_fiber         test_fiber.cpp         jh-toolkit
         test_lookup_map    test_lookup_map.cpp    jh-toolkit
+        test_huffman       test_huffman.cpp       jh-toolkit
 )
 
 # Get total number of entries
