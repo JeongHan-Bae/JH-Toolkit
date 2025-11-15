@@ -74,7 +74,6 @@
 #include <utility>
 #include <stdexcept>
 
-
 namespace jh::async {
 
     /**

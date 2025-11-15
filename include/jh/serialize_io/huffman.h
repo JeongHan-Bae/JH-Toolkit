@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file huffman.h
+ * @file huffman.h (serialize_io)
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief High-performance Huffman encoder/decoder supporting both canonical and
  * standard tree-based algorithms, with selectable symbol ranges (128 or 256).
@@ -96,6 +96,7 @@
  * <p>
  * Apple Silicon M3, LLVM clang++ 20, input size 20k–200k bytes (2025).
  * </p>
+ *
  * <table>
  *   <tr>
  *     <th><nobr>Operation</nobr></th>
@@ -103,7 +104,8 @@
  *     <th><nobr><code>huff128_canonical</code></nobr></th>
  *     <th><nobr><code>huff256</code></nobr></th>
  *     <th><nobr><code>huff256_canonical</code></nobr></th>
- *     </tr>
+ *   </tr>
+ *   <tr><td colspan="5"><b>Debug (unoptimized)</b></td></tr>
  *   <tr>
  *     <td>Encode</td>
  *     <td>0.45–4.3 ms</td>
@@ -124,6 +126,28 @@
  *     <td>&asymp; 3.5–4&times; faster</td>
  *     <td>1&times; (baseline)</td>
  *     <td>&asymp; 3.5–4&times; faster</td>
+ *   </tr>
+ *   <tr><td colspan="5"><b>O3 optimized</b></td></tr>
+ *   <tr>
+ *     <td>Encode</td>
+ *     <td>0.155–1.51 ms</td>
+ *     <td>0.154–1.49 ms</td>
+ *     <td>0.156–1.52 ms</td>
+ *     <td>0.156–1.48 ms</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Decode</td>
+ *     <td>0.406–2.27 ms</td>
+ *     <td>0.290–2.17 ms</td>
+ *     <td>0.265–2.27 ms</td>
+ *     <td>0.260–2.16 ms</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Relative decode speed</td>
+ *     <td>1&times; (baseline)</td>
+ *     <td>&asymp;1.05–1.4&times; faster</td>
+ *     <td>1&times; (baseline)</td>
+ *     <td>&asymp;1.02–1.05&times; faster</td>
  *   </tr>
  * </table>
  *
@@ -173,10 +197,10 @@ namespace jh::serio {
         template<size_t N>
         struct canonical_decoder_selector<true, N> {
             struct type {
-                uint8_t code_len[N];      ///< Code length per symbol
-                uint16_t count[33];       ///< Count of symbols per length L
-                uint32_t start[33];       ///< Starting code for each length L
-                uint16_t symbols[33][N];  ///< Symbol lookup table
+                std::uint8_t code_len[N];      ///< Code length per symbol
+                std::uint16_t count[33];       ///< Count of symbols per length L
+                std::uint32_t start[33];       ///< Starting code for each length L
+                std::uint16_t symbols[33][N];  ///< Symbol lookup table
             };
         };
     }
@@ -189,7 +213,7 @@ namespace jh::serio {
      * and whether the codec uses standard tree-based Huffman or
      * the deterministic canonical Huffman algorithm.
      */
-    enum class huff_algo : uint8_t {
+    enum class huff_algo : std::uint8_t {
         huff128,            ///< Standard Huffman over ASCII (0-127)
         huff256,            ///< Standard Huffman over full byte range (0-255)
         huff128_canonical,  ///< Canonical Huffman for ASCII
@@ -240,19 +264,19 @@ namespace jh::serio {
          * Leaf nodes contain only <code>ch</code> and <code>freq</code>.
          */
         struct node {
-            uint16_t ch = 0;   ///< Symbol value (0–127 or 0–255)
-            uint32_t freq = 0; ///< Symbol frequency
-            int left = -1;     ///< Index of left child node
-            int right = -1;    ///< Index of right child node
+            std::uint16_t ch = 0;   ///< Symbol value (0–127 or 0–255)
+            std::uint32_t freq = 0; ///< Symbol frequency
+            int left = -1;          ///< Index of left child node
+            int right = -1;         ///< Index of right child node
             /// @brief Whether this node is a leaf node.
-            bool is_leaf() const { return left < 0 && right < 0; }
+            [[nodiscard]] bool is_leaf() const { return left < 0 && right < 0; }
         };
 
         /// @brief Priority queue comparator used when building Huffman trees.
         struct pq_cmp {
             const std::vector<node> *pool;
 
-            pq_cmp(const std::vector<node> *p) : pool(p) {}
+            explicit pq_cmp(const std::vector<node> *p) : pool(p) {}
 
             bool operator()(int a, int b) const {
                 return (*pool)[a].freq > (*pool)[b].freq;
@@ -261,8 +285,8 @@ namespace jh::serio {
 
         /// @brief Huffman code entry: bit pattern + length.
         struct code {
-            uint32_t bits; ///< Huffman bit pattern (MSB-first)
-            uint8_t len;   ///< Number of valid bits
+            std::uint32_t bits; ///< Huffman bit pattern (MSB-first)
+            std::uint8_t len;   ///< Number of valid bits
         };
 
         /// @brief Compact fixed-size table of Huffman codes, one per symbol.
@@ -290,7 +314,7 @@ namespace jh::serio {
          * @param pool  Output vector containing the built nodes.
          * @return Index of the root node (or -1 if empty input).
          */
-        static int build_tree(const std::vector<uint32_t> &freq,
+        static int build_tree(const std::vector<std::uint32_t> &freq,
                               std::vector<node> &pool) {
             pool.clear();
             pool.reserve(table_size * 2);
@@ -298,7 +322,7 @@ namespace jh::serio {
             for (int i = 0; i < (int) table_size; i++) {
                 if (freq[i] > 0) {
                     node n;
-                    n.ch = (uint16_t) i;
+                    n.ch = (std::uint16_t) i;
                     n.freq = freq[i];
                     pool.push_back(n);
                 }
@@ -356,11 +380,11 @@ namespace jh::serio {
                 } else {
                     st.push({
                                     n.left,
-                                    {uint32_t(code.bits << 1), uint8_t(code.len + 1)}
+                                    {std::uint32_t(code.bits << 1), std::uint8_t(code.len + 1)}
                             });
                     st.push({
                                     n.right,
-                                    {uint32_t((code.bits << 1) | 1), uint8_t(code.len + 1)}
+                                    {std::uint32_t((code.bits << 1) | 1), std::uint8_t(code.len + 1)}
                             });
                 }
             }
@@ -375,7 +399,7 @@ namespace jh::serio {
          */
         static void build_code_length(const std::vector<node> &pool,
                                       int root,
-                                      jh::pod::array<uint8_t, table_size> &len_tbl
+                                      jh::pod::array<std::uint8_t, table_size> &len_tbl
         ) requires(is_canonical) {
             for (auto &x: len_tbl) x = 0;
             if (root < 0) return;
@@ -401,11 +425,6 @@ namespace jh::serio {
             }
         }
 
-        static void build_code_length(const std::vector<node> &pool,
-                                      int root,
-                                      jh::pod::array<uint8_t, table_size> &len_tbl
-        ) requires(!is_canonical) = delete;
-
         /**
          * @brief Construct canonical codewords from symbol length table.
          *
@@ -413,7 +432,7 @@ namespace jh::serio {
          * @param tbl     Output code table.
          */
         static void build_canonical_codes(
-                const jh::pod::array<uint8_t, table_size> &len_tbl,
+                const jh::pod::array<std::uint8_t, table_size> &len_tbl,
                 table_t &tbl
         ) requires(is_canonical) {
             struct Item {
@@ -435,7 +454,7 @@ namespace jh::serio {
                           return a.sym < b.sym;
                       });
 
-            uint32_t code = 0;
+            std::uint32_t code = 0;
             int prev_len = items[0].len;
 
             for (auto &x: items) {
@@ -451,26 +470,21 @@ namespace jh::serio {
             }
         }
 
-        static void build_canonical_codes(
-                const jh::pod::array<uint8_t, table_size> &len_tbl,
-                table_t &tbl
-        ) requires(!is_canonical) = delete;
-
         /// @brief Build canonical decoder lookup structures.
         static void build_canonical_decoder(
-                const jh::pod::array<uint8_t, table_size> &len_tbl,
+                const jh::pod::array<std::uint8_t, table_size> &len_tbl,
                 canonical_decoder &dec
         ) requires(is_canonical){
             dec = {};
 
             for (int i = 0; i < (int) table_size; i++) {
-                uint8_t L = len_tbl[i];
+                std::uint8_t L = len_tbl[i];
                 dec.code_len[i] = L;
                 if (L > 0)
                     dec.count[L]++;
             }
 
-            uint32_t code = 0;
+            std::uint32_t code = 0;
             for (int L = 1; L <= 32; L++) {
                 if (dec.count[L] == 0) {
                     dec.start[L] = 0;
@@ -481,18 +495,13 @@ namespace jh::serio {
                 code <<= 1;
             }
 
-            uint16_t offset[33] = {};
+            std::uint16_t offset[33] = {};
             for (int i = 0; i < (int) table_size; i++) {
-                uint8_t L = dec.code_len[i];
+                std::uint8_t L = dec.code_len[i];
                 if (L == 0) continue;
-                dec.symbols[L][offset[L]++] = uint16_t(i);
+                dec.symbols[L][offset[L]++] = std::uint16_t(i);
             }
         }
-
-        static void build_canonical_decoder(
-                const jh::pod::array<uint8_t, table_size> &len_tbl,
-                canonical_decoder &dec
-        ) requires(!is_canonical) = delete;
 
         /**
          * @brief Decode bitstream using canonical tables.
@@ -504,25 +513,25 @@ namespace jh::serio {
          * @return Decoded plaintext string.
          */
         static std::string canonical_decode(std::istream &is,
-                                            uint64_t total_bits,
+                                            std::uint64_t total_bits,
                                             const canonical_decoder &dec
         ) requires(is_canonical) {
             std::string out;
             out.reserve(total_bits / 3);
 
-            uint8_t buf = 0;
+            std::uint8_t buf = 0;
             int cnt = 0;
-            uint64_t used = 0;
+            std::uint64_t used = 0;
 
-            uint32_t code = 0;
-            uint32_t L = 0;
+            std::uint32_t code = 0;
+            std::uint32_t L = 0;
 
             while (used < total_bits) {
                 if (cnt == 0) {
                     int b = is.get();
                     if (b == EOF) [[unlikely]]
                         break;
-                    buf = uint8_t(b);
+                    buf = std::uint8_t(b);
                     cnt = 8;
                 }
 
@@ -542,13 +551,13 @@ namespace jh::serio {
                 if (dec.count[L] == 0)
                     continue;
 
-                uint32_t start = dec.start[L];
-                uint32_t end = start + dec.count[L] - 1;
+                std::uint32_t start = dec.start[L];
+                std::uint32_t end = start + dec.count[L] - 1;
 
                 if (code < start || code > end)
                     continue;
 
-                uint32_t idx = code - start;
+                std::uint32_t idx = code - start;
                 out.push_back(char(dec.symbols[L][idx]));
 
                 code = 0;
@@ -557,13 +566,28 @@ namespace jh::serio {
 
             return out;
         }
-
-        static std::string canonical_decode(std::istream &is,
-                                            uint64_t total_bits,
-                                            const canonical_decoder &dec
+        
+    public:
+        
+        static void build_code_length(const std::vector<node> &pool,
+                                      int root,
+                                      jh::pod::array<std::uint8_t, table_size> &len_tbl
         ) requires(!is_canonical) = delete;
 
-    public:
+        static void build_canonical_codes(
+                const jh::pod::array<std::uint8_t, table_size> &len_tbl,
+                table_t &tbl
+        ) requires(!is_canonical) = delete;
+
+        static void build_canonical_decoder(
+                const jh::pod::array<std::uint8_t, table_size> &len_tbl,
+                canonical_decoder &dec
+        ) requires(!is_canonical) = delete;
+
+        static std::string canonical_decode(std::istream &is,
+                                            std::uint64_t total_bits,
+                                            const canonical_decoder &dec
+        ) requires(!is_canonical) = delete;
 
         /**
          * @brief Compress a string into the provided binary output stream.
@@ -584,9 +608,9 @@ namespace jh::serio {
         static void compress(std::ostream &os, std::string_view input) {
             os.write(Signature.val(), Signature.size());
 
-            std::vector<uint32_t> freq(table_size);
+            std::vector<std::uint32_t> freq(table_size);
             for (unsigned char c: input) {
-                if constexpr (Algo == huff_algo::huff128 || Algo == huff_algo::huff128_canonical) {
+                if constexpr (table_size == 128) {
                     if (c > 127)
                         [[unlikely]]
                                 throw std::runtime_error("ASCII only");
@@ -594,8 +618,7 @@ namespace jh::serio {
                 freq[c]++;
             }
 
-            if constexpr (Algo == huff_algo::huff128 ||
-                          Algo == huff_algo::huff256) {
+            if constexpr (!is_canonical) {
                 for (auto f: freq)
                     os.write(reinterpret_cast<const char *>(&f), 4);
             }
@@ -604,9 +627,8 @@ namespace jh::serio {
             int root = build_tree(freq, pool);
 
             // ---------- Canonical ----------
-            if constexpr (Algo == huff_algo::huff256_canonical ||
-                          Algo == huff_algo::huff128_canonical) {
-                jh::pod::array<uint8_t, table_size> len_tbl;
+            if constexpr (is_canonical) {
+                jh::pod::array<std::uint8_t, table_size> len_tbl;
                 build_code_length(pool, root, len_tbl);
 
                 for (int i = 0; i < (int) table_size; i++)
@@ -615,13 +637,13 @@ namespace jh::serio {
                 table_t tbl{};
                 build_canonical_codes(len_tbl, tbl);
 
-                uint64_t total_bits = 0;
+                std::uint64_t total_bits = 0;
                 for (unsigned char c: input)
                     total_bits += tbl[c].len;
 
                 os.write(reinterpret_cast<const char *>(&total_bits), 8);
 
-                uint8_t buf = 0;
+                std::uint8_t buf = 0;
                 int cnt = 0;
 
                 for (unsigned char c: input) {
@@ -629,14 +651,14 @@ namespace jh::serio {
                     for (int i = cc.len - 1; i >= 0; --i) {
                         buf = (buf << 1) | ((cc.bits >> i) & 1);
                         if (++cnt == 8) {
-                            os.put(buf);
+                            os.put(static_cast<char>(buf));
                             buf = 0;
                             cnt = 0;
                         }
                     }
                 }
                 if (cnt)
-                    os.put(buf << (8 - cnt));
+                    os.put(static_cast<char>(static_cast<std::uint32_t>(buf << (8 - cnt))));
                 return;
             }
 
@@ -644,13 +666,13 @@ namespace jh::serio {
             table_t tbl{};
             build_code_table(pool, root, tbl);
 
-            uint64_t total_bits = 0;
+            std::uint64_t total_bits = 0;
             for (unsigned char c: input)
                 total_bits += tbl[c].len;
 
             os.write(reinterpret_cast<const char *>(&total_bits), 8);
 
-            uint8_t buf = 0;
+            std::uint8_t buf = 0;
             int cnt = 0;
 
             for (unsigned char c: input) {
@@ -658,14 +680,14 @@ namespace jh::serio {
                 for (int i = cc.len - 1; i >= 0; --i) {
                     buf = (buf << 1) | ((cc.bits >> i) & 1);
                     if (++cnt == 8) {
-                        os.put(buf);
+                        os.put(static_cast<char>(buf));
                         buf = 0;
                         cnt = 0;
                     }
                 }
             }
             if (cnt)
-                os.put(buf << (8 - cnt));
+                os.put(static_cast<char>(static_cast<std::uint32_t>(buf << (8 - cnt))));
         }
 
         /**
@@ -683,10 +705,9 @@ namespace jh::serio {
                 throw std::runtime_error("Bad signature");
 
             // ---------- Read freq for normal huffman ----------
-            std::vector<uint32_t> freq(table_size);
+            std::vector<std::uint32_t> freq(table_size);
 
-            if constexpr (Algo == huff_algo::huff128 ||
-                          Algo == huff_algo::huff256) {
+            if constexpr (!is_canonical) {
                 for (size_t i = 0; i < table_size; i++)
                     is.read(reinterpret_cast<char *>(&freq[i]), 4);
             }
@@ -695,22 +716,21 @@ namespace jh::serio {
             int root;
 
             // ---------- Canonical ----------
-            if constexpr (Algo == huff_algo::huff256_canonical ||
-                          Algo == huff_algo::huff128_canonical) {
-                jh::pod::array<uint8_t, table_size> len_tbl;
+            if constexpr (is_canonical) {
+                jh::pod::array<std::uint8_t, table_size> len_tbl;
 
                 for (int i = 0; i < (int) table_size; i++) {
                     int b = is.get();
                     if (b == EOF)
                         [[unlikely]]
                                 throw std::runtime_error("EOF in length table");
-                    len_tbl[i] = uint8_t(b);
+                    len_tbl[i] = std::uint8_t(b);
                 }
 
                 canonical_decoder dec;
                 build_canonical_decoder(len_tbl, dec);
 
-                uint64_t total_bits = 0;
+                std::uint64_t total_bits = 0;
                 is.read(reinterpret_cast<char *>(&total_bits), 8);
 
                 return canonical_decode(is, total_bits, dec);
@@ -719,7 +739,7 @@ namespace jh::serio {
             // ---------- Normal huffman Tree ----------
             root = build_tree(freq, pool);
 
-            uint64_t total_bits = 0;
+            std::uint64_t total_bits = 0;
             is.read(reinterpret_cast<char *>(&total_bits), 8);
 
             std::string out;
@@ -729,16 +749,16 @@ namespace jh::serio {
                 return out;
 
             int node = root;
-            uint8_t buf = 0;
+            std::uint8_t buf = 0;
             int cnt = 0;
-            uint64_t used = 0;
+            std::uint64_t used = 0;
 
             while (used < total_bits) {
                 if (cnt == 0) {
                     int b = is.get();
                     if (b == EOF) [[unlikely]]
                         break;
-                    buf = uint8_t(b);
+                    buf = std::uint8_t(b);
                     cnt = 8;
                 }
 

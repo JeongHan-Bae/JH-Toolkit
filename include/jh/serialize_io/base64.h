@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file base64.h
+ * @file base64.h (serialize_io)
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief High-level Base64 and Base64URL serialization interface for the JH Toolkit.
  *
