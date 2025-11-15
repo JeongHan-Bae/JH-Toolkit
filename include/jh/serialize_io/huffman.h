@@ -371,7 +371,7 @@ namespace jh::serio {
             st.push({root, {0, 0}});
 
             while (!st.empty()) {
-                auto [i, code] = st.top();
+                const auto [i, code] = st.top();
                 st.pop();
                 const node &n = pool[i];
 
@@ -408,7 +408,7 @@ namespace jh::serio {
             st.push({root, 0});
 
             while (!st.empty()) {
-                auto [i, depth] = st.top();
+                const auto [i, depth] = st.top();
                 st.pop();
                 const node &n = pool[i];
 
@@ -486,13 +486,8 @@ namespace jh::serio {
 
             std::uint32_t code = 0;
             for (int L = 1; L <= 32; L++) {
-                if (dec.count[L] == 0) {
-                    dec.start[L] = 0;
-                    continue;
-                }
+                code = (code + dec.count[L - 1]) << 1;
                 dec.start[L] = code;
-                code += dec.count[L];
-                code <<= 1;
             }
 
             std::uint16_t offset[33] = {};
@@ -541,12 +536,9 @@ namespace jh::serio {
                 used++;
                 L++;
 
-                if (L > 32) {
-                    // invalid — shouldn't happen for canonical
-                    L = 0;
-                    code = 0;
-                    continue;
-                }
+                if (L > 32)
+                    [[unlikely]]
+                            throw std::runtime_error("huffman code length exceeds 32 bits");
 
                 if (dec.count[L] == 0)
                     continue;
