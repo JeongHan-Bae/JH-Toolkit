@@ -151,6 +151,7 @@
 #include <cstdint>
 #include <iostream>
 #include <vector>
+#include <queue>
 #include <stack>
 #include <algorithm>
 #include "jh/metax/t_str.h"
