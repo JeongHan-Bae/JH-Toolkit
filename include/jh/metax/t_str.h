@@ -106,10 +106,9 @@ namespace jh::meta {
 
         using c_hash = jh::meta::c_hash;
 
-    private:
-
         constexpr explicit t_str(const jh::pod::array<char, N> &arr) noexcept
                 : storage(arr) {} ///< Private constructor from prebuilt array, used internally.
+    private:
 
         static constexpr jh::pod::array<char, N> make_array(const char(&src)[N]) {
             jh::pod::array<char, N> arr{};
@@ -526,56 +525,85 @@ namespace jh::meta {
         constexpr bool operator==(const t_str &) const noexcept = default;
 
         /**
- * @brief Convert to a byte array representation.
- *
- * @return A <code>jh::pod::array&lt;std::uint8_t, N&gt;</code> containing
- *         the byte-wise copy of the internal storage.
- *
- * @details
- * <ul>
- *   <li>Each <code>char</code> in the string is cast to <code>std::uint8_t</code>.</li>
- *   <li>The resulting array includes the null terminator.</li>
- *   <li>This is an explicit conversion — no implicit decay to bytes occurs.</li>
- *   <li>At runtime, uses <code>std::memcpy</code> for optimal performance.</li>
- * </ul>
- */
-        [[nodiscard]] constexpr explicit operator jh::pod::array<std::uint8_t, N>() const noexcept {
-            jh::pod::array<std::uint8_t, N> bytes{};
-            if (std::is_constant_evaluated()) {
-                for (std::uint64_t i = 0; i < N; ++i)
-                    bytes.data[i] = static_cast<std::uint8_t>(storage[i]);
-            } else {
-                std::memcpy(bytes.data, storage.data, N);
-            }
-            return bytes;
-        }
-
-        /**
-         * @brief Construct a <code>t_str&lt;N&gt;</code> from a byte array.
+         * @brief Convert the string (excluding the null terminator) to a byte array.
          *
-         * @param bytes A <code>jh::pod::array&lt;std::uint8_t, N&gt;</code> representing
-         *              a null-terminated UTF-8 or ASCII string.
-         * @return A new <code>t_str&lt;N&gt;</code> instance.
+         * @return A <code>jh::pod::array&lt;std::uint8_t, N - 1&gt;</code> containing
+         *         the string's raw character bytes, excluding the null terminator.
          *
          * @details
          * <ul>
-         *   <li>Each byte is reinterpreted as a <code>char</code> and copied into storage.</li>
-         *   <li>No runtime validation is performed — the caller must ensure UTF-8 legality if needed.</li>
-         *   <li>At runtime, uses <code>std::memcpy</code> for optimal performance.</li>
-         *   <li>This function is <b>constexpr</b> and may be used in compile-time contexts.</li>
+         *   <li>The returned array contains exactly <code>N - 1</code> bytes —
+         *       the effective string length.</li>
+         *   <li>The array does <em>not</em> contain a null terminator, because it
+         *       represents a binary buffer, not a C-string.</li>
+         *   <li>This makes the result suitable for binary serialization,
+         *       hashing, Base64 encoding, and other byte-wise operations.</li>
+         *   <li>At compile time, values are assigned element-by-element.</li>
+         *   <li>At runtime, <code>std::memcpy</code> is used for maximum efficiency.</li>
          * </ul>
          */
-        [[nodiscard]] static constexpr t_str from_bytes(const jh::pod::array<std::uint8_t, N>& bytes) noexcept {
+        [[nodiscard]] constexpr explicit operator jh::pod::array<std::uint8_t, N - 1>() const noexcept {
+            jh::pod::array<std::uint8_t, N - 1> bytes{};
+            if (std::is_constant_evaluated()) {
+                for (std::uint64_t i = 0; i < N - 1; ++i)
+                    bytes.data[i] = static_cast<std::uint8_t>(storage[i]);
+            } else {
+                std::memcpy(bytes.data, storage.data, N - 1);
+            }
+            return bytes;
+        }
+        
+        /**
+         * @brief Convert to an immutable byte buffer.
+         *
+         * @return A <code>jh::pod::array&lt;std::uint8_t, N - 1&gt;</code> containing
+         *         the raw characters of the string (not null-terminated).
+         *
+         * @details
+         * This is equivalent to the explicit byte-array conversion operator.
+         */
+        [[nodiscard]] constexpr jh::pod::array<std::uint8_t, N - 1> to_bytes() const noexcept {
+            return jh::pod::array<std::uint8_t, N - 1>(*this);
+        }
+
+        /**
+         * @brief Construct a <code>t_str&lt;N&gt;</code> from a byte buffer.
+         *
+         * @param bytes
+         *     A <code>jh::pod::array&lt;std::uint8_t, N - 1&gt;</code> representing
+         *     a binary buffer.  
+         *     The buffer does <b>not</b> contain a null terminator.
+         *
+         * @return A new <code>t_str&lt;N&gt;</code> whose characters are taken directly
+         *         from <code>bytes</code>, with a null terminator appended internally.
+         *
+         * @details
+         * <ul>
+         *   <li>This function treats <code>bytes</code> as pure binary data.</li>
+         *   <li>No validation is performed — any byte value (0–255) is accepted.</li>
+         *   <li>The resulting <code>t_str</code> is always null-terminated internally,
+         *       because <code>t_str</code> is semantically a C-string wrapper.</li>
+         *   <li>
+         *     This method enables a useful pattern:
+         *     writing a binary buffer as if it were a string literal,
+         *     then reconstructing <code>t_str</code> from it.
+         *   </li>
+         *   <li>
+         *     The null terminator added at the end is not part of the returned
+         *     <em>bytes</em> if converted back using <code>to_bytes()</code>.
+         *   </li>
+         * </ul>
+         */
+        [[nodiscard]] static constexpr t_str from_bytes(const jh::pod::array<std::uint8_t, N - 1>& bytes) noexcept {
             jh::pod::array<char, N> arr{};
             if (std::is_constant_evaluated()) {
-                for (std::uint64_t i = 0; i < N; ++i)
+                for (std::uint64_t i = 0; i < N - 1; ++i)
                     arr.data[i] = static_cast<char>(bytes.data[i]);
             } else {
-                std::memcpy(arr.data, bytes.data, N);
+                std::memcpy(arr.data, bytes.data, N - 1);
             }
             return t_str(arr);
         }
-
     };
 
     /**

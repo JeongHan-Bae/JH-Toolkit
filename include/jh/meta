@@ -34,6 +34,7 @@
 #pragma once
 
 #include "jh/metax/adl_apply.h"
+#include "jh/metax/base64.h"
 #include "jh/metax/char.h"
 #include "jh/metax/flatten_proxy.h"
 #include "jh/metax/hash.h"

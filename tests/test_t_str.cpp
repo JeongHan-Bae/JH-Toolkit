@@ -227,7 +227,7 @@ TEST_CASE("t_str ostream operator<<") {
  * </ul>
  */
 TEST_CASE("t_str to_bytes/from_bytes conversion") {
-    using arr_t = jh::pod::array<std::uint8_t, 6>;
+    using arr_t = jh::pod::array<std::uint8_t, 5>;
 
     // constexpr compile-time conversion
     {
@@ -237,7 +237,6 @@ TEST_CASE("t_str to_bytes/from_bytes conversion") {
         STATIC_REQUIRE(restored == s);
         STATIC_REQUIRE(bytes.data[0] == static_cast<std::uint8_t>('h'));
         STATIC_REQUIRE(bytes.data[4] == static_cast<std::uint8_t>('o'));
-        STATIC_REQUIRE(bytes.data[5] == 0);
     }
 
     // runtime memcpy path
@@ -245,7 +244,6 @@ TEST_CASE("t_str to_bytes/from_bytes conversion") {
         t_str<6> s("world");
         auto bytes = static_cast<arr_t>(s);
         REQUIRE(bytes.data[0] == static_cast<std::uint8_t>('w'));
-        REQUIRE(bytes.data[5] == 0);
 
         auto restored = t_str<6>::from_bytes(bytes);
         REQUIRE(restored.view() == "world");

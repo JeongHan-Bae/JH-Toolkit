@@ -3,6 +3,7 @@
 #include <random>
 #include <catch2/catch_all.hpp>
 #include "jh/serio"
+#include "jh/jindallae"
 
 TEST_CASE("Base64 Encode/Decode Roundtrip", "[base64]") {
     std::random_device rd;
@@ -189,4 +190,96 @@ TEST_CASE("Base64URL decode into user-provided vector<uint8_t> buffer", "[base64
     view = decode("QQ", out); // "A"
     REQUIRE(out == std::vector<uint8_t>({'A'}));
     REQUIRE(std::string(reinterpret_cast<const char *>(view.data), view.len) == "A");
+}
+
+TEST_CASE("Compile-time Base64 / Base64URL correctness", "[constexpr][base64]") {
+
+    SECTION("Base64 decode at compile time") {
+        // "SGVsbG8=" -> "Hello"
+        constexpr auto out = jh::jindallae::decode_base64<"SGVsbG8=">();
+        STATIC_REQUIRE(out == jh::pod::array<uint8_t, 5>{{'H', 'e', 'l', 'l', 'o'}});
+    }
+
+    SECTION("Base64URL decode at compile time (with pad)") {
+        // "SGVsbG8=" -> "Hello"
+        constexpr auto out = jh::jindallae::decode_base64url<"SGVsbG8=">();
+        STATIC_REQUIRE(out == jh::pod::array<uint8_t, 5>{{'H', 'e', 'l', 'l', 'o'}});
+    }
+
+    SECTION("Base64URL decode at compile time (no pad)") {
+        // "SGVsbG8" -> "Hello"
+        constexpr auto out = jh::jindallae::decode_base64url<"SGVsbG8">();
+        STATIC_REQUIRE(out == jh::pod::array<uint8_t, 5>{{'H', 'e', 'l', 'l', 'o'}});
+    }
+
+    SECTION("Base64 encode at compile time") {
+        constexpr jh::pod::array<uint8_t, 3> raw{{'H', 'i', '!'}};
+        constexpr auto enc = jh::jindallae::encode_base64(raw);
+
+        // "Hi!" -> "SGkh"
+        STATIC_REQUIRE(enc == jh::jindallae::t_str<5>("SGkh"));
+    }
+
+    SECTION("Base64URL encode (no pad) at compile time") {
+        constexpr jh::pod::array<uint8_t, 3> raw{{'H', 'i', '!'}};
+        constexpr auto enc = jh::jindallae::encode_base64url(raw, std::false_type{});
+
+        STATIC_REQUIRE(enc == jh::jindallae::t_str<5>("SGkh"));
+    }
+
+    SECTION("Base64URL encode (with pad) at compile time") {
+        constexpr jh::pod::array<uint8_t, 3> raw{{'H', 'i', '!'}};
+        constexpr auto enc = jh::jindallae::encode_base64url(raw, std::true_type{});
+
+        STATIC_REQUIRE(enc == jh::jindallae::t_str<5>("SGkh"));
+    }
+
+    SECTION("Compile-time Base64 roundtrip") {
+        constexpr auto decoded = jh::jindallae::decode_base64<"QUJD">(); // "ABC"
+        constexpr auto encoded = jh::jindallae::encode_base64(decoded);
+
+        STATIC_REQUIRE(encoded == jh::jindallae::t_str<5>("QUJD"));
+    }
+
+    SECTION("Compile-time Base64URL (no-pad) roundtrip") {
+        constexpr auto decoded = jh::jindallae::decode_base64url<"QQ">(); // "A"
+        constexpr auto encoded = jh::jindallae::encode_base64url(decoded);
+
+        STATIC_REQUIRE(encoded == jh::jindallae::t_str<3>("QQ"));
+    }
+
+    SECTION("Compile-time (string → bytes → base64 → bytes → string) roundtrip") {
+        // original "Hello"
+        constexpr jh::jindallae::t_str str{"Hello"};
+
+        // string → bytes
+        constexpr auto bytes = str.to_bytes();
+
+        // bytes → base64 literal
+        constexpr auto encoded = jh::jindallae::encode_base64(bytes);
+
+        // base64 → bytes
+        constexpr auto decoded = jh::jindallae::decode_base64<encoded.storage.data>();
+
+        // bytes → t_str
+        constexpr auto restored = jh::jindallae::t_str<decoded.size() + 1>::from_bytes(decoded);
+
+        STATIC_REQUIRE(restored == str);
+    }
+
+    SECTION("Compile-time (base64 literal → bytes → string → bytes → base64 literal) roundtrip") {
+        // "SGVsbG8=" is "Hello"
+        constexpr auto bytes = jh::jindallae::decode_base64<"SGVsbG8=">();
+
+        // bytes → compile-time t_str<6>("Hello\0")
+        constexpr auto str = jh::jindallae::t_str<bytes.size() + 1>::from_bytes(bytes);
+
+        // back to bytes
+        constexpr auto again_bytes = str.to_bytes();
+
+        // base64 encode again
+        constexpr auto encoded2 = jh::jindallae::encode_base64(again_bytes);
+
+        STATIC_REQUIRE(encoded2 == jh::jindallae::t_str("SGVsbG8="));
+    }
 }
