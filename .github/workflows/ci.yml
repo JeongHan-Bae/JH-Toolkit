@@ -12,7 +12,7 @@ on:
       - 'include/**'
       - 'examples/**'
       - 'tests/**'
-      - '.github/workflows/**'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 jobs:

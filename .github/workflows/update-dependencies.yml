@@ -6,6 +6,10 @@ on:
       - main
       - '*dev'
       - 'dev*'
+    paths:
+      - 'CMakeLists.txt'
+      - '.github/workflows/generate_dependencies.py'
+      - '.github/workflows/update-dependencies.yml'
 
 jobs:
   extract-dependencies:
