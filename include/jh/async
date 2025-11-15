@@ -26,8 +26,4 @@
 #pragma once
 
 #include "jh/asynchronous/generator.h"
-#include "jh/macros/platform.h"
-
-#if !IS_WINDOWS
 #include "jh/asynchronous/fiber.h"
-#endif

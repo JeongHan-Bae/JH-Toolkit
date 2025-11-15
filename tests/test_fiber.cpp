@@ -7,9 +7,6 @@
 #include <string>
 
 #include "jh/async"
-#include "jh/macros/platform.h"
-
-#if !IS_WINDOWS
 
 TEST_CASE("Basic Order") {
     std::ostringstream out;
@@ -183,23 +180,25 @@ TEST_CASE("Multi Step") {
 TEST_CASE("Lambda Fiber") {
     std::ostringstream out;
 
-    auto f1 = [&]() -> jh::async::fiber {
-        out << "[lambda] A\n";
+    auto lambda_f1 = [out_copy = std::ref(out)]() -> jh::async::fiber {
+        out_copy.get() << "[lambda] A\n";
         co_await jh::async::resume_tag;
 
-        out << "[lambda] B\n";
+        out_copy.get() << "[lambda] B\n";
         co_await jh::async::resume_tag;
 
-        out << "[lambda] C done\n";
-    }();
+        out_copy.get() << "[lambda] C done\n";
+    };
 
-    auto f2 = [&]() -> jh::async::fiber {
+    auto lambda_f2 = [out_copy = std::ref(out)]() -> jh::async::fiber {
         for (int i = 0; i < 3; ++i) {
-            out << "[lambda] loop " << i << "\n";
+            out_copy.get() << "[lambda] loop " << i << "\n";
             co_await jh::async::resume_tag;
         }
-        out << "[lambda] finished\n";
-    }();
+        out_copy.get() << "[lambda] finished\n";
+    };
+    auto f1 = lambda_f1();
+    auto f2 = lambda_f2();
 
     std::vector<jh::async::fiber *> fs = {&f1, &f2};
 
@@ -227,10 +226,3 @@ TEST_CASE("Lambda Fiber") {
 
     REQUIRE(out.str() == expected);
 }
-
-#else
-TEST_CASE("Empty For MINGW"){
-    REQUIRE(1);
-    // Suspend only (no yield) coroutines are not complete on UCRT
-}
-#endif

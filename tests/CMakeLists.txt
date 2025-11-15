@@ -54,6 +54,30 @@ foreach(i RANGE 0 ${max_index})
     target_link_libraries(${target} PRIVATE ${lib} Catch2::Catch2WithMain)
     target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/tests)
 
+    if (target STREQUAL "test_huffman")
+        if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            # Parse major.minor.patch
+            string(REPLACE "." ";" GCC_VER_LIST ${CMAKE_CXX_COMPILER_VERSION})
+            list(GET GCC_VER_LIST 0 GCC_MAJOR)
+            list(GET GCC_VER_LIST 1 GCC_MINOR)
+
+            # Trigger workaround only when GCC < 14.3
+            if (GCC_MAJOR LESS 14 OR (GCC_MAJOR EQUAL 14 AND GCC_MINOR LESS 3))
+                message(WARNING
+                        "Applying GCC workaround for test_huffman "
+                        "(GCC ${CMAKE_CXX_COMPILER_VERSION} < 14.3 causes ICE).")
+
+                # Disable debug info & var-tracking (ICE root cause)
+                target_compile_options(test_huffman PRIVATE
+                        -g0
+                        -fno-var-tracking
+                        -fno-var-tracking-assignments
+                        -fno-inline
+                )
+            endif()
+        endif()
+    endif()
+
     # Register the test with CTest
     string(REGEX REPLACE "^test_" "" test_name ${target})
     add_test(NAME ${test_name}_test COMMAND ${target})
