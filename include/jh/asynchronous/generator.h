@@ -575,6 +575,7 @@ namespace jh::async {
 
             co_ro.promise().last_sent_value = value; // Store input value
             co_ro.resume(); // Resume coroutine after sending
+            if (co_ro.promise().exception) std::rethrow_exception(co_ro.promise().exception);
 
             return !co_ro.done();
         }

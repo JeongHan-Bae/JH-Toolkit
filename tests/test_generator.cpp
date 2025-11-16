@@ -784,9 +784,9 @@ TEST_CASE("Generator throws on send() and next()") {
     REQUIRE(generator2.next());
     REQUIRE(generator2.value().value() == 0);
 
-    REQUIRE_NOTHROW(generator2.send(42));
+    REQUIRE_NOTHROW(generator2.next());
 
-    REQUIRE_THROWS_AS(generator2.next(), std::runtime_error);
+    REQUIRE_THROWS_AS(generator2.send(42), std::runtime_error);
 
     auto generator3 = []() -> jh::generator<int,int> {
         co_yield 0;
@@ -796,9 +796,9 @@ TEST_CASE("Generator throws on send() and next()") {
         co_yield 1;
     }();
 
-    REQUIRE(generator3.send_ite(42) == 1);
+    REQUIRE(generator3.next());
 
-    REQUIRE_THROWS_AS(generator3.next(), std::runtime_error);
+    REQUIRE_THROWS_AS(generator3.send_ite(42), std::runtime_error);
 }
 
 TEST_CASE("Exception inside ranged-for consumption") {
