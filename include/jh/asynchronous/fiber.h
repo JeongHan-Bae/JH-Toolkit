@@ -46,26 +46,62 @@
  *
  * <h4>Platform Notes</h4>
  * <p>
- * This implementation follows the C++20 coroutine specification and behaves
- * consistently across standard-compliant runtimes (libc++, libstdc++).
- * On POSIX platforms (Linux, macOS), <code>jh::async::fiber</code> is fully
- * supported and exhibits stable, well-defined behavior.
+ * The behavior of <code>jh::async::fiber</code> depends primarily on the compiler
+ * frontend rather than the underlying standard library implementation.
+ * </p>
+ *
+ * <h5>Clang</h5>
+ * <p>
+ * Clang's coroutine lowering is fully conforming for this use-case. Lambda-based
+ * coroutine construction behaves correctly, temporary objects are tracked
+ * properly, and <code>fiber</code> lifetimes remain well-defined.
+ * </p>
+ *
+ * <h5>GCC 14 and newer</h5>
+ * <p>
+ * GCC (14 and 15 tested) exhibits a frontend issue when a coroutine is produced
+ * directly from an immediately-invoked lambda:
+ * </p>
+ *
+ * @code
+ * auto f = [...]() -&gt; jh::async::fiber {
+ *     ...
+ *     co_await resume_tag;
+ * }(); // &lt;-- problematic
+ * @endcode
+ *
+ * <p>
+ * In this form, GCC may mis-handle the lifetime and binding of the temporary
+ * lambda object, leading to premature destruction of the coroutine frame or
+ * dangling references during suspension. This is a frontend analysis problem,
+ * not a runtime or ABI limitation.
  * </p>
  *
  * <p>
- * Windows is treated differently. The only Windows toolchains supported by this
- * project are MinGW and MinGW-Clang, both of which rely on the UCRT coroutine
- * runtime. The UCRT implementation currently lacks complete support for
- * <b>suspend-only control-flow coroutines</b>—that is, coroutines that use
- * <code>co_await</code> for suspension but do not use <code>co_yield</code> or
- * produce values. This category includes fibers by design.
+ * The safe construction pattern is:
+ * </p>
+ *
+ * @code
+ * auto make_fiber = [...]() -&gt; jh::async::fiber {
+ *     ...
+ *     co_await resume_tag;
+ * };
+ * auto f = make_fiber(); // &lt;-- safe
+ * @endcode
+ *
+ * <p>
+ * This avoids the temporary-lifetime misanalysis and ensures fully correct
+ * coroutine behavior on all tested platforms.
  * </p>
  *
  * <p>
- * Due to these runtime limitations, <code>jh::async::fiber</code> is <b>not
- * provided</b> on Windows, and all related tests are disabled for MinGW-based
- * configurations. Other <code>jh::async</code> facilities remain available.
+ * Summary:
  * </p>
+ * <ul>
+ *   <li>Clang: fully stable for <code>fiber</code> usage.</li>
+ *   <li>GCC 14+: avoid immediately-invoked coroutine lambdas.</li>
+ *   <li>Use the two-step lambda construction on all GCC versions.</li>
+ * </ul>
  */
 
 #pragma once
