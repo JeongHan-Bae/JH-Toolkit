@@ -31,7 +31,7 @@
  * <h3>Component composition</h3>
  * <ul>
  *   <li><code>process_mutex&lt;S + ".exc"&gt;</code> — exclusive access control, preventing new readers during write phases.</li>
- *   <li><code>process_condition&lt;S + ".cond"&gt;</code> — global condition variable used to wake writers or upgraders when readers exit.</li>
+ *   <li><code>process_cond_var&lt;S + ".cond"&gt;</code> — global condition variable used to wake writers or upgraders when readers exit.</li>
  *   <li><code>process_counter&lt;S + ".cnt"&gt;</code> — global atomic counter tracking the number of active readers system-wide.</li>
  *   <li><code>process_mutex&lt;S + ".pri"&gt;</code> — preemption mutex used exclusively by <strong>upgraders</strong>.
  *       It allows a participant upgrading from shared to exclusive mode to
@@ -46,7 +46,7 @@
  * <ul>
  *   <li><code>#include "jh/synchronous/process_mutex.h"</code> — built upon <b>named semaphore</b>.</li>
  *   <li><code>#include "jh/synchronous/process_counter.h"</code> — built upon <b>shared memory</b>.</li>
- *   <li><code>#include "jh/synchronous/process_condition.h"</code> — built upon <b>shared memory</b>.</li>
+ *   <li><code>#include "jh/synchronous/process_cond_var.h"</code> — built upon <b>shared memory</b>.</li>
  * </ul>
  * </p>
  *
@@ -60,7 +60,7 @@
  * <ul>
  *   <li><b>Semaphores</b> must be created under the <code>Local&bsol;&bsol;</code> namespace to be visible
  *       within the same session (used by <code>process_mutex</code>).</li>
- *   <li><b>Shared memory objects</b> (<code>process_counter</code> and <code>process_condition</code>)
+ *   <li><b>Shared memory objects</b> (<code>process_counter</code> and <code>process_cond_var</code>)
  *       must be created under the <code>Global&bsol;&bsol;</code> namespace to allow inter-process linkage.</li>
  * </ul>
  * </p>
@@ -68,7 +68,7 @@
  * <h4>Important note (Windows privilege requirement)</h4>
  * <p>
  * Because access to <code>Global&bsol;&bsol;</code> objects requires administrative rights on Windows,
- * both <code>process_counter</code> and <code>process_condition</code> must be initialized
+ * both <code>process_counter</code> and <code>process_cond_var</code> must be initialized
  * under elevated privilege. Consequently, any component that depends on them —
  * including <code>shared_process_mutex</code> — must be executed as an <b>Administrator</b>.
  * </p>
@@ -90,7 +90,7 @@
  * As of the current implementation:
  * <ul>
  *   <li><code>process_mutex</code> (semaphore-based) — operates correctly under <b>normal privilege</b>.</li>
- *   <li><code>process_counter</code> and <code>process_condition</code> (shared-memory-based) — require
+ *   <li><code>process_counter</code> and <code>process_cond_var</code> (shared-memory-based) — require
  *       <b>administrator privilege</b> for creation and access.</li>
  * </ul>
  * Consequently, <code>shared_process_mutex</code> on Windows functions correctly only
@@ -134,7 +134,7 @@
 #include "jh/metax/t_str.h"
 #include "jh/synchronous/ipc/process_mutex.h"
 #include "jh/synchronous/ipc/process_counter.h"
-#include "jh/synchronous/ipc/process_condition.h"
+#include "jh/synchronous/ipc/process_cond_var.h"
 #include "jh/synchronous/ipc/ipc_limits.h"
 
 #include <chrono>
@@ -164,7 +164,7 @@ namespace jh::sync::ipc {
      * <h4>Composition</h4>
      * <ul>
      *   <li><code>process_mutex&lt;S + ".exc"&gt;</code> — exclusive access control.</li>
-     *   <li><code>process_condition&lt;S + ".cond"&gt;</code> — wake writers or upgraders when readers exit.</li>
+     *   <li><code>process_cond_var&lt;S + ".cond"&gt;</code> — wake writers or upgraders when readers exit.</li>
      *   <li><code>process_counter&lt;S + ".cnt"&gt;</code> — global reader count.</li>
      *   <li><code>process_mutex&lt;S + ".pri"&gt;</code> — preemption lock for upgrade continuity.</li>
      * </ul>
@@ -221,7 +221,7 @@ namespace jh::sync::ipc {
     class shared_process_mutex final {
     private:
         using exc_t  = process_mutex<S + TStr{".exc"}, HighPriv>;
-        using cond_t = process_condition<S + TStr{".cond"}, HighPriv>;
+        using cond_t = process_cond_var<S + TStr{".cond"}, HighPriv>;
         using cnt_t  = process_counter<S + TStr{".cnt"}, HighPriv>;
         using pri_t = process_mutex<S + TStr{".pri"}, HighPriv>;
         thread_local static bool has_shared_lock_;
@@ -246,6 +246,12 @@ namespace jh::sync::ipc {
         }
         
     public:
+
+        /**
+         * @brief Marker tag indicating that this mutex supports idempotent reentrance.
+         */
+        using is_reentrant_tag [[maybe_unused]] = std::true_type;
+
         ~shared_process_mutex() = default;
 
         shared_process_mutex(const shared_process_mutex&) = delete;
@@ -492,7 +498,7 @@ namespace jh::sync::ipc {
          * Removes the following objects from the OS namespace:
          * <ul>
          *   <li><code>process_mutex&lt;S + ".exc"&gt;</code></li>
-         *   <li><code>process_condition&lt;S + ".cond"&gt;</code></li>
+         *   <li><code>process_cond_var&lt;S + ".cond"&gt;</code></li>
          *   <li><code>process_counter&lt;S + ".cnt"&gt;</code></li>
          * </ul>
          * </p>

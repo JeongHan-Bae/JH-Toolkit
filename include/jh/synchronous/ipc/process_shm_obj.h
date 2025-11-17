@@ -16,12 +16,12 @@
  * \endverbatim
  */
 /**
- * @file shared_process_memory.h (synchronous/ipc)
+ * @file process_shm_obj.h (synchronous/ipc)
  * @brief Cross-process shared-memory container for POD-like objects.
  *
  * <h3>Overview</h3>
  * <p>
- * <code>jh::sync::ipc::shared_process_memory</code> exposes a process-visible,
+ * <code>jh::sync::ipc::process_shm_obj</code> exposes a process-visible,
  * named shared-memory region containing a single POD-like object of type <code>T</code>.
  * All participating processes reference the same mapped storage, coordinated through
  * a pair of inter-process mutexes.
@@ -146,7 +146,7 @@ namespace jh::sync::ipc {
      */
     template <TStr S, cv_free_pod_like T, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length - 4>())
-    class shared_process_memory final {
+    class process_shm_obj final {
     private:
 
 #if IS_WINDOWS
@@ -171,31 +171,31 @@ namespace jh::sync::ipc {
         shm_data* data_ = nullptr;
         lock_t& lock_;
 
-        shared_process_memory() : lock_(lock_t::instance()) {
+        process_shm_obj() : lock_(lock_t::instance()) {
 #if IS_WINDOWS
             map_ = ::CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE,
                                     0, sizeof(shm_data), shm_name_.val());
             if (!map_)
-                throw std::runtime_error("shared_process_memory: CreateFileMapping failed (errno=" +
+                throw std::runtime_error("process_shm_obj: CreateFileMapping failed (errno=" +
                                          std::to_string(::GetLastError()) + ")");
             void* ptr = ::MapViewOfFile(map_, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(shm_data));
             if (!ptr)
-                throw std::runtime_error("shared_process_memory: MapViewOfFile failed (errno=" +
+                throw std::runtime_error("process_shm_obj: MapViewOfFile failed (errno=" +
                                          std::to_string(::GetLastError()) + ")");
             data_ = static_cast<shm_data*>(ptr);
 #else
             fd_ = ::shm_open(shm_name_.val(), O_CREAT | O_RDWR, shm_mode);
             if (fd_ == -1)
-                throw std::runtime_error("shared_process_memory: shm_open failed (errno=" + std::to_string(errno) + ")");
+                throw std::runtime_error("process_shm_obj: shm_open failed (errno=" + std::to_string(errno) + ")");
             struct stat st{};
             if (::fstat(fd_, &st) == -1)
-                throw std::runtime_error("shared_process_memory: fstat failed (errno=" + std::to_string(errno) + ")");
+                throw std::runtime_error("process_shm_obj: fstat failed (errno=" + std::to_string(errno) + ")");
             if (st.st_size < sizeof(shm_data))
                 if (::ftruncate(fd_, sizeof(shm_data)) == -1)
-                    throw std::runtime_error("shared_process_memory: ftruncate failed (errno=" + std::to_string(errno) + ")");
+                    throw std::runtime_error("process_shm_obj: ftruncate failed (errno=" + std::to_string(errno) + ")");
             void* ptr = ::mmap(nullptr, sizeof(shm_data), PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
             if (ptr == MAP_FAILED)
-                throw std::runtime_error("shared_process_memory: mmap failed (errno=" + std::to_string(errno) + ")");
+                throw std::runtime_error("process_shm_obj: mmap failed (errno=" + std::to_string(errno) + ")");
             data_ = static_cast<shm_data*>(ptr);
             ::close(fd_);
 #endif
@@ -209,7 +209,7 @@ namespace jh::sync::ipc {
             }
         }
 
-        ~shared_process_memory() noexcept {
+        ~process_shm_obj() noexcept {
 #if IS_WINDOWS
             if (data_) ::UnmapViewOfFile(data_);
             if (map_) ::CloseHandle(map_);
@@ -220,12 +220,12 @@ namespace jh::sync::ipc {
 
     public:
         // Disable copy
-        shared_process_memory(const shared_process_memory&) = delete;
-        shared_process_memory& operator=(const shared_process_memory&) = delete;
+        process_shm_obj(const process_shm_obj&) = delete;
+        process_shm_obj& operator=(const process_shm_obj&) = delete;
 
         /// @brief Singleton accessor.
-        static shared_process_memory& instance() {
-            static shared_process_memory inst;
+        static process_shm_obj& instance() {
+            static process_shm_obj inst;
             return inst;
         }
 

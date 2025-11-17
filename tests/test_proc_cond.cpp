@@ -3,7 +3,7 @@
 
 #define JH_ALLOW_PARENT_PATH 1
 
-#include "jh/synchronous/ipc/process_condition.h"
+#include "jh/synchronous/ipc/process_cond_var.h"
 #include "jh/synchronous/ipc/process_launcher.h"
 #include <chrono>
 #include <iostream>
@@ -11,7 +11,7 @@
 
 /**
  * @file test_proc_cond.cpp
- * @brief Tests inter-process synchronization of process_condition.
+ * @brief Tests inter-process synchronization of process_cond_var.
  *
  * <h3>Behavior</h3>
  * <ul>
@@ -21,12 +21,13 @@
  * </ul>
  */
 
-using cond_t = jh::sync::ipc::process_condition<"demo_condition">;
-using priv_cond_t = jh::sync::ipc::process_condition<"demo_condition", true>;
+using cond_t = jh::sync::ipc::process_cond_var<"demo_cond_var">;
+using priv_cond_t = jh::sync::ipc::process_cond_var<"demo_cond_var", true>;
 using sleeper_launcher = jh::sync::ipc::process_launcher<"../examples/process_lock/sleeper">;
 using awaker_launcher  = jh::sync::ipc::process_launcher<"../examples/process_lock/awaker">;
 
-TEST_CASE("process_condition notify_all wakes multiple sleepers") {
+TEST_CASE("process_cond_var notify_all wakes multiple sleepers") {
+
     constexpr int sleeper_count = 4;
 
     // Launch N sleepers (they will block on wait_signal)

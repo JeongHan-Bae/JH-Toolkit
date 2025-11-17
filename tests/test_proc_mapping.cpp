@@ -4,7 +4,7 @@
 #define JH_ALLOW_PARENT_PATH 1
 
 #include "jh/synchronous/ipc/process_counter.h"
-#include "jh/synchronous/ipc/shared_process_memory.h"
+#include "jh/synchronous/ipc/process_shm_obj.h"
 #include "jh/synchronous/ipc/process_launcher.h"
 #include "jh/pod"
 
@@ -16,7 +16,7 @@
  * @file test_proc_mapping.cpp
  * @brief Verifies correctness of inter-process shared-memory primitives:
  *        - `process_counter`
- *        - `shared_process_memory`
+ *        - `process_shm_obj`
  *
  * <h3>Overview</h3>
  * <ul>
@@ -34,7 +34,7 @@ using priv_counter_t  = jh::sync::ipc::process_counter<"demo_counter", true>;
 using counter_launcher = jh::sync::ipc::process_launcher<"../examples/process_lock/counter">;
 
 // -----------------------------------------------------------------------------
-// shared_process_memory setup
+// process_shm_obj setup
 // -----------------------------------------------------------------------------
 JH_POD_STRUCT(DemoPod,
     std::uint64_t xor_field;
@@ -42,8 +42,8 @@ JH_POD_STRUCT(DemoPod,
     double        mul_field;
 );
 
-using shm_t      = jh::sync::ipc::shared_process_memory<"demo_shared_pod", DemoPod>;
-using priv_shm_t = jh::sync::ipc::shared_process_memory<"demo_shared_pod", DemoPod, true>;
+using shm_t      = jh::sync::ipc::process_shm_obj<"demo_shared_pod", DemoPod>;
+using priv_shm_t = jh::sync::ipc::process_shm_obj<"demo_shared_pod", DemoPod, true>;
 using pod_writer_launcher = jh::sync::ipc::process_launcher<"../examples/process_lock/pod_writer">;
 
 // -----------------------------------------------------------------------------
@@ -83,9 +83,9 @@ TEST_CASE("process_counter cross-process accumulation") {
 }
 
 // -----------------------------------------------------------------------------
-// Section 2: shared_process_memory test
+// Section 2: process_shm_obj test
 // -----------------------------------------------------------------------------
-TEST_CASE("shared_process_memory consistency across processes") {
+TEST_CASE("process_shm_obj consistency across processes") {
     auto &shm = shm_t::instance();
 
     // Initialize shared memory

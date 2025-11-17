@@ -3,7 +3,7 @@
  * @brief Worker process that performs randomized but deterministic updates on a shared POD object.
  */
 
-#include "jh/synchronous/ipc/shared_process_memory.h"
+#include "jh/synchronous/ipc/process_shm_obj.h"
 #include "jh/pod"
 #include <cmath>
 #include <thread>
@@ -23,7 +23,7 @@ JH_POD_STRUCT(DemoPod,
 // -----------------------------------------------------------------------------
 // Shared memory binding
 // -----------------------------------------------------------------------------
-using shm_t = jh::sync::ipc::shared_process_memory<"demo_shared_pod", DemoPod>;
+using shm_t = jh::sync::ipc::process_shm_obj<"demo_shared_pod", DemoPod>;
 
 // -----------------------------------------------------------------------------
 // Main worker logic

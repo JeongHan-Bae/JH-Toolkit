@@ -2,15 +2,15 @@
  * @file example_process_shm.cpp
  * @brief Demonstrations of inter-process synchronization primitives:
  *        - process_counter (shared-memory atomic counter)
- *        - process_condition (cross-process condition variable)
- *        - shared_process_memory (shared POD object across processes)
+ *        - process_cond_var (cross-process condition variable)
+ *        - process_shm_obj (shared POD object across processes)
  */
 
 #include "jh/macros/platform.h"
 #include "ensure_output.h"  // NOLINT for Windows output
 #include "jh/synchronous/ipc/process_counter.h"
-#include "jh/synchronous/ipc/process_condition.h"
-#include "jh/synchronous/ipc/shared_process_memory.h"
+#include "jh/synchronous/ipc/process_cond_var.h"
+#include "jh/synchronous/ipc/process_shm_obj.h"
 #include "jh/synchronous/ipc/process_launcher.h"
 #include "jh/pod"
 
@@ -29,8 +29,8 @@ static EnsureOutput ensure_output_setup;
 // -----------------------------------------------------------------------------
 using counter_t       = jh::sync::ipc::process_counter<"demo_counter">;
 using priv_counter_t  = jh::sync::ipc::process_counter<"demo_counter", true>;
-using cond_t          = jh::sync::ipc::process_condition<"demo_condition">;
-using priv_cond_t     = jh::sync::ipc::process_condition<"demo_condition", true>;
+using cond_t          = jh::sync::ipc::process_cond_var<"demo_cond_var">;
+using priv_cond_t     = jh::sync::ipc::process_cond_var<"demo_cond_var", true>;
 
 // Define shared POD type
 JH_POD_STRUCT(DemoPod,
@@ -39,8 +39,8 @@ JH_POD_STRUCT(DemoPod,
     double        mul_field;
 );
 
-using shm_t      = jh::sync::ipc::shared_process_memory<"demo_shared_pod", DemoPod>;
-using priv_shm_t = jh::sync::ipc::shared_process_memory<"demo_shared_pod", DemoPod, true>;
+using shm_t      = jh::sync::ipc::process_shm_obj<"demo_shared_pod", DemoPod>;
+using priv_shm_t = jh::sync::ipc::process_shm_obj<"demo_shared_pod", DemoPod, true>;
 
 using counter_launcher  = jh::sync::ipc::process_launcher<"process_lock/counter">;
 using sleeper_launcher  = jh::sync::ipc::process_launcher<"process_lock/sleeper">;
@@ -89,10 +89,10 @@ void run_counter_example() {
 }
 
 // -----------------------------------------------------------------------------
-// Example 2: Cross-process condition variable (process_condition)
+// Example 2: Cross-process condition variable (process_cond_var)
 // -----------------------------------------------------------------------------
-void run_condition_example() {
-    std::cout << "\n==================== process_condition example ====================\n";
+void run_cond_var_example() {
+    std::cout << "\n==================== process_cond_var example ====================\n";
 
     constexpr int sleeper_count = 4;
     using namespace std::chrono;
@@ -128,10 +128,10 @@ void run_condition_example() {
 }
 
 // -----------------------------------------------------------------------------
-// Example 3: Shared POD object (shared_process_memory)
+// Example 3: Shared POD object (process_shm_obj)
 // -----------------------------------------------------------------------------
 void run_shared_pod_example() {
-    std::cout << "\n==================== shared_process_memory example ====================\n";
+    std::cout << "\n==================== process_shm_obj example ====================\n";
 
     auto &shm = shm_t::instance();
 
@@ -185,7 +185,7 @@ void run_shared_pod_example() {
 int main() {
     try {
         run_counter_example();
-        run_condition_example();
+        run_cond_var_example();
         run_shared_pod_example();
 
         std::cout << "\nAll shared-memory synchronization examples completed successfully.\n";

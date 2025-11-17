@@ -20,9 +20,9 @@
  *   <li><code>process_mutex</code> — basic inter-process mutex, functionally
  *       similar to <code>std::timed_mutex</code>; non-recursive and minimal,
  *       used as the fundamental synchronization primitive.</li>
- *   <li><code>process_condition</code> — condition variable for processes.</li>
+ *   <li><code>process_cond_var</code> — condition variable for processes.</li>
  *   <li><code>process_counter</code> — atomic counter for process coordination.</li>
- *   <li><code>shared_process_memory</code> — shared memory allocator and container.</li>
+ *   <li><code>process_shm_obj</code> — shared memory allocator and container.</li>
  *   <li><code>shared_process_mutex</code> — engineering-grade reader–writer lock
  *       built on shared memory, conceptually similar to
  *       <code>std::shared_timed_mutex</code> but supporting
@@ -80,8 +80,8 @@
 
 #include "jh/synchronous/ipc/ipc_limits.h"
 #include "jh/synchronous/ipc/process_mutex.h"
-#include "jh/synchronous/ipc/process_condition.h"
+#include "jh/synchronous/ipc/process_cond_var.h"
 #include "jh/synchronous/ipc/process_counter.h"
-#include "jh/synchronous/ipc/shared_process_memory.h"
+#include "jh/synchronous/ipc/process_shm_obj.h"
 #include "jh/synchronous/ipc/shared_process_mutex.h"
 #include "jh/synchronous/ipc/process_launcher.h"

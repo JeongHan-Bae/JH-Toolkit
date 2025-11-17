@@ -7,6 +7,7 @@
 #include <atomic>
 #include <random>
 #include "jh/synchronous/ipc/shared_process_mutex.h"
+#include "jh/concepts"
 
 using namespace jh::sync::ipc;
 using namespace std::chrono_literals;
@@ -53,7 +54,7 @@ void writer_task(int id, int start_delay_ms = 0) {
 
     for (int i = 0; i < 2; ++i) {
         mtx.lock();
-        int w = ++active_writers;
+        ++active_writers;
         CHECK(active_writers.load() == 1);
         CHECK(active_readers.load() == 0);
         std::cout << ">>> [W" << id << "] acquired exclusive lock\n";
@@ -98,6 +99,13 @@ void upgrader_task(int start_delay_ms = 0) {
 // Concurrency Scenario
 // --------------------------
 TEST_CASE("shared_process_mutex concurrency stress", "[shared_process_mutex][concurrency]") {
+
+    STATIC_REQUIRE(jh::concepts::reentrant_mutex<high_priv_mutex_t>);
+    STATIC_REQUIRE(jh::concepts::reentrant_mutex<test_mutex_t>);
+
+    STATIC_REQUIRE(jh::concepts::reentrance_capable_mutex<high_priv_mutex_t>);
+    STATIC_REQUIRE(jh::concepts::reentrance_capable_mutex<test_mutex_t>);
+
     high_priv_mutex_t::unlink();
     active_readers = 0;
     active_writers = 0;
@@ -105,6 +113,7 @@ TEST_CASE("shared_process_mutex concurrency stress", "[shared_process_mutex][con
 
     std::vector<std::thread> threads;
 
+    threads.reserve(4);
     for (int i = 0; i < 4; ++i)
         threads.emplace_back(reader_task, i, 50 * i);
 

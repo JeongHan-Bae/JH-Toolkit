@@ -16,12 +16,12 @@
  * \endverbatim
  */
 /**
- * @file process_condition.h (synchronous/ipc)
+ * @file process_cond_var.h (synchronous/ipc)
  * @brief Cross-process condition variable primitive implemented via shared memory or named events.
  *
  * <h3>Overview</h3>
  * <p>
- * <code>jh::sync::ipc::process_condition</code> is an inter-process signaling primitive
+ * <code>jh::sync::ipc::process_cond_var</code> is an inter-process signaling primitive
  * modeled after <code>pthread_cond_t</code> / <code>std::condition_variable_any</code>.
  * It provides a minimal, globally visible synchronization point usable across processes,
  * implemented entirely via OS-named IPC mechanisms.
@@ -66,7 +66,7 @@
  *
  * <h3>Privilege requirement</h3>
  * <p>
- * On POSIX systems, <code>process_condition</code> requires no special privileges.
+ * On POSIX systems, <code>process_cond_var</code> requires no special privileges.
  * On Windows, due to <code>Global&bsol;&bsol;</code> namespace policy, creation and access require
  * administrative rights. The same restriction applies to <code>process_counter</code>.
  * </p>
@@ -89,7 +89,7 @@
  *
  * <h4>Usage note</h4>
  * <p>
- * <code>process_condition</code> is an <strong>IPC primitive</strong>.
+ * <code>process_cond_var</code> is an <strong>IPC primitive</strong>.
  * It does not guarantee fairness or broadcast consistency across all platforms.
  * Developers are encouraged to compose it with <code>process_mutex</code> or
  * <code>process_counter</code> when building higher-level coordination patterns.
@@ -175,7 +175,7 @@ namespace jh::sync::ipc {
      * The initialization mutex <code>process_mutex&lt;S&gt;</code> is automatically created
      * within the same namespace as the condition itself. If the user manually declares a
      * <code>process_mutex&lt;S&gt;</code> elsewhere, it will conflict with the internal
-     * synchronization of <code>process_condition&lt;S&gt;</code>. Therefore, avoid defining
+     * synchronization of <code>process_cond_var&lt;S&gt;</code>. Therefore, avoid defining
      * any <code>process_mutex</code> with the same template literal <code>S</code>.
      * </p>
      *
@@ -198,7 +198,7 @@ namespace jh::sync::ipc {
      */
     template <TStr S, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length>())
-    class process_condition final {
+    class process_cond_var final {
     private:
 #if IS_WINDOWS
         static constexpr auto shm_name_  = jh::meta::t_str{"Global\\"} + S;
@@ -217,7 +217,7 @@ namespace jh::sync::ipc {
         cond_data* data_ = nullptr;
 #endif
 
-        process_condition() {
+        process_cond_var() {
 #if IS_WINDOWS
             event_ = ::CreateEventA(
                 nullptr,
@@ -225,13 +225,13 @@ namespace jh::sync::ipc {
                 FALSE,
                 shm_name_.val());
             if (!event_)
-                throw std::runtime_error("process_condition: CreateEventA failed (errno=" +
+                throw std::runtime_error("process_cond_var: CreateEventA failed (errno=" +
                                          std::to_string(::GetLastError()) + ")");
 #else
             // 1. open shared memory
             fd_ = ::shm_open(shm_name_.val(), O_CREAT | O_RDWR, shm_mode);
             if (fd_ == -1)
-                throw std::runtime_error("process_condition: shm_open failed (errno=" + std::to_string(errno) + ")");
+                throw std::runtime_error("process_cond_var: shm_open failed (errno=" + std::to_string(errno) + ")");
 
             // 2. global init guard
             auto& init_guard = process_mutex<S>::instance();
@@ -240,15 +240,15 @@ namespace jh::sync::ipc {
             // 3. ensure size
             struct stat st{};
             if (::fstat(fd_, &st) == -1)
-                throw std::runtime_error("process_condition: fstat failed (errno=" + std::to_string(errno) + ")");
+                throw std::runtime_error("process_cond_var: fstat failed (errno=" + std::to_string(errno) + ")");
             if (st.st_size < sizeof(cond_data))
                 if (::ftruncate(fd_, sizeof(cond_data)) == -1)
-                    throw std::runtime_error("process_condition: ftruncate failed (errno=" + std::to_string(errno) + ")");
+                    throw std::runtime_error("process_cond_var: ftruncate failed (errno=" + std::to_string(errno) + ")");
 
             // 4. mmap
             void* ptr = ::mmap(nullptr, sizeof(cond_data), PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
             if (ptr == MAP_FAILED)
-                throw std::runtime_error("process_condition: mmap failed (errno=" + std::to_string(errno) + ")");
+                throw std::runtime_error("process_cond_var: mmap failed (errno=" + std::to_string(errno) + ")");
             data_ = static_cast<cond_data*>(ptr);
             ::close(fd_);
 
@@ -273,7 +273,7 @@ namespace jh::sync::ipc {
 #endif
         }
 
-        ~process_condition() noexcept {
+        ~process_cond_var() noexcept {
 #if IS_WINDOWS
             if (event_) ::CloseHandle(event_);
 #else
@@ -282,13 +282,13 @@ namespace jh::sync::ipc {
         }
 
     public:
-        static process_condition& instance() {
-            static process_condition inst;
+        static process_cond_var& instance() {
+            static process_cond_var inst;
             return inst;
         }
 
-        process_condition(const process_condition&) = delete;
-        process_condition& operator=(const process_condition&) = delete;
+        process_cond_var(const process_cond_var&) = delete;
+        process_cond_var& operator=(const process_cond_var&) = delete;
 
         /**
          * @brief Wait until a signal or broadcast occurs.
@@ -423,7 +423,7 @@ namespace jh::sync::ipc {
          *
          * <h4>Additional cleanup</h4>
          * <p>
-         * The <code>process_condition</code> internally creates a helper mutex
+         * The <code>process_cond_var</code> internally creates a helper mutex
          * (<code>process_mutex&lt;S&gt;</code>) for initialization coordination.
          * When <code>unlink()</code> is called, both the shared-memory segment and
          * this mutex are unlinked to prevent stale IPC objects from persisting.
