@@ -299,7 +299,7 @@ namespace jh {
      * </ul>
      */
     template<typename T, typename Alloc = typed::monostate>
-    class runtime_arr : public std::ranges::view_interface<runtime_arr<T, Alloc> > {
+    class runtime_arr {
         std::uint64_t size_{0};
 
         using deleter_t = std::function<void(T *)>;
@@ -665,9 +665,6 @@ namespace jh {
                                                               std::is_copy_constructible_v<T>) : data_(nullptr,
                                                                                                        default_deleter) {
             const auto dist = std::distance(first, last);
-            // `std::distance(first, last)` is guaranteed to be valid and non-destructive
-            // for forward iterators. Single-pass input iterators (like std::istream_iterator)
-            // are intentionally excluded from this overload.
 
             if (dist < 0)
                 throw std::invalid_argument("Invalid iterator range");
@@ -682,19 +679,19 @@ namespace jh {
         iterator begin() noexcept { return data_.get(); }
 
         /// @brief Returns const iterator to the beginning.
-        const_iterator begin() const noexcept { return data_.get(); }
+        [[nodiscard]] const_iterator begin() const noexcept { return data_.get(); }
 
         /// @brief Returns iterator to the end (past-the-last element).
         iterator end() noexcept { return data_.get() + size_; }
 
         /// @brief Returns const iterator to the end (past-the-last element).
-        const_iterator end() const noexcept { return data_.get() + size_; }
+        [[nodiscard]] const_iterator end() const noexcept { return data_.get() + size_; }
 
         /// @brief Returns const iterator to the beginning.
-        [[maybe_unused]] const_iterator cbegin() const noexcept { return data_.get(); }
+        [[nodiscard]] [[maybe_unused]] const_iterator cbegin() const noexcept { return data_.get(); }
 
         /// @brief Returns const iterator to the end (past-the-last element).
-        [[maybe_unused]] const_iterator cend() const noexcept { return data_.get() + size_; }
+        [[nodiscard]] [[maybe_unused]] const_iterator cend() const noexcept { return data_.get() + size_; }
 
         /**
          * @brief Unchecked element access.
@@ -703,13 +700,6 @@ namespace jh {
          * Returns a reference to the element at the given index without
          * performing bounds checking (undefined behavior if out of range).
          * Equivalent to <code>*(data() + index)</code>.
-         *
-         * <p><b>CRTP note:</b>
-         * This overload intentionally shadows any base-class implementation
-         * provided by the CRTP pattern (e.g., <code>array_base&lt;Derived, T&gt;</code>).
-         * Such shadowing is normal in CRTP — it refines access logic for the
-         * concrete type while remaining statically resolved (no virtual call).
-         * </p>
          *
          * @param index Element index within <tt>[0, size())</tt>.
          * @return Reference to the element.
@@ -722,12 +712,6 @@ namespace jh {
          * @details
          * Const overload providing read-only access to the element at the
          * given index (undefined behavior if out of range).
-         *
-         * <p><b>CRTP note:</b>
-         * Like the non-const version, this intentionally shadows a potential
-         * CRTP base implementation. This ensures direct access through the
-         * derived type's own <code>data_</code> layout while preserving
-         * compile-time resolution.</p>
          *
          * @param index Element index within <tt>[0, size())</tt>.
          * @return Const reference to the element.
@@ -767,7 +751,7 @@ namespace jh {
          * @throws std::out_of_range If <code>index &gt;= size()</code>.
          * @see operator[]()
          */
-        const_reference at(std::uint64_t index) const {
+        [[nodiscard]] const_reference at(std::uint64_t index) const {
             if (index >= size_) throw std::out_of_range("jh::runtime_arr::at(): index out of bounds");
             return data_[index];
         }
@@ -833,23 +817,12 @@ namespace jh {
         /**
          * @brief Returns the number of elements in the array.
          *
-         * <p><b>CRTP note:</b> This function intentionally shadows
-         * any <code>size()</code> provided by the CRTP base (e.g.,
-         * <code>std::ranges::view_interface</code>).
-         * The override ensures direct access to <code>size_</code>
-         * without indirection or trait inference.</p>
-         *
          * @return Number of elements currently stored.
          */
         [[nodiscard]] size_type size() const noexcept { return size_; }
 
         /**
          * @brief Checks whether the array is empty.
-         *
-         * <p><b>CRTP note:</b> Like <code>size()</code>, this method
-         * shadows the base implementation for static resolution,
-         * ensuring that <code>empty()</code> is derived directly from
-         * <code>size_</code> rather than a default base heuristic.</p>
          *
          * @return <code>true</code> if <code>size() == 0</code>, otherwise <code>false</code>.
          */
@@ -858,11 +831,6 @@ namespace jh {
         /**
          * @brief Provides raw pointer access to the underlying storage.
          *
-         * <p><b>CRTP note:</b> This overload explicitly replaces any
-         * default <code>data()</code> exposed by the CRTP base.
-         * It guarantees that the returned pointer corresponds to the
-         * internal <code>std::unique_ptr</code>'s managed block.</p>
-         *
          * @return Pointer to the first element, or <code>nullptr</code> if empty.
          */
         pointer data() noexcept { return data_.get(); }
@@ -870,13 +838,9 @@ namespace jh {
         /**
          * @brief Provides const raw pointer access to the underlying storage.
          *
-         * <p><b>CRTP note:</b> This overload mirrors the non-const version,
-         * ensuring that CRTP base resolution is bypassed in favor of
-         * the concrete type's <code>data_</code> field.</p>
-         *
          * @return Const pointer to the first element, or <code>nullptr</code> if empty.
          */
-        const_pointer data() const noexcept { return data_.get(); }
+        [[nodiscard]] const_pointer data() const noexcept { return data_.get(); }
 
         /**
          * @brief Constructs a new <code>runtime_arr</code> by taking ownership of another instance's data.
@@ -897,7 +861,7 @@ namespace jh {
          *
          * @details
          * Releases any existing data owned by this instance and takes ownership
-         * of <code>other</code>'s buffer.  
+         * of <code>other</code>'s buffer.
          * The source <code>other</code> becomes empty and remains safely destructible.
          *
          * @return Reference to the updated <code>*this</code>.
@@ -1345,22 +1309,21 @@ namespace jh {
          * </p>
          */
         struct bit_iterator {
-        private:
-            const runtime_arr *parent_;
-            std::uint64_t index_;
-
         public:
-            using iterator_category [[maybe_unused]] = std::random_access_iterator_tag;
+            runtime_arr *parent_;
+            std::uint64_t index_;
+            using iterator_concept = std::input_iterator_tag;
+            using iterator_category [[maybe_unused]] = iterator_concept;
             using value_type = bool;
             using difference_type = std::ptrdiff_t;
             using reference = bit_ref;
             using pointer = void;
 
-            bit_iterator(const runtime_arr *parent, const std::uint64_t index)
+            bit_iterator(runtime_arr *parent, const std::uint64_t index)
                     : parent_(parent), index_(index) {
             }
 
-            bit_ref operator*() const { return (*const_cast<runtime_arr *>(parent_))[index_]; }
+            bit_ref operator*() const { return (*parent_)[index_]; }
 
             bit_iterator &operator++() {
                 ++index_;
@@ -1415,6 +1378,80 @@ namespace jh {
             bool operator>=(const bit_iterator &other) const { return index_ >= other.index_; }
         };
 
+        struct bit_const_iterator {
+        public:
+            const runtime_arr *parent_;
+            std::uint64_t index_;
+
+            using iterator_concept = std::input_iterator_tag;
+            using iterator_category [[maybe_unused]] = iterator_concept;
+            using value_type = bool;
+            using difference_type = std::ptrdiff_t;
+            using reference = bit_ref;
+            using pointer = void;
+
+            bit_const_iterator(const runtime_arr *parent, const std::uint64_t index)
+                    : parent_(parent), index_(index) {
+            }
+
+            bool operator*() const {
+                const auto word = parent_->raw_data()[index_ / BITS];
+                return (word >> (index_ % BITS)) & 1ULL;
+            }
+
+            bit_const_iterator &operator++() {
+                ++index_;
+                return *this;
+            }
+
+            bit_const_iterator operator++(int) {
+                const auto tmp = *this;
+                ++*this;
+                return tmp;
+            }
+
+            bit_const_iterator &operator--() {
+                --index_;
+                return *this;
+            }
+
+            bit_const_iterator operator--(int) {
+                const auto tmp = *this;
+                --*this;
+                return tmp;
+            }
+
+            bit_const_iterator &operator+=(const difference_type n) {
+                index_ += n;
+                return *this;
+            }
+
+            bit_const_iterator &operator-=(const difference_type n) {
+                index_ -= n;
+                return *this;
+            }
+
+            bit_const_iterator operator+(const difference_type n) const { return {parent_, index_ + n}; }
+
+            bit_const_iterator operator-(const difference_type n) const { return {parent_, index_ - n}; }
+
+            difference_type operator-(const bit_const_iterator &other) const {
+                return static_cast<std::ptrdiff_t>(index_ - other.index_); // NOLINT
+            }
+
+            bool operator==(const bit_const_iterator &other) const { return index_ == other.index_; }
+
+            bool operator!=(const bit_const_iterator &other) const { return !(*this == other); }
+
+            bool operator<(const bit_const_iterator &other) const { return index_ < other.index_; }
+
+            bool operator<=(const bit_const_iterator &other) const { return index_ <= other.index_; }
+
+            bool operator>(const bit_const_iterator &other) const { return index_ > other.index_; }
+
+            bool operator>=(const bit_const_iterator &other) const { return index_ >= other.index_; }
+        };
+
         using raw_type = std::uint64_t;
         using value_type = bool;
         using size_type = std::uint64_t;
@@ -1422,7 +1459,7 @@ namespace jh {
         using reference = bit_ref;
         using const_reference = bool;
         using iterator = bit_iterator;
-        using const_iterator = bit_iterator;
+        using const_iterator = bit_const_iterator;
 
         /**
          * @brief Constructs a bit-packed boolean runtime array with all bits zero-initialized.
@@ -1739,7 +1776,7 @@ namespace jh {
          * Copy assignment remains deleted to enforce unique ownership.
          * </p>
          */
-        runtime_arr &operator=(runtime_arr &&other) noexcept;
+        runtime_arr<bool> &operator=(runtime_arr &&other) noexcept;
 
         /**
          * @brief Converts the bit array into std::vector<bool>.
@@ -2012,7 +2049,6 @@ namespace jh {
     }
 
     // ---- compile-flag ----
-
     [[maybe_unused]] JH_INLINE bool runtime_arr<bool>::is_static_built() {
 #ifdef JH_IS_STATIC_BUILD
         return true;

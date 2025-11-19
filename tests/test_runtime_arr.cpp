@@ -2,6 +2,7 @@
 
 #include <catch2/catch_all.hpp>
 #include <memory_resource>
+#include <ranges>
 #include "jh/runtime_arr"
 #include <tuple>
 #include <memory>
@@ -76,6 +77,14 @@ TEST_CASE("runtime_arr static traits and API availability", "[concepts]") {
     STATIC_REQUIRE(jh::concepts::indirectly_writable<jh::runtime_arr<bool>::iterator, bool>);
     STATIC_REQUIRE(jh::concepts::output_iterator<jh::runtime_arr<bool>::iterator, bool>);
     STATIC_REQUIRE(std::output_iterator<jh::runtime_arr<bool>::iterator, bool>);
+
+    // ranges::range checks
+    STATIC_REQUIRE(std::ranges::range<runtime_arr<int>>);
+    STATIC_REQUIRE(std::ranges::range<runtime_arr<bool, bool_flat_alloc>>);
+
+    // random access range checks (normal versions expected to be random access)
+    STATIC_REQUIRE(std::ranges::random_access_range<runtime_arr<int>>);
+    STATIC_REQUIRE(std::ranges::random_access_range<runtime_arr<bool, bool_flat_alloc>>);
 }
 
 TEST_CASE("runtime_arr<int> full test", "[pod]") {
