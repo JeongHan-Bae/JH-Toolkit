@@ -33,6 +33,7 @@ set(TESTS
         test_fiber         test_fiber.cpp         jh-toolkit
         test_lookup_map    test_lookup_map.cpp    jh-toolkit
         test_huffman       test_huffman.cpp       jh-toolkit
+        test_ordered_map   test_ordered_map.cpp   jh-toolkit
 )
 
 # Get total number of entries
