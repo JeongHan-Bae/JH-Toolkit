@@ -826,7 +826,7 @@ namespace jh {
      * </ul>
      */
     struct atomic_str_hash {
-        using is_transparent = void; ///< Enables `find(const char*)` in hash-based containers.
+        using is_transparent [[maybe_unused]] = void; ///< Enables `find(const char*)` in hash-based containers.
         template<typename U>
         requires immutable_str_compatible<U>
         std::uint64_t operator()(const U &value) const noexcept {
@@ -904,7 +904,7 @@ namespace jh {
      * </ul>
      */
     struct atomic_str_eq {
-        using is_transparent = void; ///< Enables `find(const char*)` in hash-based containers.
+        using is_transparent [[maybe_unused]] = void; ///< Enables `find(const char*)` in hash-based containers.
 
         template<typename U, typename V>
         requires (immutable_str_compatible<U> && immutable_str_compatible<V>)

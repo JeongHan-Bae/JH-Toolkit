@@ -11,6 +11,11 @@
 using jh::ordered_set;
 using jh::ordered_map;
 
+TEST_CASE("range check") {
+    STATIC_REQUIRE(std::ranges::bidirectional_range<ordered_set<int>>);
+    STATIC_REQUIRE(std::ranges::bidirectional_range<ordered_map<int, int>>);
+}
+
 TEST_CASE("basic set insert and iteration") {
     ordered_set<int> s;
 

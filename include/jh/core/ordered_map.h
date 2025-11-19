@@ -317,7 +317,7 @@ namespace jh::avl {
         template<class KK, class VV>
         requires std::is_same_v<std::remove_cvref_t<KK>, K> &&
                  std::is_same_v<std::remove_cvref_t<VV>, V>
-        avl_node(KK &&k, VV &&v,
+        [[maybe_unused]] avl_node(KK &&k, VV &&v,
                  std::size_t parent_index = static_cast<std::size_t>(-1),
                  std::size_t left_index = static_cast<std::size_t>(-1),
                  std::size_t right_index = static_cast<std::size_t>(-1),
@@ -416,7 +416,7 @@ namespace jh::avl {
         template<class KK, class VV>
         requires std::is_same_v<std::remove_cvref_t<KK>, K> &&
                  std::is_same_v<std::remove_cvref_t<VV>, jh::typed::monostate>
-        avl_node(KK &&k, VV &&,
+        [[maybe_unused]] avl_node(KK &&k, VV &&,
                  std::size_t parent_index = static_cast<std::size_t>(-1),
                  std::size_t left_index = static_cast<std::size_t>(-1),
                  std::size_t right_index = static_cast<std::size_t>(-1),
@@ -993,7 +993,7 @@ namespace jh::avl {
              * @details
              * Undefined behavior if the iterator equals <code>end()</code>.
              */
-            const value_type &operator*() const {
+            reference operator*() const {
                 return tree->nodes[idx].stored();
             }
 
@@ -1005,7 +1005,7 @@ namespace jh::avl {
              * @details
              * Undefined behavior if the iterator equals <code>end()</code>.
              */
-            const value_type *operator->() const {
+            pointer operator->() const {
                 return &tree->nodes[idx].stored();
             }
 
@@ -2736,7 +2736,7 @@ namespace jh::avl {
         requires requires(tree_map &t, It i) {
             t.insert(*i);
         }
-        tree_map(It first, It last) {
+        [[maybe_unused]] tree_map(It first, It last) {
             clear();
             if constexpr (std::random_access_iterator<It>) {
                 nodes.reserve(last - first);
@@ -2771,7 +2771,7 @@ namespace jh::avl {
         requires requires(tree_map &t, R r) {
             t.insert(*std::begin(r));
         }
-        explicit tree_map(R &&r) {
+        [[maybe_unused]] explicit tree_map(R &&r) {
             clear();
             if constexpr (std::ranges::sized_range<R>) {
                 nodes.reserve(std::size(r));
