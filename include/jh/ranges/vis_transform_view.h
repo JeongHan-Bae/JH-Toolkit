@@ -17,7 +17,7 @@
  */
 /**
  * @file vis_transform_view.h
- * @brief Implementation of the <code>jh::ranges::vis_transform_view</code> class —
+ * @brief Implementation of the <code>jh::ranges::vis_transform_view</code> class &mdash;
  *        a non-consuming, observation-oriented transformation view.
  * @author
  *   JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
@@ -33,7 +33,7 @@
  * <ul>
  *   <li>Transforms elements through an observational projection (the callable
  *       must return a non-void value).</li>
- *   <li>Does not mutate or consume the source range — iteration is repeatable.</li>
+ *   <li>Does not mutate or consume the source range &mdash; iteration is repeatable.</li>
  *   <li>Implements <code>std::ranges::view_interface</code> for composability.</li>
  *   <li>Acts as a lightweight, fully constexpr-compatible wrapper.</li>
  * </ul>
@@ -357,7 +357,7 @@ namespace std::ranges {
      * </ul>
      *
      * <p>
-     * This is a <b>false positive</b> — the specialization is <em>fully standard-compliant</em>
+     * This is a <b>false positive</b> &mdash; the specialization is <em>fully standard-compliant</em>
      * and does <b>not</b> constitute undefined behavior.
      * </p>
      *

@@ -25,7 +25,7 @@
  * for the JH container framework.
  * Unlike traditional STL iterators that rely on static typedefs such as
  * <code>iterator_category</code> or <code>difference_type</code>,
- * this design applies <strong>behavioral duck-typing</strong> —
+ * this design applies <strong>behavioral duck-typing</strong> &mdash;
  * a type is recognized as an iterator if it <em>behaves like one</em>.
  *
  * <h3>Overview</h3>
@@ -40,8 +40,8 @@
  *   <li>
  *     <strong>Behavioral Duck Typing</strong>
  *     <p>
- *     Iterators are recognized by behavior — valid expressions like
- *     <code>*it</code>, <code>++it</code>, <code>it++</code> — not by typedefs.
+ *     Iterators are recognized by behavior &mdash; valid expressions like
+ *     <code>*it</code>, <code>++it</code>, <code>it++</code> &mdash; not by typedefs.
  *     Any type usable in <code>for(auto&& x : container)</code> qualifies,
  *     covering both <code>for(auto& x : ...)</code> and <code>for(auto x : ...)</code>.
  *     </p>
@@ -50,11 +50,12 @@
  *   <li>
  *     <strong>Unified Deduction Model</strong>
  *     <p>
- *     <code>iterator_t&lt;T&gt;</code> resolves iterators by fallback:
- *     <code>jh::iterator&lt;T&gt;::type</code> →
- *     <code>T.begin()</code> →
- *     array decay →
- *     raw pointer.
+ *     <code>iterator_t&lt;Container&gt;</code> resolves iterators by fallback:
+ *     <code>jh::Container&lt;T&gt;::type</code> &rarr;
+ *     <code>Container::iterator</code> &rarr;
+ *     <code>Container.begin()</code> &rarr;
+ *     <code>T*</code>raw pointer &rarr;
+ *     <code>T[]</code>array decay.
  *     </p>
  *   </li>
  *
@@ -154,87 +155,46 @@
 
 namespace jh {
     /**
-     * @brief Forward declaration of the <code>iterator</code> class template.
+     * @brief Forward declaration of <code>jh::iterator&lt;Container&gt;</code>.
      *
      * @details
-     * <code>jh::iterator&lt;Container&gt;</code> serves as a <strong>universal iterator declaration point</strong>
-     * within the JH container ecosystem.  
-     * It provides both a forward-declaration facility and an integration point
-     * for <code>jh::concepts::iterator_t</code> deduction.
+     * This template provides a non-intrusive declaration point for assigning an
+     * iterator type to third-party containers that cannot be modified directly.
+     * By declaring a specialization of <code>jh::iterator&lt;Container&gt;</code>,
+     * a library or user may "claim" the iterator type of an external container
+     * before any other deduction mechanisms are applied.
      *
-     * <h4>Forward Declaration and Local Binding</h4>
-     * Enables user-defined containers to declare their iterator type
-     * without depending on a complete iterator definition.
+     * In addition to supporting non-intrusive iterator assignment, this template
+     * also serves as an optional mechanism for defining a container's iterator
+     * outside the container's class definition. A specialization may provide a
+     * nested <code>type</code> that represents the iterator implementation.
      *
-     * @code
-     * template&lt;typename... Args&gt;
-     * class my_container {
-     * public:
-     *     using iterator = jh::iterator&lt;my_container&gt;;
-     *     // ...
-     * };
-     * @endcode
+     * The iterator selection system evaluates possible sources in a fixed order.
+     * The presence of a valid <code>jh::iterator&lt;Container&gt;::type</code> always
+     * takes precedence over all other forms of deduction. The resolution sequence
+     * is:
      *
-     * This ensures that other headers can safely reference <code>iterator&lt;&gt;</code> 
-     * without circular inclusion or incomplete-type errors.
+     * <ol>
+     *   <li>If <code>jh::iterator&lt;Container&gt;::type</code> exists and satisfies
+     *       <code>jh::is_iterator</code>, it is selected.</li>
+     *   <li>If <code>Container::iterator</code> exists and satisfies
+     *       <code>jh::is_iterator</code>, it is selected.</li>
+     *   <li>If <code>begin()</code> is available and its return type satisfies
+     *       <code>jh::is_iterator</code>, that return type is selected.</li>
+     *   <li>If <code>Container</code> is a pointer type, the pointer itself is
+     *       used as the iterator.</li>
+     *   <li>If <code>Container</code> is an array type, its decayed pointer is
+     *       used as the iterator.</li>
+     * </ol>
      *
-     * <h4>Integration with <code>jh::concepts::iterator_t</code> Deduction</h4>
-     * <code>jh::iterator&lt;&gt;</code> also acts as the <strong>deduction entry point</strong> for
-     * <code>jh::concepts::iterator_t&lt;Container&gt;</code>, which automatically resolves
-     * a container's iterator type.
-     * If a specialization of <code>jh::iterator&lt;Container&gt;</code> exists and
-     * defines a nested <code>type</code>, <code>iterator_t&lt;Container&gt;</code>
-     * resolves to that <code>type</code>.
+     * This declaration does not impose any structure on the iterator; it merely
+     * provides the entry point for specializations. Containers remain free to
+     * define their iterators internally, externally, or not at all, relying on
+     * fallback deduction where appropriate.
      *
-     * @code
-     * namespace jh {
-     *     template&lt;typename... Args&gt;
-     *     struct iterator&lt;my_container&lt;Args...&gt;&gt; {
-     *         using iterator_category = ...;
-     *         using value_type = ...;
-     *         using type = iterator;
-     *         using difference_type = std::ptrdiff_t;
-     *         using pointer = value_type *;
-     *         using reference = value_type &;
-     *         // iterator implementation ...
-     *     };
-     * }
-     *
-     * using it_t = jh::concepts::iterator_t&lt;my_container&lt;int, float&gt;&gt;;  // resolves to iterator::type
-     * @endcode
-     *
-     * These two examples together illustrate a <strong>complete and valid</strong> pattern
-     * for defining a container's iterator externally (unlike STL's inner-class convention),
-     * while remaining fully compatible with <code>jh::concepts::iterator_t</code> deduction.
-     *  
-     * It is also legal to define the iterator internally as a nested type —
-     * this header does not enforce external specialization.
-     *  
-     * <p>
-     * The <code>jh::generator&lt;T, U&gt;</code> class no longer declares an external
-     * <code>jh::iterator&lt;generator&lt;T, U&gt;&gt;</code> specialization; it now implements its
-     * iterator internally. This header simply provides a uniform mechanism for
-     * automatic deduction via <code>jh::concepts::iterator_t&lt;Container&gt;</code>.
-     * </p>
-     *
-     * <h4>Design Summary</h4>
-     * <ul>
-     *   <li>Provides a safe <strong>forward-declaration mechanism</strong> for containers.</li>
-     *   <li>Acts as a <strong>type-deduction path</strong> for external generic utilities
-     *       such as <code>jh::concepts::iterator_t&lt;&gt;</code>, <code>jh::sequence</code>,
-     *       and related meta-based concepts.</li>
-     * </ul>
-     *
-     * <h4>Notes</h4>
-     * <ul>
-     *   <li><code>jh::iterator&lt;&gt;</code> always takes exactly <strong>one</strong> template parameter —
-     *       the container type.</li>
-     *   <li>It should <strong>not</strong> be directly instantiated.</li>
-     *   <li>When no specialization exists, <code>jh::concepts::iterator_t&lt;Container&gt;</code>
-     *       falls back to <code>decltype(Container::begin())</code> or a pointer-based iterator.</li>
-     * </ul>
-     *
-     * @tparam Container The type (usually a container) for which an iterator specialization will be defined.
+     * @tparam Container
+     * The container or range type for which an iterator specialization may be
+     * declared.
      */
     template<typename Container>
     struct iterator;
@@ -253,7 +213,7 @@ namespace jh::concepts {
         struct iterator_value_impl<I> {
         private:
             using value_type = typename I::value_type;
-            using deref_type = decltype(*std::declval<I&>());
+            using deref_type = decltype(*std::declval<I &>());
 
             static constexpr bool compatible =
                     (std::common_reference_with<
@@ -374,14 +334,14 @@ namespace jh::concepts {
     } && requires(I &&it) {
         detail::adl_iter_move(std::forward<I>(it));
     } &&
-            std::common_reference_with<
-                    std::remove_cvref_t<iterator_reference_t<I>>,
-                    iterator_value_t<I>
-            > &&
-            std::common_reference_with<
-                    std::remove_cvref_t<iterator_rvalue_reference_t<I>>,
-                    iterator_value_t<I>
-            >;
+                                 std::common_reference_with<
+                                         std::remove_cvref_t<iterator_reference_t<I>>,
+                                         iterator_value_t<I>
+                                 > &&
+                                 std::common_reference_with<
+                                         std::remove_cvref_t<iterator_rvalue_reference_t<I>>,
+                                         iterator_value_t<I>
+                                 >;
 
     /**
      * @brief Concept for types that support indirect write operations through dereference.
@@ -489,7 +449,7 @@ namespace jh::concepts {
      *     (<code>sentinel_for&lt;S, I&gt;</code>).
      *   </li>
      *   <li>
-     *     Represents single-pass input traversal — readable but not necessarily
+     *     Represents single-pass input traversal &mdash; readable but not necessarily
      *     multi-pass or writable.
      *   </li>
      *   <li>
@@ -521,7 +481,7 @@ namespace jh::concepts {
      *     ensuring the iterator can assign values through dereference.
      *   </li>
      *   <li>
-     *     Represents single-pass output traversal — writable but not necessarily
+     *     Represents single-pass output traversal &mdash; writable but not necessarily
      *     readable or multi-pass.
      *   </li>
      * </ul>
@@ -673,104 +633,72 @@ namespace jh::concepts {
             using type = typename iterator<T>::type;
         };
 
+        // Case 2: has T::type and it behaves like an iterator
+        template<typename T>
+        struct iterator_resolver<
+                T,
+                std::void_t<typename T::iterator>,
+                std::enable_if_t<is_iterator<typename T::iterator>>
+        > {
+            using type = typename T::iterator;
+        };
 
-        // Case 2: fallback - has .begin() returning a valid iterator
+        // Case 3: fallback - has .begin() returning a valid iterator
         template<typename T>
         struct iterator_resolver<
                 T,
                 std::void_t<decltype(std::declval<T &>().begin())>,
                 std::enable_if_t<
-                        !requires { typename iterator<T>::type; } &&
+                        !requires { typename jh::iterator<T>::type; } &&
+                        !requires { typename T::iterator; } &&
                         is_iterator<decltype(std::declval<T &>().begin())>
                 >
         > {
             using type = decltype(std::declval<T &>().begin());
         };
 
-        // Case 3: pointer fallback
+
+        // Case 4: pointer fallback
         template<typename ElemPtr> requires std::is_pointer_v<ElemPtr>
         struct iterator_resolver<ElemPtr, void, void> {
             using type = ElemPtr; // already pointer type, e.g. int*
         };
 
-        // Case 4: array fallback (includes fixed-size and incomplete arrays)
+        // Case 5: array fallback (includes fixed-size and incomplete arrays)
         template<typename ArrayType> requires std::is_array_v<ArrayType>
         struct iterator_resolver<ArrayType, void, void> {
             using type = std::remove_extent_t<ArrayType> *; // decay array into pointer
         };
-
-    }
+    } // namespace detail
 
     /**
-     * @brief Extracts the iterator type associated with a given container, pointer, or array.
+     * @brief Deduces the iterator type associated with a container, pointer, or array.
      *
      * @details
-     * <code>jh::concepts::iterator_t&lt;Container&gt;</code> is a unified meta-type alias that deduces
-     * the appropriate iterator type for any STL-compatible or JH-style container.
-     * It performs a multi-stage deduction process via
-     * <code>jh::detail::iterator_resolver</code>, providing consistent iterator inference
-     * across containers, raw pointers, and compile-time arrays.
+     * <code>iterator_t&lt;Container&gt;</code> provides a unified iterator deduction path for
+     * all iterable entities supported by the JH Toolkit. It cooperates with
+     * <code>jh::iterator&lt;Container&gt;</code>, which serves as the non-intrusive
+     * extension point for third-party containers.
      *
-     * <h4>Deduction Rules</h4>
+     * <strong>Unified Deduction Model</strong>
+     * <p>
+     * <code>iterator_t&lt;Container&gt;</code> selects the iterator in the following order:
+     * </p>
      * <ol>
-     *   <li><strong>Specialized Iterator Mapping</strong><br/>
-     *       If a specialization of <code>jh::iterator&lt;Container&gt;</code> exists and defines
-     *       a nested <code>type</code> satisfying <code>jh::concepts::is_iterator</code>,
-     *       that type is selected.<br/>
-     *       Example: <code>jh::iterator&lt;jh::generator&lt;T&gt;&gt;::type</code>.</li>
-     *
-     *   <li><strong>Member <code>begin()</code>-based Fallback</strong><br/>
-     *       If the container does not define a <code>jh::iterator&lt;&gt;</code> specialization
-     *       but provides a <code>begin()</code> returning a valid iterator
-     *       (validated via <code>jh::concepts::is_iterator</code>),
-     *       the deduced iterator type becomes
-     *       <code>decltype(std::declval&lt;T&amp;&gt;().begin())</code>.</li>
-     *
-     *   <li><strong>Pointer Fallback</strong><br/>
-     *       If the input type is a raw pointer (<code>T*</code>),
-     *       the iterator type resolves to itself (<code>T*</code>).</li>
-     *
-     *   <li><strong>Array Fallback</strong><br/>
-     *       If the input type is any array (<code>T[N]</code> or <code>T[]</code>),
-     *       it decays into a pointer type (<code>T*</code> or <code>const T*</code>).
-     *       This rule guarantees consistent iterator semantics between raw arrays
-     *       and standard containers, regardless of whether the array has a fixed
-     *       or incomplete size.</li>
+     *   <li><code>jh::iterator&lt;Container&gt;::type</code></li>
+     *   <li><code>Container::iterator</code></li>
+     *   <li><code>decltype(Container.begin())</code></li>
+     *   <li><code>T*</code> (raw pointer)</li>
+     *   <li><code>T[N]</code> or <code>T[]</code> decayed to <code>T*</code></li>
      * </ol>
      *
-     * <h4>Design Rationale</h4>
-     * <ul>
-     *   <li>
-     *     Provides a <strong>duck-typed fallback mechanism</strong> capable of detecting
-     *     iterator types from any iterable entity — not limited to STL or JH containers.
-     *   </li>
-     *   <li>
-     *     Eliminates dependence on <code>Container::iterator</code> typedefs,
-     *     instead inferring iterator types directly from valid expressions.
-     *   </li>
-     *   <li>
-     *     Bridges custom, non-standard sequence types to <code>std::ranges::range</code>
-     *     through the <code>jh::concepts::sequence</code> module, ensuring smooth
-     *     interoperation with standard algorithms and range utilities.
-     *   </li>
-     * </ul>
-     *
-     * <h4>Usage Examples</h4>
-     * @code
-     * using it1 = jh::concepts::iterator_t&lt;std::vector&lt;int&gt;&gt;;        // std::vector<int>::iterator
-     * using it2 = jh::concepts::iterator_t&lt;int[10]&gt;;                 // int*  (fixed-size array)
-     * using it3 = jh::concepts::iterator_t&lt;int[]&gt;;                   // int*  (incomplete array)
-     * using it4 = jh::concepts::iterator_t&lt;jh::generator&lt;int&gt;&gt;;      // jh::generator<int>::iterator
-     * using it5 = jh::concepts::iterator_t&lt;MyDuckContainer&lt;float&gt;&gt;;  // decltype(c.begin())
-     * @endcode
-     *
      * <p>
-     * Both <code>int[10]</code> and <code>int[]</code> decay to <code>int*</code>,
-     * ensuring <strong>uniform compatibility</strong> across arrays, pointers, and
-     * any type that behaves like a range in the JH Toolkit.
+     * This mechanism ensures consistent iterator semantics across standard
+     * containers, duck-typed containers, pointers, and arrays, while allowing
+     * external iterator declarations for non-modifiable third-party types.
      * </p>
      *
-     * @tparam Container The type whose iterator type should be deduced.
+     * @tparam Container The type whose iterator is to be deduced.
      */
     template<typename Container>
     using iterator_t = typename detail::iterator_resolver<Container>::type;

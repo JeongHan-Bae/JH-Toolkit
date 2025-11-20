@@ -101,7 +101,7 @@
  *   </tr>
  * </table>
  *
- * <h3>Rationale — Why It Exists</h3>
+ * <h3>Rationale &mdash; Why It Exists</h3>
  * <p>
  * Modern allocators suffer from fragmentation under workloads that frequently
  * construct and destroy many tree nodes (e.g., dynamic indexing, routing tables,
@@ -131,7 +131,12 @@
  * </p>
  *
  * <table>
- *   <tr><th>Operation</th><th><code>std::set/map</code></th><th><code>jh::ordered_set/map</code></th><th>Notes</th></tr>
+ *   <tr>
+ *     <th><nobr>Operation</nobr></th>
+ *     <th><nobr><code>std::set/map</code></nobr></th>
+ *     <th><nobr><code>jh::ordered_set/map</code></nobr></th>
+ *     <th><nobr>Notes</nobr></th>
+ *   </tr>
  *   <tr>
  *     <td>Random insert</td>
  *     <td>fast start, large jitter</td>
@@ -598,8 +603,8 @@ namespace jh::avl {
      *
      * <h4>Lookup / Traversal Cost</h4>
      * <p>
-     * Access-related operations—<code>find()</code>, in-order traversal,
-     * iteration—benefit strongly from contiguous memory layout and the smaller
+     * Access-related operations&mdash;<code>find()</code>, in-order traversal,
+     * iteration&mdash;benefit strongly from contiguous memory layout and the smaller
      * height of AVL trees. Beyond ~5&nbsp;k elements, these operations are
      * consistently faster than <code>std::map</code>, and remain faster at every
      * larger scale tested. Across the 5&nbsp;k–1&nbsp;M range, typical speedups

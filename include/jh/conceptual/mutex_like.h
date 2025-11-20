@@ -127,7 +127,7 @@ namespace jh::concepts {
      * @brief Concept for shared (reader) lockable objects.
      *
      * <p>
-     * Requires shared locking interface — <code>lock_shared()</code>,
+     * Requires shared locking interface &mdash; <code>lock_shared()</code>,
      * <code>unlock_shared()</code>, and <code>try_lock_shared()</code>.
      * </p>
      *

@@ -4,7 +4,7 @@
  *
  * <p>
  * This header provides the canonical include entry for
- * <code>jh::immutable_str</code> — an immutable, thread-safe string type
+ * <code>jh::immutable_str</code> &mdash; an immutable, thread-safe string type
  * with automatic pooling support.
  * </p>
  *
@@ -17,7 +17,7 @@
  *
  * <h4>See Also</h4>
  * <ul>
- *   <li><code>jh::pool</code> — automatically integrated pooling system.</li>
+ *   <li><code>jh::pool</code> &mdash; automatically integrated pooling system.</li>
  * </ul>
  */
 

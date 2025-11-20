@@ -17,7 +17,7 @@
  */
 /**
  * @file enumerate.h (ranges/views)
- * @brief <code>jh::ranges::views::enumerate</code> — sequence-aware enumerate adaptor.
+ * @brief <code>jh::ranges::views::enumerate</code> &mdash; sequence-aware enumerate adaptor.
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @see jh::ranges::views::zip
  *
@@ -42,7 +42,7 @@
  *       (they must be consistent if both exist).</li>
  *   <li>If neither is available, the type falls back to <code>std::ptrdiff_t</code>.</li>
  *   <li>Conflicting iterator traits (mismatched <code>difference_type</code> and subtraction result)
- *       invalidate the type — such a type does not model <code>jh::concepts::sequence</code>.</li>
+ *       invalidate the type &mdash; such a type does not model <code>jh::concepts::sequence</code>.</li>
  *   <li><code>start</code> is <code>static_cast</code> to <code>diff_t</code>; invalid conversions are ill-formed.</li>
  * </ul>
  *

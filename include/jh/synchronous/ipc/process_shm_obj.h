@@ -56,9 +56,9 @@
  *
  * <h3>Internal synchronization objects</h3>
  * <ul>
- *   <li><b>Initialization mutex</b>: <code>process_mutex&lt;S&gt;</code> —
+ *   <li><b>Initialization mutex</b>: <code>process_mutex&lt;S&gt;</code> &mdash;
  *       protects one-time initialization of the mapped region.</li>
- *   <li><b>Access mutex</b>: <code>process_mutex&lt;S + ".loc"&gt;</code> —
+ *   <li><b>Access mutex</b>: <code>process_mutex&lt;S + ".loc"&gt;</code> &mdash;
  *       protects all concurrent writes and ensures serialization of modifications.</li>
  * </ul>
  *
@@ -78,7 +78,7 @@
  *     <ul>
  *       <li>Acquire a <code>std::lock_guard</code> (RAII style) on <code>lock()</code>.</li>
  *       <li>Modify the object via <code>ref()</code> or <code>ptr()</code>.</li>
- *       <li><b>Before releasing the lock</b> — i.e., before the RAII guard leaves scope —
+ *       <li><b>Before releasing the lock</b> &mdash; i.e., before the RAII guard leaves scope &mdash;
  *           call <code>flush_release()</code> or <code>flush_seq()</code> to publish the change.</li>
  *     </ul>
  *   </li>

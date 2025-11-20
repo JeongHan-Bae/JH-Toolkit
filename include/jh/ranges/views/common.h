@@ -23,7 +23,7 @@
  * JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * <p>
- * This header provides <code>jh::ranges::views::common</code> — a lightweight and compatible
+ * This header provides <code>jh::ranges::views::common</code> &mdash; a lightweight and compatible
  * wrapper around the standard <code>std::views::common</code> adaptor (C++20).
  * It extends the adaptor to support any type modeling <code>jh::concepts::sequence</code>,
  * enabling third-party or user-defined sequence types to interoperate naturally

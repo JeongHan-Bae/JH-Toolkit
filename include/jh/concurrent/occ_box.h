@@ -42,7 +42,7 @@
  * A single <code>read()</code> operation typically incurs:
  * <ul>
  *   <li>Two atomic loads of <code>shared_ptr&lt;state&gt;</code> (before/after validation).</li>
- *   <li>Two pointer dereferences (state → data → object).</li>
+ *   <li>Two pointer dereferences (state &rarr; data &rarr; object).</li>
  *   <li>One function invocation (the user lambda).</li>
  *   <li>By default (<code>JH_OCC_ENABLE_MULTI_COMMIT == 1</code>),
  *       one extra atomic load of <code>flag_</code> is performed during validation.</li>
@@ -73,7 +73,7 @@
  *   <li>Users may implement exponential backoff or jitter in retry lambdas to mitigate contention.
  *       See <code>examples/example_occ_box.cpp</code> for a full example. In short:
  *       the lambda can take a <code>duration&amp;</code>, sleep if nonzero, update it
- *       (0 → min → min×base … capped at max), then run business logic.</li>
+ *       (0 &rarr; min &rarr; min×base … capped at max), then run business logic.</li>
  * </ul>
  *
  * <h3>Atomicity and contention</h3>
@@ -146,7 +146,7 @@ namespace jh::conc {
         bool apply_to_ptr_impl(std::tuple<BoxTypes &...>,
                                std::tuple<Funcs...> &&,
                                std::index_sequence<I...>);
-    }
+    } // namespace detail
 #endif
 
     /**
@@ -933,7 +933,7 @@ namespace jh::conc {
                     >::value_type
             > && ...);
         }
-    }
+    } // namespace detail
 
     /**
      * @brief Apply functions to multiple <code>occ_box</code>es atomically.
@@ -995,4 +995,4 @@ namespace jh::conc {
 
 #endif
 
-}
+} // namespace jh::conc

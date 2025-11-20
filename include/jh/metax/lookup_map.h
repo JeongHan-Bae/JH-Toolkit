@@ -605,4 +605,4 @@ namespace jh::meta {
 
         return make_lookup_map<K, V, N>(converted, default_value);
     }
-}
+} // namespace jh::meta

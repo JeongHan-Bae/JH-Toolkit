@@ -32,7 +32,7 @@
  *   <li>IPC object names (used by semaphores, shared memory, conditions, etc.)</li>
  *   <li>POSIX-style relative paths (for safe file-based or namespace-based IPC)</li>
  * </ul>
- * All validation occurs entirely at <b>compile time</b> — no runtime overhead is introduced.
+ * All validation occurs entirely at <b>compile time</b> &mdash; no runtime overhead is introduced.
  * </p>
  *
  * <h3>Platform-specific limits</h3>
@@ -108,8 +108,8 @@ namespace jh::sync::ipc::limits {
      *
      * <h4>Template parameters</h4>
      * <ul>
-     *   <li><code>S</code> — compile-time string representing base name.</li>
-     *   <li><code>MaxLen</code> — optional override for system-specific maximum name length.</li>
+     *   <li><code>S</code> &mdash; compile-time string representing base name.</li>
+     *   <li><code>MaxLen</code> &mdash; optional override for system-specific maximum name length.</li>
      * </ul>
      *
      * @return <code>true</code> if the name is valid, otherwise <code>false</code>.

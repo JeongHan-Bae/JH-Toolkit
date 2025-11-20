@@ -34,7 +34,7 @@
  * <p>
  * Those auxiliary templates (e.g. <code>zip_view</code>) reside under
  * <code>jh/ranges/</code> and are consumed by the corresponding adaptor
- * headers under <code>jh/ranges/views/</code> — for instance,
+ * headers under <code>jh/ranges/views/</code> &mdash; for instance,
  * <code>jh/ranges/zip_view.h</code> is used internally by
  * <code>jh/ranges/views/zip.h</code>.
  * </p>

@@ -259,7 +259,7 @@ TEST_CASE("Compile-time Base64 / Base64URL correctness", "[constexpr][base64]") 
         constexpr auto encoded = jh::jindallae::encode_base64(bytes);
 
         // base64 → bytes
-        constexpr auto decoded = jh::jindallae::decode_base64<encoded.storage.data>();
+        constexpr auto decoded = jh::jindallae::decode_base64<encoded>();
 
         // bytes → t_str
         constexpr auto restored = jh::jindallae::t_str<decoded.size() + 1>::from_bytes(decoded);

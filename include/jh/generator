@@ -4,7 +4,7 @@
  *
  * <p>
  * This header provides the canonical include entry for
- * <code>jh::generator&lt;T, U&gt;</code> — a coroutine-based
+ * <code>jh::generator&lt;T, U&gt;</code> &mdash; a coroutine-based
  * generator type for asynchronous iteration.
  * </p>
  *
@@ -21,8 +21,8 @@
  * <p>
  * The same functionality is also available through:
  * <ul>
- *   <li><code>&lt;jh/asynchronous/generator.h&gt;</code> — defines <code>jh::async::generator</code> directly.</li>
- *   <li><code>&lt;jh/async&gt;</code> — available since <b>v1.4.0</b>, aggregates all asynchronous facilities under <code>jh::async</code>.</li>
+ *   <li><code>&lt;jh/asynchronous/generator.h&gt;</code> &mdash; defines <code>jh::async::generator</code> directly.</li>
+ *   <li><code>&lt;jh/async&gt;</code> &mdash; available since <b>v1.4.0</b>, aggregates all asynchronous facilities under <code>jh::async</code>.</li>
  * </ul>
  * </p>
  */

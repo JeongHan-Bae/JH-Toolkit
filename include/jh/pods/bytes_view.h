@@ -19,7 +19,7 @@
  * @file bytes_view.h (pods)
  * @brief POD-safe minimal byte-range view with reinterpreting and cloning utilities.
  *
- * This header defines <code>jh::pod::bytes_view</code> — a low-level, read-only,
+ * This header defines <code>jh::pod::bytes_view</code> &mdash; a low-level, read-only,
  * non-owning abstraction over raw memory regions. It enables safe reinterpretation
  * and controlled cloning of memory blocks into POD-compatible types.
  *
@@ -225,7 +225,7 @@ namespace jh::pod {
          * This is the safest way to materialize a <code>pod_like</code> object from a
          * <code>bytes_view</code>. It requires that:
          * <ul>
-         *   <li><code>len == sizeof(T)</code> — the view must exactly match the size of <code>T</code>.</li>
+         *   <li><code>len == sizeof(T)</code> &mdash; the view must exactly match the size of <code>T</code>.</li>
          *   <li><code>T</code> must satisfy <code>pod_like</code> (standard layout, trivially constructible,
          *       trivially copyable, trivially destructible).</li>
          * </ul>

@@ -84,7 +84,7 @@
  * <ul>
  *   <li><b>POSIX</b>: invokes <code>shm_unlink()</code> on the internal shared-memory segment.</li>
  *   <li><b>Windows</b>: no explicit unlink; event objects are destroyed when the last handle closes.</li>
- *   <li>As with other IPC primitives, the operation is idempotent — redundant calls are no-ops.</li>
+ *   <li>As with other IPC primitives, the operation is idempotent &mdash; redundant calls are no-ops.</li>
  * </ul>
  *
  * <h4>Usage note</h4>
@@ -166,7 +166,7 @@ namespace jh::sync::ipc {
      * <ul>
      *   <li><b>Condition mutex</b>: an internal <code>pthread_mutex_t</code> (POSIX only)
      *       protecting access to the condition variable state.</li>
-     *   <li><b>Initialization mutex</b>: <code>process_mutex&lt;S&gt;</code> — ensures one-time
+     *   <li><b>Initialization mutex</b>: <code>process_mutex&lt;S&gt;</code> &mdash; ensures one-time
      *       initialization of the shared memory region and condition object attributes
      *       (<code>PTHREAD_PROCESS_SHARED</code> flags, <code>initialized</code> guard, etc.).</li>
      * </ul>
@@ -372,7 +372,7 @@ namespace jh::sync::ipc {
          * <h4>Semantics</h4>
          * Simulates broadcast by setting the named event for ~1&nbsp;ms,
          * allowing multiple waiting participants to resume.
-         * This is an engineering approximation — not a guaranteed broadcast.
+         * This is an engineering approximation &mdash; not a guaranteed broadcast.
          */
         void notify_all(int) noexcept {
             ::SetEvent(event_);

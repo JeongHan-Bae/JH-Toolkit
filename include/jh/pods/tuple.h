@@ -43,8 +43,8 @@
  * between 1.3.0–1.3.3.
  *
  * <p>
- * It achieves <b>std::tuple-like behavior</b> — supporting <code>make_tuple</code>,
- * <code>get&lt;&gt;</code>, packing, and unpacking — through <b>composition instead of inheritance</b>.
+ * It achieves <b>std::tuple-like behavior</b> &mdash; supporting <code>make_tuple</code>,
+ * <code>get&lt;&gt;</code>, packing, and unpacking &mdash; through <b>composition instead of inheritance</b>.
  * Each element is recursively composed inside a <code>tuple_field&lt;I, T&gt;</code> wrapper,
  * ensuring complete triviality and standard layout.
  * </p>
@@ -178,7 +178,7 @@ namespace jh::pod {
      * and <code>std::tuple_element</code>.
      *
      * <ul>
-     *   <li>Fully trivial and standard layout — memcpy-safe</li>
+     *   <li>Fully trivial and standard layout &mdash; memcpy-safe</li>
      *   <li>Usable in structured bindings</li>
      *   <li>Compatible with <code>jh::pod::pair</code> and <code>jh::pod::array</code></li>
      * </ul>

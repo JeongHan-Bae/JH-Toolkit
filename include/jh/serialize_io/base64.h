@@ -145,10 +145,10 @@ namespace jh::serio {
          *       access utilities for direct reinterpretation, inspection, and hashing.</li>
          *   <li><strong>Available operations in <code>bytes_view</code>:</strong></li>
          *   <ul>
-         *     <li><code>at&lt;T&gt;(offset = 0)</code> — reinterpret a subregion as a reference to <code>T</code> (no bounds checking).</li>
-         *     <li><code>fetch&lt;T&gt;(offset = 0)</code> — safely fetch a pointer to <code>T</code>; returns <code>nullptr</code> if out of range.</li>
-         *     <li><code>clone&lt;T&gt;()</code> — clone the entire view into a value of type <code>T</code>; returns <code>T&#123;&#125;</code> on size mismatch.</li>
-         *     <li><code>hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64)</code> — compute a 64-bit hash of the byte content.</li>
+         *     <li><code>at&lt;T&gt;(offset = 0)</code> &mdash; reinterpret a subregion as a reference to <code>T</code> (no bounds checking).</li>
+         *     <li><code>fetch&lt;T&gt;(offset = 0)</code> &mdash; safely fetch a pointer to <code>T</code>; returns <code>nullptr</code> if out of range.</li>
+         *     <li><code>clone&lt;T&gt;()</code> &mdash; clone the entire view into a value of type <code>T</code>; returns <code>T&#123;&#125;</code> on size mismatch.</li>
+         *     <li><code>hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64)</code> &mdash; compute a 64-bit hash of the byte content.</li>
          *   </ul>
          *   <li>These operations ensure POD-safe reinterpretation and provide zero-overhead access to binary data.</li>
          * </ul>
@@ -176,15 +176,15 @@ namespace jh::serio {
          *   <li>The view represents a lightweight, read-only window over the decoded text.</li>
          *   <li><strong>Available operations in <code>string_view</code>:</strong></li>
          *   <ul>
-         *     <li><code>operator[](std::uint64_t index)</code> — direct character access (no bounds checking).</li>
-         *     <li><code>sub(std::uint64_t offset, std::uint64_t length = 0)</code> — create a substring view.</li>
-         *     <li><code>compare(const string_view &amp;rhs)</code> — perform lexical comparison (similar to <code>strcmp</code>).</li>
-         *     <li><code>starts_with(const string_view &amp;prefix)</code> — check if the view starts with the specified prefix.</li>
-         *     <li><code>ends_with(const string_view &amp;suffix)</code> — check if the view ends with the specified suffix.</li>
-         *     <li><code>find(char ch)</code> — locate the first occurrence of a character; returns <code>-1</code> if not found.</li>
-         *     <li><code>hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64)</code> — compute a stable 64-bit hash of the contents.</li>
-         *     <li><code>operator std::string_view()</code> or <code>to_std()</code> — explicit conversion to <code>std::string_view</code> for interoperability.</li>
-         *     <li><code>operator&lt;=&gt;(const string_view &amp;rhs)</code> — perform lexicographical three-way comparison (returns <code>std::strong_ordering</code>).</li>
+         *     <li><code>operator[](std::uint64_t index)</code> &mdash; direct character access (no bounds checking).</li>
+         *     <li><code>sub(std::uint64_t offset, std::uint64_t length = 0)</code> &mdash; create a substring view.</li>
+         *     <li><code>compare(const string_view &amp;rhs)</code> &mdash; perform lexical comparison (similar to <code>strcmp</code>).</li>
+         *     <li><code>starts_with(const string_view &amp;prefix)</code> &mdash; check if the view starts with the specified prefix.</li>
+         *     <li><code>ends_with(const string_view &amp;suffix)</code> &mdash; check if the view ends with the specified suffix.</li>
+         *     <li><code>find(char ch)</code> &mdash; locate the first occurrence of a character; returns <code>-1</code> if not found.</li>
+         *     <li><code>hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64)</code> &mdash; compute a stable 64-bit hash of the contents.</li>
+         *     <li><code>operator std::string_view()</code> or <code>to_std()</code> &mdash; explicit conversion to <code>std::string_view</code> for interoperability.</li>
+         *     <li><code>operator&lt;=&gt;(const string_view &amp;rhs)</code> &mdash; perform lexicographical three-way comparison (returns <code>std::strong_ordering</code>).</li>
          *   </ul>
          *   <li>All string operations are <strong>constexpr</strong> and <strong>noexcept</strong>, providing zero-overhead interoperability
          *       with the standard library and compile-time evaluation where applicable.</li>
@@ -205,7 +205,7 @@ namespace jh::serio {
 
 
     /**
-     * @brief Implements Base64URL (RFC 4648 &sect;5) — the URL-safe variant of Base64.
+     * @brief Implements Base64URL (RFC 4648 &sect;5) &mdash; the URL-safe variant of Base64.
      *
      * <p>
      * Base64URL replaces <code>'+'</code> with <code>'-'</code> and
@@ -294,10 +294,10 @@ namespace jh::serio {
          *       access utilities for direct reinterpretation, inspection, and hashing.</li>
          *   <li><strong>Available operations in <code>bytes_view</code>:</strong></li>
          *   <ul>
-         *     <li><code>at&lt;T&gt;(offset = 0)</code> — reinterpret a subregion as a reference to <code>T</code> (no bounds checking).</li>
-         *     <li><code>fetch&lt;T&gt;(offset = 0)</code> — safely fetch a pointer to <code>T</code>; returns <code>nullptr</code> if out of range.</li>
-         *     <li><code>clone&lt;T&gt;()</code> — clone the entire view into a value of type <code>T</code>; returns <code>T&#123;&#125;</code> on size mismatch.</li>
-         *     <li><code>hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64)</code> — compute a 64-bit hash of the byte content.</li>
+         *     <li><code>at&lt;T&gt;(offset = 0)</code> &mdash; reinterpret a subregion as a reference to <code>T</code> (no bounds checking).</li>
+         *     <li><code>fetch&lt;T&gt;(offset = 0)</code> &mdash; safely fetch a pointer to <code>T</code>; returns <code>nullptr</code> if out of range.</li>
+         *     <li><code>clone&lt;T&gt;()</code> &mdash; clone the entire view into a value of type <code>T</code>; returns <code>T&#123;&#125;</code> on size mismatch.</li>
+         *     <li><code>hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64)</code> &mdash; compute a 64-bit hash of the byte content.</li>
          *   </ul>
          *   <li>These operations ensure POD-safe reinterpretation and provide zero-overhead access to binary data.</li>
          * </ul>
@@ -325,15 +325,15 @@ namespace jh::serio {
          *   <li>The view represents a lightweight, read-only window over the decoded text.</li>
          *   <li><strong>Available operations in <code>string_view</code>:</strong></li>
          *   <ul>
-         *     <li><code>operator[](std::uint64_t index)</code> — direct character access (no bounds checking).</li>
-         *     <li><code>sub(std::uint64_t offset, std::uint64_t length = 0)</code> — create a substring view.</li>
-         *     <li><code>compare(const string_view &amp;rhs)</code> — perform lexical comparison (similar to <code>strcmp</code>).</li>
-         *     <li><code>starts_with(const string_view &amp;prefix)</code> — check if the view starts with the specified prefix.</li>
-         *     <li><code>ends_with(const string_view &amp;suffix)</code> — check if the view ends with the specified suffix.</li>
-         *     <li><code>find(char ch)</code> — locate the first occurrence of a character; returns <code>-1</code> if not found.</li>
-         *     <li><code>hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64)</code> — compute a stable 64-bit hash of the contents.</li>
-         *     <li><code>operator std::string_view()</code> or <code>to_std()</code> — explicit conversion to <code>std::string_view</code> for interoperability.</li>
-         *     <li><code>operator&lt;=&gt;(const string_view &amp;rhs)</code> — perform lexicographical three-way comparison (returns <code>std::strong_ordering</code>).</li>
+         *     <li><code>operator[](std::uint64_t index)</code> &mdash; direct character access (no bounds checking).</li>
+         *     <li><code>sub(std::uint64_t offset, std::uint64_t length = 0)</code> &mdash; create a substring view.</li>
+         *     <li><code>compare(const string_view &amp;rhs)</code> &mdash; perform lexical comparison (similar to <code>strcmp</code>).</li>
+         *     <li><code>starts_with(const string_view &amp;prefix)</code> &mdash; check if the view starts with the specified prefix.</li>
+         *     <li><code>ends_with(const string_view &amp;suffix)</code> &mdash; check if the view ends with the specified suffix.</li>
+         *     <li><code>find(char ch)</code> &mdash; locate the first occurrence of a character; returns <code>-1</code> if not found.</li>
+         *     <li><code>hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64)</code> &mdash; compute a stable 64-bit hash of the contents.</li>
+         *     <li><code>operator std::string_view()</code> or <code>to_std()</code> &mdash; explicit conversion to <code>std::string_view</code> for interoperability.</li>
+         *     <li><code>operator&lt;=&gt;(const string_view &amp;rhs)</code> &mdash; perform lexicographical three-way comparison (returns <code>std::strong_ordering</code>).</li>
          *   </ul>
          *   <li>All string operations are <strong>constexpr</strong> and <strong>noexcept</strong>, providing zero-overhead interoperability
          *       with the standard library and compile-time evaluation where applicable.</li>

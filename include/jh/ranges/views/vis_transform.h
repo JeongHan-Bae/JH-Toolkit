@@ -56,7 +56,7 @@
  * @endcode
  *
  * <p>
- * This form requires no intermediate <code>collect()</code> adaptor — the
+ * This form requires no intermediate <code>collect()</code> adaptor &mdash; the
  * pipeline remains reentrant, and <code>to&lt;&gt;</code> performs direct construction.
  * </p>
  *
@@ -124,7 +124,7 @@ namespace jh::ranges::views {
         struct vis_transform_fn {
 
             /**
-             * @brief Direct form — immediately constructs a <code>vis_transform_view</code>.
+             * @brief Direct form &mdash; immediately constructs a <code>vis_transform_view</code>.
              *
              * @tparam R Range type.
              * @tparam F Callable type.
@@ -141,7 +141,7 @@ namespace jh::ranges::views {
             }
 
             /**
-             * @brief Pipe form — captures a callable into a reusable closure.
+             * @brief Pipe form &mdash; captures a callable into a reusable closure.
              *
              * @tparam F Callable type.
              * @param f The function to be applied to each element.
@@ -193,7 +193,7 @@ namespace jh::ranges::views {
      * <p>
      * When combined with <code>jh::ranges::views::common()</code>, a
      * <code>vis_transform</code>-based pipeline can be materialized directly
-     * into a container via <code>jh::ranges::to</code> — no intermediate
+     * into a container via <code>jh::ranges::to</code> &mdash; no intermediate
      * <code>collect()</code> is required.
      * </p>
      *

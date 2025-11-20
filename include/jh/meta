@@ -26,7 +26,7 @@
  * <h4>Design Note</h4>
  * <p>
  * <code>jh::meta</code> provides tools for compile-time computation and
- * template deduction assistance — usable during <code>consteval</code> or
+ * template deduction assistance &mdash; usable during <code>consteval</code> or
  * template instantiation.
  * </p>
  */

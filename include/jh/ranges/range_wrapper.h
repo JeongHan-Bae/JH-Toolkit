@@ -25,10 +25,10 @@
  * and <code>std::ranges::range</code>.
  * It introduces two key components:
  * <ul>
- *   <li><code>jh::ranges::detail::completed_iterator</code> — a behavioral
+ *   <li><code>jh::ranges::detail::completed_iterator</code> &mdash; a behavioral
  *       iterator adaptor that completes any duck-typed iterator to full
  *       STL iterator semantics.</li>
- *   <li><code>jh::ranges::range_wrapper</code> — a lightweight view class
+ *   <li><code>jh::ranges::range_wrapper</code> &mdash; a lightweight view class
  *       that exposes a sequence as a <code>std::ranges::range</code>,
  *       using <code>completed_iterator</code> for <code>begin()</code>
  *       and directly forwarding <code>end()</code>.</li>
@@ -111,19 +111,19 @@ namespace jh::ranges {
 
             // only expose ++it if exists
             constexpr auto operator++(int)
-            noexcept(noexcept(std::declval<Inner &>()++))requires requires(Inner &it) { it++; } {
+            noexcept(noexcept(std::declval<Inner &>()++)) requires requires(Inner &it) { it++; } {
                 auto tmp = *this;
                 ++(*this);
                 return tmp;
             }
 
             constexpr decltype(auto)
-            operator*() noexcept(noexcept(*std::declval<Inner &>()))requires requires(Inner &it) { *it; } {
+            operator*() noexcept(noexcept(*std::declval<Inner &>())) requires requires(Inner &it) { *it; } {
                 return *static_cast<Inner &>(*this);
             }
 
             constexpr decltype(auto)
-            operator*() const noexcept(noexcept(*std::declval<const Inner &>()))requires requires(
+            operator*() const noexcept(noexcept(*std::declval<const Inner &>())) requires requires(
                     const Inner &it) { *it; } {
                 return *static_cast<const Inner &>(*this);
             }
@@ -140,25 +140,28 @@ namespace jh::ranges {
             }
 
             friend constexpr bool operator!=(const completed_iterator &a, const Sentinel &b)
-            noexcept(noexcept(!(a == b))) {
-                return !(a == b);
+            noexcept(noexcept(!(a == b))) // NOLINT
+            {
+                return !(a == b); // NOLINT
             }
 
             friend constexpr bool operator!=(const Sentinel &a, const completed_iterator &b)
-            noexcept(noexcept(!(a == b))) {
-                return !(a == b);
+            noexcept(noexcept(!(a == b)))  // NOLINT
+            {
+                return !(a == b); // NOLINT
             }
 
             // ---- Self comparison (iterator vs iterator) ----
             friend constexpr bool operator==(const completed_iterator &a, const completed_iterator &b)
-            noexcept(noexcept(static_cast<const Inner &>(a) == static_cast<const Inner &>(b)))requires requires(
+            noexcept(noexcept(static_cast<const Inner &>(a) == static_cast<const Inner &>(b))) requires requires(
                     const Inner &x, const Inner &y) { x == y; } {
                 return static_cast<const Inner &>(a) == static_cast<const Inner &>(b);
             }
 
             friend constexpr bool operator!=(const completed_iterator &a, const completed_iterator &b)
-            noexcept(noexcept(!(a == b)))requires requires(const Inner &x, const Inner &y) { x == y; } {
-                return !(a == b);
+            noexcept(noexcept(!(a == b))) // NOLINT
+            requires requires(const Inner &x, const Inner &y) { x == y; } {
+                return !(a == b); // NOLINT
             }
 
             // move
@@ -177,13 +180,13 @@ namespace jh::ranges {
 
             // ---- Bidirectional Addition ----
             constexpr completed_iterator &operator--()
-            noexcept(noexcept(--std::declval<Inner &>()))requires requires(Inner &it) { --it; } {
+            noexcept(noexcept(--std::declval<Inner &>())) requires requires(Inner &it) { --it; } {
                 Inner::operator--();
                 return *this;
             }
 
             constexpr completed_iterator operator--(int)
-            noexcept(noexcept(std::declval<Inner &>()--))requires requires(Inner &it) { it--; } {
+            noexcept(noexcept(std::declval<Inner &>()--)) requires requires(Inner &it) { it--; } {
                 auto tmp = *this;
                 --(*this);
                 return tmp;
@@ -192,23 +195,26 @@ namespace jh::ranges {
 
             // forward N
             constexpr completed_iterator &operator+=(difference_type n)
-            noexcept(noexcept(std::declval<Inner &>() += n))requires requires(Inner &it,
-                                                                              difference_type n) { it += n; } {
+            noexcept(noexcept(std::declval<Inner &>() += n)) requires requires(Inner &it,
+                                                                               difference_type n)
+            { it += n; } {
                 Inner::operator+=(n);
                 return *this;
             }
 
             // backwards N
             constexpr completed_iterator &operator-=(difference_type n)
-            noexcept(noexcept(std::declval<Inner &>() -= n))requires requires(Inner &it,
-                                                                              difference_type n) { it -= n; } {
+            noexcept(noexcept(std::declval<Inner &>() -= n)) requires requires(Inner &it,
+                                                                               difference_type n)
+            { it -= n; } {
                 Inner::operator-=(n);
                 return *this;
             }
 
             // return new ite (forward N)
             constexpr completed_iterator operator+(difference_type n) const
-            noexcept(noexcept(std::declval<const Inner &>() + n))requires requires(const Inner &it, difference_type n) {
+            noexcept(noexcept(std::declval<const Inner &>() + n)) requires requires(const Inner &it, difference_type n)
+            {
                 it + n;
             } {
                 return completed_iterator(static_cast<const Inner &>(*this) + n);
@@ -216,7 +222,8 @@ namespace jh::ranges {
 
             // return new ite (backwards N)
             constexpr completed_iterator operator-(difference_type n) const
-            noexcept(noexcept(std::declval<const Inner &>() - n))requires requires(const Inner &it, difference_type n) {
+            noexcept(noexcept(std::declval<const Inner &>() - n)) requires requires(const Inner &it,
+                                                                                    difference_type n) {
                 it - n;
             } {
                 return completed_iterator(static_cast<const Inner &>(*this) - n);
@@ -225,7 +232,7 @@ namespace jh::ranges {
             // difference
             friend constexpr difference_type operator-(const completed_iterator &a,
                                                        const completed_iterator &b)
-            noexcept(noexcept(static_cast<const Inner &>(a) - static_cast<const Inner &>(b)))requires requires(
+            noexcept(noexcept(static_cast<const Inner &>(a) - static_cast<const Inner &>(b))) requires requires(
                     const Inner &x,
                     const Inner &y
             ) { x - y; } {
@@ -234,14 +241,14 @@ namespace jh::ranges {
 
             // index access
             constexpr decltype(auto) operator[](difference_type n) const
-            noexcept(noexcept(std::declval<const Inner &>()[n]))requires requires(const Inner &it,
-                                                                                  difference_type n) { it[n]; } {
+            noexcept(noexcept(std::declval<const Inner &>()[n])) requires requires(const Inner &it,
+                                                                                   difference_type n) { it[n]; } {
                 return static_cast<const Inner &>(*this)[n];
             }
 
             // compare operators
             friend constexpr bool operator<(const completed_iterator &a, const completed_iterator &b)
-            noexcept(noexcept(static_cast<const Inner &>(a) < static_cast<const Inner &>(b)))requires requires(
+            noexcept(noexcept(static_cast<const Inner &>(a) < static_cast<const Inner &>(b))) requires requires(
                     const Inner &x,
                     const Inner &y
             ) { x < y; } {
@@ -249,7 +256,7 @@ namespace jh::ranges {
             }
 
             friend constexpr bool operator>(const completed_iterator &a, const completed_iterator &b)
-            noexcept(noexcept(static_cast<const Inner &>(a) > static_cast<const Inner &>(b)))requires requires(
+            noexcept(noexcept(static_cast<const Inner &>(a) > static_cast<const Inner &>(b))) requires requires(
                     const Inner &x,
                     const Inner &y
             ) { x > y; } {
@@ -257,7 +264,7 @@ namespace jh::ranges {
             }
 
             friend constexpr bool operator<=(const completed_iterator &a, const completed_iterator &b)
-            noexcept(noexcept(static_cast<const Inner &>(a) <= static_cast<const Inner &>(b)))requires requires(
+            noexcept(noexcept(static_cast<const Inner &>(a) <= static_cast<const Inner &>(b))) requires requires(
                     const Inner &x,
                     const Inner &y
             ) { x <= y; } {
@@ -265,7 +272,7 @@ namespace jh::ranges {
             }
 
             friend constexpr bool operator>=(const completed_iterator &a, const completed_iterator &b)
-            noexcept(noexcept(static_cast<const Inner &>(a) >= static_cast<const Inner &>(b)))requires requires(
+            noexcept(noexcept(static_cast<const Inner &>(a) >= static_cast<const Inner &>(b))) requires requires(
                     const Inner &x,
                     const Inner &y
             ) { x >= y; } {
@@ -274,7 +281,9 @@ namespace jh::ranges {
 
             // n + ite
             friend constexpr completed_iterator operator+(difference_type n, const completed_iterator &it)
-            noexcept(noexcept(n + static_cast<const Inner &>(it)))requires requires(const Inner &i, difference_type n) {
+            noexcept(noexcept(n + static_cast<const Inner &>(it))) requires requires(const Inner &i,
+                                                                                     difference_type n)
+            {
                 n + i;
             } {
                 return completed_iterator(n + static_cast<const Inner &>(it));
@@ -283,7 +292,7 @@ namespace jh::ranges {
 
             // completed_iterator - Sentinel
             friend constexpr difference_type operator-(const completed_iterator &a, const Sentinel &b)
-            noexcept(noexcept(static_cast<const Inner &>(a) - b))requires requires(
+            noexcept(noexcept(static_cast<const Inner &>(a) - b)) requires requires(
                     const Inner &x,
                     const Sentinel &y
             ) { x - y; } {
@@ -292,7 +301,7 @@ namespace jh::ranges {
 
             // Sentinel - completed_iterator
             friend constexpr difference_type operator-(const Sentinel &a, const completed_iterator &b)
-            noexcept(noexcept(a - static_cast<const Inner &>(b)))requires requires(
+            noexcept(noexcept(a - static_cast<const Inner &>(b))) requires requires(
                     const Sentinel &x,
                     const Inner &y
             ) { x - y; } {
@@ -391,7 +400,7 @@ namespace std::ranges {
      * </ul>
      *
      * <p>
-     * This is a <b>false positive</b> — the specialization is <em>fully standard-compliant</em>
+     * This is a <b>false positive</b> &mdash; the specialization is <em>fully standard-compliant</em>
      * and does <b>not</b> constitute undefined behavior.
      * </p>
      *

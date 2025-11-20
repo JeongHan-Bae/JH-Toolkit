@@ -121,14 +121,14 @@ namespace jh::sync::ipc {
      *
      * <h4>Read semantics</h4>
      * <ul>
-     *   <li><code>load()</code> — lightweight, relaxed read.
+     *   <li><code>load()</code> &mdash; lightweight, relaxed read.
      *       Does <b>not</b> guarantee visibility of concurrent updates,
      *       but is sufficient when reading slightly stale values is harmless
      *       (e.g. in <code>shared_process_mutex</code> to check reader counts).</li>
-     *   <li><code>load_strong()</code> — sequentially consistent read
+     *   <li><code>load_strong()</code> &mdash; sequentially consistent read
      *       (full memory fence). Suitable for transactional reads
      *       requiring visibility of all preceding writes in any process.</li>
-     *   <li><code>load_force()</code> — acquires the internal mutex before reading.
+     *   <li><code>load_force()</code> &mdash; acquires the internal mutex before reading.
      *       Ensures full synchronization with all writers; used when
      *       strict atomicity or serialized state inspection is required.</li>
      * </ul>
@@ -151,16 +151,16 @@ namespace jh::sync::ipc {
      * </p>
      * <p>
      * From a design standpoint, <code>process_counter</code> remains a
-     * <strong>primitive</strong> rather than a composite abstraction —
+     * <strong>primitive</strong> rather than a composite abstraction &mdash;
      * it encapsulates synchronization internally and exposes a simple
      * read–modify–write interface suitable for inter-process coordination.
      * </p>
      *
      * <h4>Internal synchronization objects</h4>
      * <ul>
-     *   <li><b>Main mutex</b>: <code>process_mutex&lt;S + ".loc"&gt;</code> — protects all
+     *   <li><b>Main mutex</b>: <code>process_mutex&lt;S + ".loc"&gt;</code> &mdash; protects all
      *       read–modify–write operations on the counter value.</li>
-     *   <li><b>Initialization mutex</b>: <code>process_mutex&lt;S&gt;</code> — guards the
+     *   <li><b>Initialization mutex</b>: <code>process_mutex&lt;S&gt;</code> &mdash; guards the
      *       one-time initialization of the shared memory region (ensures that
      *       <code>initialized</code> flag and <code>value</code> are safely set
      *       by the first process that creates the object).</li>

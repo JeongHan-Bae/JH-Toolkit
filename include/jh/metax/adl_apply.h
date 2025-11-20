@@ -17,7 +17,7 @@
  */
 /**
  * @file adl_apply.h (metax)
- * @brief ADL-enabled universal tuple application utility — extends <code>std::apply</code>
+ * @brief ADL-enabled universal tuple application utility &mdash; extends <code>std::apply</code>
  *        to arbitrary tuple-like structures, including user-defined proxies and view elements.
  * @author
  *   JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
@@ -97,7 +97,7 @@
  *
  * <h3>Behavior summary</h3>
  * <ul>
- *   <li>Performs unqualified lookup for <code>get&lt;I&gt;</code> — enabling ADL discovery.</li>
+ *   <li>Performs unqualified lookup for <code>get&lt;I&gt;</code> &mdash; enabling ADL discovery.</li>
  *   <li>Expands index sequence from <code>std::tuple_size_v&lt;T&gt;</code>.</li>
  *   <li>Perfect-forwards both callable and tuple object.</li>
  *   <li>Propagates <code>noexcept</code> and <code>constexpr</code> guarantees.</li>

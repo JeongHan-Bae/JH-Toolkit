@@ -3,7 +3,7 @@
  * @brief Internal implementation for <code>jh::ranges::zip_view</code>.
  *
  * <p>
- * Defines the implementation of <code>jh::ranges::zip_view</code> —
+ * Defines the implementation of <code>jh::ranges::zip_view</code> &mdash;
  * a lightweight, C++20-compatible view that aggregates multiple ranges
  * into synchronized tuples of references.
  * </p>
@@ -27,16 +27,16 @@
  *
  * <p>
  * This design follows the same principle as <code>boost::string_view</code>
- * — offering a pre-standard, fully compatible type that later becomes
+ * &mdash; offering a pre-standard, fully compatible type that later becomes
  * a transparent bridge to its standard counterpart once available.
  * </p>
  *
  * <p>
  * The fallback implementation includes:
  * <ul>
- *   <li><code>zip_iterator</code> — synchronized iterator tuple</li>
- *   <li><code>zip_sentinel</code> — range termination marker</li>
- *   <li><code>zip_reference_proxy</code> — reference aggregator for structured bindings</li>
+ *   <li><code>zip_iterator</code> &mdash; synchronized iterator tuple</li>
+ *   <li><code>zip_sentinel</code> &mdash; range termination marker</li>
+ *   <li><code>zip_reference_proxy</code> &mdash; reference aggregator for structured bindings</li>
  * </ul>
  * Together, these emulate the complete semantics of
  * <code>std::ranges::zip_view</code> for C++20 environments.
@@ -102,7 +102,7 @@ namespace jh::ranges {
                 return std::forward<T>(value);
             }
         }
-    }
+    } // namespace detail
 
     /**
      * @brief Applies a callable to each element of a <code>std::tuple</code>.
@@ -119,7 +119,7 @@ namespace jh::ranges {
      * to <code>std::apply</code> for element-wise transformation.
      * </p>
      *
-     * @tparam F Callable type — must be invocable with each element of <code>Tuple</code>.
+     * @tparam F Callable type &mdash; must be invocable with each element of <code>Tuple</code>.
      * @tparam Tuple The tuple-like type to be transformed.
      * @param f The callable to apply to each element.
      * @param t The tuple whose elements are to be transformed.
@@ -285,7 +285,7 @@ namespace jh::ranges {
      * During iteration, <code>zip_iterator</code> compares itself against
      * a <code>zip_sentinel</code> to determine termination. Iteration stops
      * when <strong>any</strong> of the underlying iterators equals its
-     * corresponding sentinel — ensuring short-circuit termination on the
+     * corresponding sentinel &mdash; ensuring short-circuit termination on the
      * shortest range.
      * </p>
      *
@@ -667,7 +667,7 @@ namespace std::ranges{
      * </ul>
      *
      * <p>
-     * This is a <b>false positive</b> — the specialization is <em>fully standard-compliant</em>
+     * This is a <b>false positive</b> &mdash; the specialization is <em>fully standard-compliant</em>
      * and does <b>not</b> constitute undefined behavior.
      * </p>
      *

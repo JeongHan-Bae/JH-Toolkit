@@ -34,7 +34,7 @@
  *       </ul>
  *   </li>
  *   <li><b>Deep comparison</b> via <code>memcmp</code>, not pointer identity</li>
- *   <li><b>Constexpr hash</b> supported — usable in <code>consteval</code> expressions</li>
+ *   <li><b>Constexpr hash</b> supported &mdash; usable in <code>consteval</code> expressions</li>
  *   <li>Designed as a safe view type for <code>immutable_str</code> and POD containers</li>
  * </ul>
  *
@@ -86,7 +86,7 @@ namespace jh::pod {
      *       it deduces the array size at compile time and creates a view of length <code>N-1</code>
      *       (excluding the null terminator).</li>
      *   <li>At runtime, you must always provide both pointer and size explicitly
-     *       — this class never computes length automatically.</li>
+     *       &mdash; this class never computes length automatically.</li>
      * </ul>
      *
      * <h4>Usage Model:</h4>
@@ -322,7 +322,7 @@ namespace jh::pod {
          * <b>Semantics:</b>
          * </p>
          * <ul>
-         *   <li>Conversion is <b>explicit</b> — requires <code>static_cast</code> or brace-init form.</li>
+         *   <li>Conversion is <b>explicit</b> &mdash; requires <code>static_cast</code> or brace-init form.</li>
          *   <li>Performs no allocation or copy; simply wraps existing data.</li>
          *   <li>Pointer and size are preserved exactly (1:1 mapping).</li>
          * </ul>

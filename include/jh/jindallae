@@ -3,7 +3,7 @@
  * @brief Symbolic umbrella header exposing <code>jh::meta</code> as <code>jh::jindallae</code>.
  *
  * <p>
- * This header serves as a poetic alias to <code>jh::meta</code> —
+ * This header serves as a poetic alias to <code>jh::meta</code> &mdash;
  * a tribute to the spirit of expressive meta-programming, inspired by
  * the legendary Boost.Hana library, whose very name was itself a <tt>"flower"</tt>.
  * </p>
@@ -28,7 +28,7 @@
  * <h4>Design Note</h4>
  * <p>
  * <code>jh::jindallae</code> is functionally identical to <code>jh::meta</code>,
- * but exists as a lightweight symbolic layer — a small tribute to beauty
+ * but exists as a lightweight symbolic layer &mdash; a small tribute to beauty
  * in compile-time expression.
  * </p>
  */

@@ -150,7 +150,7 @@
 namespace jh::sync::ipc::detail {
     static constexpr mode_t process_mutex_permissions =
             JH_PROCESS_MUTEX_SHARED ? static_cast<mode_t>(0666) : static_cast<mode_t>(0644);
-}
+} // namespace jh::sync::ipc::detail
 #endif
 
 
@@ -170,11 +170,11 @@ namespace jh::sync::ipc {
      *
      * <h4>Semantic model</h4>
      * <ul>
-     *   <li>Acts as an <strong>IPC primitive</strong> — not a composition of higher-level constructs.</li>
+     *   <li>Acts as an <strong>IPC primitive</strong> &mdash; not a composition of higher-level constructs.</li>
      *   <li>Provides the same contract as <code>std::timed_mutex</code>:
      *     <ul>
      *       <li>Exclusive ownership semantics (single holder at a time).</li>
-     *       <li>Non-recursive — attempting to lock twice without unlocking causes deadlock.</li>
+     *       <li>Non-recursive &mdash; attempting to lock twice without unlocking causes deadlock.</li>
      *       <li>Unlocking without ownership or multiple consecutive unlocks is <b>undefined behavior</b>.</li>
      *     </ul>
      *   </li>
@@ -310,16 +310,13 @@ namespace jh::sync::ipc {
         /**
          * @brief Attempt to acquire the lock, waiting for a maximum duration.
          *
-         * <details>
-         * <p>
+         * @details
          * On Windows, this maps to <code>WaitForSingleObject</code> with a bounded timeout.
          * On POSIX systems with the <strong>Realtime Extension (POSIX.1b)</strong> (e.g. Linux/glibc),
          * this maps to <code>sem_timedwait</code>.
          * On pure POSIX systems without the extension (e.g. Darwin, BSD), timed waiting is emulated with
          * <strong>sem_trywait + exponential backoff sleep</strong>, which approximates the same semantics
          * while avoiding busy spinning.
-         * </p>
-         * </details>
          *
          * @tparam Rep Representation type of duration.
          * @tparam Period Period type of duration.
@@ -349,16 +346,13 @@ namespace jh::sync::ipc {
         /**
          * @brief Attempt to acquire the lock until an absolute time point.
          *
-         * <details>
-         * <p>
+         * @details
          * Windows uses <code>WaitForSingleObject</code> with a computed relative timeout.
          * POSIX with the <strong>Realtime Extension (POSIX.1b)</strong> (e.g. Linux/glibc) uses
          * <code>sem_timedwait</code> with an absolute <code>timespec</code>.
          * Pure POSIX systems without the extension (e.g. Darwin, BSD) emulate timed waiting
          * via <strong>sem_trywait + exponential backoff sleep</strong>, preserving observable
          * semantics (success/timeout) without excessive CPU usage.
-         * </p>
-         * </details>
          *
          * @tparam Clock Clock type.
          * @tparam Duration Duration type.

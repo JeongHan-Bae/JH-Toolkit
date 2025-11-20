@@ -17,7 +17,7 @@
  */
 /**
  * @file to.h (ranges)
- * @brief Container adaptation adaptor — constructs a target container <code>C</code>
+ * @brief Container adaptation adaptor &mdash; constructs a target container <code>C</code>
  *        directly from a compatible range <code>R</code>.
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
@@ -52,7 +52,7 @@
  *
  * std::pmr::monotonic_buffer_resource pool;
  *
- * // Direct construction — requires closable_container_for&lt;std::pmr::vector&lt;int&gt;, std::vector&lt;int&gt;&gt;
+ * // Direct construction &mdash; requires closable_container_for&lt;std::pmr::vector&lt;int&gt;, std::vector&lt;int&gt;&gt;
  * auto pmr_vec = to&lt;std::pmr::vector&lt;int&gt;&gt;(
  *     v,
  *     std::pmr::polymorphic_allocator&lt;int&gt;(&pool)
@@ -97,7 +97,7 @@
  *     <th>Optimization Result</th>
  *   </tr>
  *   <tr>
- *     <td><b>collect&lt;V&gt;()</b></td>
+ *     <td><nobr><b>collect&lt;V&gt;()</b></nobr></td>
  *     <td>Terminates lazy views and produces a normalized, value-semantic
  *         container (e.g. <code>std::vector&lt;pair&lt;K,V&gt;&gt;</code>).</td>
  *     <td>Constructs a temporary container on the caller's stack.</td>
@@ -105,7 +105,7 @@
  *         move is required.</td>
  *   </tr>
  *   <tr>
- *     <td><b>to&lt;C&gt;()</b></td>
+ *     <td><nobr><b>to&lt;C&gt;()</b></nobr></td>
  *     <td>Adapts the collected data into the final container <code>C</code>
  *         via its constructor (<code>[begin, end)</code>, move-iterators,
  *         or adapter dispatch).</td>
@@ -329,7 +329,7 @@ namespace jh::ranges {
      * </p>
      *
      * <p>
-     * This behavior is <b>intentional and specification-safe</b> — no valid
+     * This behavior is <b>intentional and specification-safe</b> &mdash; no valid
      * standard container constructor ever accepts two independent ranges,
      * therefore this heuristic introduces no ambiguity for normal user code.
      * </p>

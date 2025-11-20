@@ -188,11 +188,11 @@ namespace jh::async {
          *
          * <h5>Coroutine Lifecycle Hooks</h5>
          * <ul>
-         *   <li><code>get_return_object()</code> — constructs the associated <code>fiber</code>.</li>
-         *   <li><code>initial_suspend()</code> — suspends before first execution step.</li>
-         *   <li><code>final_suspend()</code> — suspends after completion to ensure safe destruction.</li>
-         *   <li><code>return_void()</code> — indicates successful completion without a return value.</li>
-         *   <li><code>unhandled_exception()</code> — aborts the program via <code>std&#58;&#58;terminate()</code>.</li>
+         *   <li><code>get_return_object()</code> &mdash; constructs the associated <code>fiber</code>.</li>
+         *   <li><code>initial_suspend()</code> &mdash; suspends before first execution step.</li>
+         *   <li><code>final_suspend()</code> &mdash; suspends after completion to ensure safe destruction.</li>
+         *   <li><code>return_void()</code> &mdash; indicates successful completion without a return value.</li>
+         *   <li><code>unhandled_exception()</code> &mdash; aborts the program via <code>std&#58;&#58;terminate()</code>.</li>
          * </ul>
          *
          * <h5>Awaiter Mechanism</h5>
@@ -203,9 +203,9 @@ namespace jh::async {
          * method is called.
          * </p>
          * <ul>
-         *   <li><code>await_ready()</code> — always returns <code>false</code>.</li>
-         *   <li><code>await_suspend()</code> — performs no action.</li>
-         *   <li><code>await_resume()</code> — no-op.</li>
+         *   <li><code>await_ready()</code> &mdash; always returns <code>false</code>.</li>
+         *   <li><code>await_suspend()</code> &mdash; performs no action.</li>
+         *   <li><code>await_resume()</code> &mdash; no-op.</li>
          * </ul>
          *
          * <h5>Compiler Notes</h5>

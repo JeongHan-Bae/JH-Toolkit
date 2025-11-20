@@ -34,8 +34,8 @@
  *
  * <h3>Key Components</h3>
  * <ul>
- *   <li><code>jh::meta::tuple_materialize</code> — Flattens any tuple-like object.</li>
- *   <li><code>jh::meta::flatten_proxy</code> — Lazy wrapper exposing flattened <code>get&lt;I&gt;</code> interface.</li>
+ *   <li><code>jh::meta::tuple_materialize</code> &mdash; Flattens any tuple-like object.</li>
+ *   <li><code>jh::meta::flatten_proxy</code> &mdash; Lazy wrapper exposing flattened <code>get&lt;I&gt;</code> interface.</li>
  * </ul>
  *
  * <h3>Design Notes</h3>
@@ -74,7 +74,7 @@ namespace jh::meta {
 
     namespace detail {
 
-        /// @brief unwrap_ref — extract value from reference-like wrappers
+        /// @brief unwrap_ref &mdash; extract value from reference-like wrappers
         constexpr decltype(auto) unwrap_ref(auto &&x) {
             if constexpr (requires { x.get(); })
                 return x.get();
@@ -82,7 +82,7 @@ namespace jh::meta {
                 return std::forward<decltype(x)>(x);
         }
 
-        /// @brief flatten_one — flattens a single element
+        /// @brief flatten_one &mdash; flattens a single element
         template<typename T>
         constexpr auto flatten_one(T &&x) {
             using U = std::remove_cvref_t<T>;
@@ -95,7 +95,7 @@ namespace jh::meta {
             }
         }
 
-        /// @brief tuple_materialize_impl — implementation detail with index sequence
+        /// @brief tuple_materialize_impl &mdash; implementation detail with index sequence
         template<typename Tuple, std::size_t... I>
         constexpr auto tuple_materialize_impl(const Tuple &t, std::index_sequence<I...>) {
             return std::tuple_cat(flatten_one(get<I>(t))...);
@@ -141,7 +141,7 @@ namespace jh::meta {
      *
      * <h4>Ownership and Evaluation</h4>
      * <p>
-     * All operations are <code>constexpr</code> and non-owning —
+     * All operations are <code>constexpr</code> and non-owning &mdash;
      * the underlying tuple-like object is never copied or moved unless
      * materialization is explicitly requested (e.g. via implicit conversion
      * to <code>std::tuple</code>).

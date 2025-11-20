@@ -1,10 +1,10 @@
 /**
  * @file concepts
- * @brief Forward-aggregator header for <code>jh::concepts</code> — the behavioral foundation layer of the JH Toolkit.
+ * @brief Forward-aggregator header for <code>jh::concepts</code> &mdash; the behavioral foundation layer of the JH Toolkit.
  *
  * <p>
  * This header serves as the unified include point for all compile-time concepts and trait
- * definitions within the <code>jh::concepts</code> module — a centralized system for
+ * definitions within the <code>jh::concepts</code> module &mdash; a centralized system for
  * <strong>duck-typed semantic recognition</strong> and behavioral abstraction.
  * </p>
  *
@@ -35,16 +35,16 @@
  *
  * <h4>Included Components</h4>
  * <ul>
- *   <li><code>closable_container.h</code> — defines direct range-to-container constructibility.</li>
- *   <li><code>collectable_container.h</code> — extends closability with incremental insertion modes.</li>
- *   <li><code>container_traits.h</code> — provides unified value-type deduction for containers.</li>
- *   <li><code>hashable.h</code> — generalizes <code>std::hash</code> through ADL and member discovery.</li>
- *   <li><code>iterator.h</code> — behavioral iterator and sentinel recognition layer.</li>
- *   <li><code>mutex_like.h</code> — defines the synchronization and reentrance concept hierarchy.</li>
- *   <li><code>pod_concepts.h</code> — fundamental POD and trivial-type recognition concepts.</li>
- *   <li><code>range_traits.h</code> — provides callable validation and storage policy traits for ranges.</li>
- *   <li><code>sequence.h</code> — defines duck-typed sequence semantics and <code>to_range()</code> support.</li>
- *   <li><code>tuple_like.h</code> — structural validation for tuple-compatible and proxy types.</li>
+ *   <li><code>closable_container.h</code> &mdash; defines direct range-to-container constructibility.</li>
+ *   <li><code>collectable_container.h</code> &mdash; extends closability with incremental insertion modes.</li>
+ *   <li><code>container_traits.h</code> &mdash; provides unified value-type deduction for containers.</li>
+ *   <li><code>hashable.h</code> &mdash; generalizes <code>std::hash</code> through ADL and member discovery.</li>
+ *   <li><code>iterator.h</code> &mdash; behavioral iterator and sentinel recognition layer.</li>
+ *   <li><code>mutex_like.h</code> &mdash; defines the synchronization and reentrance concept hierarchy.</li>
+ *   <li><code>pod_concepts.h</code> &mdash; fundamental POD and trivial-type recognition concepts.</li>
+ *   <li><code>range_traits.h</code> &mdash; provides callable validation and storage policy traits for ranges.</li>
+ *   <li><code>sequence.h</code> &mdash; defines duck-typed sequence semantics and <code>to_range()</code> support.</li>
+ *   <li><code>tuple_like.h</code> &mdash; structural validation for tuple-compatible and proxy types.</li>
  * </ul>
  */
 

@@ -24,29 +24,29 @@
  * <code>jh::sync::ipc::shared_process_mutex</code> is a fully process-visible synchronization primitive
  * providing both shared and exclusive locking semantics, similar to
  * <code>std::shared_timed_mutex</code>, but implemented entirely from process-named OS primitives.
- * It enables multiple participants — threads, coroutines, or processes — to coordinate
+ * It enables multiple participants &mdash; threads, coroutines, or processes &mdash; to coordinate
  * access to a shared resource without requiring shared memory.
  * </p>
  *
  * <h3>Component composition</h3>
  * <ul>
- *   <li><code>process_mutex&lt;S + ".exc"&gt;</code> — exclusive access control, preventing new readers during write phases.</li>
- *   <li><code>process_cond_var&lt;S + ".cond"&gt;</code> — global condition variable used to wake writers or upgraders when readers exit.</li>
- *   <li><code>process_counter&lt;S + ".cnt"&gt;</code> — global atomic counter tracking the number of active readers system-wide.</li>
- *   <li><code>process_mutex&lt;S + ".pri"&gt;</code> — preemption mutex used exclusively by <strong>upgraders</strong>.
+ *   <li><code>process_mutex&lt;S + ".exc"&gt;</code> &mdash; exclusive access control, preventing new readers during write phases.</li>
+ *   <li><code>process_cond_var&lt;S + ".cond"&gt;</code> &mdash; global condition variable used to wake writers or upgraders when readers exit.</li>
+ *   <li><code>process_counter&lt;S + ".cnt"&gt;</code> &mdash; global atomic counter tracking the number of active readers system-wide.</li>
+ *   <li><code>process_mutex&lt;S + ".pri"&gt;</code> &mdash; preemption mutex used exclusively by <strong>upgraders</strong>.
  *       It allows a participant upgrading from shared to exclusive mode to
  *       <strong>preempt all waiting writers</strong> and maintain <strong>upgrade continuity</strong>.
  *       Once <code>.pri</code> is held, no other process may enter exclusive mode until
- *       the upgrade completes. This lock does not enforce fairness — it ensures transactional upgrade atomicity.</li>
+ *       the upgrade completes. This lock does not enforce fairness &mdash; it ensures transactional upgrade atomicity.</li>
  * </ul>
  *
  * <h3>Dependency</h3>
  * <p>
  * The implementation is composed of three fundamental process-level synchronization primitives:
  * <ul>
- *   <li><code>#include "jh/synchronous/process_mutex.h"</code> — built upon <b>named semaphore</b>.</li>
- *   <li><code>#include "jh/synchronous/process_counter.h"</code> — built upon <b>shared memory</b>.</li>
- *   <li><code>#include "jh/synchronous/process_cond_var.h"</code> — built upon <b>shared memory</b>.</li>
+ *   <li><code>#include "jh/synchronous/process_mutex.h"</code> &mdash; built upon <b>named semaphore</b>.</li>
+ *   <li><code>#include "jh/synchronous/process_counter.h"</code> &mdash; built upon <b>shared memory</b>.</li>
+ *   <li><code>#include "jh/synchronous/process_cond_var.h"</code> &mdash; built upon <b>shared memory</b>.</li>
  * </ul>
  * </p>
  *
@@ -69,8 +69,8 @@
  * <p>
  * Because access to <code>Global&bsol;&bsol;</code> objects requires administrative rights on Windows,
  * both <code>process_counter</code> and <code>process_cond_var</code> must be initialized
- * under elevated privilege. Consequently, any component that depends on them —
- * including <code>shared_process_mutex</code> — must be executed as an <b>Administrator</b>.
+ * under elevated privilege. Consequently, any component that depends on them &mdash;
+ * including <code>shared_process_mutex</code> &mdash; must be executed as an <b>Administrator</b>.
  * </p>
  * <p>
  * This restriction does <strong>not</strong> apply to POSIX systems.
@@ -89,8 +89,8 @@
  * <p>
  * As of the current implementation:
  * <ul>
- *   <li><code>process_mutex</code> (semaphore-based) — operates correctly under <b>normal privilege</b>.</li>
- *   <li><code>process_counter</code> and <code>process_cond_var</code> (shared-memory-based) — require
+ *   <li><code>process_mutex</code> (semaphore-based) &mdash; operates correctly under <b>normal privilege</b>.</li>
+ *   <li><code>process_counter</code> and <code>process_cond_var</code> (shared-memory-based) &mdash; require
  *       <b>administrator privilege</b> for creation and access.</li>
  * </ul>
  * Consequently, <code>shared_process_mutex</code> on Windows functions correctly only
@@ -115,7 +115,7 @@
  *
  * <h4>Upgrade semantics</h4>
  * <p>
- * The upgrade operation may be initiated by <strong>any participant</strong> holding a shared lock —
+ * The upgrade operation may be initiated by <strong>any participant</strong> holding a shared lock &mdash;
  * including threads, coroutines, or separate processes bound to the same named primitives.
  * Because upgrade must occur in a <strong>continuous global scope</strong>,
  * the upgrader cannot yield to a waiting writer without breaking its semantic integrity.
@@ -163,10 +163,10 @@ namespace jh::sync::ipc {
      *
      * <h4>Composition</h4>
      * <ul>
-     *   <li><code>process_mutex&lt;S + ".exc"&gt;</code> — exclusive access control.</li>
-     *   <li><code>process_cond_var&lt;S + ".cond"&gt;</code> — wake writers or upgraders when readers exit.</li>
-     *   <li><code>process_counter&lt;S + ".cnt"&gt;</code> — global reader count.</li>
-     *   <li><code>process_mutex&lt;S + ".pri"&gt;</code> — preemption lock for upgrade continuity.</li>
+     *   <li><code>process_mutex&lt;S + ".exc"&gt;</code> &mdash; exclusive access control.</li>
+     *   <li><code>process_cond_var&lt;S + ".cond"&gt;</code> &mdash; wake writers or upgraders when readers exit.</li>
+     *   <li><code>process_counter&lt;S + ".cnt"&gt;</code> &mdash; global reader count.</li>
+     *   <li><code>process_mutex&lt;S + ".pri"&gt;</code> &mdash; preemption lock for upgrade continuity.</li>
      * </ul>
      *
      * <h4>Behavior</h4>
@@ -201,7 +201,7 @@ namespace jh::sync::ipc {
      *   <li>Within a single thread or coroutine context, all lock operations are
      *       <strong>idempotent</strong>. Repeated acquisitions or releases are safe and
      *       treated as no-ops. This enables reentrant patterns for coroutine and task frameworks.</li>
-     *   <li>Across threads or processes, reentrancy is not propagated — holding a lock in
+     *   <li>Across threads or processes, reentrancy is not propagated &mdash; holding a lock in
      *       one thread does not imply ownership in another.</li>
      *   <li><code>notify_one()</code> is used intentionally: only writers wait on the
      *       condition variable, and at most one writer should proceed when readers complete.</li>
@@ -444,7 +444,7 @@ namespace jh::sync::ipc {
          *   <li>Attempts to acquire <code>.exc</code> (blocks new readers).</li>
          *   <li>If <code>.exc</code> is held by another writer, acquires <code>.pri</code>
          *       to preempt that writer and maintain upgrade continuity.</li>
-         *   <li>If <code>.pri</code> cannot be acquired, another upgrader is active — treated as fatal violation.</li>
+         *   <li>If <code>.pri</code> cannot be acquired, another upgrader is active &mdash; treated as fatal violation.</li>
          *   <li>Waits until all other readers exit (<tt>readers_ == 1</tt>).</li>
          *   <li>Decrements its reader count and transitions into exclusive mode.</li>
          * </ol>

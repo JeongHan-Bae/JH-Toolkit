@@ -21,7 +21,7 @@
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * <p>
- * This header provides <code>jh::ranges::views::zip</code> — a <b>conceptually aligned but generalized</b>
+ * This header provides <code>jh::ranges::views::zip</code> &mdash; a <b>conceptually aligned but generalized</b>
  * version of the C++23 <code>std::views::zip</code> adaptor.
  * It extends the applicability of <code>zip</code> to custom <code>jh::concepts::sequence</code>
  * types, which may not be standard ranges but still define explicit iteration semantics
@@ -44,7 +44,7 @@
  *   <li><b>Pipe call (standard form):</b><br/>
  *       <code>a | jh::ranges::views::zip(b)</code> is supported,
  *       producing a <code>zip_view&lt;a,b&gt;</code>. This exactly matches
- *       the standard C++23 behavior — only <em>one</em> right-hand sequence is allowed.
+ *       the standard C++23 behavior &mdash; only <em>one</em> right-hand sequence is allowed.
  *   </li>
  *   <li><b>Pipe call (extended form):</b><br/>
  *       The companion adaptor <code>jh::ranges::views::zip_pipe</code>
@@ -81,7 +81,7 @@
  * The <code>jh::concepts::sequence</code> abstraction is designed to enable
  * <b>third-party or non-standard containers</b> to participate naturally
  * in the range adaptor ecosystem.
- * It recognizes any type that supports <em>non-consuming iteration</em> —
+ * It recognizes any type that supports <em>non-consuming iteration</em> &mdash;
  * that is, a const-accessible <code>begin()</code> and a deducible <code>end()</code>
  * (including static sentinels). Such types can be safely iterated multiple times
  * without altering or consuming their internal state, and are thus considered
@@ -101,8 +101,8 @@
  * </p>
  *
  * <p>
- * As a result, any valid <code>sequence</code> — even a type lacking standard iterator
- * typedefs — can be <b>semantically promoted</b> into a fully compliant
+ * As a result, any valid <code>sequence</code> &mdash; even a type lacking standard iterator
+ * typedefs &mdash; can be <b>semantically promoted</b> into a fully compliant
  * <code>std::ranges::range</code> via <code>jh::to_range(seq)</code>.
  * All <code>jh::ranges::views</code> adaptors, including <code>zip</code> and
  * <code>zip_pipe</code>, perform this proxying step automatically, ensuring that

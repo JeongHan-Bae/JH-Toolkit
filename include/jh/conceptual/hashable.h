@@ -31,10 +31,10 @@
  * containers, it cannot describe semantic-specific hash behaviors such as:
  * </p>
  * <ul>
- *   <li><b>Lazy evaluation</b> — deferred hash computation with caching (e.g. <code>jh::immutable_str</code>).</li>
- *   <li><b>Algorithm selection</b> — e.g. <code>jh::pod::string_view</code> uses
+ *   <li><b>Lazy evaluation</b> &mdash; deferred hash computation with caching (e.g. <code>jh::immutable_str</code>).</li>
+ *   <li><b>Algorithm selection</b> &mdash; e.g. <code>jh::pod::string_view</code> uses
  *       <code>c_hash::fnv1a64</code> by default, but may switch algorithms via an enum parameter.</li>
- *   <li><b>Semantic integrity</b> — certain domain-specific hashes carry meaning beyond raw bytes
+ *   <li><b>Semantic integrity</b> &mdash; certain domain-specific hashes carry meaning beyond raw bytes
  *       (e.g. type-level discriminators, persistent keys, etc.).</li>
  * </ul>
  *
@@ -42,9 +42,9 @@
  * Therefore, the JH framework permits three resolution layers:
  * </p>
  * <ol>
- *   <li><b>Standard hash</b> — <code>std::hash&lt;T&gt;{}</code> (highest precedence)</li>
- *   <li><b>ADL-discovered free hash()</b> — found via argument-dependent lookup</li>
- *   <li><b>Member function hash()</b> — <code>t.hash()</code> if provided</li>
+ *   <li><b>Standard hash</b> &mdash; <code>std::hash&lt;T&gt;{}</code> (highest precedence)</li>
+ *   <li><b>ADL-discovered free hash()</b> &mdash; found via argument-dependent lookup</li>
+ *   <li><b>Member function hash()</b> &mdash; <code>t.hash()</code> if provided</li>
  * </ol>
  *
  * <p>

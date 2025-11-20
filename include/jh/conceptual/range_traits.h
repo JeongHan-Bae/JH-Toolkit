@@ -38,9 +38,9 @@
  *
  * <h3>Included Components</h3>
  * <ul>
- *   <li><code>vis_function_for&lt;F, R&gt;</code> — validates a range–callable
+ *   <li><code>vis_function_for&lt;F, R&gt;</code> &mdash; validates a range–callable
  *       pair for <em>visual traversal semantics</em>.</li>
- *   <li><code>range_storage_traits&lt;R, UseRefWrapper&gt;</code> — defines
+ *   <li><code>range_storage_traits&lt;R, UseRefWrapper&gt;</code> &mdash; defines
  *       how a range is held inside wrapper-based views.</li>
  * </ul>
  *
@@ -85,14 +85,14 @@ namespace jh::concepts {
      *
      * <h4>Contract Requirements</h4>
      * <ul>
-     *   <li>The range <code>R</code> supports <b>non-consuming iteration</b> —
+     *   <li>The range <code>R</code> supports <b>non-consuming iteration</b> &mdash;
      *       calling <code>begin()</code> and <code>end()</code> does not alter its state.</li>
      *   <li>Elements of <code>R</code> can be dereferenced as input iterators.</li>
      *   <li>The callable <code>F</code> can be safely invoked on each element:
      *       <code>std::invoke(f, *begin(r))</code> must be well-formed.</li>
      *   <li>The invocation result is <b>non-void</b>, allowing the result
      *       to participate in further pipeline or transform chaining.</li>
-     *   <li>Neither the range nor its elements are modified by the operation —
+     *   <li>Neither the range nor its elements are modified by the operation &mdash;
      *       the relation is purely observational.</li>
      * </ul>
      *
@@ -120,19 +120,19 @@ namespace jh::concepts {
      * <p>
      * <code>range_storage_traits&lt;R&gt;</code> defines the storage model for
      * wrapper-based view types that internally hold another range, view, or
-     * sequence — for example:
+     * sequence &mdash; for example:
      * <code>jh::ranges::range_wrapper</code> and
      * <code>jh::ranges::vis_transform_view</code>.
      * </p>
      *
      * <h4>Policy Overview</h4>
      * <ul>
-     *   <li><b>Rvalues / temporaries</b> — stored by value.</li>
-     *   <li><b>Lvalues</b> — stored as references, optionally wrapped in
+     *   <li><b>Rvalues / temporaries</b> &mdash; stored by value.</li>
+     *   <li><b>Lvalues</b> &mdash; stored as references, optionally wrapped in
      *       <code>std::reference_wrapper</code> for safety.</li>
-     *   <li><b>UseRefWrapper = true</b> — enforces safe reference semantics,
+     *   <li><b>UseRefWrapper = true</b> &mdash; enforces safe reference semantics,
      *       ensuring non-dangling access in deferred pipelines.</li>
-     *   <li><b>UseRefWrapper = false</b> — uses direct references for
+     *   <li><b>UseRefWrapper = false</b> &mdash; uses direct references for
      *       lightweight, local usage.</li>
      * </ul>
      *

@@ -38,15 +38,15 @@
  *
  * <h3>Key Components</h3>
  * <ul>
- *   <li><code>jh::concepts::sequence</code> — Concept ensuring immutable iteration.</li>
- *   <li><code>jh::concepts::sequence_value_t&lt;T&gt;</code> — Extracts element type via <code>iterator_t</code>.</li>
- *   <li><code>jh::concepts::is_sequence&lt;T&gt;</code> — Compile-time boolean for detection.</li>
+ *   <li><code>jh::concepts::sequence</code> &mdash; Concept ensuring immutable iteration.</li>
+ *   <li><code>jh::concepts::sequence_value_t&lt;T&gt;</code> &mdash; Extracts element type via <code>iterator_t</code>.</li>
+ *   <li><code>jh::concepts::is_sequence&lt;T&gt;</code> &mdash; Compile-time boolean for detection.</li>
  *   <li>
- *     <code>jh::to_range()</code> —
+ *     <code>jh::to_range()</code> &mdash;
  *     Converts any <code>sequence</code> into a <em>range-compatible</em> object.
  *     If the input already models <code>std::ranges::range</code> and is safely
  *     movable or copyable, it is forwarded unchanged.
- *     Otherwise — for non-movable, non-copyable lvalues — it automatically
+ *     Otherwise &mdash; for non-movable, non-copyable lvalues &mdash; it automatically
  *     produces a <code>std::ranges::subrange</code> to preserve reference validity.
  *     For non-range sequences, it wraps them in a
  *     <code>jh::ranges::range_wrapper</code>.
@@ -59,7 +59,7 @@
  *       a unified meta-interface for STL and custom containers.</li>
  *   <li>All qualifiers (<code>const</code>, <code>volatile</code>, references)
  *       are removed before deduction to ensure consistent behavior.</li>
- *   <li>Concept validation is purely structural — no explicit typedefs are required.</li>
+ *   <li>Concept validation is purely structural &mdash; no explicit typedefs are required.</li>
  *   <li>Serves as the foundational layer for the <code>jh::range</code> system and
  *       range interoperability across user-defined sequence types.</li>
  * </ul>
@@ -91,7 +91,7 @@ namespace jh::concepts {
      * </ol>
      *
      * <p>
-     * The concept requires that iteration be <strong>non-destructive</strong> —
+     * The concept requires that iteration be <strong>non-destructive</strong> &mdash;
      * traversing the sequence must not modify or consume its internal state.
      * </p>
      *
@@ -127,7 +127,7 @@ namespace jh::concepts {
             using iterator_type = jh::concepts::iterator_t<raw_type>;
             using type = typename jh::concepts::iterator_value_t<iterator_type>;
         };
-    }
+    } // namespace detail
 
     /**
      * @brief Extracts the element type of a sequence.
@@ -221,7 +221,7 @@ namespace jh::concepts::detail {
      *         either the same range, a <code>std::ranges::subrange</code>,
      *         or a <code>jh::ranges::range_wrapper</code>.
      *
-     * @note This function ensures algorithm-level compatibility — any valid
+     * @note This function ensures algorithm-level compatibility &mdash; any valid
      *       <code>sequence</code> passed through <code>jh::to_range()</code>
      *       becomes immediately usable in <code>std::ranges</code> algorithms.
      */
@@ -273,7 +273,7 @@ namespace jh {
      * </p>
      *
      * <p>
-     * The conversion is <b>idempotent</b> — if the input already models
+     * The conversion is <b>idempotent</b> &mdash; if the input already models
      * <code>std::ranges::range</code> and is safely movable or copyable,
      * it is forwarded unchanged.
      * Otherwise, the function wraps or adapts it internally to ensure

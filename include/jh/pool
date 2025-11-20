@@ -4,7 +4,7 @@
  *
  * <p>
  * This header provides the canonical include entry for
- * <code>jh::pool&lt;T&gt;</code> — a high-level, duck-typed wrapper
+ * <code>jh::pool&lt;T&gt;</code> &mdash; a high-level, duck-typed wrapper
  * around <code>jh::sim_pool</code> that automatically deduces
  * hashing and equality semantics from user-defined types.
  * </p>

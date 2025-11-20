@@ -17,7 +17,7 @@
  */
 /**
  * @file char.h (metax)
- * @brief Character-semantics concept and utilities — constexpr-safe character classification
+ * @brief Character-semantics concept and utilities &mdash; constexpr-safe character classification
  *        and transformation for 1-byte fundamental types.
  * @author
  *   JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
@@ -39,18 +39,18 @@
  *
  * <h3>Included utilities</h3>
  * <ul>
- *   <li><code>is_alpha()</code> — check for alphabetic characters (<tt>A–Z</tt>, <tt>a–z</tt>).</li>
- *   <li><code>is_digit()</code> — check for decimal digits (<tt>0–9</tt>).</li>
- *   <li><code>is_alnum()</code> — check for alphanumeric (letter or digit).</li>
- *   <li><code>is_hex_char()</code> — check for valid hexadecimal characters (<tt>0–9</tt>, <tt>A–F</tt>, <tt>a–f</tt>).</li>
- *   <li><code>is_base64_core()</code> — check if part of the standard Base64 alphabet (<tt>A–Z</tt>, <tt>a–z</tt>, <tt>0–9</tt>, '+', '/').</li>
- *   <li><code>is_base64url_core()</code> — check if part of the Base64URL alphabet (<tt>A–Z</tt>, <tt>a–z</tt>, <tt>0–9</tt>, '-', '_').</li>
- *   <li><code>is_ascii()</code> — verify whether a character is within the 7-bit ASCII range (<tt>0–127</tt>).</li>
- *   <li><code>is_printable_ascii()</code> — check if character is a printable 7-bit ASCII symbol (<tt>32–126</tt> inclusive).</li>
- *   <li><code>is_valid_char()</code> — check that character is not a control or DEL (returns true for all non-control bytes).</li>
- *   <li><code>to_upper()</code> — convert a letter to uppercase; leave others unchanged.</li>
- *   <li><code>to_lower()</code> — convert a letter to lowercase; leave others unchanged.</li>
- *   <li><code>flip_case()</code> — invert alphabetic case.</li>
+ *   <li><code>is_alpha()</code> &mdash; check for alphabetic characters (<tt>A–Z</tt>, <tt>a–z</tt>).</li>
+ *   <li><code>is_digit()</code> &mdash; check for decimal digits (<tt>0–9</tt>).</li>
+ *   <li><code>is_alnum()</code> &mdash; check for alphanumeric (letter or digit).</li>
+ *   <li><code>is_hex_char()</code> &mdash; check for valid hexadecimal characters (<tt>0–9</tt>, <tt>A–F</tt>, <tt>a–f</tt>).</li>
+ *   <li><code>is_base64_core()</code> &mdash; check if part of the standard Base64 alphabet (<tt>A–Z</tt>, <tt>a–z</tt>, <tt>0–9</tt>, '+', '/').</li>
+ *   <li><code>is_base64url_core()</code> &mdash; check if part of the Base64URL alphabet (<tt>A–Z</tt>, <tt>a–z</tt>, <tt>0–9</tt>, '-', '_').</li>
+ *   <li><code>is_ascii()</code> &mdash; verify whether a character is within the 7-bit ASCII range (<tt>0–127</tt>).</li>
+ *   <li><code>is_printable_ascii()</code> &mdash; check if character is a printable 7-bit ASCII symbol (<tt>32–126</tt> inclusive).</li>
+ *   <li><code>is_valid_char()</code> &mdash; check that character is not a control or DEL (returns true for all non-control bytes).</li>
+ *   <li><code>to_upper()</code> &mdash; convert a letter to uppercase; leave others unchanged.</li>
+ *   <li><code>to_lower()</code> &mdash; convert a letter to lowercase; leave others unchanged.</li>
+ *   <li><code>flip_case()</code> &mdash; invert alphabetic case.</li>
  * </ul>
  *
  * <h3>Design rationale</h3>
@@ -59,7 +59,7 @@
  *       higher-level or incompatible types such as <code>char8_t</code>, <code>std::byte</code>,
  *       and <code>bool</code>.</li>
  *   <li><b>No <code>remove_cvref</code> usage:</b>
- *       The concept explicitly expects the raw type form — it models the
+ *       The concept explicitly expects the raw type form &mdash; it models the
  *       <em>prototype</em> of character semantics. cv-qualifiers (e.g. <code>const Char</code>)
  *       can be manually specified if needed. References are intentionally
  *       excluded because <code>Char</code> is a metaprogramming token rather than
@@ -96,7 +96,7 @@ namespace jh::meta {
      * </ul>
      *
      * These are the <tt>clean</tt> core character types without cv-qualifiers or references,
-     * and are guaranteed to be exactly 1 byte in size (<tt>sizeof(T) == 1</tt>).
+     * and are guaranteed to be exactly 1 byte in size (<code>sizeof(T) == 1</code>).
      *
      * @note
      * <code>char8_t</code> is <b>not</b> included.
@@ -210,4 +210,4 @@ namespace jh::meta {
     [[nodiscard]] constexpr char flip_case(Char c) noexcept {
         return is_alpha(c) ? static_cast<Char>(c ^ 0x20) : c;
     }
-}
+} // namespace jh::meta

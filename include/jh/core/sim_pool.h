@@ -18,7 +18,7 @@
 /**
  * @file sim_pool.h
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- * @brief Smart Immutable-objects Managing Pool — lightweight, non-intrusive pooling for shared immutable objects.
+ * @brief Smart Immutable-objects Managing Pool &mdash; lightweight, non-intrusive pooling for shared immutable objects.
  *
  * <h3>Overview</h3>
  * <p>
@@ -33,8 +33,8 @@
  * <p>
  * Typical use cases include:
  * <ul>
- *   <li><b>Shared data</b> — e.g. <code>jh::immutable_str</code>, a read-only string type safely shareable across threads.</li>
- *   <li><b>Handle-like or resource objects</b> — where the identity-defining fields are immutable
+ *   <li><b>Shared data</b> &mdash; e.g. <code>jh::immutable_str</code>, a read-only string type safely shareable across threads.</li>
+ *   <li><b>Handle-like or resource objects</b> &mdash; where the identity-defining fields are immutable
  *       (e.g. texture handles, GPU resources, database tokens), while internal state may remain mutable.
  *       The user is responsible for synchronizing mutable access.</li>
  * </ul>
@@ -50,7 +50,7 @@
  *
  * <h4>Why <code>std::weak_ptr</code></h4>
  * <ul>
- *   <li>The pool never owns its elements — destruction order is irrelevant.</li>
+ *   <li>The pool never owns its elements &mdash; destruction order is irrelevant.</li>
  *   <li>If the pool is destroyed first, live <code>shared_ptr</code> objects outside remain valid and functional.</li>
  *   <li>Shared instances are guaranteed to be unique: any logically equivalent object
  *       constructed later will resolve to the same shared instance through the pool.</li>
@@ -61,7 +61,7 @@
  * <ol>
  *   <li>A new object is tentatively constructed (with forwarded arguments).</li>
  *   <li>The pool lock is acquired only when attempting insertion.</li>
- *   <li>If a logically equivalent instance already exists, it is reused —
+ *   <li>If a logically equivalent instance already exists, it is reused &mdash;
  *       the newly constructed temporary object is immediately discarded.</li>
  *   <li>If not found, the new object is inserted and its <code>shared_ptr</code> returned.</li>
  * </ol>
@@ -75,7 +75,7 @@
  * <p>
  * <b>Best Practice:</b>  
  * Because <code>sim_pool</code> adopts a <b>construct-first, lock-then-insert</b> strategy
- * — rather than holding the lock throughout construction —
+ * &mdash; rather than holding the lock throughout construction &mdash;
  * objects should support <b>low-cost provisional construction</b>.
  * That is, temporary instances may be created and discarded if an equivalent
  * object already exists in the pool.
@@ -86,7 +86,7 @@
  * identity is fixed but internal data may be initialized later),
  * a recommended pattern is <b>lazy initialization</b>:
  * <ul>
- *   <li>Construct only the immutable identity fields first — the parts used in hashing and equality.</li>
+ *   <li>Construct only the immutable identity fields first &mdash; the parts used in hashing and equality.</li>
  *   <li>Defer any heavy or mutable setup until first use, guarded by <code>std::once_flag</code> or similar.</li>
  * </ul>
  * This model aligns with the pool's design choice: since insertion is a single
@@ -96,21 +96,21 @@
  * 
  * <h4>Cleanup Model</h4>
  * <ul>
- *   <li><b>Attempt-based cleanup</b> — expired entries are removed automatically only
+ *   <li><b>Attempt-based cleanup</b> &mdash; expired entries are removed automatically only
  *       when insertion or expansion triggers capacity checks, or when
  *       <code>cleanup()</code> / <code>cleanup_shrink()</code> are explicitly invoked.</li>
  *
- *   <li><b>Non-aggressive reclamation</b> — the pool deliberately avoids immediate or
+ *   <li><b>Non-aggressive reclamation</b> &mdash; the pool deliberately avoids immediate or
  *       continuous shrinkage to prevent allocation jitter during high-frequency reuse.
  *       Cleanup is opportunistic and event-driven, never periodic.</li>
  *
- *   <li><b>Adaptive resizing</b> — during expansion attempts, the pool first performs
+ *   <li><b>Adaptive resizing</b> &mdash; during expansion attempts, the pool first performs
  *       cleanup and then decides whether to resize:
  *       <ul>
  *         <li>If the live entry count still exceeds the high-watermark threshold,
  *             capacity is doubled.</li>
  *         <li>If cleanup reveals significant vacancy (below the low-watermark threshold),
- *             the capacity may be reduced — even though triggered by expansion logic.</li>
+ *             the capacity may be reduced &mdash; even though triggered by expansion logic.</li>
  *       </ul>
  *       External manual calls to <code>cleanup_shrink()</code> are also supported
  *       when predictable memory release is desired.</li>
@@ -118,7 +118,7 @@
  *
  * <h4>Immutability Requirement</h4>
  * <p>
- * Objects stored in <code>sim_pool</code> must be immutable — or at least
+ * Objects stored in <code>sim_pool</code> must be immutable &mdash; or at least
  * <b>partially immutable</b> such that all fields affecting hashing and equality
  * remain constant throughout their lifetime.
  * </p>
@@ -129,16 +129,16 @@
  *   <li><code>jh::pool&lt;T&gt;</code> builds upon <code>sim_pool</code>,
  *       automatically deducing hash/equality semantics for duck-typed types
  *       exposing <code>hash()</code> and <code>operator==()</code>.</li>
- *   <li><code>sim_pool</code> is the generic foundation — flexible, type-agnostic,
+ *   <li><code>sim_pool</code> is the generic foundation &mdash; flexible, type-agnostic,
  *       and minimal in dependency.</li>
  * </ul>
  *
  * <h4>Key Advantages</h4>
  * <ul>
- *   <li>Stable sharing — live <code>shared_ptr</code>s outlive the pool safely.</li>
- *   <li>Zero registration overhead — no intrusive hooks or custom deleters.</li>
- *   <li>Behavior-triggered cleanup — avoids timing-based management threads.</li>
- *   <li>Thread-safe — concurrent reads and atomic insertion under shared mutex.</li>
+ *   <li>Stable sharing &mdash; live <code>shared_ptr</code>s outlive the pool safely.</li>
+ *   <li>Zero registration overhead &mdash; no intrusive hooks or custom deleters.</li>
+ *   <li>Behavior-triggered cleanup &mdash; avoids timing-based management threads.</li>
+ *   <li>Thread-safe &mdash; concurrent reads and atomic insertion under shared mutex.</li>
  *   <li>Ideal for high-frequency interning or immutable resource sharing.</li>
  * </ul>
  *
@@ -161,18 +161,6 @@ namespace jh {
 
     /**
      * @brief Weak pointer–observed object pool for immutable or structurally immutable objects.
-     *
-     * @tparam T   Object type stored in the pool. Must be immutable, or at least
-     *             partially immutable such that fields affecting hashing and equality
-     *             remain constant during its lifetime.
-     * @tparam Hash  Custom hashing functor defining content-based identity.
-     * @tparam Eq    Custom equality functor for comparing two weak pointers by
-     *               the underlying object's logical equality.
-     *
-     * @note
-     * Hash and Eq must operate on object content rather than pointer addresses.
-     * Expired weak pointers should be treated as distinct to allow deferred cleanup.
-     * Types managed by sim_pool are required to be immutable or structurally immutable.
      *
      * <h4>Core Behavior</h4>
      * <ol>
@@ -215,10 +203,23 @@ namespace jh {
      *       the pool is cleared or destroyed.</li>
      * </ul>
      *
+     * @tparam T   Object type stored in the pool. Must be immutable, or at least
+     *             partially immutable such that fields affecting hashing and equality
+     *             remain constant during its lifetime.
+     * @tparam Hash  Custom hashing functor defining content-based identity.
+     * @tparam Eq    Custom equality functor for comparing two weak pointers by
+     *               the underlying object's logical equality.
+     *
      * @note
+     * <p>
+     * Hash and Eq must operate on object content rather than pointer addresses.
+     * Expired weak pointers should be treated as distinct to allow deferred cleanup.
+     * Types managed by sim_pool are required to be immutable or structurally immutable.
+     * </p><p>
      * <code>jh::sim_pool</code> is the low-level foundation for <code>jh::pool</code> and similar components;
      * it provides deduplicated sharing, predictable cleanup, and minimal coupling
      * between object lifetime and pool existence.
+     * </p>
      */
     template<typename T, typename Hash, typename Eq>
     class sim_pool {
@@ -313,7 +314,7 @@ namespace jh {
          * @note
          * During move assignment, all existing weak references in the current pool
          * are released and replaced by those from the source pool.
-         * This only removes the pool's <em>observation</em> of those objects —
+         * This only removes the pool's <em>observation</em> of those objects &mdash;
          * their actual lifetimes remain intact because ownership is held by
          * external <code>std::shared_ptr</code> instances.
          *
@@ -373,7 +374,7 @@ namespace jh {
          * <ol>
          *   <li>A new object is tentatively constructed using the forwarded arguments.</li>
          *   <li>The pool lock is acquired only during insertion and lookup.</li>
-         *   <li>If a logically equivalent instance already exists, it is reused —
+         *   <li>If a logically equivalent instance already exists, it is reused &mdash;
          *       the temporary object is immediately discarded.</li>
          *   <li>If not found, the new object is inserted and its <code>shared_ptr</code> returned.</li>
          * </ol>
@@ -586,8 +587,8 @@ namespace jh {
          * <p>
          * After cleanup, the pool evaluates usage against two thresholds:
          * <ul>
-         *   <li><b>High-watermark:</b> <tt>0.875</tt> — expansion trigger.</li>
-         *   <li><b>Low-watermark:</b> <tt>0.25</tt> — shrink trigger.</li>
+         *   <li><b>High-watermark:</b> <tt>0.875</tt> &mdash; expansion trigger.</li>
+         *   <li><b>Low-watermark:</b> <tt>0.25</tt> &mdash; shrink trigger.</li>
          * </ul>
          * If the active entry count exceeds <tt>87.5%</tt> of capacity or the
          * reserved limit itself, the pool doubles its capacity.
@@ -610,7 +611,7 @@ namespace jh {
          *
          * <p><strong>Behavior Characteristics</strong></p>
          * <ul>
-         *   <li>Both expansion and shrinkage are <strong>gradual</strong> — capacity
+         *   <li>Both expansion and shrinkage are <strong>gradual</strong> &mdash; capacity
          *       changes by doubling or halving, avoiding aggressive reallocation.</li>
          *   <li>The pool never shrinks below <code>MIN_RESERVED_SIZE</code>,
          *       maintaining a stable baseline.</li>

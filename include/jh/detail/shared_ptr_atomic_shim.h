@@ -33,7 +33,7 @@
  * The C++ standard defines atomic access to <code>std::shared_ptr</code>
  * exclusively through the free functions specified in:
  * <a href="https://timsong-cpp.github.io/cppwp/n4659/util.smartptr.shared.atomic">
- *   &sect;23.11.2.6 — shared_ptr atomic access
+ *   &sect;23.11.2.6 &mdash; shared_ptr atomic access
  * </a>
  * </p>
  *

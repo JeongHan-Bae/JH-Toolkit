@@ -1,0 +1,28 @@
+/**
+ * @file concurrency
+ * @brief Forward-aggregator header for <code>jh::conc</code>.
+ *
+ * <p>
+ * This header aggregates all concurrency-related facilities under the
+ * <code>jh::conc</code> namespace.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/concurrency&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it includes the underlying concurrency modules from
+ * <code>jh/concurrent/</code> and exposes them collectively through
+ * <code>jh::conc</code>.
+ * </p>
+ *
+ * <h4>Overview</h4>
+ * <ul>
+ *   <li>Defines <code>jh::conc</code> as the user-facing namespace.</li>
+ *   <li>Aggregates all concurrency components.</li>
+ *   <li>All implementations are located under
+ *       <code>jh/concurrent/&#42;.h</code>.</li>
+ * </ul>
+ */
+#pragma once
+
+#include "jh/concurrent/occ_box.h"

@@ -1,6 +1,6 @@
 /**
  * @file serio
- * @brief Forward-aggregator header for <code>jh::serio</code> — the Serialization I/O utilities.
+ * @brief Forward-aggregator header for <code>jh::serio</code> &mdash; the Serialization I/O utilities.
  *
  * <p>
  * This header serves as the unified include point for all serialization and deserialization

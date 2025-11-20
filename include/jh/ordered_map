@@ -1,3 +1,22 @@
+/**
+ * @file ordered_map
+ * @brief Forwarding header for <code>jh::ordered_map</code> and <code>jh::ordered_set</code>.
+ *
+ * <p>
+ * This header provides the canonical include entry for
+ * <code>jh::ordered_map&lt;K,V&gt;</code> and <code>jh::ordered_set&lt;K&gt;</code> &mdash;
+ * contiguous, fragmentation-free ordered associative containers based on a
+ * vector-backed AVL tree.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/ordered_map&gt;</code></pre>
+ *
+ * <p>
+ * Internally, this file forwards to <code>jh/core/ordered_map.h</code>
+ * and defines no additional symbols.
+ * </p>
+ */
+
 #pragma once
 
 #include "jh/core/ordered_map.h"

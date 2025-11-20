@@ -27,10 +27,10 @@
  * </p>
  *
  * <ul>
- *   <li><code>huff128</code> — Standard Huffman for ASCII (0–127)</li>
- *   <li><code>huff256</code> — Standard Huffman for full byte range (0–255)</li>
- *   <li><code>huff128_canonical</code> — Canonical Huffman (ASCII)</li>
- *   <li><code>huff256_canonical</code> — Canonical Huffman (full byte range)</li>
+ *   <li><code>huff128</code> &mdash; Standard Huffman for ASCII (0–127)</li>
+ *   <li><code>huff256</code> &mdash; Standard Huffman for full byte range (0–255)</li>
+ *   <li><code>huff128_canonical</code> &mdash; Canonical Huffman (ASCII)</li>
+ *   <li><code>huff256_canonical</code> &mdash; Canonical Huffman (full byte range)</li>
  * </ul>
  *
  * <p>
@@ -203,7 +203,7 @@ namespace jh::serio {
                 std::uint16_t symbols[33][N];  ///< Symbol lookup table
             };
         };
-    }
+    } // namespace detail
 
     /**
      * @brief Enumeration of supported Huffman algorithm variants.
@@ -234,7 +234,7 @@ namespace jh::serio {
      *
      * <h3>Generated file format</h3>
      * <ul>
-     *   <li><b>Header</b> — user-defined signature (<code>Signature</code>)</li>
+     *   <li><b>Header</b> &mdash; user-defined signature (<code>Signature</code>)</li>
      *   <li><b>Canonical mode</b>: code-length table, total bits, bitstream</li>
      *   <li><b>Standard mode</b>: full frequency table, total bits, bitstream</li>
      * </ul>
@@ -587,8 +587,8 @@ namespace jh::serio {
          * <p>
          * Format written depends on <code>Algo</code>:
          * <ul>
-         *   <li><b>Canonical</b>: code-lengths → total bits → bitstream</li>
-         *   <li><b>Standard</b>: full frequency table → total bits → bitstream</li>
+         *   <li><b>Canonical</b>: code-lengths &rarr; total bits &rarr; bitstream</li>
+         *   <li><b>Standard</b>: full frequency table &rarr; total bits &rarr; bitstream</li>
          * </ul>
          * </p>
          *

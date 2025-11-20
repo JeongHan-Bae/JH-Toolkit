@@ -4,7 +4,7 @@
  *
  * <p>
  * This header provides the canonical include entry for
- * <code>jh::sim_pool&lt;T, Hash, Eq&gt;</code> — the
+ * <code>jh::sim_pool&lt;T, Hash, Eq&gt;</code> &mdash; the
  * <strong>Smart Immutable-objects Managing Pool</strong>, a lightweight,
  * non-intrusive pool for shared immutable or structurally immutable objects.
  * </p>

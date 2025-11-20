@@ -1,0 +1,29 @@
+/**
+ * @file sync
+ * @brief Forward-aggregator header for <code>jh::sync</code>.
+ *
+ * <p>
+ * This header aggregates all synchronous facilities under the
+ * <code>jh::sync</code> namespace.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/sync&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it includes the underlying synchronous modules from
+ * <code>jh/synchronous/</code> and exposes them collectively through
+ * <code>jh::sync</code>.
+ * </p>
+ *
+ * <h4>Overview</h4>
+ * <ul>
+ *   <li>Defines <code>jh::sync</code> as the user-facing namespace.</li>
+ *   <li>Aggregates all synchronous components.</li>
+ *   <li>All implementations are located under
+ *       <code>jh/synchronous/&#42;.h</code>.</li>
+ * </ul>
+ */
+#pragma once
+
+#include "jh/synchronous/ipc.h"
+#include "jh/synchronous/const_lock.h"

@@ -16,19 +16,19 @@
  *
  * <h4>Included Components</h4>
  * <ul>
- *   <li><code>ipc_limits</code> — compile-time IPC capacity and name validation utilities.</li>
- *   <li><code>process_mutex</code> — basic inter-process mutex, functionally
+ *   <li><code>ipc_limits</code> &mdash; compile-time IPC capacity and name validation utilities.</li>
+ *   <li><code>process_mutex</code> &mdash; basic inter-process mutex, functionally
  *       similar to <code>std::timed_mutex</code>; non-recursive and minimal,
  *       used as the fundamental synchronization primitive.</li>
- *   <li><code>process_cond_var</code> — condition variable for processes.</li>
- *   <li><code>process_counter</code> — atomic counter for process coordination.</li>
- *   <li><code>process_shm_obj</code> — shared memory allocator and container.</li>
- *   <li><code>shared_process_mutex</code> — engineering-grade reader–writer lock
+ *   <li><code>process_cond_var</code> &mdash; condition variable for processes.</li>
+ *   <li><code>process_counter</code> &mdash; atomic counter for process coordination.</li>
+ *   <li><code>process_shm_obj</code> &mdash; shared memory allocator and container.</li>
+ *   <li><code>shared_process_mutex</code> &mdash; engineering-grade reader–writer lock
  *       built on shared memory, conceptually similar to
  *       <code>std::shared_timed_mutex</code> but supporting
  *       <b>reentrancy</b> and <b>privileged read-to-write promotion</b>
  *       under elevated contexts.</li>
- *   <li><code>process_launcher</code> — process orchestration utilities.</li>
+ *   <li><code>process_launcher</code> &mdash; process orchestration utilities.</li>
  * </ul>
  *
  * <h4>Philosophy</h4>
@@ -42,7 +42,7 @@
  * <p>
  * Each primitive (<code>mutex</code>, <code>condition</code>, <code>counter</code>,
  * <code>shared memory</code>) is a self-contained, globally addressable IPC object.
- * No central allocator or parent process is required — all participants synchronize
+ * No central allocator or parent process is required &mdash; all participants synchronize
  * via shared OS namespaces.
  * </p>
  *
@@ -62,7 +62,7 @@
  * <ul>
  *   <li>Each synchronization object (e.g., semaphore, shared memory region, condition)
  *       is bound to a <b>name known at compile time</b>.</li>
- *   <li>The name serves as the <b>linkage contract</b> between processes —
+ *   <li>The name serves as the <b>linkage contract</b> between processes &mdash;
  *       identical template literals across binaries guarantee consistent mapping.</li>
  *   <li>Invalid or conflicting names produce <b>compile-time errors</b>, ensuring
  *       namespace safety and deterministic inter-process behavior.</li>
@@ -72,7 +72,7 @@
  *
  * <p>
  * This model guarantees mapping consistency, eliminates runtime name collisions,
- * and provides a static coordination topology — effectively
+ * and provides a static coordination topology &mdash; effectively
  * <b>compile-time declared IPC fabric</b>.
  * </p>
  */

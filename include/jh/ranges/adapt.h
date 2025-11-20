@@ -153,9 +153,9 @@ namespace jh::ranges {
      *
      * Passing <b>non-copyable</b> or <b>non-movable</b> <tt>ranges</tt>
      * or any <b>non-standard</b> <tt>sequences</tt> through <code>adapt</code> (or equivalently
-     * <code>jh::to_range()</code>) constructs a safe proxy —
+     * <code>jh::to_range()</code>) constructs a safe proxy &mdash;
      * typically a <code>std::ranges::subrange</code> or
-     * <code>jh::ranges::range_wrapper</code> — that <b>restores
+     * <code>jh::ranges::range_wrapper</code> &mdash; that <b>restores
      * viewable_range compatibility</b>.
      *
      * Once adapted, these ranges can participate freely in

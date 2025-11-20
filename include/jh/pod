@@ -1,6 +1,6 @@
 /**
  * @file pod
- * @brief Forward-aggregator header for <code>jh::pod</code> — the Plain-Old-Data utilities.
+ * @brief Forward-aggregator header for <code>jh::pod</code> &mdash; the Plain-Old-Data utilities.
  *
  * <p>
  * This header serves as the unified include point for all Plain-Old-Data (POD) and lightweight
@@ -19,7 +19,7 @@
  * <h4>Overview</h4>
  * <ul>
  *   <li>Defines <code>jh::pod</code> as the user-facing namespace for lightweight data utilities.</li>
- *   <li>Aggregates all POD-related helpers — <code>pair</code>, <code>array</code>,
+ *   <li>Aggregates all POD-related helpers &mdash; <code>pair</code>, <code>array</code>,
  *       <code>optional</code>, <code>tuple</code>, etc.</li>
  *   <li>Focuses on constexpr-capable, header-only, type-safe POD abstractions.</li>
  * </ul>

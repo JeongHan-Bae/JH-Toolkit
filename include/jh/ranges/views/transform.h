@@ -26,10 +26,10 @@
  * The <code>jh::ranges::views::transform</code> adaptor performs a compile-time
  * semantic dispatch between two transformation behaviors:
  * <ul>
- *   <li><code>jh::ranges::views::vis_transform</code> — when the pair <tt>&lt;R, F&gt;</tt>
+ *   <li><code>jh::ranges::views::vis_transform</code> &mdash; when the pair <tt>&lt;R, F&gt;</tt>
  *       satisfies <code>jh::concepts::vis_function_for</code>, meaning the range
  *       is non-consuming and the function is a pure observation (returns non-void).</li>
- *   <li><code>std::views::transform</code> — otherwise, for standard consumptive
+ *   <li><code>std::views::transform</code> &mdash; otherwise, for standard consumptive
  *       transformations that may alter or terminate the underlying stream.</li>
  * </ul>
  * </p>
@@ -130,13 +130,13 @@ namespace jh::ranges::views {
         struct transform_fn {
 
             /**
-             * @brief Direct form — immediately constructs the selected transform view.
+             * @brief Direct form &mdash; immediately constructs the selected transform view.
              *
              * @tparam R Range type.
              * @tparam F Callable type.
              * @param r Source range.
              * @param f Function applied to each element.
-             * @return A transform view — either non-consuming or consumptive depending on semantics.
+             * @return A transform view &mdash; either non-consuming or consumptive depending on semantics.
              */
             template<std::ranges::range R, typename F>
             constexpr auto operator()(R &&r, F &&f) const {
@@ -147,7 +147,7 @@ namespace jh::ranges::views {
             }
 
             /**
-             * @brief Pipe form — captures a callable into a reusable closure.
+             * @brief Pipe form &mdash; captures a callable into a reusable closure.
              *
              * @tparam F The callable type.
              * @param f The function to apply lazily.

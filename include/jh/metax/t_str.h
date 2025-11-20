@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file t_str.h
+ * @file t_str.h (metax)
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief A C++20 compile-time string wrapper enabling string literals as non-type template parameters (NTTP).
  *
@@ -102,12 +102,14 @@ namespace jh::meta {
         friend
         struct t_str;
 
-        const jh::pod::array<char, N> storage; ///< Fixed-size storage for the compile-time string (null-terminated).
+        /// @brief Fixed-size storage for the compile-time string (null-terminated).
+        const jh::pod::array<char, N> storage;
 
         using c_hash = jh::meta::c_hash;
 
+        /// @brief build from underlying buffer
         constexpr explicit t_str(const jh::pod::array<char, N> &arr) noexcept
-                : storage(arr) {} ///< Private constructor from prebuilt array, used internally.
+                : storage(arr) {}
     private:
 
         static constexpr jh::pod::array<char, N> make_array(const char(&src)[N]) {
@@ -146,7 +148,7 @@ namespace jh::meta {
          * where <code>u8""</code> string literals yield <code>const char8_t[]</code>.
          * Each element is converted to <code>char</code> for uniform storage.
          *
-         * This is a non-standard compatibility feature — since in most modern
+         * This is a non-standard compatibility feature &mdash; since in most modern
          * platforms, <code>""</code> literals are already UTF-8 encoded.
          * The intent is only to allow <code>u8""</code> literals to be used
          * seamlessly as NTTP, consistent with regular string literals.
@@ -532,7 +534,7 @@ namespace jh::meta {
          *
          * @details
          * <ul>
-         *   <li>The returned array contains exactly <code>N - 1</code> bytes —
+         *   <li>The returned array contains exactly <code>N - 1</code> bytes &mdash;
          *       the effective string length.</li>
          *   <li>The array does <em>not</em> contain a null terminator, because it
          *       represents a binary buffer, not a C-string.</li>
@@ -580,7 +582,7 @@ namespace jh::meta {
          * @details
          * <ul>
          *   <li>This function treats <code>bytes</code> as pure binary data.</li>
-         *   <li>No validation is performed — any byte value (0–255) is accepted.</li>
+         *   <li>No validation is performed &mdash; any byte value (0–255) is accepted.</li>
          *   <li>The resulting <code>t_str</code> is always null-terminated internally,
          *       because <code>t_str</code> is semantically a C-string wrapper.</li>
          *   <li>

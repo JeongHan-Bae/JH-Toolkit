@@ -188,7 +188,7 @@ namespace jh::pod {
             constexpr auto status = linear_status<C>;
             return status.first != data_status::none && status.second != len_status::none;
         }();
-    }
+    } // namespace detail
 
     /**
      * @brief Non-owning typed view over a contiguous memory block.
@@ -319,13 +319,13 @@ namespace jh::pod {
      *
      * @note
      * <ul>
-     *   <li><code>data</code> and <code>data()</code> are mutually exclusive — defining both is undefined behavior.</li>
+     *   <li><code>data</code> and <code>data()</code> are mutually exclusive &mdash; defining both is undefined behavior.</li>
      *   <li><code>len</code> and <code>size()</code> may coexist, but they are expected to report identical lengths.</li>
      *   <li>If your container exposes inconsistent or unexpected accessors,
      *       you can define <code>my_ns::get_size(my_ns::MyContainer)</code>
      *       or <code>get_data()</code> via ADL to override detection.</li>
      *   <li>If even ADL overrides cannot match your intended semantics,
-     *       do not use this helper — manually construct <code>span{ptr, len}</code> instead.</li>
+     *       do not use this helper &mdash; manually construct <code>span{ptr, len}</code> instead.</li>
      *   <li>This is a syntactic convenience, not a semantic requirement.</li>
      * </ul>
      *
