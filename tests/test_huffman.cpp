@@ -4,13 +4,6 @@
 #include <catch2/catch_all.hpp>
 #include "jh/serio"
 #include "jh/pod"
-#include "jh/macros/platform.h"
-
-#if IS_GCC
-#if (__GNUC__ < 14) || (__GNUC__ == 14 && __GNUC_MINOR__ < 3)
-        #define JH_SKIP_DEEP_CANONICAL 1
-    #endif
-#endif
 
 #include <sstream>
 
@@ -154,14 +147,6 @@ TEST_CASE("Base64 + Huff128Canonical roundtrip") {
     }
 }
 
-#if defined(JH_SKIP_DEEP_CANONICAL)
-
-TEST_CASE("POD Payload roundtrip via huff256_canonical (skipped: GCC < 14.3)") {
-    REQUIRE(true);
-}
-
-#else
-
 __attribute__((noinline))
 static jh::pod::bytes_view make_view(Payload* data, size_t n) {
     return jh::pod::bytes_view::from(data, n);
@@ -209,8 +194,6 @@ TEST_CASE("POD Payload roundtrip via huff256_canonical (binary o/istringstream)"
     // -------- 6) compare --------
     REQUIRE(vec == vec2);
 }
-
-#endif
 
 TEST_CASE("Huffman benchmark") {
     constexpr size_t N = 200'000;
