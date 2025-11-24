@@ -121,7 +121,7 @@ namespace jh::concepts {
      * <code>range_storage_traits&lt;R&gt;</code> defines the storage model for
      * wrapper-based view types that internally hold another range, view, or
      * sequence &mdash; for example:
-     * <code>jh::ranges::range_wrapper</code> and
+     * <code>jh::ranges::range_adaptor</code> and
      * <code>jh::ranges::vis_transform_view</code>.
      * </p>
      *

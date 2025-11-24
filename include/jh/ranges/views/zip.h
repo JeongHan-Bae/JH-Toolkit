@@ -95,7 +95,7 @@
  * (e.g. <code>jh::runtime_arr&lt;T&gt;</code>) are proxied by
  * <code>std::ranges::subrange</code> to ensure safe reference semantics.
  * For other sequence-like types that do not formally model <code>std::ranges::range</code>,
- * <code>jh::to_range()</code> constructs a <code>jh::ranges::range_wrapper</code>,
+ * <code>jh::to_range()</code> constructs a <code>jh::ranges::range_adaptor</code>,
  * which actively completes missing iterator traits and category tags through
  * <code>jh::ranges::detail::completed_iterator</code>.
  * </p>

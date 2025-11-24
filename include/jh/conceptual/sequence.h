@@ -49,7 +49,7 @@
  *     Otherwise &mdash; for non-movable, non-copyable lvalues &mdash; it automatically
  *     produces a <code>std::ranges::subrange</code> to preserve reference validity.
  *     For non-range sequences, it wraps them in a
- *     <code>jh::ranges::range_wrapper</code>.
+ *     <code>jh::ranges::range_adaptor</code>.
  *   </li>
  * </ul>
  *
@@ -154,10 +154,10 @@ namespace jh::concepts {
 
 namespace jh::ranges {
     template<typename Seq>
-    class range_wrapper;
+    class range_adaptor;
 
     template<typename Seq>
-    range_wrapper(Seq &&) -> range_wrapper<Seq>;
+    range_adaptor(Seq &&) -> range_adaptor<Seq>;
 } // namespace jh::ranges
 
 namespace jh::concepts::detail {
@@ -197,12 +197,12 @@ namespace jh::concepts::detail {
      *     <strong>If the input does not model</strong> <code>std::ranges::range</code>:
      *     <ul>
      *       <li>
-     *         Left-value sequences are wrapped by <code>jh::ranges::range_wrapper&lt;Seq&gt;</code>
+     *         Left-value sequences are wrapped by <code>jh::ranges::range_adaptor&lt;Seq&gt;</code>
      *         (by reference).
      *       </li>
      *       <li>
      *         Right-value or value sequences are wrapped by
-     *         <code>jh::ranges::range_wrapper&lt;S&gt;</code> (moved).
+     *         <code>jh::ranges::range_adaptor&lt;S&gt;</code> (moved).
      *       </li>
      *     </ul>
      *   </li>
@@ -219,7 +219,7 @@ namespace jh::concepts::detail {
      * @param s The input sequence to convert.
      * @return A guaranteed <code>std::ranges::range</code>-compatible object:
      *         either the same range, a <code>std::ranges::subrange</code>,
-     *         or a <code>jh::ranges::range_wrapper</code>.
+     *         or a <code>jh::ranges::range_adaptor</code>.
      *
      * @note This function ensures algorithm-level compatibility &mdash; any valid
      *       <code>sequence</code> passed through <code>jh::to_range()</code>
@@ -249,10 +249,10 @@ namespace jh::concepts::detail {
             } else {
                 if constexpr (std::is_lvalue_reference_v<Seq>) {
                     // by ref
-                    return jh::ranges::range_wrapper<Seq>(s);
+                    return jh::ranges::range_adaptor<Seq>(s);
                 } else {
                     // if a value or a right value provided, move it
-                    return jh::ranges::range_wrapper<S>(std::move(s));
+                    return jh::ranges::range_adaptor<S>(std::move(s));
                 }
             }
         }
@@ -311,7 +311,7 @@ namespace jh::concepts {
      *
      * <p>
      * If the original <code>sequence</code> does not provide a deducible
-     * difference type, the internal <code>range_wrapper</code> automatically
+     * difference type, the internal <code>range_adaptor</code> automatically
      * falls back to <code>std::ptrdiff_t</code> to ensure STL algorithm
      * compatibility.
      * </p>
@@ -324,4 +324,4 @@ namespace jh::concepts {
 
 } // namespace jh::concepts
 
-#include "jh/ranges/range_wrapper.h"
+#include "jh/ranges/range_adaptor.h"

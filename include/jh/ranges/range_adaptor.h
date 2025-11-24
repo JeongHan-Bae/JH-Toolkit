@@ -1,6 +1,6 @@
 /**
  * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo@gmail.com&gt;
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
  * \endverbatim
  */
 /**
- * @file range_wrapper.h (ranges)
+ * @file range_adaptor.h (ranges)
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief STL-compatible adapter for duck-typed sequences and iterators.
  *
@@ -28,7 +28,7 @@
  *   <li><code>jh::ranges::detail::completed_iterator</code> &mdash; a behavioral
  *       iterator adaptor that completes any duck-typed iterator to full
  *       STL iterator semantics.</li>
- *   <li><code>jh::ranges::range_wrapper</code> &mdash; a lightweight view class
+ *   <li><code>jh::ranges::range_adaptor</code> &mdash; a lightweight view class
  *       that exposes a sequence as a <code>std::ranges::range</code>,
  *       using <code>completed_iterator</code> for <code>begin()</code>
  *       and directly forwarding <code>end()</code>.</li>
@@ -60,7 +60,7 @@ namespace jh::ranges {
          *   <li>Ensures compatibility with a corresponding sentinel type.</li>
          * </ul>
          *
-         * Used internally by <code>jh::ranges::range_wrapper</code> to normalize
+         * Used internally by <code>jh::ranges::range_adaptor</code> to normalize
          * custom iterators for range-based operations.
          *
          * @tparam Inner   The underlying iterator type.
@@ -328,12 +328,12 @@ namespace jh::ranges {
      *
      * @note
      * If the sequence's <code>begin()</code> and <code>end()</code> types are identical,
-     * the wrapper transparently returns a <code>completed_iterator</code> for both.
+     * the adaptor transparently returns a <code>completed_iterator</code> for both.
      * This allows the resulting view to model <code>std::ranges::common_range</code>,
      * enabling tighter interoperability with standard range algorithms.
      */
     template<typename Seq>
-    class range_wrapper : public std::ranges::view_interface<range_wrapper<Seq>> {
+    class range_adaptor : public std::ranges::view_interface<range_adaptor<Seq>> {
         using traits = jh::concepts::range_storage_traits<Seq, true>;
         typename traits::stored_t seq_;
     public:
@@ -342,7 +342,7 @@ namespace jh::ranges {
         using sentinel = decltype(std::declval<Seq &>().end());
         using iterator = detail::completed_iterator<inner_iterator, sentinel>;
 
-        explicit range_wrapper(Seq &&s)
+        explicit range_adaptor(Seq &&s)
                 : seq_(traits::wrap(std::forward<Seq>(s))) {}
 
         auto begin() noexcept(noexcept(get().begin())) { return iterator(get().begin()); }
@@ -408,6 +408,6 @@ namespace std::ranges {
      * std::ranges::borrowed_range</a>
      */
     template<typename SeqType>
-    [[maybe_unused]] [[maybe_unused]] inline constexpr bool enable_borrowed_range<jh::ranges::range_wrapper<SeqType>> =
+    [[maybe_unused]] [[maybe_unused]] inline constexpr bool enable_borrowed_range<jh::ranges::range_adaptor<SeqType>> =
             std::is_lvalue_reference_v<SeqType>;
 } // namespace std::ranges

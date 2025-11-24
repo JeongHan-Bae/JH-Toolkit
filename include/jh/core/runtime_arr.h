@@ -206,8 +206,6 @@
  *
  * @see jh::pod::pod_like
  * @see jh::typed::monostate
- * @see jh::concepts::iterator
- * @see jh::sequence
  *
  * @version <pre>1.3.x</pre>
  * @date <pre>2025</pre>

@@ -41,7 +41,7 @@ namespace jh::pod {
      *
      * This structure is designed for:
      * <ul>
-     *   <li>Raw memory containers (<code>pod_stack</code>, <code>arena</code>)</li>
+     *   <li>Raw memory containers (<code>jh::runtime_arr</code>, <code>arena</code>)</li>
      *   <li>In-place value blocks (<code>placement-new</code>, <code>mmap</code>, <code>.data</code> segments)</li>
      *   <li>Zero-allocation, constexpr-safe stack usage</li>
      * </ul>

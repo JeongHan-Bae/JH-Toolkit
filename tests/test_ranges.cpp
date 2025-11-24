@@ -12,13 +12,10 @@
 #include <deque>
 #include <stack>
 #include <memory_resource>
-
-#include "jh/ranges/views/flatten.h" // force include to compact with 1.3.x-support-dev branch
-#include "jh/ranges/views/common.h"  // same as above
 #include "jh/views"
 #include "jh/pod"
 #include "jh/runtime_arr"
-#include "jh/ranges_ext"    // temporarily located ranges_ext tests here for 1.3.x series
+#include "jh/ranges_ext"
 
 // ------------------------------
 //  local helper types
