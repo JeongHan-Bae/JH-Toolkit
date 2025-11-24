@@ -838,13 +838,13 @@ TEST_CASE("string_view hash reflects exact character content") {
         auto h5 = sv1.hash(c_hash::murmur64);
         auto h6 = sv1.hash(c_hash::xxhash64);
 
-        REQUIRE(h1 != -1);
-        REQUIRE(h2 != -1);
-        REQUIRE(h3 != -1);
-        REQUIRE(h4 != -1);
-        REQUIRE(h5 != -1);
-        REQUIRE(h5 != -1);
-        REQUIRE(h6 != -1);
+        REQUIRE(h1 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h2 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h3 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h4 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h5 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h5 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h6 != static_cast<std::uint64_t>(-1));
 
         // Same view, multiple algorithms must differ
         REQUIRE(h1 != h2);

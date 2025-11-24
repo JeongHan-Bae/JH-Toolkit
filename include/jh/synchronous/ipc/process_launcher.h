@@ -421,7 +421,8 @@ namespace jh::sync::ipc {
          */
         static handle start() {
 #if IS_WINDOWS
-            STARTUPINFO si{ sizeof(si) };
+            STARTUPINFO si{};
+            si.cb = sizeof(si);
             PROCESS_INFORMATION pi{};
 
             // Ensure consistent semantics with POSIX: always launch from current directory
