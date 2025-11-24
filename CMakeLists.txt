@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)  # Ensure standardized installation directories
 
-set(PROJECT_VERSION 1.3.3)
+set(PROJECT_VERSION 1.4.0)
 
 # Register custom build type
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel;FastDebug" CACHE STRING "" FORCE)
@@ -122,13 +122,10 @@ if (ENABLE_POD)
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh
     )
 
-    # Install depending headers in directory 'utils/'
+    # Install depending headers in directory 'typing/'
     install(FILES
-            ${CMAKE_SOURCE_DIR}/include/jh/utils/hash_fn.h
-            ${CMAKE_SOURCE_DIR}/include/jh/utils/typed.h
-            ${CMAKE_SOURCE_DIR}/include/jh/utils/base64.h
-            ${CMAKE_SOURCE_DIR}/include/jh/utils/platform.h # alias in 1.3.x, will be removed in 1.4.0
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/utils
+            ${CMAKE_SOURCE_DIR}/include/jh/typing/monostate.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/typing
     )
 
     # Install depending headers in directory 'macros/'
@@ -136,6 +133,24 @@ if (ENABLE_POD)
             ${CMAKE_SOURCE_DIR}/include/jh/macros/platform.h
             ${CMAKE_SOURCE_DIR}/include/jh/macros/type_name.h
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/macros
+    )
+
+    # Install depending headers in directory 'metax/'
+    install(FILES
+            ${CMAKE_SOURCE_DIR}/include/jh/metax/hash.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/metax
+    )
+
+    # Install depending headers in directory 'serialize_io/'
+    install(FILES
+            ${CMAKE_SOURCE_DIR}/include/jh/serialize_io/base64.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/serialize_io
+    )
+
+    # Install depending headers in directory 'detail/'
+    install(FILES
+            ${CMAKE_SOURCE_DIR}/include/jh/detail/base64_common.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/detail
     )
 
     # Install the INTERFACE target
