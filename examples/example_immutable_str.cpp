@@ -271,80 +271,6 @@ namespace example {
         switch_case_usage("another_string");
         switch_case_usage("some random string");
     }
-    /**
-     * @brief Demonstrates how to use `pod::array<char, N>` as a lightweight string buffer.
-     *
-     * - Automatically zero-initialized
-     * - Acts like `char[N]`, but is POD-safe
-     * - Compatible with `pod::string_view` and `immutable_str`
-     */
-    void pod_string_buffer_demo() {
-        std::cout << "\n\U0001F539 POD Array as String Buffer:\n";
-
-        jh::pod::array<char, 32> buffer = {}; // all zeros
-        const auto message = "Hello, POD!";
-        std::memcpy(buffer.data, message, std::strlen(message)); // safe since length < 32
-
-        // Use pod::string_view to wrap the array (auto size calculation)
-        const jh::pod::string_view sv{buffer.data, std::strlen(message)};
-        std::cout << "pod::string_view: " << std::string_view(sv.data, sv.len) << "\n";
-
-        // Construct immutable_str from buffer
-        const jh::immutable_str imm_str_from_pod(static_cast<const char *>(buffer.data)); // ensure const
-        std::cout << "immutable_str from pod::array: " << imm_str_from_pod.view() << "\n";
-
-        // Compare string_view with immutable_str
-        std::cout << "Content match: " << (sv == imm_str_from_pod.pod_view()) << "\n";
-    }
-    constexpr char hex_digit(const uint8_t v) {
-        return v < 10 ? '0' + v : 'A' - 10 + v; // NOLINT
-    }
-
-    template <size_t N>
-    struct MiniBigInt {
-        static_assert(N >= 8 && (N & (N - 1)) == 0, "N must be power of 2 and >= 8");
-
-        std::byte data[N]{};
-
-        static constexpr MiniBigInt from_uint64(const uint64_t x) { // NOLINT
-            MiniBigInt out{};
-            for (size_t i = 0; i < N && i < 8; ++i)
-                out.data[N - 1 - i] = static_cast<std::byte>((x >> (i * 8)) & 0xFF);
-            return out;
-        }
-
-        [[nodiscard]] constexpr jh::pod::array<char, N * 2 + 3> to_hex_cstr() const {
-            jh::pod::array<char, N * 2 + 3> result{};
-            result[0] = '0';
-            result[1] = 'x';
-            for (size_t i = 0; i < N; ++i) {
-                const auto byte = std::to_integer<uint8_t>(data[i]);
-                result[2 + i * 2]     = hex_digit(byte >> 4);
-                result[2 + i * 2 + 1] = hex_digit(byte & 0x0F);
-            }
-            result[N * 2 + 2] = '\0';
-            return result;
-        }
-
-        constexpr bool operator==(const MiniBigInt& other) const {
-            for (size_t i = 0; i < N; ++i)
-                if (data[i] != other.data[i]) return false;
-            return true;
-        }
-    };
-
-    template <size_t N>
-    std::ostream& operator<<(std::ostream& os, const MiniBigInt<N>& v) {
-        return os << v.to_hex_cstr().data;
-    }
-
-    void self_def_structure_serialization() {
-        std::cout << "\n\U0001F539 POD Array for Seralization:\n";
-        constexpr MiniBigInt<16> id = MiniBigInt<16>::from_uint64(0x12345678);
-        std::cout << "Hex: " << id << "\n";
-        // Output: Hex: 0x00000000000000000000000012345678
-    }
-
 
 } // namespace example
 
@@ -359,7 +285,5 @@ int main() {
     example::safe_construct();
     example::pooling();
     example::immutable_str_matching();
-    example::pod_string_buffer_demo();
-    example::self_def_structure_serialization();
     return 0;
 }

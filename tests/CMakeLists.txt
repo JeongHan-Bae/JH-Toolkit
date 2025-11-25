@@ -16,29 +16,29 @@ FetchContent_MakeAvailable(Catch2)
 # Format: target_name source_file linked_library
 # ---------------------------
 set(TESTS
-        test_generator     test_generator.cpp     jh-toolkit
-        test_immutable_str test_immutable_str.cpp jh-toolkit-static
-        test_sequence      test_sequence.cpp      jh-toolkit
-        test_pool          test_pool.cpp          jh-toolkit
-        test_runtime_arr   test_runtime_arr.cpp   jh-toolkit-static
-        test_ranges        test_ranges.cpp        jh-toolkit
-        test_pods          test_pod_sys.cpp       jh-toolkit
-        test_base64        test_base64.cpp        jh-toolkit
-        test_t_str         test_t_str.cpp         jh-toolkit
-        test_process_lock  test_process_lock.cpp  jh-toolkit
-        test_occ           test_occ.cpp           jh-toolkit
-        test_proc_mapping  test_proc_mapping.cpp  jh-toolkit
-        test_proc_cond     test_proc_cond.cpp     jh-toolkit
-        test_shproc_lock   test_shproc_lock.cpp   jh-toolkit
-        test_fiber         test_fiber.cpp         jh-toolkit
-        test_lookup_map    test_lookup_map.cpp    jh-toolkit
-        test_huffman       test_huffman.cpp       jh-toolkit
-        test_ordered_map   test_ordered_map.cpp   jh-toolkit
+        test_generator.cpp      jh-toolkit
+        test_immutable_str.cpp  jh-toolkit-static
+        test_sequence.cpp       jh-toolkit
+        test_pool.cpp           jh-toolkit
+        test_runtime_arr.cpp    jh-toolkit-static
+        test_ranges.cpp         jh-toolkit
+        test_pod_sys.cpp        jh-toolkit
+        test_base64.cpp         jh-toolkit
+        test_t_str.cpp          jh-toolkit
+        test_process_lock.cpp   jh-toolkit
+        test_occ.cpp            jh-toolkit
+        test_proc_mapping.cpp   jh-toolkit
+        test_proc_cond.cpp      jh-toolkit
+        test_shproc_lock.cpp    jh-toolkit
+        test_fiber.cpp          jh-toolkit
+        test_lookup_map.cpp     jh-toolkit
+        test_huffman.cpp        jh-toolkit
+        test_ordered_map.cpp    jh-toolkit
 )
 
 # Get total number of entries
 list(LENGTH TESTS num_entries)
-math(EXPR num_tests "${num_entries} / 3")
+math(EXPR num_tests "${num_entries} / 2")
 math(EXPR max_index "${num_tests} - 1")
 
 set(USE_GCC_WORKAROUND OFF)
@@ -58,13 +58,13 @@ endif()
 
 # Iterate and create test targets
 foreach(i RANGE 0 ${max_index})
-    math(EXPR idx "3 * ${i}")
+    math(EXPR idx "2 * ${i}")
     math(EXPR idx1 "${idx} + 1")
-    math(EXPR idx2 "${idx} + 2")
 
-    list(GET TESTS ${idx}  target)
-    list(GET TESTS ${idx1} source)
-    list(GET TESTS ${idx2} lib)
+    list(GET TESTS ${idx}  source)
+    list(GET TESTS ${idx1} lib)
+    get_filename_component(fname ${source} NAME)
+    get_filename_component(target ${fname} NAME_WE)
 
     add_executable(${target} ${source})
     target_link_libraries(${target} PRIVATE ${lib} Catch2::Catch2WithMain)

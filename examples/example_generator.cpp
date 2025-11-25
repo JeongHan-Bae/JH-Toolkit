@@ -164,7 +164,8 @@ namespace example {
 
     void range_constructing() {
         std::cout << "\n\U0001F539 Constructing Generator with `std::views::iota`:\n";
-        for (auto gen = jh::make_generator(std::views::iota(0, 10)); const auto v : gen) {
+        auto iota_view = std::views::iota(0, 10);
+        for (auto gen = jh::make_generator(iota_view); const auto v : gen) {
             std::cout << v << " ";
         }
         std::cout << "\n";
