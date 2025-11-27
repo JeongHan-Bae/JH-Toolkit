@@ -170,6 +170,7 @@ namespace jh::async {
 
         ///< @brief Type alias for the value type sent to the generator.
         using send_type = U;
+
         /**
          * <h4>Iterator</h4>
          * <p>
@@ -376,16 +377,6 @@ namespace jh::async {
          *   <li><code>await_resume()</code> &mdash; retrieves the last value sent to the coroutine,
          *       or a default-constructed <code>U{}</code> if no value was provided.</li>
          * </ul>
-         *
-         * <h5>Compiler Notes</h5>
-         * <p>
-         * Several functions (e.g., <code>initial_suspend()</code>, <code>final_suspend()</code>, <code>return_void()</code>)
-         * contain lines like:
-         * <pre><code>[[maybe_unused]] auto *self = this;</code></pre>
-         * These are intentional <b>anti-diagnostic placeholders</b> to prevent
-         * Clang-Tidy from incorrectly suggesting <code>static</code> conversion for methods
-         * that must remain instance-bound under coroutine semantics.
-         * </p>
          */
         struct promise_type final {
             std::optional<T> current_value;   ///< Stores the current yielded value.
@@ -404,19 +395,15 @@ namespace jh::async {
              * @brief Suspends execution initially.
              * @return Always returns <code>std::suspend_always</code> to suspend execution at the start.
              */
-            std::suspend_always initial_suspend() noexcept {
-                [[maybe_unused]] auto *self = this; // Prevents Clang-Tidy from suggesting static
-                return {};
-            }
+            std::suspend_always initial_suspend() // NOLINT
+            noexcept { return {}; }
 
             /**
              * @brief Suspends execution at the final stage.
              * @return Always returns <code>std::suspend_always</code> to suspend execution at the end.
              */
-            std::suspend_always final_suspend() noexcept {
-                [[maybe_unused]] auto *self = this; // Prevents Clang-Tidy from suggesting static
-                return {};
-            }
+            std::suspend_always final_suspend() // NOLINT
+            noexcept { return {}; }
 
             /**
              * @brief Yields a value from the generator.
@@ -469,7 +456,8 @@ namespace jh::async {
             /**
              * @brief Defines the behavior when the coroutine completes.
              */
-            void return_void() noexcept { [[maybe_unused]] auto *self = this; }
+            void return_void() // NOLINT
+            noexcept {}
 
             /**
              * @brief Handles uncaught exceptions by storing them.
@@ -749,9 +737,10 @@ namespace jh::async {
      * @param seq The sequence-like object to convert (read-only).
      * @return A generator yielding elements from <code>seq</code>.
      */
-    template<concepts::sequence SeqType>
-    requires (!std::ranges::range<SeqType>)
-    [[maybe_unused]] generator<concepts::sequence_value_t<SeqType> > make_generator(const SeqType &seq) {
+    template<concepts::sequence SeqType> requires (!std::ranges::range<SeqType>)
+    [[maybe_unused]] generator<concepts::sequence_value_t < SeqType> >
+
+    make_generator(const SeqType &seq) {
         for (const auto &elem: seq) {
             // Use range-based for-loop
             co_yield elem;
@@ -785,7 +774,7 @@ namespace jh::async {
      * @return A generator yielding elements from <code>rng</code>.
      */
     template<std::ranges::range R>
-    generator<std::ranges::range_value_t<R> > make_generator(R && rng) {
+    generator<std::ranges::range_value_t<R> > make_generator(R &&rng) {
         for (auto &&elem: rng) {
             co_yield std::forward<decltype(elem)>(elem);
         }

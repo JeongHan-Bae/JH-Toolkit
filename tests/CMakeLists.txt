@@ -34,6 +34,7 @@ set(TESTS
         test_lookup_map.cpp     jh-toolkit
         test_huffman.cpp        jh-toolkit
         test_ordered_map.cpp    jh-toolkit
+        test_slot.cpp           jh-toolkit
 )
 
 # Get total number of entries

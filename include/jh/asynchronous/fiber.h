@@ -102,6 +102,9 @@
  *   <li>GCC 14+: avoid immediately-invoked coroutine lambdas.</li>
  *   <li>Use the two-step lambda construction on all GCC versions.</li>
  * </ul>
+ *
+ * @version <pre>1.4.x</pre>
+ * @date <pre>2025</pre>
  */
 
 #pragma once
@@ -207,17 +210,6 @@ namespace jh::async {
          *   <li><code>await_suspend()</code> &mdash; performs no action.</li>
          *   <li><code>await_resume()</code> &mdash; no-op.</li>
          * </ul>
-         *
-         * <h5>Compiler Notes</h5>
-         * <p>
-         * Certain functions contain lines such as:
-         * </p>
-         * <pre><code>[[maybe_unused]] auto *self = this;</code></pre>
-         * <p>
-         * These are intentional diagnostic suppressors to prevent tools from
-         * incorrectly suggesting <code>static</code> conversion for coroutine methods
-         * which must remain instance-bound according to the coroutine specification.
-         * </p>
          */
         struct promise_type {
 
@@ -233,19 +225,15 @@ namespace jh::async {
              * @brief Suspends execution initially.
              * @return Always returns <code>std::suspend_always</code> to suspend execution at the start.
              */
-            std::suspend_always initial_suspend() noexcept {
-                [[maybe_unused]] auto *self = this; // Prevents Clang-Tidy from suggesting static
-                return {};
-            }
+            std::suspend_always initial_suspend() // NOLINT
+            noexcept { return {}; }
 
             /**
              * @brief Suspends execution at the final stage.
              * @return Always returns <code>std::suspend_always</code> to suspend execution at the end.
              */
-            std::suspend_always final_suspend() noexcept {
-                [[maybe_unused]] auto *self = this; // Prevents Clang-Tidy from suggesting static
-                return {};
-            }
+            std::suspend_always final_suspend() // NOLINT
+            noexcept { return {}; }
 
             /**
              * @brief Indicates normal completion of the coroutine.
@@ -259,10 +247,8 @@ namespace jh::async {
              * <code>std::terminate()</code>, matching the behavior of an OS thread
              * whose entry function throws without being caught.
              */
-            void unhandled_exception() {
-                [[maybe_unused]] auto *self = this;
-                std::terminate();
-            }
+            void unhandled_exception() // NOLINT
+            { std::terminate(); }
 
             /**
              * @brief Transforms <code>co_await resume_tag</code> into an awaiter.
@@ -277,16 +263,15 @@ namespace jh::async {
              *
              * @return A lightweight awaiter object.
              */
-            auto await_transform(resume_t) noexcept {
+            auto await_transform(resume_t) // NOLINT
+            noexcept {
                 struct awaiter {
                     /**
                      * @brief Indicates that suspension is always required.
                      * @return Always <code>false</code>.
                      */
-                    [[maybe_unused]] [[nodiscard]] bool await_ready() const noexcept {
-                        [[maybe_unused]] auto *self = this;
-                        return false;
-                    }
+                    [[maybe_unused]] [[nodiscard]] bool await_ready() // NOLINT
+                    const noexcept { return false; }
 
                     /// @brief Performs no action during suspension.
                     [[maybe_unused]] void await_suspend(std::coroutine_handle<>) noexcept {}
@@ -294,7 +279,6 @@ namespace jh::async {
                     /// @brief No-op resume handler.
                     [[maybe_unused]] void await_resume() const noexcept {}
                 };
-                [[maybe_unused]] auto *self = this;
 
                 return awaiter{};
             }

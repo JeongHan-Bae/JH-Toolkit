@@ -250,7 +250,7 @@ namespace jh::avl {
      * explicit height field used for balancing. No per-node allocation
      * occurs; nodes are relocated only during erase compactification.
      */
-    template<class K, class V> requires ((requires(const K &a, const K &b) {
+    template<typename K, typename V> requires ((requires(const K &a, const K &b) {
         { a < b } -> std::convertible_to<bool>;
     }) && std::copy_constructible<K> && std::copy_constructible<V>)
     struct avl_node {
@@ -319,7 +319,7 @@ namespace jh::avl {
          * @param right_index   Right-child index of this node.
          * @param h             Initial height of the node.
          */
-        template<class KK, class VV>
+        template<typename KK, typename VV>
         requires std::is_same_v<std::remove_cvref_t<KK>, K> &&
                  std::is_same_v<std::remove_cvref_t<VV>, V>
         [[maybe_unused]] avl_node(KK &&k, VV &&v,
@@ -360,7 +360,7 @@ namespace jh::avl {
      * Provides no mapped value; the node's identity is its key. Layout and
      * balancing behavior remain consistent with the general node template.
      */
-    template<class K> requires ((requires(const K &a, const K &b) {
+    template<typename K> requires ((requires(const K &a, const K &b) {
         { a < b } -> std::convertible_to<bool>;
     }) && std::copy_constructible<K>)
     struct avl_node<K, jh::typed::monostate> {
@@ -418,7 +418,7 @@ namespace jh::avl {
          * @param right_index   Right-child index of this node.
          * @param h             Initial height of the node.
          */
-        template<class KK, class VV>
+        template<typename KK, typename VV>
         requires std::is_same_v<std::remove_cvref_t<KK>, K> &&
                  std::is_same_v<std::remove_cvref_t<VV>, jh::typed::monostate>
         [[maybe_unused]] avl_node(KK &&k, VV &&,
@@ -451,7 +451,7 @@ namespace jh::avl {
     namespace detail {
 
         /// @brief Selects canonical value type: <code>K</code> for set, <code>std::pair&lt;const K, V&gt;</code>for map.
-        template<class K, class V>
+        template<typename K, typename V>
         using value_t =
                 std::conditional_t<
                         jh::typed::monostate_t<std::remove_cvref_t<V>>,
@@ -463,26 +463,26 @@ namespace jh::avl {
                 >;
 
         /// @brief Canonical node type after removing cv/ref from <code>K</code> and <code>V</code>.
-        template<class K, class V>
+        template<typename K, typename V>
         using node_t = avl_node<std::remove_cvref_t<K>, std::remove_cvref_t<V>>;
 
         /// @brief Underlying storage type (<code>K</code> or <code>std::pair&lt;K, V&gt;</code>) extracted from node_t.
-        template<class K, class V>
+        template<typename K, typename V>
         using base_t = node_t<K, V>::store_t;
 
         /// @brief Allocator rebound to the canonical node type.
-        template<class K, class V, class Alloc>
+        template<typename K, typename V, typename Alloc>
         using node_alloc_type =
                 typename std::allocator_traits<Alloc>
                 ::template rebind_alloc<node_t<K, V>>;
 
         /// @brief Vector of canonical node types with corresponding allocator.
-        template<class K, class V, class Alloc>
+        template<typename K, typename V, typename Alloc>
         using node_vector_type =
                 std::vector<node_t<K, V>, node_alloc_type<K, V, Alloc>>;
 
         /// @brief Reference type: const for set, mutable for map.
-        template<class K, class V>
+        template<typename K, typename V>
         using reference_t =
                 std::conditional_t<
                         jh::typed::monostate_t<V>,
@@ -491,7 +491,7 @@ namespace jh::avl {
                 >;
 
         /// @brief Pointer type: const for set, mutable for map.
-        template<class K, class V>
+        template<typename K, typename V>
         using pointer_t =
                 std::conditional_t<
                         jh::typed::monostate_t<V>,
@@ -500,7 +500,7 @@ namespace jh::avl {
                 >;
 
         /// @brief Concept ensuring two node types share the same canonical form.
-        template<class K, class V, class K_, class V_>
+        template<typename K, typename V, typename K_, typename V_>
         concept compatible_node_type =
         std::same_as<
                 detail::node_t<K, V>,
@@ -517,7 +517,7 @@ namespace jh::avl {
          * whose <code>remove_cvref_t</code> types are exactly <code>K</code>
          * and <code>V</code>, with no implicit conversions allowed.
          */
-        template<class P, class K, class V>
+        template<typename P, typename K, typename V>
         concept pair_like_for =
         jh::concepts::tuple_like<P> &&
         (std::tuple_size_v<std::remove_cvref_t<P>> == 2) && requires(P &&p) {
@@ -670,8 +670,8 @@ namespace jh::avl {
      * @tparam V    Value type (use <code>jh::typed::monostate</code> for set semantics)
      * @tparam Alloc  Allocator for node storage; defaults to vector-compatible allocator
      */
-    template<class K, class V,
-            class Alloc = std::allocator<detail::value_t<K, V>>
+    template<typename K, typename V,
+            typename Alloc = std::allocator<detail::value_t<K, V>>
     >
     class tree_map {
     private:
@@ -694,7 +694,7 @@ namespace jh::avl {
 
     public:
         /// @brief Allow cross-instantiation friendship for different K,V,Alloc parameterizations.
-        template<class, class, class>
+        template<typename, typename, typename>
         friend
         class tree_map;
 
@@ -729,7 +729,7 @@ namespace jh::avl {
          * Because the allocator types also match, the internal storage is copied
          * directly without rebinding.
          */
-        template<class K_, class V_, class Alloc_>
+        template<typename K_, typename V_, typename Alloc_>
         requires detail::compatible_node_type<K, V, K_, V_> &&
                  std::same_as<Alloc, Alloc_>
         [[maybe_unused]] explicit tree_map(const tree_map<K_, V_, Alloc_> &other)
@@ -751,7 +751,7 @@ namespace jh::avl {
          * Because allocator types differ, the node buffer is copied into storage
          * owned by a default-constructed allocator rebound to this tree's node type.
          */
-        template<class K_, class V_, class Alloc_>
+        template<typename K_, typename V_, typename Alloc_>
         requires detail::compatible_node_type<K, V, K_, V_> &&
                  (!std::same_as<Alloc, Alloc_>)
         [[maybe_unused]] explicit tree_map(const tree_map<K_, V_, Alloc_> &other)
@@ -774,7 +774,7 @@ namespace jh::avl {
          * The provided allocator determines the new node buffer; node contents
          * are copied from the source tree.
          */
-        template<class K_, class V_, class Alloc_>
+        template<typename K_, typename V_, typename Alloc_>
         requires detail::compatible_node_type<K, V, K_, V_>
         [[maybe_unused]] tree_map(const tree_map<K_, V_, Alloc_> &other, const Alloc &alloc)
                 : nodes(other.nodes.begin(), other.nodes.end(), alloc_type(alloc)),
@@ -798,7 +798,7 @@ namespace jh::avl {
          * move. After the operation, @p other remains in a valid but unspecified
          * state, consistent with the standard library's container move semantics.
          */
-        template<class K_, class V_, class Alloc_>
+        template<typename K_, typename V_, typename Alloc_>
         requires detail::compatible_node_type<K, V, K_, V_> &&
                  std::same_as<Alloc, Alloc_>
         [[maybe_unused]] explicit tree_map(tree_map<K_, V_, Alloc_> &&other) noexcept
@@ -826,7 +826,7 @@ namespace jh::avl {
          * structure is not guaranteed (it may be partially moved-from), and callers
          * should clear or reassign it before further use.
          */
-        template<class K_, class V_, class Alloc_>
+        template<typename K_, typename V_, typename Alloc_>
         requires detail::compatible_node_type<K, V, K_, V_> &&
                  (!std::same_as<Alloc, Alloc_>)
         [[maybe_unused]] explicit tree_map(tree_map<K_, V_, Alloc_> &&other)
@@ -857,7 +857,7 @@ namespace jh::avl {
          * move semantics. Callers must clear or overwrite @p other if reuse is
          * desired.
          */
-        template<class K_, class V_, class Alloc_>
+        template<typename K_, typename V_, typename Alloc_>
         requires detail::compatible_node_type<K, V, K_, V_>
         [[maybe_unused]] tree_map(tree_map<K_, V_, Alloc_> &&other, const Alloc &alloc)
                 : nodes(
@@ -1876,7 +1876,7 @@ namespace jh::avl {
          *               <code>false</code> otherwise.</li>
          *         </ol>
          */
-        template<bool Assign = false, class KArg, class VArg>
+        template<bool Assign = false, typename KArg, typename VArg>
         requires std::is_same_v<std::remove_cvref_t<KArg>, K> &&
                  std::is_same_v<std::remove_cvref_t<VArg>, V>
         std::pair<iterator, bool>
@@ -2142,7 +2142,7 @@ namespace jh::avl {
          * @return A pair as with <code>insert</code>, indicating the inserted
          *         or existing position.
          */
-        template<class... Args>
+        template<typename... Args>
         std::pair<iterator, bool> emplace(Args &&... args) requires(jh::typed::monostate_t<V>) {
             return _insert_impl(typename node_type::key_type(std::forward<Args>(args)...),
                                 V{});
@@ -2250,7 +2250,7 @@ namespace jh::avl {
          *               <code>false</code> otherwise.</li>
          *         </ol>
          */
-        template<class... Args>
+        template<typename... Args>
         std::pair<iterator, bool> emplace(Args &&... args) requires(!jh::typed::monostate_t<V>) {
             auto temp = typename node_type::store_t(std::forward<Args>(args)...);
             return _insert_impl(std::move(temp.first), std::move(temp.second));
@@ -3024,8 +3024,8 @@ namespace jh {
      * @tparam K     Key type stored in the set.
      * @tparam Alloc Allocator used for internal node storage.
      */
-    template<class K,
-            class Alloc = std::allocator<K>>
+    template<typename K,
+            typename Alloc = std::allocator<K>>
     using ordered_set =
             avl::tree_map<K, jh::typed::monostate, Alloc>;
 
@@ -3045,8 +3045,8 @@ namespace jh {
      * @tparam V     Mapped value type.
      * @tparam Alloc Allocator used for internal node storage.
      */
-    template<class K, class V,
-            class Alloc = std::allocator<std::pair<const K, V>>>
+    template<typename K, typename V,
+            typename Alloc = std::allocator<std::pair<const K, V>>>
     using ordered_map =
             avl::tree_map<K, V, Alloc>;
 

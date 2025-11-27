@@ -102,8 +102,7 @@
 
 
 namespace jh::sync::ipc {
-
-    using jh::meta::TStr;
+    
 
     /**
      * @brief Cross-process integer counter stored in shared memory (POSIX / Win32).
@@ -184,19 +183,19 @@ namespace jh::sync::ipc {
      *       subsequent accesses reuse the same shared mapping.</li>
      * </ul>
      */
-    template <TStr S, bool HighPriv = false>
+    template <jh::meta::TStr S, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length - 4>())
     class process_counter final {
     private:
 
 #if IS_WINDOWS
-        static constexpr auto shm_name_  = jh::meta::t_str{"Global\\"} + S;
+        static constexpr auto shm_name_  = jh::meta::TStr{"Global\\"} + S;
 #else
-        static constexpr auto shm_name_  = jh::meta::t_str{"/"} + S;
+        static constexpr auto shm_name_  = jh::meta::TStr{"/"} + S;
         static constexpr mode_t shm_mode = JH_PROCESS_MUTEX_SHARED ? 0666 : 0644;
 #endif
 
-        using lock_t = process_mutex<S + jh::meta::t_str{".loc"}, HighPriv>;
+        using lock_t = process_mutex<S + jh::meta::TStr{".loc"}, HighPriv>;
 
         struct counter_data {
             alignas(alignof(std::uint64_t)) std::uint64_t value;

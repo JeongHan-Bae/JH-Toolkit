@@ -1,5 +1,5 @@
 /**
- * @file example_process_counter_worker.cpp
+ * @file example_counter.cpp
  * @brief Worker process that increments a shared counter aggressively.
  */
 

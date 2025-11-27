@@ -144,9 +144,8 @@
 
 namespace jh::sync::ipc {
 
-    using jh::meta::TStr;
 
-    template <TStr S, bool HighPriv = false>
+    template <jh::meta::TStr S, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     class shared_process_mutex;
 
@@ -216,14 +215,14 @@ namespace jh::sync::ipc {
      *   <li>Unlink removes all associated IPC objects: <code>.exc</code>, <code>.cond</code>, <code>.cnt</code>, and <code>.pri</code>.</li>
      * </ul>
      */
-    template <TStr S, bool HighPriv>
+    template <jh::meta::TStr S, bool HighPriv>
     requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     class shared_process_mutex final {
     private:
-        using exc_t  = process_mutex<S + TStr{".exc"}, HighPriv>;
-        using cond_t = process_cond_var<S + TStr{".cond"}, HighPriv>;
-        using cnt_t  = process_counter<S + TStr{".cnt"}, HighPriv>;
-        using pri_t = process_mutex<S + TStr{".pri"}, HighPriv>;
+        using exc_t  = process_mutex<S + jh::meta::TStr{".exc"}, HighPriv>;
+        using cond_t = process_cond_var<S + jh::meta::TStr{".cond"}, HighPriv>;
+        using cnt_t  = process_counter<S + jh::meta::TStr{".cnt"}, HighPriv>;
+        using pri_t = process_mutex<S + jh::meta::TStr{".pri"}, HighPriv>;
         thread_local static bool has_shared_lock_;
         thread_local static bool has_exclusive_lock_;
         thread_local static bool has_prior_lock_;
@@ -317,8 +316,7 @@ namespace jh::sync::ipc {
          */
         template <typename Rep, typename Period>
         bool try_lock_for(const std::chrono::duration<Rep, Period>& d) {
-            using namespace std::chrono;
-            return try_lock_until(steady_clock::now() + d);
+            return try_lock_until(std::chrono::steady_clock::now() + d);
         }
 
         /**
@@ -402,8 +400,7 @@ namespace jh::sync::ipc {
          */
         template <typename Rep, typename Period>
         bool try_lock_shared_for(const std::chrono::duration<Rep, Period>& d) {
-            using namespace std::chrono;
-            return try_lock_shared_until(steady_clock::now() + d);
+            return try_lock_shared_until(std::chrono::steady_clock::now() + d);
         }
 
         /**
@@ -470,8 +467,7 @@ namespace jh::sync::ipc {
 
             has_shared_lock_ = false;
 
-            using namespace std::chrono;
-            auto backoff = 100us;
+            auto backoff = std::chrono::microseconds(100);
 
             while (true) {
                 int r = readers_.load();
@@ -479,7 +475,8 @@ namespace jh::sync::ipc {
                     break;
 
                 std::this_thread::sleep_for(backoff);
-                backoff = std::min(backoff * 2, duration_cast<microseconds>(5ms));
+                backoff = std::min(backoff * 2,
+                                   std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::milliseconds(5)));
             }
 
             readers_.fetch_sub(1);
@@ -515,15 +512,15 @@ namespace jh::sync::ipc {
         static void unlink() requires (!HighPriv) = delete;
     };
 
-    template <TStr S, bool HighPriv>
+    template <jh::meta::TStr S, bool HighPriv>
     requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     thread_local bool shared_process_mutex<S, HighPriv>::has_shared_lock_ = false;
 
-    template <TStr S, bool HighPriv>
+    template <jh::meta::TStr S, bool HighPriv>
     requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     thread_local bool shared_process_mutex<S, HighPriv>::has_exclusive_lock_ = false;
 
-    template <TStr S, bool HighPriv>
+    template <jh::meta::TStr S, bool HighPriv>
     requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     thread_local bool shared_process_mutex<S, HighPriv>::has_prior_lock_ = false;
 

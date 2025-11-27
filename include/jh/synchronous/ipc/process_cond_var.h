@@ -120,8 +120,6 @@
 
 namespace jh::sync::ipc {
 
-    using jh::meta::TStr;
-
     /**
      * @brief Cross-process condition variable primitive (POSIX / Win32).
      *
@@ -196,15 +194,15 @@ namespace jh::sync::ipc {
      *   <li>Windows implementation provides approximate equivalence, not strict parity.</li>
      * </ul>
      */
-    template <TStr S, bool HighPriv = false>
+    template <jh::meta::TStr S, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length>())
     class process_cond_var final {
     private:
 #if IS_WINDOWS
-        static constexpr auto shm_name_  = jh::meta::t_str{"Global\\"} + S;
+        static constexpr auto shm_name_  = jh::meta::TStr{"Global\\"} + S;
         HANDLE event_ = nullptr;
 #else
-        static constexpr auto shm_name_ = jh::meta::t_str{"/"} + S;
+        static constexpr auto shm_name_ = jh::meta::TStr{"/"} + S;
         static constexpr mode_t shm_mode = JH_PROCESS_MUTEX_SHARED ? 0666 : 0644;
 
         struct cond_data {
@@ -326,17 +324,15 @@ namespace jh::sync::ipc {
         template <typename Clock, typename Duration>
         bool wait_until(const std::chrono::time_point<Clock, Duration>& tp) noexcept {
 #if IS_WINDOWS
-            using namespace std::chrono;
-            auto rel = duration_cast<milliseconds>(tp - Clock::now());
+            auto rel = std::chrono::duration_cast<std::chrono::milliseconds>(tp - Clock::now());
             DWORD timeout = (rel.count() > 0) ? static_cast<DWORD>(rel.count()) : 0;
             DWORD r = ::WaitForSingleObject(event_, timeout);
             bool ok = (r == WAIT_OBJECT_0);
             if (ok) ::ResetEvent(event_);
             return ok;
 #else
-            using namespace std::chrono;
-            auto secs = time_point_cast<seconds>(tp);
-            auto nsec = duration_cast<nanoseconds>(tp - secs);
+            auto secs = std::chrono::time_point_cast<std::chrono::seconds>(tp);
+            auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(tp - secs);
             timespec ts{};
             ts.tv_sec  = static_cast<time_t>(secs.time_since_epoch().count());
             ts.tv_nsec = static_cast<long>(nsec.count());

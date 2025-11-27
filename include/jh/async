@@ -25,5 +25,6 @@
  */
 #pragma once
 
-#include "jh/asynchronous/generator.h"
 #include "jh/asynchronous/fiber.h"
+#include "jh/asynchronous/generator.h"
+#include "jh/asynchronous/slot.h"

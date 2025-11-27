@@ -129,9 +129,7 @@
 
 
 namespace jh::sync::ipc {
-
-    using jh::meta::TStr;
-    using jh::pod::cv_free_pod_like;
+    
 
     /**
      * @brief Cross-process shared-memory container for a single POD-like object.
@@ -144,19 +142,19 @@ namespace jh::sync::ipc {
      * @tparam T POD-like type satisfying <code>cv_free_pod_like</code>.
      * @tparam HighPriv Enables privileged operations (e.g. <code>unlink()</code>).
      */
-    template <TStr S, cv_free_pod_like T, bool HighPriv = false>
+    template <jh::meta::TStr S, jh::pod::cv_free_pod_like T, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length - 4>())
     class process_shm_obj final {
     private:
 
 #if IS_WINDOWS
-        static constexpr auto shm_name_  = jh::meta::t_str{"Global\\"} + S;
+        static constexpr auto shm_name_  = jh::meta::TStr{"Global\\"} + S;
 #else
-        static constexpr auto shm_name_  = jh::meta::t_str{"/"} + S;
+        static constexpr auto shm_name_  = jh::meta::TStr{"/"} + S;
         static constexpr mode_t shm_mode = JH_PROCESS_MUTEX_SHARED ? 0666 : 0644;
 #endif
 
-        using lock_t = process_mutex<S + jh::meta::t_str{".loc"}, HighPriv>;
+        using lock_t = process_mutex<S + jh::meta::TStr{".loc"}, HighPriv>;
 
         struct shm_data {
             alignas(alignof(T)) T obj;

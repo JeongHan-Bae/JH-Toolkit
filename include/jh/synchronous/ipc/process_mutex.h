@@ -214,36 +214,38 @@ namespace jh::sync::ipc {
      * @tparam S Bare name string (letters, digits, dot, dash, underscore).
      * @tparam HighPriv If true, exposes <code>unlink()</code> for POSIX.
      */
-    template <jh::meta::TStr S, bool HighPriv = false>
-    requires (limits::valid_object_name<S, limits::max_name_length>())
-    class process_mutex final{
+    template<jh::meta::TStr S, bool HighPriv = false> requires (limits::valid_object_name<S, limits::max_name_length>())
+    class process_mutex final {
     private:
 #if IS_WINDOWS
         HANDLE handle_{}; ///< OS handle for Windows
-        static constexpr auto full_name_ = jh::meta::t_str{"Local\\"} + S;
+        static constexpr auto full_name_ = jh::meta::TStr{"Local\\"} + S;
 #else
-        sem_t* sem_{}; ///< POSIX semaphore handle
-        static constexpr auto full_name_ = jh::meta::t_str{"/"} + S;
+        sem_t *sem_{}; ///< POSIX semaphore handle
+        static constexpr auto full_name_ = jh::meta::TStr{"/"} + S;
 #endif
 
     public:
         /// @brief Get OS-visible name.
-        static constexpr const char* name() noexcept { return full_name_.val(); }
+        static constexpr const char *name() noexcept { return full_name_.val(); }
 
         /// @brief Singleton instance.
-        static process_mutex& instance() {
+        static process_mutex &instance() {
             static process_mutex inst;
             return inst;
         }
 
         /// @brief Deleted copy constructor.
-        process_mutex(const process_mutex&) = delete;
+        process_mutex(const process_mutex &) = delete;
+
         /// @brief Deleted copy assignment.
-        process_mutex& operator=(const process_mutex&) = delete;
+        process_mutex &operator=(const process_mutex &) = delete;
+
         /// @brief Deleted move constructor.
-        process_mutex(process_mutex&&) = delete;
+        process_mutex(process_mutex &&) = delete;
+
         /// @brief Deleted move assignment.
-        process_mutex& operator=(process_mutex&&) = delete;
+        process_mutex &operator=(process_mutex &&) = delete;
 
         /**
          * @brief Acquire the lock (blocking).
@@ -326,20 +328,19 @@ namespace jh::sync::ipc {
          *
          * @note See @c try_lock_until for details.
          */
-        template <class Rep, class Period>
-        bool try_lock_for(const std::chrono::duration<Rep, Period>& d) {
-            using namespace std::chrono;
+        template<class Rep, class Period>
+        bool try_lock_for(const std::chrono::duration<Rep, Period> &d) {
             if (d <= d.zero()) return try_lock();
 #if IS_WINDOWS
-            constexpr auto max_ms = milliseconds{0xFFFFFFFEu};
-            auto ms = duration_cast<milliseconds>(d);
+            constexpr auto max_ms = std::chrono::milliseconds{0xFFFFFFFEu};
+            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(d);
             if (ms > max_ms) ms = max_ms;
             DWORD r = WaitForSingleObject(handle_, static_cast<DWORD>(ms.count()));
             if (r == WAIT_OBJECT_0) return true;
             if (r == WAIT_TIMEOUT)  return false;
             throw std::runtime_error("WaitForSingleObject(ms) failed for " + std::string{name()});
 #else
-            return try_lock_until(system_clock::now() + d);
+            return try_lock_until(std::chrono::system_clock::now() + d);
 #endif
         }
 
@@ -362,19 +363,18 @@ namespace jh::sync::ipc {
          *
          * @note Backoff is doubled each iteration, capped at 5 ms, to balance responsiveness and CPU usage.
          */
-        template <class Clock, class Duration>
-        bool try_lock_until(const std::chrono::time_point<Clock, Duration>& tp) {
-            using namespace std::chrono;
+        template<class Clock, class Duration>
+        bool try_lock_until(const std::chrono::time_point<Clock, Duration> &tp) {
             if (tp <= Clock::now()) return try_lock();
 #if IS_WINDOWS
             auto rel = tp - Clock::now();
             return try_lock_for(rel);
 #elif HAS_POSIX_1B
-            auto sys_tp = time_point_cast<system_clock::duration>(
-                tp - Clock::now() + system_clock::now()
+            auto sys_tp = time_point_cast<std::chrono::system_clock::duration>(
+                tp - Clock::now() + std::chrono::system_clock::now()
             );
-            auto secs = time_point_cast<seconds>(sys_tp);
-            auto nsec = duration_cast<nanoseconds>(sys_tp - secs);
+            auto secs = time_point_cast<std::chrono::seconds>(sys_tp);
+            auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(sys_tp - secs);
 
             timespec ts{};
             ts.tv_sec  = static_cast<time_t>(secs.time_since_epoch().count());
@@ -384,14 +384,15 @@ namespace jh::sync::ipc {
             if (errno == ETIMEDOUT) return false;
             throw std::runtime_error("sem_timedwait failed for " + std::string{name()});
 #else
-            auto backoff = 100us;
+            auto backoff = std::chrono::microseconds(100);;
             while (Clock::now() < tp) {
                 if (sem_trywait(sem_) == 0) return true;
                 if (errno != EAGAIN) {
                     throw std::runtime_error("sem_trywait failed for " + std::string{name()});
                 }
                 std::this_thread::sleep_for(backoff);
-                backoff = std::min(backoff * 2, duration_cast<microseconds>(5ms));
+                backoff = std::min(backoff * 2,
+                                   std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::milliseconds(5)));
             }
             return false;
 #endif
@@ -472,7 +473,7 @@ namespace jh::sync::ipc {
          * destroyed by the OS when the last handle is closed.
          * </p>
          */
-        static void unlink() requires (HighPriv) {
+        static void unlink() requires(HighPriv) {
 #if IS_WINDOWS
             // no unlink
 #else
