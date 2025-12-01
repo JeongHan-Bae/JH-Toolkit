@@ -204,8 +204,8 @@ namespace jh::ranges::views {
      *
      * Supports both <b>direct</b> and <b>pipe</b> usage forms:
      * <ul>
-     *   <li><b>Direct form:</b> <tt>auto v = jh::ranges::views::flatten(range);</tt></li>
-     *   <li><b>Pipe form:</b> <tt>auto v = range | jh::ranges::views::flatten();</tt></li>
+     *   <li><b>Direct form:</b> <code>auto v = jh::ranges::views::flatten(range);</code></li>
+     *   <li><b>Pipe form:</b> <code>auto v = range | jh::ranges::views::flatten();</code></li>
      * </ul>
      *
      * <p><b>Behavior:</b></p>

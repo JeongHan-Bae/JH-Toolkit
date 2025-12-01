@@ -356,8 +356,8 @@ namespace jh::ranges {
      *
      * Supports both <b>direct</b> and <b>pipe</b> usage forms:
      * <ul>
-     *   <li><b>Direct form:</b> <tt>auto v = jh::ranges::collect&lt;std::vector&lt;int&gt;&gt;(input);</tt></li>
-     *   <li><b>Pipe form:</b> <tt>auto v = range | jh::ranges::collect&lt;std::vector&lt;int&gt;&gt;();</tt></li>
+     *   <li><b>Direct form:</b> <code>auto v = jh::ranges::collect&lt;std::vector&lt;int&gt;&gt;(input);</code></li>
+     *   <li><b>Pipe form:</b> <code>auto v = range | jh::ranges::collect&lt;std::vector&lt;int&gt;&gt;();</code></li>
      * </ul>
      *
      * @note

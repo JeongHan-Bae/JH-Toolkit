@@ -507,32 +507,6 @@ namespace jh::avl {
                 detail::node_t<K_, V_>
         >;
 
-        /**
-         * @brief Checks whether @p P is a 2-element tuple-like whose element types
-         *        exactly match @p K and @p V (after remove_cvref).
-         *
-         * @details
-         * Accepts any tuple-like type with <code>tuple_size == 2</code>.
-         * Both <code>get&lt;0&gt;(p)</code> and <code>get&lt;1&gt;(p)</code> must yield values
-         * whose <code>remove_cvref_t</code> types are exactly <code>K</code>
-         * and <code>V</code>, with no implicit conversions allowed.
-         */
-        template<typename P, typename K, typename V>
-        concept pair_like_for =
-        jh::concepts::tuple_like<P> &&
-        (std::tuple_size_v<std::remove_cvref_t<P>> == 2) && requires(P &&p) {
-            requires std::same_as<
-                    std::remove_cvref_t<K>,
-                    std::remove_cvref_t<decltype(get<0>(p))>
-            >;
-
-            requires std::same_as<
-                    std::remove_cvref_t<V>,
-                    std::remove_cvref_t<decltype(get<1>(p))>
-            >;
-        };
-
-
     } // namespace detail
 
     /**
@@ -2181,7 +2155,7 @@ namespace jh::avl {
          *         </ol>
          */
         template<typename P>
-        requires (detail::pair_like_for<P, K, V>)
+        requires (jh::concepts::pair_like_for<P, K, V>)
         std::pair<iterator, bool> insert(P &&p) requires (!jh::typed::monostate_t<V>) {
             return _insert_impl(
                     get<0>(std::forward<P>(p)),

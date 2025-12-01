@@ -91,46 +91,46 @@
  * <table>
  *   <tr><th>Concept</th><th>Behavior Checked</th><th>Primary Use</th></tr>
  *
- *   <tr><td><code>is_iterator</code></td>
+ *   <tr><td><nobr><code>is_iterator</code></nobr></td>
  *       <td>Basic iteration (<code>*it</code>, <code>++it</code>)</td>
  *       <td>Type detection</td></tr>
  *
- *   <tr><td><code>indirectly_readable</code></td>
+ *   <tr><td><nobr><code>indirectly_readable</code></nobr></td>
  *       <td>Dereference validity and value/reference consistency</td>
  *       <td>Readable element access</td></tr>
  *
- *   <tr><td><code>indirectly_writable&lt;Out, T&gt;</code></td>
+ *   <tr><td><nobr><code>indirectly_writable&lt;Out, T&gt;</code></nobr></td>
  *       <td>Supports assignment through <code>*it = value</code></td>
  *       <td>Writable element access</td></tr>
  *
- *   <tr><td><code>sentinel_for&lt;S, I&gt;</code></td>
+ *   <tr><td><nobr><code>sentinel_for&lt;S, I&gt;</code></nobr></td>
  *       <td>Equality/inequality comparability between iterator and sentinel</td>
  *       <td>Range boundary detection</td></tr>
  *
- *   <tr><td><code>input_iterator</code></td>
+ *   <tr><td><nobr><code>input_iterator</code></nobr></td>
  *       <td>Readable, comparable iteration; refines <code>is_iterator</code> and <code>indirectly_readable</code></td>
  *       <td>Single-pass sequential read</td></tr>
  *
- *   <tr><td><code>output_iterator</code></td>
+ *   <tr><td><nobr><code>output_iterator</code></nobr></td>
  *       <td>Writable via <code>*it = value</code>; refines <code>is_iterator</code> and <code>indirectly_writable</code></td>
  *       <td>Single-pass sequential write</td></tr>
  *
- *   <tr><td><code>forward_iterator</code></td>
+ *   <tr><td><nobr><code>forward_iterator</code></nobr></td>
  *       <td>Refines <code>input_iterator</code>; multi-pass, copyable, and
  *           <strong>self-sentinel</strong> (<code>sentinel_for&lt;I, I&gt;</code>)</td>
  *       <td>Stable, reentrant traversal</td></tr>
  *
- *   <tr><td><code>bidirectional_iterator</code></td>
+ *   <tr><td><nobr><code>bidirectional_iterator</code></nobr></td>
  *       <td>Refines <code>forward_iterator</code>; supports reverse movement
  *           (<code>--it</code>, <code>it--</code>)</td>
  *       <td>Reversible traversal</td></tr>
  *
- *   <tr><td><code>random_access_iterator</code></td>
+ *   <tr><td><nobr><code>random_access_iterator</code></nobr></td>
  *       <td>Refines <code>bidirectional_iterator</code>; supports arithmetic and indexing
  *           (<code>it + n</code>, <code>it[n]</code>)</td>
  *       <td>Contiguous or offset access</td></tr>
  *
- *   <tr><td><code>iterator_t&lt;T&gt;</code></td>
+ *   <tr><td><nobr><code>iterator_t&lt;T&gt;</code></nobr></td>
  *       <td>Unified iterator deduction via specialization, <code>begin()</code>, pointer, or array decay</td>
  *       <td>Meta-type for resolving iterator type</td></tr>
  * </table>

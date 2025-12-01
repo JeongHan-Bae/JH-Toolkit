@@ -373,7 +373,7 @@ namespace jh::ranges {
         }
 
         constexpr bool operator!=(const zip_iterator &other) const {
-            return !(*this == other);
+            return !(*this == other); // NOLINT
         }
 
         template<typename... Sentinels>
@@ -385,7 +385,7 @@ namespace jh::ranges {
 
         template<typename... Sentinels>
         constexpr bool operator!=(const zip_sentinel<Sentinels...> &s) const {
-            return !(*this == s);
+            return !(*this == s); // NOLINT
         }
     };
 

@@ -792,7 +792,7 @@ namespace jh::async {
      * <ul>
      *   <li>Intended for output-only generators.</li>
      *   <li>Preserves iteration order and copies each yielded element.</li>
-     *   <li>Acts as the most lightweight way to “materialize” a generator sequence.</li>
+     *   <li>Acts as the most lightweight way to "materialize" a generator sequence.</li>
      * </ul>
      *
      * @tparam T The generator's <strong>yielded value type</strong>.
@@ -1150,7 +1150,7 @@ namespace jh::async {
     private:
         generator_factory_t factory_;
     };
-}
+} // namespace jh::async
 
 namespace jh {
     /**

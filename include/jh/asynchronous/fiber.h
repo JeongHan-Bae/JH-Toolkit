@@ -384,4 +384,4 @@ namespace jh::async {
 
         std::coroutine_handle<promise_type> co_ro; ///< Handle to the coroutine.
     };
-}
+} // namespace jh::async

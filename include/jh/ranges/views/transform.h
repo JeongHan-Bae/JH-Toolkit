@@ -26,7 +26,7 @@
  * The <code>jh::ranges::views::transform</code> adaptor performs a compile-time
  * semantic dispatch between two transformation behaviors:
  * <ul>
- *   <li><code>jh::ranges::views::vis_transform</code> &mdash; when the pair <tt>&lt;R, F&gt;</tt>
+ *   <li><code>jh::ranges::views::vis_transform</code> &mdash; when the pair <code>&lt;R, F&gt;</code>
  *       satisfies <code>jh::concepts::vis_function_for</code>, meaning the range
  *       is non-consuming and the function is a pure observation (returns non-void).</li>
  *   <li><code>std::views::transform</code> &mdash; otherwise, for standard consumptive
@@ -46,8 +46,8 @@
  *
  * Supports both <b>direct</b> and <b>pipe</b> usage forms:
  * <ul>
- *   <li><b>Direct form:</b> <tt>auto v = jh::ranges::views::transform(r, f);</tt></li>
- *   <li><b>Pipe form:</b> <tt>auto v = r | jh::ranges::views::transform(f);</tt></li>
+ *   <li><b>Direct form:</b> <code>auto v = jh::ranges::views::transform(r, f);</code></li>
+ *   <li><b>Pipe form:</b> <code>auto v = r | jh::ranges::views::transform(f);</code></li>
  * </ul>
  *
  * @note
@@ -81,7 +81,7 @@ namespace jh::ranges::views {
          * @tparam F The callable type captured.
          * @details
          * Stores the callable and delays dispatch until a range is provided.
-         * The combination <tt>&lt;R, F&gt;</tt> is inspected in
+         * The combination <code>&lt;R, F&gt;</code> is inspected in
          * <code>operator()</code> to determine whether the transformation
          * is non-consuming (<code>vis_transform</code>) or consumptive
          * (<code>std::views::transform</code>).
@@ -107,7 +107,7 @@ namespace jh::ranges::views {
             }
 
             /**
-             * @brief Enables pipe syntax <tt>range | transform(f)</tt>.
+             * @brief Enables pipe syntax <code>range | transform(f)</code>.
              */
             template<std::ranges::range R>
             friend constexpr auto operator|(R &&lhs, const transform_closure &rhs) {
@@ -120,7 +120,7 @@ namespace jh::ranges::views {
          *
          * @details
          * Provides both direct and pipe forms.
-         * Dispatch is determined for each <tt>&lt;R, F&gt;</tt> pair at the point of call:
+         * Dispatch is determined for each <code>&lt;R, F&gt;</code> pair at the point of call:
          * <ul>
          *   <li>If the range is non-consuming and the callable is observational,
          *       uses <code>vis_transform</code>.</li>
@@ -166,14 +166,14 @@ namespace jh::ranges::views {
      *
      * <p>
      * Provides an adaptive interface for transformation within range pipelines.
-     * The adaptor performs a deferred semantic inspection of the pair <tt>&lt;R, F&gt;</tt>
+     * The adaptor performs a deferred semantic inspection of the pair <code>&lt;R, F&gt;</code>
      * to determine whether to use the non-consuming or consumptive transformation path.
      * </p>
      *
      * Supports both <b>direct</b> and <b>pipe</b> usage forms:
      * <ul>
-     *   <li><b>Direct form:</b> <tt>auto v = jh::ranges::views::transform(r, f);</tt></li>
-     *   <li><b>Pipe form:</b> <tt>auto v = r | jh::ranges::views::transform(f);</tt></li>
+     *   <li><b>Direct form:</b> <code>auto v = jh::ranges::views::transform(r, f);</code></li>
+     *   <li><b>Pipe form:</b> <code>auto v = r | jh::ranges::views::transform(f);</code></li>
      * </ul>
      *
      * @note

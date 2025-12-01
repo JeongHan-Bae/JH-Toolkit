@@ -317,8 +317,8 @@ namespace jh::ranges {
      * from compatible ranges. It supports both direct and pipe invocation forms:
      *
      * <ul>
-     *   <li><b>Direct form:</b> <tt>auto s = jh::ranges::to&lt;std::set&lt;int&gt;&gt;(v);</tt></li>
-     *   <li><b>Pipe form:</b> <tt>auto dq = v | jh::ranges::to&lt;std::deque&lt;int&gt;&gt;();</tt></li>
+     *   <li><b>Direct form:</b> <code>auto s = jh::ranges::to&lt;std::set&lt;int&gt;&gt;(v);</code></li>
+     *   <li><b>Pipe form:</b> <code>auto dq = v | jh::ranges::to&lt;std::deque&lt;int&gt;&gt;();</code></li>
      * </ul>
      *
      * <p>

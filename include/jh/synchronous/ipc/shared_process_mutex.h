@@ -108,7 +108,7 @@
  * <h3>Design guarantees</h3>
  * <ul>
  *   <li><strong>Global visibility</strong>: all cooperating processes and threads share the same OS-named primitives.</li>
- *   <li><strong>Compile-time fixed identity</strong>: the template parameter <code>CStr S</code> uniquely defines the synchronization group.</li>
+ *   <li><strong>Compile-time fixed identity</strong>: the template parameter <code>TStr S</code> uniquely defines the synchronization group.</li>
  *   <li><strong>Exclusive upgrade continuity</strong>: once an upgrade begins, it completes without interference from writers.</li>
  *   <li><strong>Deterministic semantics</strong>: fairness is not guaranteed; consistency and isolation are prioritized.</li>
  * </ul>
@@ -197,7 +197,8 @@ namespace jh::sync::ipc {
      *       but is implemented from process-wide IPC primitives.</li>
      *   <li>It is an <strong>engineering-level primitive</strong>: deterministic, portable,
      *       and designed for correctness rather than fairness.</li>
-     *   <li>Within a single thread or coroutine context, all lock operations are
+     *   <li>Within a single thread or coroutine context, (a coroutine and the thread it is executing on, that is,
+     *       the first thread to attempt to resume it, are considered the same participant), all lock operations are
      *       <strong>idempotent</strong>. Repeated acquisitions or releases are safe and
      *       treated as no-ops. This enables reentrant patterns for coroutine and task frameworks.</li>
      *   <li>Across threads or processes, reentrancy is not propagated &mdash; holding a lock in

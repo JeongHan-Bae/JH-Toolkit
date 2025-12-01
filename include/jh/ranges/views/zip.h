@@ -126,12 +126,12 @@ namespace jh::ranges::views {
     namespace detail {
 
         /**
-         * @brief Closure type used to enable pipe syntax for <tt>zip</tt>.
+         * @brief Closure type used to enable pipe syntax for <code>zip</code>.
          *
          * @details
          * This structure stores a tuple of pre-converted <tt>view</tt> objects
-         * (via <tt>std::views::all</tt>), allowing a later sequence
-         * to be "piped" into the zip adaptor using the <tt>|</tt> operator.
+         * (via <code>std::views::all</code>), allowing a later sequence
+         * to be "piped" into the zip adaptor using the <code>|</code> operator.
          *
          * <p>For example:</p>
          * @code
@@ -152,12 +152,12 @@ namespace jh::ranges::views {
              *
              * @tparam R Type of the left-hand side range or sequence.
              * @param r The range to be combined with the stored views.
-             * @return A <tt>jh::ranges::zip_view</tt> combining <tt>r</tt> with all captured views.
+             * @return A <code>jh::ranges::zip_view</code> combining <code>r</code> with all captured views.
              *
              * @details
              * This function is invoked when the closure is called directly or
-             * when the pipe operator <tt>|</tt> is used. It constructs a
-             * <tt>jh::ranges::zip_view</tt> containing all views.
+             * when the pipe operator <code>|</code> is used. It constructs a
+             * <code>jh::ranges::zip_view</code> containing all views.
              */
             template <jh::concepts::sequence R>
             constexpr auto operator()([[maybe_unused]] R&& r) const {
@@ -173,18 +173,18 @@ namespace jh::ranges::views {
             }
 
             /**
-             * @brief Enables <tt>range | zip_closure</tt> syntax.
+             * @brief Enables <code>range | zip_closure</code> syntax.
              *
              * @tparam R The range type used as the left-hand side operand.
              * @param lhs The left-hand side range.
-             * @param rhs The right-hand side <tt>zip_closure</tt>.
-             * @return A <tt>jh::ranges::zip_view</tt> that zips <tt>lhs</tt> with all captured views.
+             * @param rhs The right-hand side <code>zip_closure</code>.
+             * @return A <code>jh::ranges::zip_view</code> that zips <code>lhs</code> with all captured views.
              *
              * @details
              * This overload allows expressions like:
-             * <pre>
+             * <pre><code>
              * auto zipped = seq1 | jh::ranges::views::zip(seq2, seq3);
-             * </pre>
+             * </code></pre>
              */
             template <jh::concepts::sequence R>
             friend constexpr auto operator|(R&& lhs, const zip_closure& rhs) {
@@ -193,16 +193,16 @@ namespace jh::ranges::views {
         };
 
         /**
-         * @brief Function object implementing the <tt>zip</tt> view adaptor.
+         * @brief Function object implementing the <code>zip</code> view adaptor.
          *
          * @details
          * This callable object supports two forms of usage:
          * <ul>
-         *   <li><b>Direct call form:</b> <tt>zip(a, b, c)</tt> returns a zip_view combining all arguments.</li>
-         *   <li><b>Pipe form:</b> <tt>seq | zip(other_seq)</tt> zips <tt>seq</tt> with the captured view.</li>
+         *   <li><b>Direct call form:</b> <code>zip(a, b, c)</code> returns a zip_view combining all arguments.</li>
+         *   <li><b>Pipe form:</b> <code>seq | zip(other_seq)</code> zips <code>seq</code> with the captured view.</li>
          * </ul>
          *
-         * <p>Internally, the single-argument version produces a <tt>zip_closure</tt>
+         * <p>Internally, the single-argument version produces a <code>zip_closure</code>
          * object that stores the captured views.</p>
          */
         struct zip_fn {
@@ -211,17 +211,17 @@ namespace jh::ranges::views {
              *
              * @tparam Seq Parameter pack of sequence types.
              * @param seqs The sequences to be zipped.
-             * @return A <tt>jh::ranges::zip_view</tt> containing all input ranges.
+             * @return A <code>jh::ranges::zip_view</code> containing all input ranges.
              *
              * @details
-             * Each sequence is converted to a view using <tt>jh::to_range()</tt>
-             * and <tt>std::views::all()</tt>, ensuring compatibility with
-             * various custom sequence types such as <tt>jh::pod::array</tt>.
+             * Each sequence is converted to a view using <code>jh::to_range()</code>
+             * and <code>std::views::all()</code>, ensuring compatibility with
+             * various custom sequence types.
              *
              * <p>Example:</p>
-             * <pre>
+             * <pre><code>
              * auto zipped = jh::ranges::views::zip(a, b, c);
-             * </pre>
+             * </code></pre>
              */
             template <jh::concepts::sequence... Seq>
             constexpr auto operator()(Seq&&... seqs) const {
@@ -231,11 +231,11 @@ namespace jh::ranges::views {
             }
 
             /**
-             * @brief Creates a <tt>zip_closure</tt> capturing a single sequence.
+             * @brief Creates a <code>zip_closure</code> capturing a single sequence.
              *
              * @tparam Seq Sequence type to capture.
              * @param seq The sequence to capture into the closure.
-             * @return A <tt>zip_closure</tt> that can be used with pipe syntax.
+             * @return A <code>zip_closure</code> that can be used with pipe syntax.
              *
              * @details
              * This overload is used when the user writes:
@@ -277,14 +277,14 @@ namespace jh::ranges::views {
     } // namespace detail
 
     /**
-     * @brief The user-facing <tt>zip</tt> adaptor.
+     * @brief The user-facing <code>zip</code> adaptor.
      *
      * @details
      * Provides a unified interface for zipping multiple sequences into a
-     * <tt>jh::ranges::zip_view</tt>. Supports both direct and pipe syntax:
+     * <code>jh::ranges::zip_view</code>. Supports both direct and pipe syntax:
      * <ul>
-     *   <li><b>Direct:</b> <tt>auto z = jh::ranges::views::zip(a, b);</tt></li>
-     *   <li><b>Pipe:</b> <tt>auto z = a | jh::ranges::views::zip(b);</tt></li>
+     *   <li><b>Direct:</b> <code>auto z = jh::ranges::views::zip(a, b);</code></li>
+     *   <li><b>Pipe:</b> <code>auto z = a | jh::ranges::views::zip(b);</code></li>
      * </ul>
      */
     inline constexpr detail::zip_fn zip{};
@@ -294,7 +294,7 @@ namespace jh::ranges::views {
      *
      * <strong>Supports:</strong>
      * <ul>
-     *    <li>Pipe with multiple arguments: <tt>a | zip_pipe(b, c, d)</tt></li>
+     *    <li>Pipe with multiple arguments: <code>a | zip_pipe(b, c, d)</code></li>
      *    <li>Always returns a closure.</li>
      * </ul>
      * @note

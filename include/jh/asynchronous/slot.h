@@ -332,7 +332,7 @@ namespace jh::async {
      * <code>co_await listener</code> and the next declared <code>co_await another_listener</code>.
      * </p>
      */
-    class slot {
+    class slot final {
     public:
         /// @brief Grants listener<T> access to internal slot members.
         template<typename T>
@@ -455,7 +455,7 @@ namespace jh::async {
      * @warning
      * Only one <code>slot</code> may be bound to a hub. Binding multiple slots is wrong.
      */
-    class slot_hub {
+    class slot_hub final {
     public:
         /// @brief Grants listener<T> access to internal slot.
         template<typename T>
@@ -561,7 +561,7 @@ namespace jh::async {
      * The listener must share lifetime with its <code>slot_hub</code> and <code>slot</code>.
      */
     template<typename T>
-    class listener {
+    class listener final {
     public:
         /// @brief The type of value delivered to this listener.
         using value_type = T;
@@ -670,7 +670,7 @@ namespace jh::async {
      * Must not outlive the <code>listener</code> it is connected to.
      */
     template<typename T>
-    class event_signal {
+    class event_signal final {
     public:
 
         /**

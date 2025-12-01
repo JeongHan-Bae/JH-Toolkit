@@ -52,7 +52,7 @@ namespace jh::ranges {
     namespace detail {
 
         /**
-         * @brief Closure enabling pipe syntax for <tt>adapt</tt>.
+         * @brief Closure enabling pipe syntax for <code>adapt</code>.
          *
          * @details
          * Provides the core callable that applies <code>jh::to_range()</code>
@@ -78,7 +78,7 @@ namespace jh::ranges {
             }
 
             /**
-             * @brief Enables pipe syntax <tt>sequence | adapt()</tt>.
+             * @brief Enables pipe syntax <code>sequence | adapt()</code>.
              *
              * @tparam Seq Sequence type on the left-hand side.
              * @param lhs The sequence being adapted.
@@ -92,13 +92,13 @@ namespace jh::ranges {
         };
 
         /**
-         * @brief Callable implementing the <tt>adapt</tt> adaptor.
+         * @brief Callable implementing the <code>adapt</code> adaptor.
          *
          * @details
          * Supports both direct and pipe forms:
          * <ul>
-         *   <li><b>Direct:</b> <tt>adapt(seq)</tt></li>
-         *   <li><b>Pipe:</b> <tt>seq | adapt()</tt></li>
+         *   <li><b>Direct:</b> <code>adapt(seq)</code></li>
+         *   <li><b>Pipe:</b> <code>seq | adapt()</code></li>
          * </ul>
          *
          * Internally forwards to <code>jh::to_range()</code>,
@@ -131,15 +131,15 @@ namespace jh::ranges {
     } // namespace detail
 
     /**
-     * @brief The user-facing <tt>adapt</tt> adaptor.
+     * @brief The user-facing <code>adapt</code> adaptor.
      *
      * @details
      * Provides both direct and pipeline conversion of any
      * <code>jh::concepts::sequence</code> into a viewable range.
      *
      * <ul>
-     *   <li><tt>auto r = jh::ranges::adapt(seq);</tt></li>
-     *   <li><tt>auto r = seq | jh::ranges::adapt();</tt></li>
+     *   <li><code>auto r = jh::ranges::adapt(seq);</code></li>
+     *   <li><code>auto r = seq | jh::ranges::adapt();</code></li>
      * </ul>
      *
      * Acts as a bridge between <code>jh::concepts::sequence</code>

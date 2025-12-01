@@ -104,7 +104,7 @@ namespace jh::ranges::views {
             }
 
             /**
-             * @brief Enables pipe syntax <tt>range | vis_transform(f)</tt>.
+             * @brief Enables pipe syntax <code>range | vis_transform(f)</code>.
              */
             template<std::ranges::range R>
             requires jh::concepts::vis_function_for<F, R>
@@ -148,7 +148,7 @@ namespace jh::ranges::views {
              * @return A <code>vis_transform_closure</code> suitable for pipe syntax.
              *
              * <p>Example:</p>
-             * <tt>auto v = range | jh::ranges::views::vis_transform(f);</tt>
+             * <code>auto v = range | jh::ranges::views::vis_transform(f);</code>
              */
             template<typename F>
             constexpr auto operator()(F &&f) const {
@@ -171,8 +171,8 @@ namespace jh::ranges::views {
      *
      * Supports both <b>direct</b> and <b>pipe</b> usage forms:
      * <ul>
-     *   <li><b>Direct form:</b> <tt>auto v = jh::ranges::views::vis_transform(r, f);</tt></li>
-     *   <li><b>Pipe form:</b> <tt>auto v = r | jh::ranges::views::vis_transform(f);</tt></li>
+     *   <li><b>Direct form:</b> <code>auto v = jh::ranges::views::vis_transform(r, f);</code></li>
+     *   <li><b>Pipe form:</b> <code>auto v = r | jh::ranges::views::vis_transform(f);</code></li>
      * </ul>
      *
      * <p>
