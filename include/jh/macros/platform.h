@@ -17,20 +17,17 @@
  */
 /**
  * @file platform.h (macros)
- * @author JeongHan-Bae <pre>&lt;mastropseudo&#64;gmail.com&gt;</pre>
+ * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @brief Base platform checks and macros for all modules.
  *
  * <p>
  * Enforces 64-bit targets and excludes unsupported compilers (MSVC).
  * Provides compiler, architecture, OS, and endianness detection macros.
- * </p>
- *
- * <p>
+ * </p><p>
  * This header is implicitly included in most internal components to guard
  * against undefined behavior on unsupported platforms or toolchains.
- * </p>
- *
- * <p><strong>Macros &gt; constexpr:</strong> better and leaner for compilation and branch optimization.</p>
+ * </p><p>
+ * <strong>Macros &gt; constexpr:</strong> better and leaner for compilation and branch optimization.</p>
  *
  * <h4>Macro Design Philosophy</h4>
  * <p>
@@ -44,18 +41,22 @@
  *   <li>Safe for co-existence (as long as the same macro has the same meaning)</li>
  * </ul>
  *
- * <p><strong>⚠️ These macros are intentionally simple:</strong></p>
+ * @note
+ * <p>
+ * <strong>These macros are intentionally simple:</strong>
  * <ul>
  *   <li>No namespace pollution</li>
  *   <li>No extra logic or branching</li>
  *   <li>No dependency on other libraries</li>
  * </ul>
- *
- * <p>✅ This avoids undefined behavior even when included alongside
- * other headers or libraries that define the same macros consistently.</p>
- *
- * <p>📌 Rule: If another library defines the same <code>IS_XXX</code> macro
- * with the same meaning, it's harmless.</p>
+ * <br>
+ * This avoids undefined behavior even when included alongside
+ * other headers or libraries that define the same macros consistently.
+ * <br>
+ * <strong>Rule:</strong>
+ * If another library defines the same <code>IS_XXX</code> macro
+ * with the same meaning, it's harmless.
+ * </p>
  */
 
 #pragma once
@@ -178,7 +179,7 @@ static_assert(sizeof(std::size_t) == 8,
 // NOTE:
 // RISC-V targets commonly use the Linux toolchain prefix (e.g., riscv64-unknown-linux-gnu),
 // so they are correctly identified as Linux platforms.
-// No separate `IS_RISCV` is needed — the architecture should be inferred from ISA macros (e.g. __riscv).
+// No separate `IS_RISCV` is needed &mdash; the architecture should be inferred from ISA macros (e.g. __riscv).
 // This header is for ***BASIC* platform check
 #else
 #define IS_LINUX 0

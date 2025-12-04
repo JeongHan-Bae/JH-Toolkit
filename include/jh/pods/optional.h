@@ -47,9 +47,9 @@ namespace jh::pod {
      *
      * <h4>Equality Semantics:</h4>
      * <ul>
-     *   <li>If one has value and the other not → false</li>
-     *   <li>If both are empty → true (ignores raw storage)</li>
-     *   <li>If both have value → compare storage bytes (<code>memcmp</code>)</li>
+     *   <li>If one has value and the other not &rarr; false</li>
+     *   <li>If both are empty &rarr; true (ignores raw storage)</li>
+     *   <li>If both have value &rarr; compare storage bytes (<code>memcmp</code>)</li>
      * </ul>
      *
      * <h4>Usage Model:</h4>
@@ -135,9 +135,9 @@ namespace jh::pod {
          *
          * Semantics are aligned with <code>std::optional</code>:
          * <ul>
-         *   <li>If one has a value and the other does not → <code>false</code></li>
-         *   <li>If both are empty → <code>true</code></li>
-         *   <li>If both have a value → compare the underlying storage bytes</li>
+         *   <li>If one has a value and the other does not &rarr; <code>false</code></li>
+         *   <li>If both are empty &rarr; <code>true</code></li>
+         *   <li>If both have a value &rarr; compare the underlying storage bytes</li>
          * </ul>
          *
          * @param rhs Other optional to compare with.

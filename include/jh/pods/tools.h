@@ -26,9 +26,9 @@
  *
  * <h3>Contents</h3>
  * <ul>
- *   <li><code>JH_POD_STRUCT</code> — Declare a POD struct with <code>operator==</code>
+ *   <li><code>JH_POD_STRUCT</code> &mdash; Declare a POD struct with <code>operator==</code>
  *       and automatic <code>pod_like</code> validation.</li>
- *   <li><code>JH_ASSERT_POD_LIKE</code> — Verify a manually defined type satisfies
+ *   <li><code>JH_ASSERT_POD_LIKE</code> &mdash; Verify a manually defined type satisfies
  *       <code>jh::pod::pod_like</code> constraints.</li>
  * </ul>
  *
@@ -47,10 +47,10 @@
 #pragma once
 
 #include "pod_like.h"
-#include "jh/utils/typed.h"
+#include "jh/typing/monostate.h"
 
 #ifdef JH_POD_STRUCT
-// User manually defined the macro before us — this is a hard conflict
+/// @brief User manually defined the macro before us: this is a hard conflict
 static_assert(false,
     "Conflict: JH_POD_STRUCT macro already defined. "
     "Please remove your macro or rename it. "

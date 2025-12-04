@@ -1,13 +1,15 @@
 #define CATCH_CONFIG_MAIN
 #include <random>
 #include <thread>
+#include <shared_mutex>
 #include <catch2/catch_all.hpp>
-#include "jh/immutable_str.h"
+#include "jh/immutable_str"
+#include "jh/typed"
 
 namespace test {
     using ImmutablePool = jh::pool<jh::immutable_str>;
 
-    // ✅ Generates a random string with visible characters only
+    // Generates a random string with visible characters only
     std::string generate_random_string(const size_t length) {
         static constexpr char charset[] =
                 "abcdefghijklmnopqrstuvwxyz"
@@ -26,7 +28,7 @@ namespace test {
         return str;
     }
 
-    // ✅ Adds random leading and trailing whitespace for auto_trim tests
+    // Adds random leading and trailing whitespace for auto_trim tests
     std::string add_random_whitespace(const std::string &input) {
         static std::random_device rd;
         static std::mt19937 gen(rd());
@@ -54,7 +56,7 @@ TEST_CASE("Immutable String - Disabled Operations") {
     immutable_str str("Hello, World!");
 }
 
-// ✅ Basic functionality tests for immutable_str
+// Basic functionality tests for immutable_str
 TEST_CASE("Immutable String Functionality") {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -75,8 +77,9 @@ TEST_CASE("Immutable String Functionality") {
         }
     }
 }
+
 #ifdef JH_IMMUTABLE_STR_AUTO_TRIM
-// ✅ Auto-trim enabled: Whitespace should be removed automatically
+// Auto-trim enabled: Whitespace should be removed automatically
 TEST_CASE("Immutable String Auto Trim Enabled") {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -99,7 +102,7 @@ TEST_CASE("Immutable String Auto Trim Enabled") {
 }
 
 #else
-// ✅ Auto-trim disabled: Whitespace should affect hashing and equality
+// Auto-trim disabled: Whitespace should affect hashing and equality
 TEST_CASE("Immutable String Auto Trim Disabled") {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -121,7 +124,8 @@ TEST_CASE("Immutable String Auto Trim Disabled") {
     }
 }
 #endif
-// ✅ Mutex-protected string tests
+
+// Mutex-protected string tests
 TEST_CASE("Immutable String with Mutex-Protected std::string") {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -144,7 +148,29 @@ TEST_CASE("Immutable String with Mutex-Protected std::string") {
     }
 }
 
-// ✅ Mutex-protected string with different inputs
+// No-op mutex string tests
+TEST_CASE("Immutable String with No-op Mutex std::string") {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<size_t> len_dist(5, 20);
+    constexpr int total_tests = 128;
+
+    for (int i = 0; i < total_tests; ++i) {
+        SECTION("No-op Mutex String Test " + std::to_string(i + 1)) {
+            std::string original = test::generate_random_string(len_dist(gen));
+
+            std::string base_string = original; // Create a base string in scope
+
+            const jh::atomic_str_ptr imm_str = jh::safe_from(base_string, jh::typed::null_mutex);
+            // string will be implicitly converted to string_view to create immutable_str
+
+            REQUIRE(imm_str->view() == original);
+            REQUIRE(imm_str->hash() == std::hash<std::string>{}(original));
+        }
+    }
+}
+
+// Mutex-protected string with different inputs
 TEST_CASE("Immutable String Mutex-Protected Mismatched") {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -160,7 +186,7 @@ TEST_CASE("Immutable String Mutex-Protected Mismatched") {
                 str2 = test::generate_random_string(len_dist(gen));
             }
 
-            std::mutex str_mutex;
+            std::shared_mutex str_mutex;
             std::string_view sv1(str1);
             std::string_view sv2(str2);
 
@@ -174,7 +200,7 @@ TEST_CASE("Immutable String Mutex-Protected Mismatched") {
     }
 }
 
-// ✅ Different strings should always be considered unequal
+// Different strings should always be considered unequal
 TEST_CASE("Different Immutable String Instances") {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -200,7 +226,7 @@ TEST_CASE("Different Immutable String Instances") {
     }
 }
 
-// ✅ Custom hash and equality function tests for atomic_str_ptr
+// Custom hash and equality function tests for atomic_str_ptr
 TEST_CASE("Atomic String Hashing & Equality") {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -223,7 +249,7 @@ TEST_CASE("Atomic String Hashing & Equality") {
     }
 }
 
-// ✅ Basic functionality tests
+// Basic functionality tests
 TEST_CASE("pool<immutable_str> - Basic Functionality") {
     test::ImmutablePool pool;
 
@@ -231,37 +257,37 @@ TEST_CASE("pool<immutable_str> - Basic Functionality") {
     auto str2 = pool.acquire("Hello, World!");
     auto str3 = pool.acquire("Different String");
 
-    REQUIRE(str1 == str2); // 🎯 Same string should return the same shared_ptr
-    REQUIRE(str1 != str3); // 🎯 Different strings should return different shared_ptr
-    REQUIRE(pool.size() == 2); // 🎯 There should be 2 unique string objects in the pool
+    REQUIRE(str1 == str2); // Same string should return the same shared_ptr
+    REQUIRE(str1 != str3); // Different strings should return different shared_ptr
+    REQUIRE(pool.size() == 2); // There should be 2 unique string objects in the pool
 }
 
-// ✅ Cleanup behavior tests
+// Cleanup behavior tests
 TEST_CASE("pool<immutable_str> - Cleanup Behavior") {
     test::ImmutablePool pool;
 
     auto str1 = pool.acquire("Persistent String");
     REQUIRE(pool.size() == 1);
 
-    str1.reset(); // 🎯 Release shared_ptr
-    REQUIRE(pool.size() == 1); // 🎯 Since it's a weak_ptr, it won't be deleted before cleanup
+    str1.reset(); // Release shared_ptr
+    REQUIRE(pool.size() == 1); // Since it's a weak_ptr, it won't be deleted before cleanup
 
-    pool.cleanup(); // 🎯 Trigger cleanup
-    REQUIRE(pool.size() == 0); // 🎯 The pool should be empty
+    pool.cleanup(); // Trigger cleanup
+    REQUIRE(pool.size() == 0); // The pool should be empty
 }
 
-// ✅ Hashing and equality tests
+// Hashing and equality tests
 TEST_CASE("pool<immutable_str> - Hashing and Equality") {
     test::ImmutablePool pool;
 
     auto str1 = pool.acquire("Hash Test");
     auto str2 = pool.acquire("Hash Test");
 
-    REQUIRE(str1 == str2); // 🎯 Ensure hash equality
-    REQUIRE(str1->hash() == str2->hash()); // 🎯 Ensure consistent hash
+    REQUIRE(str1 == str2); // Ensure hash equality
+    REQUIRE(str1->hash() == str2->hash()); // Ensure consistent hash
 }
 
-// ✅ Multithreading test: Pooling the same string
+// Multithreading test: Pooling the same string
 TEST_CASE("pool<immutable_str> - Multithreading Same String") {
     test::ImmutablePool pool;
     constexpr int THREADS = 4;
@@ -275,10 +301,10 @@ TEST_CASE("pool<immutable_str> - Multithreading Same String") {
     for (int t = 0; t < THREADS; ++t) {
         workers.emplace_back([&pool, &stored_objects, &stored_mutex, t]() {
             for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) {
-                // 🎯 Avoid duplicate values
+                // Avoid duplicate values
                 {
                     auto obj = pool.acquire("Shared String");
-                    // 🎯 Protect `stored_objects` with a lock
+                    // Protect `stored_objects` with a lock
                     std::lock_guard lock(stored_mutex);
                     stored_objects.push_back(obj);
                 }
@@ -294,7 +320,7 @@ TEST_CASE("pool<immutable_str> - Multithreading Same String") {
     REQUIRE(pool.size() == 1); // Same immutable_str should be pooled
 }
 
-// ✅ Multithreading test: Correctly storing shared_ptr
+// Multithreading test: Correctly storing shared_ptr
 TEST_CASE("pool<immutable_str> - Multithreading with Stored Shared_Ptr") {
     test::ImmutablePool pool;
     constexpr int THREADS = 4;
@@ -308,10 +334,10 @@ TEST_CASE("pool<immutable_str> - Multithreading with Stored Shared_Ptr") {
     for (int t = 0; t < THREADS; ++t) {
         workers.emplace_back([&pool, &stored_objects, &stored_mutex, t]() {
             for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) {
-                // 🎯 Avoid duplicate values
+                // Avoid duplicate values
                 {
                     auto obj = pool.acquire(("Thread-" + std::to_string(t) + "-String-" + std::to_string(i)).c_str());
-                    // 🎯 Protect `stored_objects` with a lock
+                    // Protect `stored_objects` with a lock
                     std::lock_guard lock(stored_mutex);
                     stored_objects.push_back(obj);
                 }
@@ -323,12 +349,12 @@ TEST_CASE("pool<immutable_str> - Multithreading with Stored Shared_Ptr") {
         w.join();
     }
 
-    REQUIRE(pool.size() == THREADS * OBJECTS_PER_THREAD); // 🎯 Each thread should store different strings
+    REQUIRE(pool.size() == THREADS * OBJECTS_PER_THREAD); // Each thread should store different strings
 }
 
-// ✅ Automatic expansion and contraction
+// Automatic expansion and contraction
 TEST_CASE("pool<immutable_str> - Expansion and Contraction") {
-    test::ImmutablePool pool(4); // 🎯 Initial size 4
+    test::ImmutablePool pool(4); // Initial size 4
 
     std::vector<std::shared_ptr<jh::immutable_str> > objects;
     objects.reserve(10);
@@ -339,14 +365,14 @@ TEST_CASE("pool<immutable_str> - Expansion and Contraction") {
     }
 
     REQUIRE(pool.size() == 10);
-    REQUIRE(pool.reserved_size() >= 16); // 🎯 Expansion
+    REQUIRE(pool.reserved_size() >= 16); // Expansion
 
-    objects.clear(); // 🎯 Release all objects
-    pool.cleanup(); // 🎯 Trigger contraction
-    REQUIRE(pool.reserved_size() <= 16); // 🎯 Contraction
+    objects.clear(); // Release all objects
+    pool.cleanup(); // Trigger contraction
+    REQUIRE(pool.reserved_size() <= 16); // Contraction
 }
 
-// ✅ Clear pool
+// Clear pool
 TEST_CASE("pool<immutable_str> - Clear Pool") {
     test::ImmutablePool pool;
 

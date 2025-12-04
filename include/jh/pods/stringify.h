@@ -25,7 +25,7 @@
  * <h3>Important Notes:</h3>
  * <ul>
  *   <li>These outputs are intended for <b>debugging, inspection, and logging</b>.</li>
- *   <li><b>They do not define a stable serialization format</b> — output may change across compiler,
+ *   <li><b>They do not define a stable serialization format</b> &mdash; output may change across compiler,
  *       platform, or version differences.</li>
  *   <li>Do <b>not</b> use these printers for persistence, network protocols, or ABI-sensitive data.</li>
  *   <li>If you need true serialization:
@@ -71,34 +71,34 @@
  *
  * <ol>
  *   <li>
- *     <b>Owning Types (Value Containers)</b> — use <b>bare structural delimiters</b>.
+ *     <b>Owning Types (Value Containers)</b> &mdash; use <b>bare structural delimiters</b>.
  *     <ul>
- *       <li><code>pod::array&lt;T, N&gt;</code> → <code>[1, 2, 3]</code></li>
- *       <li><code>pod::array&lt;char, N&gt;</code> → <code>"escaped&bsol;tstring"</code></li>
- *       <li><code>pod::pair&lt;T1, T2&gt;</code> → <code>{a, b}</code></li>
- *       <li><code>pod::tuple&lt;Ts...&gt;</code> → <code>()</code>, <code>(1,)</code>, <code>(1, 2, 3)</code></li>
+ *       <li><code>pod::array&lt;T, N&gt;</code> &rarr; <code>[1, 2, 3]</code></li>
+ *       <li><code>pod::array&lt;char, N&gt;</code> &rarr; <code>"escaped&bsol;tstring"</code></li>
+ *       <li><code>pod::pair&lt;T1, T2&gt;</code> &rarr; <code>{a, b}</code></li>
+ *       <li><code>pod::tuple&lt;Ts...&gt;</code> &rarr; <code>()</code>, <code>(1,)</code>, <code>(1, 2, 3)</code></li>
  *     </ul>
  *   </li>
  *   <li>
- *     <b>View Types (Non-owning References)</b> — prefixed with their type name to clarify borrowed semantics.
+ *     <b>View Types (Non-owning References)</b> &mdash; prefixed with their type name to clarify borrowed semantics.
  *     <ul>
- *       <li><code>pod::span&lt;T&gt;</code> → <code>span&lt;int&gt;[1, 2, 3]</code></li>
- *       <li><code>pod::string_view</code> → <code>string_view"hello"</code></li>
- *       <li><code>pod::bytes_view</code> → <code>base64'...'</code></li>
+ *       <li><code>pod::span&lt;T&gt;</code> &rarr; <code>span&lt;int&gt;[1, 2, 3]</code></li>
+ *       <li><code>pod::string_view</code> &rarr; <code>string_view"hello"</code></li>
+ *       <li><code>pod::bytes_view</code> &rarr; <code>base64'...'</code></li>
  *     </ul>
  *   <li>
- *     <b>Semantic Wrappers</b> — printed with <b>keywords</b> to express meaning rather than structure.
+ *     <b>Semantic Wrappers</b> &mdash; printed with <b>keywords</b> to express meaning rather than structure.
  *     <ul>
- *       <li><code>pod::optional&lt;T&gt;</code> → <code>value</code> or <code>nullopt</code></li>
- *       <li><code>typed::monostate</code> → <code>null</code></li>
- *       <li><code>pod::bitflags&lt;N&gt;</code> → <code>0x'ABCD'</code> or <code>0b'0101'</code></li>
+ *       <li><code>pod::optional&lt;T&gt;</code> &rarr; <code>value</code> or <code>nullopt</code></li>
+ *       <li><code>typed::monostate</code> &rarr; <code>null</code></li>
+ *       <li><code>pod::bitflags&lt;N&gt;</code> &rarr; <code>0x'ABCD'</code> or <code>0b'0101'</code></li>
  *     </ul>
  *   </li>
  *   <li>
- *     <b>Nesting</b> — all printers are composable: nested POD types print recursively,
+ *     <b>Nesting</b> &mdash; all printers are composable: nested POD types print recursively,
  *     preserving their delimiters at each layer.
  *     <br/>
- *     Example: <code>pod::array&lt;pod::tuple&lt;int, int&gt;, 2&gt;</code> →
+ *     Example: <code>pod::array&lt;pod::tuple&lt;int, int&gt;, 2&gt;</code> &rarr;
  *     <code>[(1, 2), (3, 4)]</code>
  *   </li>
  * </ol>
@@ -109,8 +109,8 @@
 #include <ostream>
 #include <sstream>
 #include <iomanip>
-#include "jh/utils/typed.h"
-#include "jh/utils/base64.h"
+#include "jh/typing/monostate.h"
+#include "jh/serialize_io/base64.h"
 #include "jh/macros/type_name.h"
 #include "jh/pods/array.h"
 #include "jh/pods/bits.h"
@@ -243,7 +243,7 @@ namespace jh::pod {
 
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::bytes_view bv) {
         os << "base64'";
-        const auto encoded = jh::utils::base64::encode(reinterpret_cast<const uint8_t *>(bv.data), bv.len);
+        const auto encoded = jh::serio::base64::encode(reinterpret_cast<const uint8_t *>(bv.data), bv.len);
         os << encoded;
         os << "'";
         return os;
@@ -262,7 +262,7 @@ namespace jh::pod {
 
     inline std::ostream &operator<<(std::ostream &os, const string_view &sv) {
         os << "string_view\"";
-        const auto buffer = std::string_view{sv.data, sv.len};
+        const auto buffer = std::string_view(sv);
         os << buffer;
         os << "\"";
         return os;
@@ -296,11 +296,11 @@ namespace jh::pod {
         os << ")";
         return os;
     }
-}
+} // namespace jh::pod
 
 namespace jh::typed{
     inline std::ostream &operator<<(std::ostream &os, const jh::typed::monostate &) {
         os << "null";
         return os;
     }
-}
+} // namespace jh::typed

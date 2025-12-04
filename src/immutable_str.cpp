@@ -11,4 +11,4 @@
  * @see jh::immutable_str
  */
 #define JH_HEADER_IMPL_BUILD
-#include "jh/immutable_str.h"
+#include "jh/core/immutable_str.h"

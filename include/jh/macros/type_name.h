@@ -27,7 +27,7 @@
  * <h3>Design Notes:</h3>
  * <ul>
  *   <li>Implemented with compiler-dependent "macro magic".</li>
- *   <li>No ABI or RTTI dependency — works even with <code>-fno-rtti</code>.</li>
+ *   <li>No ABI or RTTI dependency &mdash; works even with <code>-fno-rtti</code>.</li>
  *   <li>Only intended for <b>debugging, logging, and diagnostics</b>.</li>
  *   <li><b>Do not</b> rely on this in production logic:
  *       <ul>

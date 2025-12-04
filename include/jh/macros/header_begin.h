@@ -33,19 +33,22 @@
  *
  * <h3>Build Modes</h3>
  * <table>
- *   <tr><th>Macro</th><th>Definition Behavior</th><th>Description</th></tr>
  *   <tr>
- *     <td><code>(none)</code></td>
+ *     <th>Macro</th>
+ *     <th>Definition Behavior</th>
+ *     <th>Description</th></tr>
+ *   <tr>
+ *     <td><nobr><code>(none)</code></nobr></td>
  *     <td>Emit inline definitions</td>
  *     <td>Default header-only mode.</td>
  *   </tr>
  *   <tr>
- *     <td><code>JH_HEADER_IMPL_BUILD</code></td>
+ *     <td><nobr><code>JH_HEADER_IMPL_BUILD</code></nobr></td>
  *     <td>Emit non-inline definitions</td>
  *     <td>Used by the single implementation TU.</td>
  *   </tr>
  *   <tr>
- *     <td><code>JH_HEADER_NO_IMPL</code></td>
+ *     <td><nobr><code>JH_HEADER_NO_IMPL</code></nobr></td>
  *     <td>Suppress definitions (declarations only)</td>
  *     <td>Used when linking prebuilt objects.</td>
  *   </tr>
@@ -75,7 +78,7 @@
  * <ul>
  *   <li><b>Functions whose behavior depends on caller-side compile-time
  *       macros</b> (e.g. platform, feature toggles, template specializations)
- *       <b>must remain visible</b> in every translation unit — therefore they
+ *       <b>must remain visible</b> in every translation unit &mdash; therefore they
  *       belong <b>outside</b> the
  *       <code>#if&nbsp;JH_INTERNAL_SHOULD_DEFINE</code> block.</li>
  *   <li>All other normal definitions should be wrapped inside
@@ -165,13 +168,13 @@
  * <h4>Summary Table</h4>
  * <table>
  *   <tr><th>Mode</th><th>Macro</th><th>Effect</th><th>Typical Use</th></tr>
- *   <tr><td>Header-only</td><td><tt>(none)</tt></td>
+ *   <tr><td><nobr>Header-only</nobr></td><td><code>(none)</code></td>
  *       <td>Emit <tt>inline</tt> definitions</td>
  *       <td>Direct inclusion</td></tr>
- *   <tr><td>Static/Shared</td><td><tt>JH_HEADER_IMPL_BUILD</tt></td>
+ *   <tr><td><nobr>Static/Shared</nobr></td><td><nobr><code>JH_HEADER_IMPL_BUILD</code></nobr></td>
  *       <td>Emit non-inline strong definitions</td>
  *       <td>Library implementation TU</td></tr>
- *   <tr><td>Interface-only</td><td><tt>JH_HEADER_NO_IMPL</tt></td>
+ *   <tr><td><nobr>Interface-only</nobr></td><td><nobr><code>JH_HEADER_NO_IMPL</code></nobr></td>
  *       <td>Suppress definitions (declarations only)</td>
  *       <td>Type visibility only</td></tr>
  * </table>
@@ -188,7 +191,7 @@
  *
  * <p><em>
  * With this pattern, a single C++ header can flexibly serve as
- * both a header-only and a static/shared library implementation —
+ * both a header-only and a static/shared library implementation &mdash;
  * eliminating the traditional need to maintain duplicate
  * <code>.h</code> / <code>.cpp</code> files.
  * </em></p>
@@ -220,7 +223,7 @@
  *     <code>target_compile_definitions(... INTERFACE JH_HEADER_NO_IMPL)</code>.
  *     This ensures that all consumers automatically include headers in
  *     declaration-only mode when they link your exported target.<br/>
- *     Consumers do not need to define any macros manually — simply linking to
+ *     Consumers do not need to define any macros manually &mdash; simply linking to
  *     the correct target selects the right mode.
  *   </li>
  *
@@ -240,8 +243,8 @@
  *   <li>
  *     <strong>Resulting usage summary</strong><br/>
  *     <ul>
- *       <li><code>jh::jh-toolkit</code> → header-only mode (full inline)</li>
- *       <li><code>jh::jh-toolkit-static</code> → prebuilt static object
+ *       <li><code>jh::jh-toolkit</code> &rarr; header-only mode (full inline)</li>
+ *       <li><code>jh::jh-toolkit-static</code> &rarr; prebuilt static object
  *           (declarations only)</li>
  *     </ul>
  *     This structure allows seamless interoperability between source inclusion

@@ -41,7 +41,7 @@ namespace jh::pod {
      *
      * This structure is designed for:
      * <ul>
-     *   <li>Raw memory containers (<code>pod_stack</code>, <code>arena</code>)</li>
+     *   <li>Raw memory containers (<code>jh::runtime_arr</code>, <code>arena</code>)</li>
      *   <li>In-place value blocks (<code>placement-new</code>, <code>mmap</code>, <code>.data</code> segments)</li>
      *   <li>Zero-allocation, constexpr-safe stack usage</li>
      * </ul>
@@ -51,7 +51,7 @@ namespace jh::pod {
      *   <li>Memory is fully inline and contiguous (<code>T data[N]</code>)</li>
      *   <li>Compile-time limited to 16KB for safety and portability</li>
      *   <li>Supports <code>operator[]</code>, range-based for-loops, <code>==</code> comparison</li>
-     *   <li>No bounds checking — required to preserve POD/constexpr/noexcept semantics.
+     *   <li>No bounds checking &mdash; required to preserve POD/constexpr/noexcept semantics.
      *       Since the layout is trivial, most out-of-bounds cases can be caught at compile-time.</li>
      * </ul>
      *
@@ -99,4 +99,4 @@ namespace jh::pod {
         /// @brief Compare two arrays for equality (element-wise).
         constexpr bool operator==(const array &) const = default;
     };
-}
+} // namespace jh::pod

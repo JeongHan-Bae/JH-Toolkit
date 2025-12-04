@@ -1,0 +1,52 @@
+/**
+ * @file ranges_ext
+ * @brief Forward-aggregator header for <code>jh::ranges</code> extensions.
+ *
+ * <p>
+ * This header aggregates all engineering-oriented and semantic
+ * range extensions under the <code>jh::ranges</code> namespace.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/ranges_ext&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it includes the underlying extension implementations from
+ * <code>jh/ranges/</code> to provide a unified include entry under
+ * <code>jh::ranges</code>.
+ * </p>
+ *
+ * <h4>Overview</h4>
+ * <ul>
+ *   <li>Defines <code>jh::ranges</code> as the user-facing namespace.</li>
+ *   <li>Aggregates all semantic/engineering extensions
+ *       (e.g. <code>adapt</code>, <code>to</code>, <code>collect</code>).</li>
+ *   <li>All implementations located in <code>jh/ranges/&#42;.h</code>.</li>
+ *   <li>Focuses on enriching <code>std::ranges</code> with expressive, project-level utilities.</li>
+ * </ul>
+ *
+ * <h4>Design Note</h4>
+ * <p>
+ * This header only exposes functions and utilities defined in
+ * <code>jh::ranges</code>. It does <em>not</em> directly expose internal
+ * templates such as <code>*_view</code> or <code>*_wrapper</code>.
+ * </p>
+ *
+ * <p>
+ * Those auxiliary templates (e.g. <code>zip_view</code>) reside under
+ * <code>jh/ranges/</code> and are consumed by the corresponding adaptor
+ * headers under <code>jh/ranges/views/</code> — for instance,
+ * <code>jh/ranges/zip_view.h</code> is used internally by
+ * <code>jh/ranges/views/zip.h</code>.
+ * </p>
+ *
+ * <p>
+ * Therefore, if you need to use such adaptors directly, include
+ * <code>&lt;jh/views&gt;</code> instead of <code>&lt;jh/ranges_ext&gt;</code>.
+ * </p>
+ */
+
+#pragma once
+
+#include "jh/ranges/adapt.h"
+#include "jh/ranges/to.h"
+#include "jh/ranges/collect.h"

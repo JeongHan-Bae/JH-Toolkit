@@ -44,9 +44,7 @@
 #include "jh/macros/platform.h"
 
 #if !(IS_CLANG || IS_GCC)
-
 #include <bit>
-
 #endif
 
 
@@ -64,7 +62,6 @@ namespace jh::pod {
     // True if the bitflag length is backed by a native integer type.
     template<std::uint16_t N>
     constexpr bool is_native_bitflags = N == 8 || N == 16 || N == 32 || N == 64;
-    // ------------------------------------------------------
 
     /**
      * @brief Convert an unsigned integer into a little-endian byte array.
@@ -156,16 +153,12 @@ namespace jh::pod {
                 return static_cast<std::uint16_t>(__builtin_popcountll(static_cast<unsigned long long>(value)));
             }
         }
-
 #else
-
         template<typename T>
         [[nodiscard]] constexpr std::uint16_t popcount(T value) noexcept {
             return static_cast<std::uint16_t>(std::popcount(value));
         }
-
 #endif
-
         /**
          * @brief Bitflags implementation using a native unsigned integer.
          *
@@ -343,7 +336,7 @@ namespace jh::pod {
 
             constexpr bool operator==(const bitflags_bytes &rhs) const noexcept = default;
         };
-    }
+    } // namespace detail
 
     /**
      * @brief POD-compatible fixed-size bitflags structure.
@@ -352,8 +345,8 @@ namespace jh::pod {
      *
      * <b>Storage strategy:</b>
      * <ul>
-     *   <li>N = 8,16,32,64 → backed by a native unsigned integer</li>
-     *   <li>Other valid multiples of 8 → backed by a fixed-size byte array (little-endian)</li>
+     *   <li>N = 8,16,32,64 &rarr; backed by a native unsigned integer</li>
+     *   <li>Other valid multiples of 8 &rarr; backed by a fixed-size byte array (little-endian)</li>
      * </ul>
      *
      * <h4>Properties:</h4>
@@ -460,5 +453,4 @@ namespace jh::pod {
             return {arr.data}; // pod types -> safe copy
         }
     }
-}
-
+} // namespace jh::pod

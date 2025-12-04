@@ -19,7 +19,7 @@
  * @file bytes_view.h (pods)
  * @brief POD-safe minimal byte-range view with reinterpreting and cloning utilities.
  *
- * This header defines <code>jh::pod::bytes_view</code> — a low-level, read-only,
+ * This header defines <code>jh::pod::bytes_view</code> &mdash; a low-level, read-only,
  * non-owning abstraction over raw memory regions. It enables safe reinterpretation
  * and controlled cloning of memory blocks into POD-compatible types.
  *
@@ -46,7 +46,7 @@
 #include <cstring> // for memcmp, memcpy
 
 #include "jh/pods/pod_like.h"
-#include "jh/utils/hash_fn.h"
+#include "jh/metax/hash.h"
 
 namespace jh::pod {
 
@@ -225,7 +225,7 @@ namespace jh::pod {
          * This is the safest way to materialize a <code>pod_like</code> object from a
          * <code>bytes_view</code>. It requires that:
          * <ul>
-         *   <li><code>len == sizeof(T)</code> — the view must exactly match the size of <code>T</code>.</li>
+         *   <li><code>len == sizeof(T)</code> &mdash; the view must exactly match the size of <code>T</code>.</li>
          *   <li><code>T</code> must satisfy <code>pod_like</code> (standard layout, trivially constructible,
          *       trivially copyable, trivially destructible).</li>
          * </ul>
@@ -263,9 +263,9 @@ namespace jh::pod {
          *       contexts due to its reliance on pointer reinterpretation. It is intended for runtime use.
          */
         [[nodiscard]] constexpr std::uint64_t
-        hash(jh::utils::hash_fn::c_hash hash_method = jh::utils::hash_fn::c_hash::fnv1a64) const noexcept {
+        hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64) const noexcept {
             if (!data) return static_cast<std::uint64_t>(-1);
-            return jh::utils::hash_fn::hash(
+            return jh::meta::hash(
                     hash_method,
                     reinterpret_cast<const char *>(data),
                     len
