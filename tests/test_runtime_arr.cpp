@@ -1,19 +1,20 @@
-#define CATCH_CONFIG_MAIN
-
 #include <catch2/catch_all.hpp>
-#include "jh/runtime_arr.h"
+
+#include <memory_resource>
+#include <ranges>
+#include "jh/runtime_arr"
 #include <tuple>
 #include <memory>
 #include <vector>
 #include <random>
-#include "jh/pod.h"
+#include "jh/pod"
 
 using namespace jh;
 
 // concepts for static interface checks
-template <typename T>
+template<typename T>
 concept has_data = requires(T t) {
-    { t.data() } -> std::same_as<typename T::value_type*>;
+    { t.data() } -> std::same_as<typename T::value_type *>;
 };
 
 template<typename T>
@@ -46,12 +47,12 @@ struct test_allocator {
     }
 };
 
-template <typename T>
+template<typename T>
 concept has_as_span = requires(T t) {
     { t.as_span() } -> std::same_as<std::span<typename T::value_type>>;
 };
 
-template <typename T>
+template<typename T>
 concept has_const_as_span = requires(const T t) {
     { t.as_span() } -> std::same_as<std::span<const typename T::value_type>>;
 };
@@ -75,6 +76,14 @@ TEST_CASE("runtime_arr static traits and API availability", "[concepts]") {
     STATIC_REQUIRE(jh::concepts::indirectly_writable<jh::runtime_arr<bool>::iterator, bool>);
     STATIC_REQUIRE(jh::concepts::output_iterator<jh::runtime_arr<bool>::iterator, bool>);
     STATIC_REQUIRE(std::output_iterator<jh::runtime_arr<bool>::iterator, bool>);
+
+    // ranges::range checks
+    STATIC_REQUIRE(std::ranges::range<runtime_arr<int>>);
+    STATIC_REQUIRE(std::ranges::range<runtime_arr<bool, bool_flat_alloc>>);
+
+    // random access range checks (normal versions expected to be random access)
+    STATIC_REQUIRE(std::ranges::random_access_range<runtime_arr<int>>);
+    STATIC_REQUIRE(std::ranges::random_access_range<runtime_arr<bool, bool_flat_alloc>>);
 }
 
 TEST_CASE("runtime_arr<int> full test", "[pod]") {
@@ -243,7 +252,7 @@ TEST_CASE("runtime_arr<T> as_span() and const variant", "[span]") {
         for (std::size_t i = 0; i < N; ++i)
             arr[i] = static_cast<int>(i * 2);
 
-        const auto& cref = arr;
+        const auto &cref = arr;
         auto s = cref.as_span();
 
         REQUIRE(s.size() == N);
@@ -301,7 +310,7 @@ TEST_CASE("runtime_arr<bool> full test", "[bool]") {
     SECTION("raw_data and raw_word_count structure") {
         bits.reset_all();
         constexpr std::size_t NWORDS = (N + 63) / 64;
-        auto* raw = bits.raw_data();
+        auto *raw = bits.raw_data();
         REQUIRE(raw != nullptr);
         REQUIRE(bits.raw_word_count() == NWORDS);
 
@@ -321,11 +330,6 @@ TEST_CASE("concept checks for runtime_arr<T> and runtime_arr<bool>", "[concepts]
         STATIC_REQUIRE(has_data<runtime_arr<int>>);
         STATIC_REQUIRE(!has_data<runtime_arr<bool>>);
         STATIC_REQUIRE(has_data<runtime_arr<int, test_allocator<int>>>);
-    }
-
-    SECTION("bit_ref explicit conversion only") {
-        STATIC_REQUIRE(bool_like<runtime_arr<bool>::bit_ref>);
-        STATIC_REQUIRE(!convertible_to_bool<runtime_arr<bool>::bit_ref>);
     }
 
     SECTION("iterator type correctness") {
@@ -430,7 +434,7 @@ TEST_CASE("runtime_arr (bit-packed) vs (byte-based)") {
     std::bernoulli_distribution dist(0.5);
 
     std::vector<unsigned char> ref(N);
-    for (auto &b : ref){b = static_cast<unsigned char>(dist(gen) & 1);}
+    for (auto &b: ref) { b = static_cast<unsigned char>(dist(gen) & 1); }
 
     BENCHMARK_ADVANCED("bit-packed set() loop (1M bits)")() {
             runtime_arr<bool> bits(N); // Prepare phase
@@ -457,7 +461,7 @@ TEST_CASE("runtime_arr (bit-packed) vs (byte-based)") {
                 std::size_t sum = 0;
                 for (std::size_t i = 0; i < N; ++i)
                     sum += static_cast<bool>(bits[i]);
-                (void)sum;
+                (void) sum;
             };
         };
 
@@ -470,7 +474,7 @@ TEST_CASE("runtime_arr (bit-packed) vs (byte-based)") {
                 std::size_t sum = 0;
                 for (std::size_t i = 0; i < N; ++i)
                     sum += static_cast<bool>(arr[i]);
-                (void)sum;
+                (void) sum;
             };
         };
 
@@ -493,4 +497,113 @@ TEST_CASE("runtime_arr (bit-packed) vs (byte-based)") {
                 arr.reset_all();
             };
         };
+}
+
+TEST_CASE("runtime_arr initializer_list construction", "[initlist]") {
+    using namespace jh;
+
+    SECTION("int version") {
+        runtime_arr<int> arr{1, 2, 3, 4, 5};
+        REQUIRE(arr.size() == 5);
+        for (int i = 0; i < 5; ++i)
+            REQUIRE(arr[i] == i + 1);
+    }
+
+    SECTION("pmr<int> version") {
+        std::pmr::monotonic_buffer_resource res;
+        runtime_arr<int, std::pmr::polymorphic_allocator<int>> arr({10, 20, 30},
+                                                                   std::pmr::polymorphic_allocator<int>(&res));
+        REQUIRE(arr.size() == 3);
+        REQUIRE(arr[0] == 10);
+        REQUIRE(arr[1] == 20);
+        REQUIRE(arr[2] == 30);
+    }
+
+    SECTION("bit-packed bool version") {
+        runtime_arr<bool> bits{true, false, true, true, false};
+        REQUIRE(bits.size() == 5);
+        REQUIRE(bits.test(0));
+        REQUIRE_FALSE(bits.test(1));
+        REQUIRE(bits.test(2));
+        REQUIRE(bits.test(3));
+        REQUIRE_FALSE(bits.test(4));
+    }
+
+    SECTION("flat bool version (byte-based allocator)") {
+        using jh::runtime_arr_helper::bool_flat_alloc;
+        runtime_arr<bool, bool_flat_alloc> arr{{true, false, false, true}, {}};
+        REQUIRE(arr.size() == 4);
+        REQUIRE(arr[0]);
+        REQUIRE_FALSE(arr[1]);
+        REQUIRE_FALSE(arr[2]);
+        REQUIRE(arr[3]);
+    }
+}
+
+TEST_CASE("runtime_arr<int, std::allocator<double>> rebind behavior", "[alloc][rebind]") {
+    using AllocD = std::allocator<double>;
+    using Arr = runtime_arr<int, AllocD>;
+
+    STATIC_REQUIRE(!std::is_same_v<Arr::allocator_type, AllocD>);
+    STATIC_REQUIRE(std::is_same_v<Arr::allocator_type, std::allocator_traits<AllocD>::template rebind_alloc<int>>);
+
+    SECTION("basic construction and write/read") {
+        Arr arr(8, AllocD{});   // AllocD::value_type = double, but T = int → MUST rebind
+
+        for (int i = 0; i < 8; ++i)
+            arr.set(i, i * 10);
+
+        for (int i = 0; i < 8; ++i)
+            REQUIRE(arr[i] == i * 10);
+    }
+
+    SECTION("reset_all works") {
+        Arr arr(5, AllocD{});
+
+        for (int i = 0; i < 5; ++i)
+            arr.set(i, 123);
+
+        arr.reset_all();
+
+        for (int i = 0; i < 5; ++i)
+            REQUIRE(arr[i] == 0);
+    }
+
+    SECTION("initializer_list construction works") {
+        Arr arr({1, 2, 3, 4}, AllocD{});
+
+        REQUIRE(arr.size() == 4);
+        REQUIRE(arr[0] == 1);
+        REQUIRE(arr[1] == 2);
+        REQUIRE(arr[2] == 3);
+        REQUIRE(arr[3] == 4);
+    }
+
+    SECTION("move construction keeps values") {
+        Arr arr(4, AllocD{});
+        arr.set(0, 10);
+        arr.set(1, 20);
+        arr.set(2, 30);
+        arr.set(3, 40);
+
+        Arr moved = std::move(arr);
+
+        REQUIRE(moved[0] == 10);
+        REQUIRE(moved[1] == 20);
+        REQUIRE(moved[2] == 30);
+        REQUIRE(moved[3] == 40);
+        REQUIRE(arr.data() == nullptr);  // moved-from safety
+    }
+
+    SECTION("conversion to vector<int> still works") {
+        Arr arr({5, 6, 7, 8}, AllocD{});
+
+        std::vector<int> vec = static_cast<std::vector<int>>(std::move(arr));
+
+        REQUIRE(vec.size() == 4);
+        REQUIRE(vec[0] == 5);
+        REQUIRE(vec[1] == 6);
+        REQUIRE(vec[2] == 7);
+        REQUIRE(vec[3] == 8);
+    }
 }

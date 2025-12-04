@@ -43,8 +43,8 @@
  * between 1.3.0–1.3.3.
  *
  * <p>
- * It achieves <b>std::tuple-like behavior</b> — supporting <code>make_tuple</code>,
- * <code>get&lt;&gt;</code>, packing, and unpacking — through <b>composition instead of inheritance</b>.
+ * It achieves <b>std::tuple-like behavior</b> &mdash; supporting <code>make_tuple</code>,
+ * <code>get&lt;&gt;</code>, packing, and unpacking &mdash; through <b>composition instead of inheritance</b>.
  * Each element is recursively composed inside a <code>tuple_field&lt;I, T&gt;</code> wrapper,
  * ensuring complete triviality and standard layout.
  * </p>
@@ -150,7 +150,7 @@ namespace jh::pod {
         };
 
         template<std::size_t I, typename IndexSeq, typename... Ts>
-        decltype(auto) get(tuple_impl<IndexSeq, Ts...> &t) noexcept {
+        constexpr decltype(auto) get(tuple_impl<IndexSeq, Ts...> &t) noexcept {
             if constexpr (I == 0)
                 return (t.field.value);
             else
@@ -158,7 +158,7 @@ namespace jh::pod {
         }
 
         template<std::size_t I, typename IndexSeq, typename... Ts>
-        auto get(const tuple_impl<IndexSeq, Ts...> &t) noexcept {
+        constexpr auto get(const tuple_impl<IndexSeq, Ts...> &t) noexcept {
             if constexpr (I == 0)
                 return t.field.value; // copy elision
             else
@@ -178,7 +178,7 @@ namespace jh::pod {
      * and <code>std::tuple_element</code>.
      *
      * <ul>
-     *   <li>Fully trivial and standard layout — memcpy-safe</li>
+     *   <li>Fully trivial and standard layout &mdash; memcpy-safe</li>
      *   <li>Usable in structured bindings</li>
      *   <li>Compatible with <code>jh::pod::pair</code> and <code>jh::pod::array</code></li>
      * </ul>
@@ -198,12 +198,12 @@ namespace jh::pod {
     };
 
     template<std::size_t I, typename... Ts>
-    decltype(auto) get(tuple<Ts...> &t) noexcept {
+    constexpr decltype(auto) get(tuple<Ts...> &t) noexcept {
         return get<I>(static_cast<detail::tuple_impl<std::index_sequence_for<Ts...>, Ts...> &>(t));
     }
 
     template<std::size_t I, typename... Ts>
-    auto get(const tuple<Ts...> &t) noexcept {
+    constexpr auto get(const tuple<Ts...> &t) noexcept {
         return get<I>(static_cast<const detail::tuple_impl<std::index_sequence_for<Ts...>, Ts...> &>(t));
     }
 
@@ -295,7 +295,8 @@ namespace jh::pod {
      *
      * @see jh::pod::tuple
      */
-    template <jh::pod::cv_free_pod_like... Ts>
+    template <typename... Ts>
+    requires (jh::pod::cv_free_pod_like<std::decay_t<Ts>> && ...)
     constexpr auto make_tuple([[maybe_unused]] Ts&&... args) noexcept {
         using tuple_t = tuple<std::decay_t<Ts>...>;
         tuple_t t{};

@@ -84,16 +84,16 @@ optimized for binary safety, deterministic layout, and predictable performance.
 The following table summarizes which `jh::pod` types can be **aggregate-initialized directly**,
 and which should be constructed using **factory helpers (`make_*`)** for clarity and portability.
 
-| Type           | Aggregate Initialization     | `make_*` Support  | Recommended Constructor                               | Notes                                                                                           |
-|----------------|------------------------------|-------------------|-------------------------------------------------------|-------------------------------------------------------------------------------------------------|
-| `array<T, N>`  | ✅                            | —                 | —                                                     | Fully aggregate-initializable (`array<int, 3> a{1,2,3};`).                                      |
-| `bitflags<N>`  | ⚠️ (empty only)              | —                 | `jh::pod::from_bytes(array<std::uint8_t, N / 8> arr)` | Aggregate init possible but not recommended — use byte source for clarity.                      |
-| `bytes_view`   | ⚠️                           | —                 | `jh::pod::bytes_view::from(const T &obj)`             | Aggregate init legal but discouraged; prefer explicit `from()` for lifetime clarity.            |
-| `optional<T>`  | ⚠️ (empty only)              | ✅ `make_optional` | `jh::pod::make_optional(const T &value)`              | Empty optional can be aggregate-initialized; prefer `make_optional()` for value initialization. |
-| `pair<T1, T2>` | ✅                            | ✅ `make_pair`     | — / `jh::pod::make_pair(a, b)`                        | Pure aggregate type; `make_pair()` provides readable construction.                              |
-| `tuple<Ts...>` | ✅ (Clang 15+)  ⚠️ (GCC ≤ 13) | ✅ `make_tuple`    | `jh::pod::make_tuple(v1, v2, ...)`                    | Clang 15+ supports direct `{}` initialization; GCC ≤ 13 may require `make_tuple()`.             |
-| `span<T>`      | ✅                            | —                 | —                                                     | Aggregate (`{ptr, size}`) or constructed via `to_span()` for containers.                        |
-| `string_view`  | ✅                            | —                 | — / `from_literal()`                                  | Aggregate init valid; `from_literal()` preferred for string literals.                           |
+| Type           | Aggregate Initialization         | `make_*` Support  | Recommended Constructor                               | Notes                                                                                           |
+|----------------|----------------------------------|-------------------|-------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| `array<T, N>`  | ✅                                | —                 | —                                                     | Fully aggregate-initializable (`array<int, 3> a{1,2,3};`).                                      |
+| `bitflags<N>`  | ⚠️ (empty only)                  | —                 | `jh::pod::from_bytes(array<std::uint8_t, N / 8> arr)` | Aggregate init possible but not recommended — use byte source for clarity.                      |
+| `bytes_view`   | ⚠️                               | —                 | `jh::pod::bytes_view::from(const T &obj)`             | Aggregate init legal but discouraged; prefer explicit `from()` for lifetime clarity.            |
+| `optional<T>`  | ⚠️ (empty only)                  | ✅ `make_optional` | `jh::pod::make_optional(const T &value)`              | Empty optional can be aggregate-initialized; prefer `make_optional()` for value initialization. |
+| `pair<T1, T2>` | ✅                                | ✅ `make_pair`     | — / `jh::pod::make_pair(a, b)`                        | Pure aggregate type; `make_pair()` provides readable construction.                              |
+| `tuple<Ts...>` | ✅ (Clang 15+) <br> ⚠️ (GCC ≤ 13) | ✅ `make_tuple`    | `jh::pod::make_tuple(v1, v2, ...)`                    | Clang 15+ supports direct `{}` initialization; GCC ≤ 13 may require `make_tuple()`.             |
+| `span<T>`      | ✅                                | —                 | —                                                     | Aggregate (`{ptr, size}`) or constructed via `to_span()` for containers.                        |
+| `string_view`  | ✅                                | —                 | — / `from_literal()`                                  | Aggregate init valid; `from_literal()` preferred for string literals.                           |
 
 > 🧩 **Notes**
 >

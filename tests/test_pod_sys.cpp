@@ -1,6 +1,5 @@
-#define CATCH_CONFIG_MAIN
-
 #include <catch2/catch_all.hpp>
+
 #include <array>
 #include <vector>
 #include <ranges>
@@ -29,8 +28,9 @@ namespace test {
     JH_ASSERT_POD_LIKE(Legacy);
 }
 
-// ✅ Recognizing JH PODS
-TEST_CASE("JH PODS Recognition") {
+// Recognizing JH PODS
+TEST_CASE("JH PODS Recognition And Static Checks") {
+    using namespace jh::pod::literals;
     STATIC_REQUIRE(pod::pod_like<pod::array<int, 128>>);
     STATIC_REQUIRE(pod::pod_like<pod::pair<int, float>>);
     STATIC_REQUIRE(pod::pod_like<pod::array<pod::pair<int, float>, 128>>);
@@ -59,6 +59,41 @@ TEST_CASE("JH PODS Recognition") {
     STATIC_REQUIRE(std::is_same_v<jh::pod::pair<int, double>::first_type, int>);
     STATIC_REQUIRE(std::is_same_v<jh::pod::pair<int, double>::second_type, double>);
     STATIC_REQUIRE(std::is_same_v<jh::pod::span<int>::element_type, int>);
+    STATIC_REQUIRE(jh::pod::string_view::from_literal("hello") == "hello"_psv);
+    STATIC_REQUIRE(""_psv.empty());
+    STATIC_REQUIRE("hello"_psv.size() == 5);
+    STATIC_REQUIRE("hello"_psv.begin()[0] == 'h');
+    STATIC_REQUIRE("hello"_psv.end()[-1] == 'o');
+    constexpr auto hw = "hello_world"_psv;
+    constexpr auto pre = "hello"_psv;
+    constexpr auto suf = "world"_psv;
+    constexpr auto mid = "ello_w"_psv;
+    STATIC_REQUIRE(hw.starts_with(pre));
+    STATIC_REQUIRE(hw.ends_with(suf));
+    STATIC_REQUIRE(!hw.starts_with("holla"_psv));
+    STATIC_REQUIRE(!hw.ends_with("wurld"_psv));
+    STATIC_REQUIRE(hw.sub(1, 6) == mid);
+    STATIC_REQUIRE("abc"_psv.compare("abc"_psv) == 0);
+    STATIC_REQUIRE("abc"_psv.compare("abd"_psv) < 0);
+    STATIC_REQUIRE("abd"_psv.compare("abc"_psv) > 0);
+    STATIC_REQUIRE("abc"_psv.hash() == "abc"_psv.hash());
+    STATIC_REQUIRE("abc"_psv.hash() != "xyz"_psv.hash());
+    constexpr auto s = "podsystem"_psv;
+    STATIC_REQUIRE(s.sub(0, 3) == "pod"_psv);
+    STATIC_REQUIRE(s.find('s') == 3);
+    STATIC_REQUIRE(s.find('x') == static_cast<std::uint64_t>(-1));
+    constexpr auto a = "abc"_psv;
+    constexpr auto b = "abd"_psv;
+    constexpr auto c = "abc"_psv;
+    STATIC_REQUIRE((a <=> b) == std::strong_ordering::less);
+    STATIC_REQUIRE((b <=> a) == std::strong_ordering::greater);
+    STATIC_REQUIRE((a <=> c) == std::strong_ordering::equal);
+    STATIC_REQUIRE(a < b);
+    STATIC_REQUIRE(b > a);
+    STATIC_REQUIRE(!(a > b));
+    STATIC_REQUIRE(a == c);
+    STATIC_REQUIRE(a <= c);
+    STATIC_REQUIRE(a >= c);
 }
 
 TEST_CASE("JH_POD_STRUCT generated struct is pod_like") {
@@ -334,7 +369,7 @@ TEST_CASE("pod::optional value_or behavior") {
             int x;
             float y;
         };
-        static_assert(pod::pod_like<S>);
+        STATIC_REQUIRE(pod::pod_like<S>);
 
         optional<S> o{};
         S def{5, 3.5f};
@@ -630,20 +665,56 @@ TEST_CASE("pod::string_view basic usage", "[string_view]") {
         sv.copy_to(buffer, sizeof(buffer));
         REQUIRE(std::strcmp(buffer, "hello_pod_world") == 0);
     }
+    SECTION("Three-way comparison and compare() consistency") {
+        using namespace std;
+        string_view a{"abc", 3};
+        string_view b{"abd", 3};
+        string_view c{"abc", 3};
+
+        REQUIRE(a.compare(b) < 0);
+        REQUIRE(b.compare(a) > 0);
+        REQUIRE(a.compare(c) == 0);
+
+        auto ab = (a <=> b);
+        auto ba = (b <=> a);
+        auto ac = (a <=> c);
+
+        REQUIRE(ab == strong_ordering::less);
+        REQUIRE(ba == strong_ordering::greater);
+        REQUIRE(ac == strong_ordering::equal);
+
+        auto cmp_to_order = [](int cmp) {
+            if (cmp < 0) return strong_ordering::less;
+            if (cmp > 0) return strong_ordering::greater;
+            return strong_ordering::equal;
+        };
+
+        REQUIRE((a <=> b) == cmp_to_order(a.compare(b)));
+        REQUIRE((b <=> a) == cmp_to_order(b.compare(a)));
+        REQUIRE((a <=> c) == cmp_to_order(a.compare(c)));
+
+        REQUIRE(a < b);
+        REQUIRE(b > a);
+        REQUIRE(!(a > b));
+        REQUIRE(a == c);
+        REQUIRE(a <= c);
+        REQUIRE(a >= c);
+    }
+
 }
 
 TEST_CASE("string_view from_literal correctness") {
     using jh::pod::string_view;
     // case 1: simple literal
     constexpr auto sv = string_view::from_literal("hello");
-    static_assert(sv.size() == 5, "string_view size from literal should be strlen(literal)");
+    STATIC_REQUIRE(sv.size() == 5); // string_view size from literal should be strlen(literal)
 
     REQUIRE(sv.size() == 5);
     REQUIRE(sv == string_view{"hello", std::strlen("hello")});
 
     // case 2: empty string literal
     constexpr auto sv_empty = string_view::from_literal("");
-    static_assert(sv_empty.empty());
+    STATIC_REQUIRE(sv_empty.empty());
     REQUIRE(sv_empty.empty());
     REQUIRE(sv_empty == string_view{"", std::strlen("")});
 
@@ -685,7 +756,7 @@ TEST_CASE("pod::array<pod::string_view> comparison") {
 TEST_CASE("bytes_view hash reflects exact byte content") {
     using jh::pod::bytes_view;
     using jh::pod::array;
-    using jh::utils::hash_fn::c_hash;
+    using jh::meta::c_hash;
 
     SECTION("Equal content produces same hash") {
         array<std::uint32_t, 4> a = {1, 2, 3, 4};
@@ -738,7 +809,7 @@ TEST_CASE("bytes_view hash reflects exact byte content") {
 
 TEST_CASE("string_view hash reflects exact character content") {
     using jh::pod::string_view;
-    using jh::utils::hash_fn::c_hash;
+    using jh::meta::c_hash;
 
     static constexpr char content1[] = "alpha_test";
     static constexpr char content2[] = "alpha_test";  // same content, different instance
@@ -763,16 +834,23 @@ TEST_CASE("string_view hash reflects exact character content") {
         auto h2 = sv1.hash(c_hash::djb2);
         auto h3 = sv1.hash(c_hash::sdbm);
         auto h4 = sv1.hash(c_hash::fnv1_64);
+        auto h5 = sv1.hash(c_hash::murmur64);
+        auto h6 = sv1.hash(c_hash::xxhash64);
 
-        REQUIRE(h1 != -1);
-        REQUIRE(h2 != -1);
-        REQUIRE(h3 != -1);
-        REQUIRE(h4 != -1);
+        REQUIRE(h1 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h2 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h3 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h4 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h5 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h5 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h6 != static_cast<std::uint64_t>(-1));
 
         // Same view, multiple algorithms must differ
         REQUIRE(h1 != h2);
         REQUIRE(h2 != h3);
         REQUIRE(h3 != h4);
+        REQUIRE(h4 != h5);
+        REQUIRE(h5 != h6);
     }
 
     SECTION("string_view vs bytes_view from same buffer") {
@@ -997,5 +1075,99 @@ TEST_CASE("bitflags native type operator return types are self type") {
         STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<16>>()), bitflags<16>>);
         STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<32>>()), bitflags<32>>);
         STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<64>>()), bitflags<64>>);
+    }
+}
+
+TEST_CASE("pod::string_view explicit conversion and to_std() behave identically") {
+    using jh::pod::string_view;
+
+    static constexpr char raw[] = "conversion_test";
+    constexpr std::uint64_t len = sizeof(raw) - 1;
+    const string_view sv{raw, len};
+
+    const std::string_view a = static_cast<std::string_view>(sv); // explicit conversion
+    const std::string_view b = sv.to_std();                        // to_std() method
+
+    SECTION("Data pointer and size must match") {
+        REQUIRE(a.data() == b.data());
+        REQUIRE(a.size() == b.size());
+    }
+
+    SECTION("Content equality check") {
+        REQUIRE(a == b);
+        REQUIRE(a == "conversion_test");
+    }
+
+    SECTION("Both produce same hash via std::hash") {
+        const auto ha = std::hash<std::string_view>{}(a);
+        const auto hb = std::hash<std::string_view>{}(b);
+        REQUIRE(ha == hb);
+    }
+}
+
+namespace test{
+    consteval auto f() {
+        constexpr auto t = jh::pod::make_tuple(1, 2, 3);
+        return get<0>(t) + get<1>(t) + get<2>(t);
+    }
+}
+
+TEST_CASE("pod::tuple constexpr and compile-time semantics") {
+    using jh::pod::tuple;
+    using jh::pod::make_tuple;
+    using jh::pod::get;
+
+    // 1. constexpr make_tuple + get
+    {
+        constexpr auto t = make_tuple(10, 2.5, true);
+        STATIC_REQUIRE(get<0>(t) == 10);
+        STATIC_REQUIRE(get<1>(t) == 2.5);
+        STATIC_REQUIRE(get<2>(t) == true);
+        STATIC_REQUIRE(t == make_tuple(10, 2.5, true));
+        STATIC_REQUIRE(t != make_tuple(11, 2.5, true));
+    }
+
+    // 2. consteval path (stronger than constexpr)
+    {
+        STATIC_REQUIRE(test::f() == 6);
+    }
+
+    // 3. nested tuple and structured comparison
+    {
+        constexpr auto inner = make_tuple(1, 2);
+        constexpr auto outer = make_tuple(inner, 3);
+        STATIC_REQUIRE(get<0>(outer) == inner);
+        STATIC_REQUIRE(get<1>(outer) == 3);
+    }
+
+    // 4. tuple of POD types with manual nested braces (aggregate form)
+    {
+        constexpr tuple<int, float> t1{{ {7}, {{3.14f}, {}} }};
+        constexpr auto t2 = make_tuple(7, 3.14f);
+        STATIC_REQUIRE(t1 == t2);
+    }
+
+    // 5. tuple triviality and POD traits
+    {
+        STATIC_REQUIRE(std::is_trivial_v<tuple<int, double>>);
+        STATIC_REQUIRE(std::is_standard_layout_v<tuple<int, double>>);
+        STATIC_REQUIRE(pod::pod_like<tuple<int, double>>);
+    }
+
+    // 6. constexpr operator== and != coverage
+    {
+        constexpr auto a = make_tuple(1, 2);
+        constexpr auto b = make_tuple(1, 2);
+        constexpr auto c = make_tuple(1, 3);
+        STATIC_REQUIRE(a == b);
+        STATIC_REQUIRE(a != c);
+    }
+
+    // 7. compile-time nested get recursion test
+    {
+        constexpr auto t = make_tuple(make_tuple(1, 2), 3);
+        STATIC_REQUIRE(get<1>(t) == 3);
+        STATIC_REQUIRE(get<0>(get<0>(t)) == 1);
+        STATIC_REQUIRE(get<1>(get<0>(t)) == 2);
     }
 }

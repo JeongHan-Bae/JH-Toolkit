@@ -30,7 +30,7 @@
  * This ensures all necessary header files are available for compilation.
  */
 #define JH_IMMUTABLE_STR_AUTO_TRIM true
-#include "jh/immutable_str.h"
+#include "jh/immutable_str"
 #include <iostream>
 #include <vector>
 #include <unordered_map>

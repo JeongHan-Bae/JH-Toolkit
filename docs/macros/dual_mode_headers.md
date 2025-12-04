@@ -31,7 +31,7 @@ It provides two cooperating headers:
 Together they allow one `.h` file to safely express declarations and definitions
 depending on the current **build context**.  
 
-> This mechanism is used by [`jh::immutable_str`](../immutable_str.md)
+> This mechanism is used by [`jh::immutable_str`](../core/immutable_str.md)
 > and `jh::runtime_arr` to realize JH Toolkit's
 > *"write once, build differently"* principle.
 

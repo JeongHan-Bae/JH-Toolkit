@@ -54,7 +54,7 @@ namespace jh::pod {
      * <code>volatile</code>-qualified.
      *
      * <h4>Motivation</h4>
-     * In certain templates—such as <code>pod::pair&lt;T1, T2&gt;</code>—using
+     * In certain templates&mdash;such as <code>pod::pair&lt;T1, T2&gt;</code>&mdash;using
      * <code>const</code>-qualified inner types (e.g., <code>pair&lt;const int, int&gt;</code>)
      * would violate standard layout or trivially-copyable constraints, rendering the
      * resulting type non-POD.
@@ -74,4 +74,4 @@ namespace jh::pod {
     pod_like<T> &&
     !std::is_const_v<T> &&
     !std::is_volatile_v<T>;
-}
+} // namespace jh::pod

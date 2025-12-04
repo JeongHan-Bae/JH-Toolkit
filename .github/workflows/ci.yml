@@ -8,11 +8,12 @@ on:
       - 'dev*'
       - '**/dev*'
     paths:
+      - 'CMakeLists.txt'
       - 'src/**'
       - 'include/**'
       - 'examples/**'
       - 'tests/**'
-      - '.github/workflows/**'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 jobs:
@@ -24,10 +25,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Dependencies
+      - name: Fast Install Dependencies (no man-db)
         run: |
-          sudo apt update
-          sudo apt install -y ninja-build g++ cmake
+          sudo apt-get update -qq
+          sudo apt-get remove -y man-db || true
+          echo "man-db hold" | sudo dpkg --set-selections
+          sudo apt-get install -y --no-install-recommends eatmydata
+          sudo eatmydata apt-get install -y --no-install-recommends ninja-build g++ cmake
 
       - name: Configure (FastDebug)
         run: cmake -B build-fastdebug -DCMAKE_BUILD_TYPE=FastDebug -G Ninja
@@ -47,7 +51,12 @@ jobs:
 
       - name: Install Dependencies (LLVM@20 + CMake + Ninja)
         run: |
-          brew install cmake ninja llvm@20
+          brew update -q
+          for pkg in llvm@20 cmake ninja; do
+            if ! brew list --versions "$pkg" >/dev/null; then
+              brew install -q "$pkg"
+            fi
+          done
           brew link llvm@20 --force
 
       - name: Show compiler version
@@ -91,16 +100,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Configure (FastDebug)
+      - name: Configure (Release)
         run: >
-          cmake -B build-fastdebug
-          -DCMAKE_BUILD_TYPE=FastDebug
+          cmake -B build-release
+          -DCMAKE_BUILD_TYPE=Release
           -G Ninja
           -DCMAKE_C_COMPILER=gcc
           -DCMAKE_CXX_COMPILER=g++
 
       - name: Build
-        run: cmake --build build-fastdebug -v
+        run: cmake --build build-release -v
 
       - name: Run tests
-        run: ctest --test-dir build-fastdebug --output-on-failure
+        run: ctest --test-dir build-release --output-on-failure

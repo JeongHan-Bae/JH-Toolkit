@@ -11,7 +11,7 @@
  * <pre><code>#include &lt;jh/runtime_arr&gt;</code></pre>
  *
  * <p>
- * Internally, this file forwards to <code>jh/runtime_arr.h</code>
+ * Internally, this file forwards to <code>jh/core/runtime_arr.h</code>
  * and defines no additional symbols.
  * </p>
  *
@@ -22,4 +22,4 @@
 
 #pragma once
 
-#include "jh/runtime_arr.h"
+#include "jh/core/runtime_arr.h"

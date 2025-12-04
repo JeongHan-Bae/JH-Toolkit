@@ -12,7 +12,7 @@
  * <pre><code>#include &lt;jh/sim_pool&gt;</code></pre>
  *
  * <p>
- * Internally, this file forwards to <code>jh/sim_pool.h</code>
+ * Internally, this file forwards to <code>jh/core/sim_pool.h</code>
  * and defines no additional symbols.
  * </p>
  *
@@ -21,4 +21,4 @@
 
 #pragma once
 
-#include "jh/sim_pool.h"
+#include "jh/core/sim_pool.h"
