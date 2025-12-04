@@ -97,6 +97,7 @@
  */
 
 #pragma once
+
 #include "jh/metax/t_str.h"
 #include "jh/macros/platform.h"
 #include "jh/synchronous/ipc/process_mutex.h"

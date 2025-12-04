@@ -1,5 +1,5 @@
-#define CATCH_CONFIG_MAIN
 #include <catch2/catch_all.hpp>
+
 #include "jh/async"
 #include <chrono>
 #include <iostream>
@@ -319,8 +319,13 @@ TEST_CASE("Different-Type Event Test") {
         safe_out("[slot coro] started\n");
 
         for (;;) {
-            auto [idx, payload] = co_await ml;
-
+            // Manually unpack to avoid gcc warning
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+            auto ev = co_await ml;
+            auto idx = std::get<0>(ev);
+            auto payload = std::get<1>(ev);
+#pragma GCC diagnostic pop
             if (idx == 0) {
                 int v = std::get<int>(payload);
                 vec_int1.emplace_back(v);

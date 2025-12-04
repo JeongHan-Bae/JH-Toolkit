@@ -220,11 +220,74 @@
 #include <cstring>
 #include <functional>
 #include <memory>
+#include <type_traits>
 #include "jh/conceptual/iterator.h"
 #include "jh/pods/pod_like.h"
 #include "jh/typing/monostate.h"
 
 namespace jh {
+
+    namespace detail {
+        /// @brief Checks if Alloc provides direct allocate/deallocate for T.
+        template<typename A, typename T>
+        concept direct_alloc_for =
+        (!jh::typed::monostate_t<A>) && requires(A a, std::uint64_t n) {
+            { a.allocate(n) } -> std::same_as<T *>;
+            { a.deallocate(std::declval<T *>(), n) };
+        };
+
+        /// @brief Checks if Alloc can be rebound to T via allocator_traits.
+        template<typename A, typename T>
+        concept rebind_alloc_for =
+        (!jh::typed::monostate_t<A>) && requires(std::uint64_t n) {
+            requires requires(typename std::allocator_traits<A>::template rebind_alloc<T> rebind){
+                rebind.allocate(n);
+                rebind.deallocate(std::declval<T *>(), n);
+            };
+        };
+
+        /**
+         * @brief Resolves the appropriate allocator type for runtime_arr.
+         *
+         * @details
+         * <strong>Resolution Logic:</strong>
+         * <ol>
+         *  <li>If <code>Alloc</code> is <code>typed::monostate</code>, use <code>typed::monostate</code>.</li>
+         *  <li>If <code>Alloc</code> directly supports <code>allocate(n)</code> / <code>deallocate(ptr, n)</code> for <code>T</code>,
+         *      use <code>Alloc</code> as-is.</li>
+         *  <li>If <code>Alloc</code> can be rebound to <code>T</code> via <code>std::allocator_traits</code>,
+         *      use the rebound allocator type.</li>
+         *  <li>Otherwise, resolution fails with <code>void</code>.</li>
+         * </ol>
+         * @tparam T Element type.
+         * @tparam Alloc Provided allocator type.
+         */
+        template<typename T, typename Alloc>
+        struct rt_arr_alloc {
+            using type = decltype([]() {
+                if constexpr (jh::typed::monostate_t<Alloc>) {
+                    return std::type_identity<jh::typed::monostate>{};
+                } else if constexpr (direct_alloc_for<Alloc, T>) {
+                    return std::type_identity<Alloc>{};
+                } else if constexpr (rebind_alloc_for<Alloc, T>) {
+                    using rebound = typename std::allocator_traits<Alloc>::template rebind_alloc<T>;
+                    return std::type_identity<rebound>{};
+                } else {
+                    return std::type_identity<void>{};
+                }
+            }())::type;
+        };
+
+        /// @brief Helper alias for resolved allocator type.
+        template<typename T, typename Alloc>
+        using rt_arr_alloc_t = typename rt_arr_alloc<T, Alloc>::type;
+
+        /// @brief Concept to validate allocator suitability for runtime_arr.
+        template<typename T, typename Alloc>
+        concept valid_rt_arr_allocator =
+        !std::is_same_v<rt_arr_alloc_t<T, Alloc>, void>;
+
+    } // namespace detail
 
     /**
      * @brief A move-only, fixed-capacity array with runtime-determined length and RAII-based ownership.
@@ -296,7 +359,7 @@ namespace jh {
      *   <li>Copy operations are deleted; moves are noexcept.</li>
      * </ul>
      */
-    template<typename T, typename Alloc = typed::monostate>
+    template<typename T, typename Alloc = typed::monostate> requires detail::valid_rt_arr_allocator<T, Alloc>
     class runtime_arr final {
         std::uint64_t size_{0};
 
@@ -306,20 +369,12 @@ namespace jh {
         static void default_deleter(T *p) { delete[] p; } // NOLINT
 
         static deleter_t make_deleter() {
-            if constexpr (typed::monostate_t<Alloc>) {
+            if constexpr (typed::monostate_t<allocator_type>) {
                 return default_deleter;
             } else {
                 return nullptr; // No-op deleter, it will be bound to lambda
             }
         }
-
-        template<typename A>
-        static constexpr bool is_valid_allocator =
-                typed::monostate_t<A> || requires(A a, std::uint64_t n)
-                {
-                    { a.allocate(n) } -> std::same_as<T *>;
-                    { a.deallocate(std::declval<T *>(), n) };
-                };
 
     public:
 
@@ -332,6 +387,19 @@ namespace jh {
         using const_pointer = const value_type *;                    ///< Const pointer type.
         using iterator = pointer;
         using const_iterator = const_pointer;
+        using allocator_type = detail::rt_arr_alloc_t<T, Alloc>;
+
+    private:
+        /// @brief Helper to create allocator instance from provided Alloc.
+        allocator_type make_allocator_from(const Alloc &alloc) {
+            if constexpr (std::same_as<allocator_type, Alloc>) {
+                return alloc;
+            } else {
+                return allocator_type(alloc);
+            }
+        }
+
+    public:
 
         struct uninitialized_t {
         };
@@ -403,7 +471,7 @@ namespace jh {
          *
          * @throws std::bad_alloc If allocation fails.
          */
-        runtime_arr(std::initializer_list<T> init)requires(typed::monostate_t<Alloc>)
+        runtime_arr(std::initializer_list<T> init) requires (typed::monostate_t<Alloc>)
                 : size_(init.size()), data_(nullptr, default_deleter) {
             if (size_ == 0) return;
             T *ptr = new T[size_];
@@ -453,13 +521,13 @@ namespace jh {
          * safe, fixed-size runtime arrays. It offers predictable initialization and deallocation
          * behavior, suitable for both POD and non-POD types.</p>
          */
-        explicit runtime_arr(std::uint64_t size) requires(is_valid_allocator<Alloc>)
+        explicit runtime_arr(std::uint64_t size)
                 : size_(size) {
-            if constexpr (typed::monostate_t<Alloc>) {
+            if constexpr (typed::monostate_t<allocator_type>) {
                 T *ptr = new T[size_];
                 data_.reset(ptr); // Use default_deleter
             } else {
-                Alloc alloc{};
+                allocator_type alloc{};
                 T *ptr = alloc.allocate(size_);
                 data_ = std::unique_ptr<T[], deleter_t>(
                         ptr,
@@ -491,18 +559,19 @@ namespace jh {
          *
          * @throws std::bad_alloc If allocator fails to provide storage.
          */
-        runtime_arr(std::initializer_list<T> init, Alloc alloc)requires(!typed::monostate_t<Alloc>)
+        runtime_arr(std::initializer_list<T> init, const Alloc &alloc) requires (!jh::typed::monostate_t<Alloc>)
                 : size_(init.size()) {
-            T *ptr = alloc.allocate(size_);
+            allocator_type rebound = make_allocator_from(alloc);
+            T *ptr = rebound.allocate(size_);
             std::uninitialized_copy(init.begin(), init.end(), ptr);
             data_ = std::unique_ptr<T[], deleter_t>(
                     ptr,
-                    [alloc, size = size_](T *p) mutable { alloc.deallocate(p, size); }
+                    [rebound, size = size_](T *p) mutable { rebound.deallocate(p, size); }
             );
         }
 
         /**
-        * @brief Constructs a runtime array using a movable allocator instance (perfect-forwarded).
+        * @brief Constructs a runtime array using a movable allocator instance.
          * @param size Number of elements to allocate.
         * @param alloc Allocator instance (may be lvalue or rvalue).
          *
@@ -521,12 +590,14 @@ namespace jh {
          *   <li>Ensures allocator lifetime and destruction safety via lambda capture semantics.</li>
          * </ul>
          */
-        explicit runtime_arr(std::uint64_t size, Alloc &&alloc)requires (!typed::monostate_t<Alloc>): size_(size) {
-            T *ptr = alloc.allocate(size_);
+        explicit runtime_arr(std::uint64_t size, const Alloc &alloc) requires (!typed::monostate_t<Alloc>)
+                : size_(size) {
+            allocator_type rebound = make_allocator_from(alloc);
+            T *ptr = rebound.allocate(size_);
             data_ = std::unique_ptr<T[], deleter_t>(
                     ptr,
-                    [alloc = std::forward<Alloc>(alloc), size](T *p) mutable {
-                        alloc.deallocate(p, size);
+                    [rebound = std::forward<allocator_type>(rebound), size](T *p) mutable {
+                        rebound.deallocate(p, size);
                     }
             );
         }
@@ -658,11 +729,11 @@ namespace jh {
          * </ul>
          */
         template<typename ForwardIt>
-        runtime_arr(ForwardIt first, ForwardIt last)requires (typed::monostate_t<Alloc> &&
-                                                              jh::concepts::forward_iterator<ForwardIt> &&
-                                                              std::convertible_to<typename ForwardIt::value_type, value_type> &&
-                                                              std::is_copy_constructible_v<T>) : data_(nullptr,
-                                                                                                       default_deleter) {
+        runtime_arr(ForwardIt first, ForwardIt last) requires (typed::monostate_t<Alloc> &&
+                                                               jh::concepts::forward_iterator<ForwardIt> &&
+                                                               std::convertible_to<typename ForwardIt::value_type, value_type> &&
+                                                               std::is_copy_constructible_v<T>)
+                : data_(nullptr, default_deleter) {
             const auto dist = std::distance(first, last);
 
             if (dist < 0)
@@ -1256,7 +1327,7 @@ namespace jh {
             bit_ref &operator=(bool val) const && noexcept {
                 const_cast<bit_ref &>(*this) = val;
                 return // NOLINT
-                const_cast<bit_ref &>(*this);
+                        const_cast<bit_ref &>(*this);
             }
 
             operator bool() // NOLINT
@@ -1535,8 +1606,8 @@ namespace jh {
          * </ul>
          */
         template<typename ForwardIt>
-        runtime_arr(ForwardIt first, ForwardIt last)requires (jh::concepts::forward_iterator<ForwardIt> &&
-                                                              std::convertible_to<typename ForwardIt::value_type, value_type>) {
+        runtime_arr(ForwardIt first, ForwardIt last) requires (jh::concepts::forward_iterator<ForwardIt> &&
+                                                               std::convertible_to<typename ForwardIt::value_type, value_type>) {
             const auto dist = std::distance(first, last);
             if (dist < 0) throw std::invalid_argument("Invalid iterator range");
             size_ = static_cast<std::uint64_t>(dist);
@@ -1849,7 +1920,10 @@ namespace jh {
 
 namespace jh {
 #if defined(JH_HEADER_NO_IMPL)
-    extern template class runtime_arr<bool, runtime_arr_helper::bool_flat_alloc>;
+
+    extern template
+    class runtime_arr<bool, runtime_arr_helper::bool_flat_alloc>;
+
 #endif
 #if JH_INTERNAL_SHOULD_DEFINE
 

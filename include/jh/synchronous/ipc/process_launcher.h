@@ -195,10 +195,8 @@
 #if IS_WINDOWS
 #include <windows.h>  // STARTUPINFO, PROCESS_INFORMATION, CreateProcess, WaitForSingleObject, CloseHandle
 #elif IS_POSIX
-
 #include <unistd.h>   // fork, execl, _exit
 #include <sys/wait.h> // waitpid
-
 #endif
 
 

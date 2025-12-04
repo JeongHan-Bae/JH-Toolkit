@@ -1,8 +1,9 @@
-#define CATCH_CONFIG_MAIN
+#include <catch2/catch_all.hpp>
+
 #include <random>
 #include <thread>
 #include <shared_mutex>
-#include <catch2/catch_all.hpp>
+
 #include "jh/immutable_str"
 #include "jh/typed"
 

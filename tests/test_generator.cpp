@@ -1,5 +1,3 @@
-#define CATCH_CONFIG_MAIN
-
 #include <numeric>
 #include <random>
 #include <catch2/catch_all.hpp>

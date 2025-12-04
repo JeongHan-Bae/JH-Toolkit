@@ -41,6 +41,10 @@
  *       maximum = 30 (strict BSD POSIX limit, 31 bytes including leading '/').</li>
  *   <li><b>Linux / Windows / WASM</b>:
  *       extended limit = 128 (safe portable maximum across modern systems).</li>
+ *   <li><b>If <code>JH_FORCE_SHORT_SEM_NAME</code> is defined as 1,</b>
+ *       the name length is treated as "same as BSD" (30) regardless of platform.
+ *       This is used if a non-detected BSD-like environment is targeted or developing cross-platform code
+ *       on non-BSD systems.</li>
  * </ul>
  * <p>
  * The limit is automatically selected at compile time using <code>jh/macros/platform.h</code>.
@@ -69,10 +73,14 @@
 #define JH_ALLOW_PARENT_PATH 0
 #endif
 
+#ifndef JH_FORCE_SHORT_SEM_NAME
+#define JH_FORCE_SHORT_SEM_NAME 0
+#endif
+
 namespace jh::sync::ipc::limits {
 
     // BSD-derived systems have strict 31-byte limit (including '/')
-#if IS_DARWIN || IS_FREEBSD
+#if IS_DARWIN || IS_FREEBSD || JH_FORCE_SHORT_SEM_NAME
     inline constexpr std::uint64_t max_name_length = 30;
 #else
     // Linux, Windows, WASM: more permissive; keep it conservative but practical
@@ -130,12 +138,13 @@ namespace jh::sync::ipc::limits {
      * <h4>Rules</h4>
      * <ul>
      *   <li>Length in range [1, 128].</li>
-     *   <li>Absolute paths forbidden (no leading '/').</li>
-     *   <li>No "./" segments.</li>
+     *   <li>Absolute paths forbidden (no leading <code>'/'</code>).</li>
+     *   <li>No <code>"./"</code> segments.</li>
      *   <li><code>".."</code> segments:
      *     <ul>
      *       <li>When <code>JH_ALLOW_PARENT_PATH == 0</code> &rarr; forbidden.</li>
-     *       <li>When <code>JH_ALLOW_PARENT_PATH == 1</code> &rarr; leading "../" allowed but cannot occupy entire path, and no ".." after content begins.</li>
+     *       <li>When <code>JH_ALLOW_PARENT_PATH == 1</code> &rarr; leading <code>"../"</code>
+     *       allowed but cannot occupy entire path, and no <code>".."</code> after content begins.</li>
      *     </ul>
      *   </li>
      *   <li>Allowed characters: <code>[A-Za-z0-9_.-/]</code>.</li>

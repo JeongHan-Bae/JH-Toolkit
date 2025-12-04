@@ -144,7 +144,6 @@
 
 namespace jh::sync::ipc {
 
-
     template <jh::meta::TStr S, bool HighPriv = false>
     requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     class shared_process_mutex;

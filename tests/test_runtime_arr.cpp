@@ -1,6 +1,5 @@
-#define CATCH_CONFIG_MAIN
-
 #include <catch2/catch_all.hpp>
+
 #include <memory_resource>
 #include <ranges>
 #include "jh/runtime_arr"
@@ -538,5 +537,73 @@ TEST_CASE("runtime_arr initializer_list construction", "[initlist]") {
         REQUIRE_FALSE(arr[1]);
         REQUIRE_FALSE(arr[2]);
         REQUIRE(arr[3]);
+    }
+}
+
+TEST_CASE("runtime_arr<int, std::allocator<double>> rebind behavior", "[alloc][rebind]") {
+    using AllocD = std::allocator<double>;
+    using Arr = runtime_arr<int, AllocD>;
+
+    STATIC_REQUIRE(!std::is_same_v<Arr::allocator_type, AllocD>);
+    STATIC_REQUIRE(std::is_same_v<Arr::allocator_type, std::allocator_traits<AllocD>::template rebind_alloc<int>>);
+
+    SECTION("basic construction and write/read") {
+        Arr arr(8, AllocD{});   // AllocD::value_type = double, but T = int → MUST rebind
+
+        for (int i = 0; i < 8; ++i)
+            arr.set(i, i * 10);
+
+        for (int i = 0; i < 8; ++i)
+            REQUIRE(arr[i] == i * 10);
+    }
+
+    SECTION("reset_all works") {
+        Arr arr(5, AllocD{});
+
+        for (int i = 0; i < 5; ++i)
+            arr.set(i, 123);
+
+        arr.reset_all();
+
+        for (int i = 0; i < 5; ++i)
+            REQUIRE(arr[i] == 0);
+    }
+
+    SECTION("initializer_list construction works") {
+        Arr arr({1, 2, 3, 4}, AllocD{});
+
+        REQUIRE(arr.size() == 4);
+        REQUIRE(arr[0] == 1);
+        REQUIRE(arr[1] == 2);
+        REQUIRE(arr[2] == 3);
+        REQUIRE(arr[3] == 4);
+    }
+
+    SECTION("move construction keeps values") {
+        Arr arr(4, AllocD{});
+        arr.set(0, 10);
+        arr.set(1, 20);
+        arr.set(2, 30);
+        arr.set(3, 40);
+
+        Arr moved = std::move(arr);
+
+        REQUIRE(moved[0] == 10);
+        REQUIRE(moved[1] == 20);
+        REQUIRE(moved[2] == 30);
+        REQUIRE(moved[3] == 40);
+        REQUIRE(arr.data() == nullptr);  // moved-from safety
+    }
+
+    SECTION("conversion to vector<int> still works") {
+        Arr arr({5, 6, 7, 8}, AllocD{});
+
+        std::vector<int> vec = static_cast<std::vector<int>>(std::move(arr));
+
+        REQUIRE(vec.size() == 4);
+        REQUIRE(vec[0] == 5);
+        REQUIRE(vec[1] == 6);
+        REQUIRE(vec[2] == 7);
+        REQUIRE(vec[3] == 8);
     }
 }

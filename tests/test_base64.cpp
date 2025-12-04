@@ -1,5 +1,3 @@
-#define CATCH_CONFIG_MAIN
-
 #include <random>
 #include <catch2/catch_all.hpp>
 #include "jh/serio"

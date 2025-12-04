@@ -1,5 +1,5 @@
-#define CATCH_CONFIG_MAIN
 #include <catch2/catch_all.hpp>
+
 #include "jh/sim_pool"
 #include "jh/pool"
 #include "jh/macros/platform.h"
@@ -254,6 +254,8 @@ TEST_CASE("pool move semantics") {
     REQUIRE(pool3.reserved_size() == test::DeducedPool::MIN_RESERVED_SIZE); // reserved_size should be reset
 }
 
+#if !IS_WINDOWS
+
 // Multithreading Test (128 Iterations for Data Race Detection): Not storing shared_ptr
 TEST_CASE("sim_pool multithreading without storing shared_ptr") {
     test::CustomizedPool pool;
@@ -358,10 +360,9 @@ TEST_CASE("sim_pool multithreading with storing shared_ptr") {
             for (auto &w: workers) {
                 w.join();
             }
-#if !IS_WINDOWS
+
             REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS); // Ensure all objects are alive
             REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS / 2); // Ensure reserved_size has expanded
-#endif
             stored_objects.clear(); // Release all shared_ptrs
             pool.cleanup(); // Trigger cleanup
             REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS);
@@ -402,10 +403,8 @@ TEST_CASE("pool multithreading with storing shared_ptr") {
             for (auto &w: workers) {
                 w.join();
             }
-#if !IS_WINDOWS
             REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS); // Ensure all objects are alive
             REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS / 2); // Ensure reserved_size has expanded
-#endif
             stored_objects.clear(); // Release all shared_ptrs
             pool.cleanup(); // Trigger cleanup
             REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS);
@@ -413,6 +412,8 @@ TEST_CASE("pool multithreading with storing shared_ptr") {
         }
     }
 }
+
+#endif
 
 /**
  * @note

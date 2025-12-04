@@ -35,6 +35,7 @@ set(TESTS
         test_huffman.cpp        jh-toolkit
         test_ordered_map.cpp    jh-toolkit
         test_slot.cpp           jh-toolkit
+        test_adt.cpp            jh-toolkit
 )
 
 # Get total number of entries
@@ -68,7 +69,8 @@ foreach(i RANGE 0 ${max_index})
     get_filename_component(target ${fname} NAME_WE)
 
     add_executable(${target} ${source})
-    target_link_libraries(${target} PRIVATE ${lib} Catch2::Catch2WithMain)
+    target_link_libraries(${target} PRIVATE ${lib} Catch2::Catch2)
+    target_sources(${target} PRIVATE ${CMAKE_SOURCE_DIR}/tests/main.cpp)
     target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/tests)
 
     if (USE_GCC_WORKAROUND)

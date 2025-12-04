@@ -51,6 +51,7 @@
  */
 
 #pragma once
+
 #include "jh/conceptual/tuple_like.h"
 #include <tuple>
 #include <utility>
@@ -157,11 +158,13 @@ namespace jh::meta {
         }
 
         template<typename... Ts>
-        constexpr operator std::tuple<Ts...>() const {
+        constexpr operator std::tuple<Ts...>() // NOLINT
+        const {
             return tuple_materialize(tuple);
         }
 
-        constexpr operator auto() const {
+        constexpr operator auto() // NOLINT
+        const {
             return tuple_materialize(tuple);
         }
     };
@@ -177,10 +180,12 @@ namespace std {
 
     template<typename Tuple>
     struct tuple_size<jh::meta::flatten_proxy<Tuple>>
-            : std::tuple_size<decltype(jh::meta::detail::flatten_one(std::declval<Tuple>()))> {};
+            : std::tuple_size<decltype(jh::meta::detail::flatten_one(std::declval<Tuple>()))> {
+    };
 
     template<std::size_t I, typename Tuple>
     struct tuple_element<I, jh::meta::flatten_proxy<Tuple>>
-            : std::tuple_element<I, decltype(jh::meta::detail::flatten_one(std::declval<Tuple>()))> {};
+            : std::tuple_element<I, decltype(jh::meta::detail::flatten_one(std::declval<Tuple>()))> {
+    };
 
 } // namespace std

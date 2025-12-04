@@ -83,10 +83,10 @@ namespace jh::ranges {
     template<std::ranges::range R, typename F> requires jh::concepts::vis_function_for<F, R>
     class vis_transform_view : public std::ranges::view_interface<vis_transform_view<R, F>> {
     public:
-        [[no_unique_address]] F func_;
         using traits = jh::concepts::range_storage_traits<R, false>;
 
         [[no_unique_address]] typename traits::stored_t base_;
+        [[no_unique_address]] F func_;
 
         /**
          * @brief Construct a <code>vis_transform_view</code> over a base range and callable.

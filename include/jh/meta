@@ -40,3 +40,4 @@
 #include "jh/metax/hash.h"
 #include "jh/metax/lookup_map.h"
 #include "jh/metax/t_str.h"
+#include "jh/metax/variant_adt.h"

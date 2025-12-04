@@ -1,5 +1,5 @@
-#define CATCH_CONFIG_MAIN
 #include <catch2/catch_all.hpp>
+
 #include "jh/metax/t_str.h"
 
 using namespace jh::meta;

@@ -1,4 +1,3 @@
-#define CATCH_CONFIG_MAIN
 #include <catch2/catch_all.hpp>
 
 #define JH_ALLOW_PARENT_PATH 1

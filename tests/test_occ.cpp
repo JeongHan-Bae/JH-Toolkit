@@ -1,6 +1,5 @@
-#define CATCH_CONFIG_MAIN
-
 #include <catch2/catch_all.hpp>
+
 #include "jh/concurrency"
 #include <thread>
 #include <chrono>    // NOLINT force include for std::chrono_literals

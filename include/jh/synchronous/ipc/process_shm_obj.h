@@ -106,6 +106,7 @@
  */
 
 #pragma once
+
 #include "jh/metax/t_str.h"
 #include "jh/macros/platform.h"
 #include "jh/pods/pod_like.h"
@@ -127,9 +128,7 @@
 #include <unistd.h>
 #endif
 
-
 namespace jh::sync::ipc {
-    
 
     /**
      * @brief Cross-process shared-memory container for a single POD-like object.
