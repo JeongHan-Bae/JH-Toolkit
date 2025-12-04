@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)  # Ensure standardized installation directories
 
-set(PROJECT_VERSION 1.3.4)
+set(PROJECT_VERSION 1.3.5)
 
 # Register custom build type
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel;FastDebug" CACHE STRING "" FORCE)
@@ -123,12 +123,34 @@ if (ENABLE_POD)
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/jh/pods
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh
     )
+    # Install depending headers in directory 'typing/'
+    install(FILES
+            ${CMAKE_SOURCE_DIR}/include/jh/typing/monostate.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/typing
+    )
+
+    # Install depending headers in directory 'detail/'
+    install(FILES
+            ${CMAKE_SOURCE_DIR}/include/jh/detail/base64_common.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/detail
+    )
+    # Install depending headers in directory 'metax/'
+    install(FILES
+            ${CMAKE_SOURCE_DIR}/include/jh/metax/hash.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/metax
+    )
+
+    # Install depending headers in directory 'serialize_io/'
+    install(FILES
+            ${CMAKE_SOURCE_DIR}/include/jh/serialize_io/base64.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/serialize_io
+    )
 
     # Install depending headers in directory 'utils/'
     install(FILES
-            ${CMAKE_SOURCE_DIR}/include/jh/utils/hash_fn.h
-            ${CMAKE_SOURCE_DIR}/include/jh/utils/typed.h
-            ${CMAKE_SOURCE_DIR}/include/jh/utils/base64.h
+            ${CMAKE_SOURCE_DIR}/include/jh/utils/hash_fn.h # alias in 1.3.x, will be removed in 1.4.0
+            ${CMAKE_SOURCE_DIR}/include/jh/utils/typed.h # alias in 1.3.x, will be removed in 1.4.0
+            ${CMAKE_SOURCE_DIR}/include/jh/utils/base64.h # alias in 1.3.x, will be removed in 1.4.0
             ${CMAKE_SOURCE_DIR}/include/jh/utils/platform.h # alias in 1.3.x, will be removed in 1.4.0
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/utils
     )

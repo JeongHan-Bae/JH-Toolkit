@@ -28,7 +28,7 @@
  *   <li>Use <code>#include &lt;jh/views&gt;</code> instead — it is the
  *       <strong>canonical and permanent</strong> include form.</li>
  *   <li>All adaptor implementations will remain located in
- *       <code>jh/ranges/views/*.h</code>.</li>
+ *       <code>jh/ranges/views/&#42;.h</code>.</li>
  * </ul>
  *
  * <p>
@@ -39,8 +39,12 @@
 
 #pragma once
 
-#include "jh/ranges/views/zip.h"
+#include "jh/ranges/views/common.h"
 #include "jh/ranges/views/enumerate.h"
+#include "jh/ranges/views/flatten.h"
+#include "jh/ranges/views/transform.h"
+#include "jh/ranges/views/vis_transform.h"
+#include "jh/ranges/views/zip.h"
 
 namespace jh::views {
     using namespace jh::ranges::views;

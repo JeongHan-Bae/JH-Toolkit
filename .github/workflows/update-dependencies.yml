@@ -6,6 +6,10 @@ on:
       - main
       - '*dev'
       - 'dev*'
+    paths:
+      - 'CMakeLists.txt'
+      - '.github/workflows/generate_dependencies.py'
+      - '.github/workflows/update-dependencies.yml'
 
 jobs:
   extract-dependencies:
@@ -29,13 +33,13 @@ jobs:
         run: |
           pip install -r requirements.txt || echo "No Python dependencies"
 
-      - name: Generate dependencies.json
+      - name: Generate Version Files
         run: python .github/workflows/generate_dependencies.py
 
-      - name: Check if dependencies.json changed
+      - name: Check if Version Files changed
         id: check_diff
         run: |
-          git add dependencies.json version_badge.json
+          git add dependencies.toml version_badge.json
           if git diff --cached --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
@@ -60,10 +64,14 @@ jobs:
           echo "Skipping update due to unmet conditions (trigger, change, or authorization)."
           exit 0
 
-      - name: Extract project version from dependencies.json
+      - name: Extract project version from dependencies.toml
         id: version
         run: |
-          version=$(jq -r '.project.version' dependencies.json)
+          version=$(awk '
+          $0=="[project]" { in_proj=1; next }
+          /^\[/ && $0!="[project]" { in_proj=0 }
+          in_proj && /^version/ { gsub(/"/,""); split($0,a,"="); print a[2]; exit }
+          ' dependencies.toml | xargs)
           echo "project_version=$version" >> $GITHUB_OUTPUT
 
       - name: Set up SSH Signing Key
@@ -83,10 +91,10 @@ jobs:
           git config --global user.name "JeongHan-Bae"
           git config --global user.email "mastropseudo@gmail.com"
 
-      - name: Commit and push dependencies.json
+      - name: Commit and push Version Files
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git add dependencies.json version_badge.json
+          git add dependencies.toml version_badge.json
           git commit -S -m "auto-update(version): ${{ steps.version.outputs.project_version }}" || echo "No commit needed"
           git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git || echo "No changes to push"

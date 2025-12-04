@@ -1,6 +1,5 @@
-#define CATCH_CONFIG_MAIN
-
 #include <catch2/catch_all.hpp>
+
 #include <vector>
 #include <string>
 #include <sstream>
@@ -12,13 +11,10 @@
 #include <deque>
 #include <stack>
 #include <memory_resource>
-
-#include "jh/ranges/views/flatten.h" // force include to compact with 1.3.x-support-dev branch
-#include "jh/ranges/views/common.h"  // same as above
 #include "jh/views"
 #include "jh/pod"
 #include "jh/runtime_arr"
-#include "jh/ranges_ext"    // temporarily located ranges_ext tests here for 1.3.x series
+#include "jh/ranges_ext"
 
 // ------------------------------
 //  local helper types
@@ -354,9 +350,11 @@ TEST_CASE("adapt: direct call vs pipe form equivalence", "[adapt][equiv]") {
     for (auto x: r1) out1 << x << " ";
 
     // pipe form
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-reference"
     std::ostringstream out2;
     for (auto x: arr | jh::ranges::adapt()) out2 << x << " ";
-
+#pragma GCC diagnostic pop
     REQUIRE(out1.str() == out2.str());
     REQUIRE(out1.str() == "10 20 30 ");
 }
@@ -681,7 +679,7 @@ TEST_CASE("flatten + to vector of tuple", "[flatten][to][combine]") {
     REQUIRE(result[2] == std::make_tuple(102, 30, "Carol"));
 }
 
-namespace demo{
+namespace demo {
     struct mid {
         long index;
         int id;
@@ -747,7 +745,7 @@ TEST_CASE("vis_transform pipeline closable with to<vector>", "[vis_transform][cl
                | jh::ranges::to<std::vector<int>>();
 
     std::ostringstream out;
-    for (const auto e : res)
+    for (const auto e: res)
         out << e << " ";
 
     REQUIRE(out.str() == "2 4 6 8 10 12 ");
