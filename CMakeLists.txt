@@ -274,6 +274,13 @@ install(FILES
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/jh-toolkit
 )
 
+if (WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+    message(STATUS "Windows Release/RelWithDebInfo: enabling tests")
+    enable_testing()
+    add_subdirectory(tests)
+    add_subdirectory(examples)
+endif ()
+
 # Enable tests and examples only in Debug mode
 if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "FastDebug")
     enable_testing()
