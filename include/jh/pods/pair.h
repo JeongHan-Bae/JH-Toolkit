@@ -38,7 +38,7 @@ namespace jh::pod {
      * This type provides the simplest form of a pair:
      * <ul>
      *   <li>Two inline members: <code>first</code> and <code>second</code></li>
-     *   <li>Strictly POD — trivial, standard layout, memcpy-safe</li>
+     *   <li>Strictly POD &mdash; trivial, standard layout, memcpy-safe</li>
      *   <li>Equality comparison via <code>operator==</code></li>
      * </ul>
      *

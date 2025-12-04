@@ -18,7 +18,7 @@
 /**
  * @file pool.h
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- * @brief Duck-typed adapter of <code>jh::sim_pool</code> — content-based pooling for immutable types.
+ * @brief Duck-typed adapter of <code>jh::sim_pool</code> &mdash; content-based pooling for immutable types.
  *
  * <h3>Overview</h3>
  * <p>
@@ -64,9 +64,9 @@
  *
  * <h3>Requirements</h3>
  * <ul>
- *   <li><b>Immutability</b> — fields affecting equality and hashing must remain constant.</li>
- *   <li><b>Equality</b> — <code>T::operator==</code> must define logical, content-based comparison.</li>
- *   <li><b>Hashability</b> — must satisfy <code>jh::concepts::extended_hashable&lt;T&gt;</code>.</li>
+ *   <li><b>Immutability</b> &mdash; fields affecting equality and hashing must remain constant.</li>
+ *   <li><b>Equality</b> &mdash; <code>T::operator==</code> must define logical, content-based comparison.</li>
+ *   <li><b>Hashability</b> &mdash; must satisfy <code>jh::concepts::extended_hashable&lt;T&gt;</code>.</li>
  * </ul>
  *
  * <h3>Behavior</h3>
@@ -188,8 +188,8 @@ namespace jh {
      * </tt></pre>
      *
      * <p>
-     * This allows any type declaring a valid hash mechanism — standard,
-     * ADL-based, or member-based — to participate in pooling without the need
+     * This allows any type declaring a valid hash mechanism &mdash; standard,
+     * ADL-based, or member-based &mdash; to participate in pooling without the need
      * for custom specialization.
      * </p>
      *
@@ -264,7 +264,7 @@ namespace jh {
      *
      * <h3>Type Requirements</h3>
      * <ul>
-     *   <li>The type must be <strong>logically immutable</strong> — all fields
+     *   <li>The type must be <strong>logically immutable</strong> &mdash; all fields
      *       affecting equality and hashing remain constant during the object’s
      *       lifetime.</li>
      *   <li>It must satisfy <code>jh::concepts::extended_hashable</code>,
@@ -302,7 +302,7 @@ namespace jh {
      * via one of the following standard mechanisms instead:
      * </p>
      * <ul>
-     *   <li>Specialize <code>std::hash&lt;T&gt;</code> — the canonical
+     *   <li>Specialize <code>std::hash&lt;T&gt;</code> &mdash; the canonical
      *       registration form recognized by all standard containers.</li>
      *   <li>Provide an <b>ADL-discoverable</b> free function
      *       <code>size_t hash(const T&amp;)</code>.</li>

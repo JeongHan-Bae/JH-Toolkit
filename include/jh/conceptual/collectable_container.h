@@ -19,7 +19,7 @@
  * @file collectable_container.h (conceptual)
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
- * @brief Compile-time deduction of <em>collectable containers</em> — determining
+ * @brief Compile-time deduction of <em>collectable containers</em> &mdash; determining
  *        whether and how a container <code>C</code> can accept elements of a range
  *        <code>R</code> through incremental, value-preserving insertion.
  *
@@ -37,7 +37,7 @@
  * <b>incrementally populated</b> with the elements of that range, without requiring
  * any external constructor arguments.
  * This mechanism powers <code>jh::ranges::collect</code>, which performs
- * <b>data materialization and normalization</b> — converting a lazy or proxy-based
+ * <b>data materialization and normalization</b> &mdash; converting a lazy or proxy-based
  * pipeline into a concrete, value-semantic container.
  * </p>
  *
@@ -53,7 +53,7 @@
  *   <li><code>to</code> may take constructor arguments and performs the final
  *       adaptation step.</li>
  *   <li>The combination <code>collect + to</code> forms a complete
- *       <em>materialization → adaptation</em> pipeline.</li>
+ *       <em>materialization &rarr; adaptation</em> pipeline.</li>
  * </ul>
  *
  * <h3>Classification</h3>
@@ -61,19 +61,19 @@
  * The <code>collectable_status</code> enumeration defines all supported behaviors:
  * </p>
  * <ul>
- *   <li><b><code>closable</code></b> — the container is directly constructible via
+ *   <li><b><code>closable</code></b> &mdash; the container is directly constructible via
  *       <code>jh::ranges::to</code>.</li>
- *   <li><b><code>emplace_back_direct</code></b> — appends elements using
+ *   <li><b><code>emplace_back_direct</code></b> &mdash; appends elements using
  *       <code>emplace_back()</code>.</li>
- *   <li><b><code>push_back_direct</code></b> — appends using
+ *   <li><b><code>push_back_direct</code></b> &mdash; appends using
  *       <code>push_back()</code>.</li>
- *   <li><b><code>emplace_direct</code></b> — inserts at logical end using
+ *   <li><b><code>emplace_direct</code></b> &mdash; inserts at logical end using
  *       <code>emplace()</code>.</li>
- *   <li><b><code>insert_direct</code></b> — inserts at logical end using
+ *   <li><b><code>insert_direct</code></b> &mdash; inserts at logical end using
  *       <code>insert()</code>.</li>
- *   <li><b><code>emplace_back_unpack</code></b> — performs tuple-like structural
+ *   <li><b><code>emplace_back_unpack</code></b> &mdash; performs tuple-like structural
  *       unpacking into <code>emplace_back()</code>.</li>
- *   <li><b><code>emplace_unpack</code></b> — performs tuple-like structural
+ *   <li><b><code>emplace_unpack</code></b> &mdash; performs tuple-like structural
  *       unpacking into <code>emplace()</code>.</li>
  * </ul>
  *
@@ -111,11 +111,11 @@
  *
  * <h3>Relationship with other modules</h3>
  * <ul>
- *   <li><b><code>jh::ranges::collect</code></b> — uses this classification to
+ *   <li><b><code>jh::ranges::collect</code></b> &mdash; uses this classification to
  *       materialize non-closable ranges into stable containers.</li>
- *   <li><b><code>jh::ranges::to</code></b> — skips this classification entirely,
+ *   <li><b><code>jh::ranges::to</code></b> &mdash; skips this classification entirely,
  *       performing direct container construction when <code>closable</code>.</li>
- *   <li><b><code>jh::concepts::closable_container_for</code></b> — represents the
+ *   <li><b><code>jh::concepts::closable_container_for</code></b> &mdash; represents the
  *       complementary “construction-level” concept for <code>to</code>.</li>
  * </ul>
  *
@@ -148,6 +148,7 @@
 
 #include <cstdint>
 #include "jh/conceptual/closable_container.h"
+#include "jh/conceptual/tuple_like.h"
 
 
 namespace jh::concepts::detail {

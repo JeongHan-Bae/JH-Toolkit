@@ -257,4 +257,4 @@ namespace jh::detail::base64_common {
             if (j < m) dst[j++] = static_cast<uint8_t>(triple & 0xFF);
         }
     }
-}
+} // namespace jh::detail::base64_common

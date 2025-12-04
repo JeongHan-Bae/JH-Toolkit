@@ -24,8 +24,8 @@
  * This header defines the trait <code>jh::concepts::container_value_t</code>,
  * a unified and extensible mechanism for deducing the <em>value type</em> of
  * arbitrary container-like types.
- * It harmonizes three deduction strategies — user registration, declared
- * <code>value_type</code>, and iterator-based inference — under a deterministic
+ * It harmonizes three deduction strategies &mdash; user registration, declared
+ * <code>value_type</code>, and iterator-based inference &mdash; under a deterministic
  * priority system.
  * </p>
  *
@@ -41,17 +41,17 @@
  * <h3>Deduction priority</h3>
  * <ol>
  *   <li><b>User override:</b>
- *       <code>jh::container_deduction&lt;C&gt;::value_type</code> — explicit registration
+ *       <code>jh::container_deduction&lt;C&gt;::value_type</code> &mdash; explicit registration
  *       always takes precedence.</li>
  *   <li><b>Declared type:</b>
- *       <code>C::value_type</code> — used if no override is present.</li>
+ *       <code>C::value_type</code> &mdash; used if no override is present.</li>
  *   <li><b>Iterator-based deduction:</b>
  *       extracted via <code>iterator_t&lt;C&gt;</code> and
  *       <code>iterator_value_t&lt;iterator_t&lt;C&gt;&gt;</code>.</li>
  *   <li><b>Conflict resolution:</b>
  *       if both declared and deduced forms exist and share a common reference,
  *       the declared form wins.</li>
- *   <li><b>Fallback:</b> <code>void</code> — deduction failure.</li>
+ *   <li><b>Fallback:</b> <code>void</code> &mdash; deduction failure.</li>
  * </ol>
  *
  * <h3>User customization point</h3>
@@ -175,7 +175,7 @@ namespace jh::concepts::detail {
  * <li>Deduced from <code>iterator_t&lt;C&gt;</code> and <code>iterator_value_t</code></li>
  * <li>If both declared and deduced exist and have a common reference type,
  *     declared type is preferred</li>
- * <li>Otherwise, <tt>void</tt></li>
+ * <li>Otherwise, <code>void</code></li>
  * </ol>
  */
     template<typename C>

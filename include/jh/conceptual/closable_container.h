@@ -19,12 +19,12 @@
  * @file closable_container.h (conceptual)
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * 
- * @brief Compile-time deduction of container <tt>closability</tt> — determining
+ * @brief Compile-time deduction of container <tt>closability</tt> &mdash; determining
  *        whether and how a container <code>C</code> can be directly constructed
  *        ("closed") from a range <code>R</code>.
  *
  * <p>
- * This header defines the <b>closable container model</b> — the conceptual basis
+ * This header defines the <b>closable container model</b> &mdash; the conceptual basis
  * for <code>jh::ranges::to</code> and its companion <code>jh::ranges::collect</code>.
  * It classifies all possible construction paths between a container and a range,
  * forming the foundation for the <code>closable_container_for</code> concept.
@@ -64,9 +64,9 @@
  * <b>two-phase adaptation model</b>:
  * </p>
  * <ol>
- *   <li><b><code>collect&lt;V&gt;()</code></b> — explicitly materializes any lazy
+ *   <li><b><code>collect&lt;V&gt;()</code></b> &mdash; explicitly materializes any lazy
  *       or proxy-based range into a stable, value-semantic container <code>V</code>.</li>
- *   <li><b><code>to&lt;C&gt;()</code></b> — constructs the final container
+ *   <li><b><code>to&lt;C&gt;()</code></b> &mdash; constructs the final container
  *       <code>C</code> from that materialization.</li>
  * </ol>
  *
@@ -85,19 +85,19 @@
  *
  * <h3>Core entities</h3>
  * <ul>
- *   <li><code>jh::concepts::detail::closable_status</code> —
+ *   <li><code>jh::concepts::detail::closable_status</code> &mdash;
  *       enumerates all construction modes.</li>
- *   <li><code>jh::concepts::detail::compute_closable_status&lt;C, R&gt;</code> —
+ *   <li><code>jh::concepts::detail::compute_closable_status&lt;C, R&gt;</code> &mdash;
  *       evaluates and selects the appropriate mode at compile time.</li>
- *   <li><code>jh::concepts::closable_container_for&lt;C, R&gt;</code> —
+ *   <li><code>jh::concepts::closable_container_for&lt;C, R&gt;</code> &mdash;
  *       concept determining if a container is closable from a range.</li>
  * </ul>
  *
  * <h3>Relationship with other modules</h3>
  * <ul>
- *   <li><b><code>jh::ranges::to</code></b> — consumes closable pairs for
+ *   <li><b><code>jh::ranges::to</code></b> &mdash; consumes closable pairs for
  *       direct construction.</li>
- *   <li><b><code>jh::ranges::collect</code></b> — produces closable,
+ *   <li><b><code>jh::ranges::collect</code></b> &mdash; produces closable,
  *       value-semantic intermediates.</li>
  * </ul>
  *

@@ -21,7 +21,7 @@
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * <p>
- * Defines <code>jh::typed::null_mutex_t</code> — a fully concept-compatible,
+ * Defines <code>jh::typed::null_mutex_t</code> &mdash; a fully concept-compatible,
  * zero-overhead dummy mutex used to satisfy <code>jh::concepts::mutex_like</code>
  * and related locking concepts.
  * </p>
@@ -71,7 +71,7 @@ namespace jh::typed {
      *
      * <p>
      * This type serves as a semantic stand-in for real synchronization primitives
-     * in contexts where locking is structurally required but semantically unnecessary —
+     * in contexts where locking is structurally required but semantically unnecessary &mdash;
      * for example, when thread safety is guaranteed by design or when the data is
      * confined to a single thread.
      * </p>

@@ -26,12 +26,12 @@
  *
  * <h4>Supported constexpr hash algorithms</h4>
  * <ul>
- *   <li><b>FNV-1a 64</b> — Simple, fast, and widely used for identifiers.</li>
- *   <li><b>FNV-1 64</b>  — Variant with multiply-before-xor order.</li>
- *   <li><b>DJB2</b>      — Classic string hash, small code footprint.</li>
- *   <li><b>SDBM</b>      — Hash from old DB engines (used by readdir, ndbm).</li>
- *   <li><b>Murmur64</b>  — Seedless constexpr variant of MurmurHash3.</li>
- *   <li><b>xxHash64</b>  — Deterministic constexpr-safe xxHash-like algorithm.</li>
+ *   <li><b>FNV-1a 64</b> &mdash; Simple, fast, and widely used for identifiers.</li>
+ *   <li><b>FNV-1 64</b>  &mdash; Variant with multiply-before-xor order.</li>
+ *   <li><b>DJB2</b>      &mdash; Classic string hash, small code footprint.</li>
+ *   <li><b>SDBM</b>      &mdash; Hash from old DB engines (used by readdir, ndbm).</li>
+ *   <li><b>Murmur64</b>  &mdash; Seedless constexpr variant of MurmurHash3.</li>
+ *   <li><b>xxHash64</b>  &mdash; Deterministic constexpr-safe xxHash-like algorithm.</li>
  * </ul>
  *
  * @details

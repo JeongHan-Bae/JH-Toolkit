@@ -17,7 +17,7 @@
  */
 /**
  * @file enumerate.h (ranges/views)
- * @brief <code>jh::ranges::views::enumerate</code> — sequence-aware enumerate adaptor.
+ * @brief <code>jh::ranges::views::enumerate</code> &mdash; sequence-aware enumerate adaptor.
  * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  * @see jh::ranges::views::zip
  *
@@ -42,7 +42,7 @@
  *       (they must be consistent if both exist).</li>
  *   <li>If neither is available, the type falls back to <code>std::ptrdiff_t</code>.</li>
  *   <li>Conflicting iterator traits (mismatched <code>difference_type</code> and subtraction result)
- *       invalidate the type — such a type does not model <code>jh::concepts::sequence</code>.</li>
+ *       invalidate the type &mdash; such a type does not model <code>jh::concepts::sequence</code>.</li>
  *   <li><code>start</code> is <code>static_cast</code> to <code>diff_t</code>; invalid conversions are ill-formed.</li>
  * </ul>
  *
@@ -129,18 +129,18 @@ namespace jh::ranges::views {
      *
      * @details
      * Provides a unified interface for enumerating a sequence with indices,
-     * implemented as a <tt>jh::ranges::zip_view</tt> combining an index
+     * implemented as a <code>jh::ranges::zip_view</code> combining an index
      * <code>std::views::iota</code> with the given sequence.
      * Supports both direct and pipe syntax:
      * <ul>
-     *   <li><b>Direct:</b> <tt>auto e = jh::ranges::views::enumerate(seq);</tt></li>
-     *   <li><b>Pipe:</b> <tt>auto e = seq | jh::ranges::views::enumerate();</tt></li>
+     *   <li><b>Direct:</b> <code>auto e = jh::ranges::views::enumerate(seq);</code></li>
+     *   <li><b>Pipe:</b> <code>auto e = seq | jh::ranges::views::enumerate();</code></li>
      * </ul>
      *
      * The starting index can be optionally specified; defaults to <code>0</code> if omitted:
      * <ul>
-     *   <li><tt>enumerate(seq, start)</tt></li>
-     *   <li><tt>seq | enumerate(start)</tt></li>
+     *   <li><code>enumerate(seq, start)</code></li>
+     *   <li><code>seq | enumerate(start)</code></li>
      * </ul>
      *
      * @see jh::ranges::views::zip

@@ -26,9 +26,9 @@
  *
  * <h3>Components:</h3>
  * <ul>
- *   <li><code>monostate</code> — trivial empty type with equality operators.</li>
- *   <li><code>is_monostate&lt;T&gt;</code> — type trait for detection.</li>
- *   <li><code>monostate_t&lt;T&gt;</code> — concept form for SFINAE/constraints.</li>
+ *   <li><code>monostate</code> &mdash; trivial empty type with equality operators.</li>
+ *   <li><code>is_monostate&lt;T&gt;</code> &mdash; type trait for detection.</li>
+ *   <li><code>monostate_t&lt;T&gt;</code> &mdash; concept form for SFINAE/constraints.</li>
  * </ul>
  *
  * <h3>Design Goals:</h3>
@@ -73,4 +73,4 @@ namespace jh::typed {
     /// @brief Concept: satisfied only if T is <code>monostate</code>.
     template<typename T>
     concept monostate_t = is_monostate<T>::value;
-}
+} // namespace jh::typed

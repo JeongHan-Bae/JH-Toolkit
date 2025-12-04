@@ -17,7 +17,7 @@
  */
 /**
  * @file collect.h (ranges)
- * @brief Eager materialization adaptor — explicitly terminates a lazy range pipeline
+ * @brief Eager materialization adaptor &mdash; explicitly terminates a lazy range pipeline
  *        and realizes it into a concrete container <code>C</code>.
  * @author
  *   JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
@@ -57,7 +57,7 @@
  * reconstruction step: it unpacks the tuple-like element via
  * <code>jh::meta::adl_apply</code> into <code>emplace_back()</code> or
  * <code>emplace()</code> calls.
- * This mechanism is unique to <code>collect</code> — the standard
+ * This mechanism is unique to <code>collect</code> &mdash; the standard
  * <code>std::ranges::to</code> does not perform such unpacking.
  * </p>
  *
@@ -84,7 +84,7 @@
  * <h3>Semantic role</h3>
  * <p>
  * <code>collect</code> defines the <b>explicit evaluation boundary</b> within a
- * lazy pipeline — it marks where deferred computations stop and data becomes
+ * lazy pipeline &mdash; it marks where deferred computations stop and data becomes
  * concrete.
  * This is crucial when interacting with <code>std::views::transform</code> or
  * other lazy adaptors that convert a range into a transient, consumptive stream.
@@ -103,7 +103,7 @@
  * <h3>Argument policy</h3>
  * <p>
  * <code>collect</code> does <b>not</b> accept additional constructor arguments.
- * It performs data normalization only — all container-specific configuration
+ * It performs data normalization only &mdash; all container-specific configuration
  * (e.g. allocators, hashers, comparators) belongs to <code>jh::ranges::to</code>.
  * </p>
  *
@@ -121,7 +121,7 @@
  *
  * <p>
  * Do <b>not</b> use <code>std::move()</code> between <code>collect</code> and
- * <code>to</code> — it provides no benefit.
+ * <code>to</code> &mdash; it provides no benefit.
  * The two adaptors are designed to compose directly in a pipeline;
  * move construction is handled automatically via RVO/NRVO.
  * See the <code>to</code> adaptor documentation for detailed move semantics.
@@ -151,15 +151,15 @@
  *
  * <h4>Relation to <code>jh::ranges::to</code></h4>
  * <p>
- * <code>collect</code> focuses on <b>materialization</b> — forcing a lazy range
+ * <code>collect</code> focuses on <b>materialization</b> &mdash; forcing a lazy range
  * into stable storage.
- * <code>to</code> focuses on <b>adaptation</b> — constructing the final container,
+ * <code>to</code> focuses on <b>adaptation</b> &mdash; constructing the final container,
  * possibly with configuration parameters.
  * </p>
  *
  * <ol>
- *   <li><code>collect&lt;V&gt;()</code> — eagerly realize and normalize data.</li>
- *   <li><code>to&lt;C&gt;(...)</code> — adapt and construct the final container.</li>
+ *   <li><code>collect&lt;V&gt;()</code> &mdash; eagerly realize and normalize data.</li>
+ *   <li><code>to&lt;C&gt;(...)</code> &mdash; adapt and construct the final container.</li>
  * </ol>
  *
  * <p>
@@ -203,9 +203,9 @@ namespace jh::ranges {
      * <code>C</code> using one of the available mechanisms:
      * </p>
      * <ul>
-     *   <li><b>insert()</b> — for associative containers (e.g. <code>std::set</code>).</li>
-     *   <li><b>emplace()</b> — for emplace-enabled containers (e.g. <code>std::unordered_set</code>).</li>
-     *   <li><b>emplace_back()</b> — for sequence containers (e.g. <code>std::vector</code>, <code>std::deque</code>).</li>
+     *   <li><b>insert()</b> &mdash; for associative containers (e.g. <code>std::set</code>).</li>
+     *   <li><b>emplace()</b> &mdash; for emplace-enabled containers (e.g. <code>std::unordered_set</code>).</li>
+     *   <li><b>emplace_back()</b> &mdash; for sequence containers (e.g. <code>std::vector</code>, <code>std::deque</code>).</li>
      * </ul>
      *
      * <p>
@@ -356,13 +356,13 @@ namespace jh::ranges {
      *
      * Supports both <b>direct</b> and <b>pipe</b> usage forms:
      * <ul>
-     *   <li><b>Direct form:</b> <tt>auto v = jh::ranges::collect&lt;std::vector&lt;int&gt;&gt;(input);</tt></li>
-     *   <li><b>Pipe form:</b> <tt>auto v = range | jh::ranges::collect&lt;std::vector&lt;int&gt;&gt;();</tt></li>
+     *   <li><b>Direct form:</b> <code>auto v = jh::ranges::collect&lt;std::vector&lt;int&gt;&gt;(input);</code></li>
+     *   <li><b>Pipe form:</b> <code>auto v = range | jh::ranges::collect&lt;std::vector&lt;int&gt;&gt;();</code></li>
      * </ul>
      *
      * @note
      * <p><b>Recommendation:</b></p> If your goal is to explicitly materialize a lazy pipeline,
-     * <code>std::vector</code> is usually the best target container — it provides
+     * <code>std::vector</code> is usually the best target container &mdash; it provides
      * optimal contiguous storage and can be seamlessly passed to a subsequent
      * <code>to&lt;C&gt;</code> stage for further conversion.
      *
