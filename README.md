@@ -18,9 +18,10 @@
 <div align="center" style="margin-left: 8%; margin-right: 8%; font-size: medium;">
 
 <strong>
-A Modern, Duck-Typed C++20 Toolkit for Generic and Asynchronous Programming — Featuring
-Concurrency-Safe Infrastructure, POD Subsystems, Concept-Bridged Type Compatibility, and Extended Range Utilities —
-Fully Template-Driven and RTTI-Free.
+A modern C++20 toolkit built on duck-typed concepts and fully static, template-driven design.
+It offers observing-only object pooling, safe immutable strings, coroutine-powered async generators, 
+a lightweight POD framework, expressive metaprogramming utilities, semantically rich range/view extensions, 
+and stable serialization components — entirely RTTI-free and concurrency-friendly.
 </strong>
 </div>
 
@@ -31,8 +32,8 @@ Fully Template-Driven and RTTI-Free.
 <!-- ✅ Core Info -->
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-violet.svg)](https://en.cppreference.com/w/cpp/20)
-[![Header-Only](https://img.shields.io/badge/header--only-supported-green)](#)
-[![Static Build](https://img.shields.io/badge/static--build-supported-green)](#)
+![Header-Only](https://img.shields.io/badge/header--only-supported-green)
+![Static Build](https://img.shields.io/badge/static--build-supported-green)
 
 <!-- ✅ CI / Contributors / Wiki -->
 [![CI](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml/badge.svg?branch=1.3.x-LTS)](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml)
@@ -41,20 +42,22 @@ Fully Template-Driven and RTTI-Free.
 
 
 <!-- ✅ Feature Highlights -->
-[![Object Pool](https://img.shields.io/badge/object--pooling-optimized-brown)](docs/pool.md)
-[![Immutable Strings](https://img.shields.io/badge/immutable--strings-pure-brown)](docs/immutable_str.md)
-[![Generators](https://img.shields.io/badge/generators-coroutines-brown)](docs/generator.md)
-[![POD System](https://img.shields.io/badge/pod--system-trivial-brown)](docs/pod.md)
-[![Duck Concepts](https://img.shields.io/badge/duck--concepts-flexible-brown)](docs/concepts.md)
-
+![Object Pool](https://img.shields.io/badge/object--pooling-observing--only-brown)
+![Immutable Strings](https://img.shields.io/badge/immutable--strings-safe-brown)
+![Async](https://img.shields.io/badge/async%20%28coroutines%29-zero--boilerplate-brown)
+![POD System](https://img.shields.io/badge/plain--old--data-primitive-brown)
+![Duck Concepts](https://img.shields.io/badge/duck--concepts-powerful-brown)
+![Meta Programming](https://img.shields.io/badge/metaprogramming-compile--time-brown)
+![Ranges and Views](https://img.shields.io/badge/ranges%20%26%20views-semantically--rich-brown)
+![Serialization](https://img.shields.io/badge/serialization-stable-brown)
 </div>
 
----
-
-<div align="center" style="margin-top: 16px; margin-bottom: -8px">
-  <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Oree.svg"
-       alt="Oree mascot"
-       style="width: 128px; height: auto;">
+<div align="center">
+  <img
+    src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Oree.svg"
+    alt="Oree mascot"
+    width="128"
+  >
 </div>
 
 <p align="center" style="font-size: large;">
@@ -99,12 +102,18 @@ From this point onward:
   focusing **solely on source code updates** — no documentation, CMake, or version edits.
 * The source changes are periodically synchronized **upward** into
   **`main`** or **`1.4.0-dev`**, depending on which higher branch is currently active.
-* When preparing a new 1.3.x release (e.g., **1.3.4**):
+* When preparing a new 1.3.x release (e.g., **1.3.5**):
 
-  1. Clone **`1.3.x-support-dev`** into **`1.3.4-dev`**.
-  2. Update version numbers and metadata in **`1.3.4-dev`**.
-  3. Merge changes back into **`1.3.x-LTS`**.
-  4. Update documentation and publish the new tag **`JH-Toolkit-1.3.4`**.
+  1. Merge **`1.3.x-support-dev`** into **`1.3.5-dev`**.
+  2. Update version numbers and metadata in **`1.3.5-dev`**.
+  3. Merge changes into **`1.3.x-LTS`**.
+  4. Update documentation and publish the new tag **`JH-Toolkit-1.3.5`**.
+
+> **`1.3.5-dev`** is a long-standing branch, originally cloned from **`1.3.x-LTS`** during 
+> version `1.3.3`, serving as a communication bridge between **`1.3.x-support-dev`** and **`1.3.x-LTS`**. 
+> With each `1.3.{x}` version upgrade, it is renamed to `1.3.{x}-dev` because **`1.3.x-support-dev`**, 
+> as the consensus version for both `1.3.x` and `1.4.x` series, cannot perform certain actions, 
+> thus requiring delegation to `1.3.{x}-dev`.
 
 This process ensures that:
 
@@ -117,10 +126,18 @@ This process ensures that:
 
 ## 🧰 Build & Platform Guide
 
-For detailed build instructions, supported compilers, and Conan packaging notes,  
-please refer to the [Build & Platform Guide](./docs/build.md).
+The project builds with **GCC 13+ or Clang 15+**, with **GCC 14+ or LLVM 20** strongly recommended for optimal performance and language support.
+**MSVC is not supported.**
 
-> Covers: toolchains, CMake targets, Conan `.tar.gz` releases, and dual-mode headers.
+For complete build instructions, supported toolchains, and Conan packaging notes, refer to the
+[Build & Platform Guide](./docs/build.md).
+
+> Covers: toolchains, CMake targets, Conan `.tar.gz` releases, and the dual-mode header design.
+
+The project has **no runtime dependencies**.
+Its **only build-time requirement** is a conforming **C++20 standard library**.
+Testing uses **Catch2**.
+For version details, see: [Dependencies](dependencies.toml).
 
 ---
 
@@ -128,103 +145,81 @@ please refer to the [Build & Platform Guide](./docs/build.md).
 
 ---
 
-### 🧩 Conceptual & Ranges-Views System — Duck Typing Philosophy
+### 🧱 Core Modules — Practical, Direct, Familiar
 
-The **`jh::concepts`** & **`jh::views`** system embodies JH Toolkit's **duck typing philosophy** —
-if a type behaves like a sequence, it is treated as one.
-This system generalizes iteration and range utilities through behavior rather than inheritance,
-bridging standard and non-standard containers seamlessly.
+The **core** subsystem provides a collection of containers and container-like types that follow a clear and intentionally minimal philosophy.
+Much like the utilities directly under `std`, these components are meant to be **used immediately**, without framework overhead or hidden semantics.
 
-`jh::concepts` defines JH Toolkit's **duck-typing model for iteration**,
-recognizing **behavioral compatibility** rather than formal inheritance.
+Each type focuses on:
 
-Any type that supports range-for iteration — readable or writable —
-and **preserves its state across iterations** is treated as a **duck sequence**.
-`jh::concepts::iterator` and `jh::concepts::sequence` together enable
-**`jh::to_range()`**, which transparently proxies such types into a standard-like range view.
+* **predictable behavior**
+* **clear ownership rules**
+* **unambiguous memory expectations**
 
-`jh::views` provides **lazy, allocation-free adapters** that extend this model.
-**`jh::views::zip`** and **`jh::views::enumerate`** operate on duck sequences through `jh::to_range()`,
-built upon **`jh::ranges::zip_view`**, a C++20 implementation mirroring
-C++23's `std::ranges::zip_view` when available.
+They are **straightforward building blocks**, shaped to be stable, readable, and composable.
 
-> In all **1.3.x releases**, `jh::concepts` are **globally down-leveled to `jh::*`**
-> for backward compatibility, while `jh::views::*` remains the canonical interface,
-> following the same convention as the C++ standard library (`std::views::*`).
 
 ---
 
-### 🌀 Async System — Cooperative Concurrency, True Parallelism
+### ⚗️ Metaprogramming — Structure Behind Expression
 
-**`jh::async` — Unified Asynchronous Semantics**
+The `jh::meta` family expresses a simple belief:
 
-`jh::async` defines the asynchronous behavior model of JH Toolkit.
-It provides coroutine-based lazy evaluation through **`jh::async::generator`**,
-a **deferred state machine** that models computation rather than storage.
-Generators are **consumable**, representing one logical evaluation path per lifetime,
-and are exposed under both `jh::generator` and `jh::async::generator` for convenience.
+> *Compile-time code should read like a description, not an excavation site.*
 
-The upcoming **1.4.x series** extends `jh::async` with other concurrency primitives:
-- **`occ_box`** for optimistic transactional control
-- **`process_mutex`** for timed interprocess synchronization
-- **`process_launcher`** for isolated, parallel process execution
-
-> Concurrency in JH Toolkit is defined by **behavior**, not class hierarchy —
-> every asynchronous primitive follows explicit lifetime and deterministic semantics.
+It provides small, purposeful tools that make type-level reasoning feel structured, not chaotic.
+The focus is not on power, but on **expressiveness shaped by intent**.
 
 ---
 
-### 🧊 POD System — Plain Old Data, Modern Discipline
+### 🧩 POD Framework — Data Without Pretension
 
-`jh::pod` defines a **layout-stable, trivially copyable type system** for C++20.
-It provides a suite of **fixed-layout value primitives** — like `pod::pair`, `pod::array`, `pod::optional`, and `pod::bitflags` —
-built for **raw memory safety**, **placement-new**, and **binary serialization**.
+The POD subsystem embraces the idea that **not all data wants to be a class**.
 
-All `pod` types are:
+It models information as:
 
-* 🧩 **`memcpy`-safe**, trivially copyable, and standard-layout
-* 🧱 Designed for `mmap`, `arena`, and **zero-overhead serialization**
-* ⚙️ Usable inside STL containers with no hidden heap or lifetime coupling
+* transparent
+* explicit
+* layout-stable
 
-> `*_view` and `span<T>` types are **non-owning references** — they borrow external memory
-> and must not outlive their backing buffers or mapped regions.
-> They are designed for **inspection, slicing, and serialization**, not ownership or mutation.
-
-`jh::pod` also introduces lightweight tools for structure definition and validation:
-
-* **`JH_POD_STRUCT(...)`** — define POD structs with compile-time layout checks
-* **`JH_ASSERT_POD_LIKE(T)`** — enforce POD compliance on existing types
-
-Together they form a foundation for **safe binary data modeling** —
-bridging high-level C++ templates with low-level, deterministic memory control.
-
-> ✅ 64-bit only, fully constexpr, header-only, and STL-compatible.
-> Designed for predictable layout, not legacy C-style "plain structs."
+This module captures the spirit of working with raw structure while keeping code readable and deliberate.
 
 ---
 
-### 🧱 Core System — Immutable, Pooled, Runtime-Stable
+### 🔭 Ranges & Views — Composable Meaning
 
-The **Core System** (`immutable_str`, `runtime_arr`, `sim_pool`)
-provides stable storage, safe sharing, and deterministic ownership across threads.
+The ranges extension builds on modern C++ pipelines, leaning into a guiding philosophy:
 
-* **`jh::immutable_str`** — a **fully immutable string**, managed via smart pointers.
-  Objects are never moved or modified; only their handles (`unique_ptr` / `shared_ptr`) are replaceable.
+> *Iteration should describe thought, not machinery.*
 
-* **`jh::runtime_arr<T>`** — a **mutable buffer container**,
-  uniquely owned or shared through smart pointers.
-  Specialized precompiled variants (bit-packed and byte-based) ensure layout stability and performance.
+Views and algorithms here encourage pipelines that read like small stories—
+composable, expressive, and semantically intentional.
 
-* **`jh::sim_pool<T>`** — a **Smart Immutable-objects Managing Pool**,
-  acting as a non-owning **observer and redistributor**.
-  It tracks objects via **weak references**, allowing automatic reuse without owning lifetimes.
-  The lightweight **`jh::pool<T>`** is its duck-type counterpart.
+---
 
-> 🧩 Identical API for both **header-only** and **static-build** modes —
-> same code, different linkage (`jh::jh-toolkit` / `jh::jh-toolkit-static`).
+### 🌀 Asynchronous — Structured Coroutines, Not Coroutine Chaos
 
-> 📦 Located under `jh::*` and `<jh/*>` —
-> STL-compatible, ABI-stable, and designed for concurrent environments.
+The asynchronous subsystem aims to **reshape** C++20 coroutines into a small, well-defined set of models.
+Instead of exposing the full, open-ended machinery of promises, awaiters, and ad-hoc control flow,
+this module treats coroutines as **semantic constructs** with clear behavior rules.
+
+By narrowing what a coroutine *can* do, each abstraction becomes easier to reason about and far more predictable.
+`generator` is the first expression of this idea, and future components—such as fibers or signal-slot system —will follow the same principle:
+
+> **less surface, more clarity;
+> fewer mechanisms, stronger meaning.**
+
+The goal is not to wrap coroutines, but to **give them shape**.
+
+---
+
+### 🛠️ Additional Modules — Tools With Personality
+
+Other subsystems round out the toolkit with focused, principled utilities:
+synchronization shaped around semantics, serialization shaped around stability,
+and small helpers shaped around transparency.
+
+Each piece exists only because it contributes to the overall language of the toolkit.
 
 ---
 
@@ -239,46 +234,65 @@ provides stable storage, safe sharing, and deterministic ownership across thread
 
 ```
 include/jh/
-    ├── asynchronous           # jh::async
-    │   ├── generator.h        # jh::async::generator
-    │   └── ...                # future 1.4.x jh::async submodules
-    ├── conceptual             # jh::concepts
-    │   ├── iterator.h         # jh::concepts::iterator
-    │   └── sequence.h         # jh::concepts::sequence
-    ├── macros                 # jh::macros
-    │   ├── header_begin.h     # dual-mode header basic
-    │   ├── header_end.h       # dual-mode header basic
-    │   ├── platform.h         # macro defined platform detection
-    │   └── type_name.h        # jh::macros::type_name
-    ├── pods                   # jh::pod
-    │   ├── ...                # array, bits, bytes_view, optional, pair, pod_like, span, string_view
-    │   ├── stringify.h        # visualize jh::pod debugging output
-    │   └── tools.h            # supporting macros for jh::pod
-    ├── ranges                 # jh::ranges bases
-    │   ├── views              # jh::views
-    │   │   ├── enumerate.h    # jh::views::enumerate based on zip
-    │   │   └── zip.h          # jh::views::zip based on zip_view
-    │   ├── range_wrapper.h    # jh::to_range base
-    │   └── zip_view.h         # jh::ranges::zip_view mimic C++23
-    ├── utils                  # jh::utils
-    │   ├── ...                # jh::utils::base64, hash_fn
-    │   ├── platform.h         # 1.3.x temporary alias for jh/macros/platform.h
-    │   └── typed.h            # jh::typed::monostate
-    ├── generator              # forwarding header for jh::generator
-    ├── immutable_str          # forwarding header for jh::immutable_str
-    ├── immutable_str.h        # jh::immutable_str
-    ├── iterator               # 1.3.x temporary forwarding header for jh::iterator
-    ├── pod                    # forwarding header for jh::pod
-    ├── pod.h                  # aggregate header for jh::pod
-    ├── pool                   # forwarding header for jh::pool
-    ├── pool.h                 # jh::pool, duck typed jh::sim_pool
-    ├── runtime_arr            # forwarding header for jh::runtime_arr
-    ├── runtime_arr.h          # jh::runtime_arr
-    ├── sequence               # 1.3.x temporary forwarding header for jh::sequence
-    ├── sim_pool               # forwarding header for jh::sim_pool
-    ├── sim_pool.h             # jh::sim_pool
-    ├── views                  # forwarding header for jh::views
-    └── views.h                # 1.3.x temporary aggregate header for jh::views
+    ├── asynchronous/       # jh::async
+    │   ├── ...             # future coroutine based components
+    │   └── generator.h     # jh::async::generator (coroutine based pythonic generator)
+    ├── conceptual/         # jh::concepts
+    │   └── ...             # all concepts in jh::concepts
+    ├── core/               # namespace jh as core
+    │   ├── immutable_str.h # jh::immutable_str (truly immutable string)
+    │   ├── pool.h          # jh::pool (jh::sim_pool with auto-detection of hash and eq)
+    │   ├── runtime_arr.h   # jh::runtime_arr (reallocation-disabled alternative of std::vector)
+    │   └── sim_pool.h      # jh::sim_pool (non-owning object pool)
+    ├── macros/             # jh::macro
+    │   ├── header_begin.h  # dual-mode header basic
+    │   ├── header_end.h    # dual-mode header basic
+    │   ├── platform.h      # macro defined platform detection
+    │   └── type_name.h     # jh::macros::type_name
+    ├── metax/              # jh::meta
+    │   ├── adl_apply.h     # adl alternative of std::apply
+    │   ├── char.h          # concept of any_char and related check
+    │   ├── flatten_proxy.h # compile time mapping nested tuple to flattened tuple
+    │   └── hash.h          # consteval deterministic hash
+    ├── pods/               # jh::pod
+    │   ├── array.h         # jh::pod::array
+    │   ├── bits.h          # jh::pod::bitflags (pod alternative of std::bitset)
+    │   ├── bytes_view.h    # jh::pod::bytes_view (safe wrapper for reinterpret_cast)
+    │   ├── optional.h      # jh::pod::optional (default init as nullopt)
+    │   ├── pair.h          # jh::pod::pair
+    │   ├── pod_like.h      # jh::pod::pod_like concept
+    │   ├── span.h          # jh::pod::span (observing continuous memory)
+    │   ├── string_view.h   # jh::pod::string_view (lite alternative of string_view)
+    │   ├── stringify.h     # enable printing jh::pod structs (debugging)
+    │   ├── tools.h         # macro helpers
+    │   └── tuple.h         # jh::pod::tuple and structured binding of jh::pod::pair and jh::pod::array
+    ├── ranges/             # jh::ranges bases
+    │   ├── views/          # jh::ranges::views
+    │   │   └── ...         # view algorithms with direct and pipe form (jh::views::*)
+    │   ├── ...             # ranges_ext algorithms with direct and pipe form (jh::ranges::*)
+    │   └── ...             # view adaptors defined in jh::ranges
+    ├── serialize_io/       # jh::serio
+    │   ├── ...             # future jh::serio components
+    │   └── base64.h        # runtime base64 encode decode
+    ├── synchronous/        # jh::sync
+    │   ├── ...             # future jh::sync components
+    │   └── const_lock.h    # read-first lock, can fallback to write-lock, semantically const
+    ├── typing/             # jh::typed
+    │   ├── monostate.h     # jh::typed::monostate
+    │   └── null_mutex.h    # jh::typed::null_mutex representing no lock
+    ├── generator           # jh::generator (exposing jh::async::generator)
+    ├── immutable_str       # jh::immutable_str
+    ├── iterator            # legacy forwarder
+    ├── meta                # jh::meta forward-aggregator header
+    ├── pod                 # jh::pod forward-aggregator header
+    ├── pool                # jh::pool
+    ├── ranges_ext          # jh::ranges algorithms (only ranges_ext algos) forward-aggregator header
+    ├── runtime_arr         # jh::runtime_arr
+    ├── sequence            # legacy forwarder
+    ├── serio               # jh::serio forward-aggregator header
+    ├── sim_pool            # jh::sim_pool
+    ├── typed               # jh::typed forward-aggregator header
+    └── views               # jh::views (jh::ranges::views) forward-aggregator header
 ```
 
 </details>
@@ -288,47 +302,21 @@ include/jh/
   <summary>
     Click to expand ▶️ / collapse 🔽
   </summary>
+Docs related to public forwarding headers
 
-- [asynchronous/](docs/asynchronous/overview.md) — `jh::async`
-  - generator.h — `jh::async::generator`
-  - ... — future 1.4.x `jh::async` submodules
-- [conceptual/](docs/conceptual/overview.md) — `jh::concepts`
-  - iterator.h — `jh::concepts::iterator`
-  - sequence.h — `jh::concepts::sequence`
-- [macros/](docs/macros/overview.md) — `jh::macros`
-  - header_begin.h — dual-mode header basic
-  - header_end.h — dual-mode header basic
-  - platform.h — macro-defined platform detection
-  - type_name.h — `jh::macros::type_name`
-- [pods/](docs/pods/overview.md) — `jh::pod`
-  - ... — `array`, `bits`, `bytes_view`, `optional`, `pair`, `pod_like`, `span`, `string_view`
-  - stringify.h — visualize `jh::pod` debugging output
-  - tools.h — supporting macros for `jh::pod`
-- [ranges/](docs/ranges/overview.md) — `jh::ranges` bases
-  - [views/](docs/ranges/views/overview.md) — `jh::views`
-    - enumerate.h — `jh::views::enumerate`
-    - zip.h — `jh::views::zip`
-  - range_wrapper.h — `jh::to_range` base
-  - zip_view.h — `jh::ranges::zip_view`
-- [utils/](docs/utils/overview.md) — `jh::utils`
-  - ... — `jh::utils::base64`, `jh::utils::hash_fn`
-  - platform.h — alias for `jh/macros/platform.h`
-  - typed.h — `jh::typed::monostate`
-- [generator](docs/asynchronous/generator.md) — forwarding header for `jh::generator`
-- [immutable_str](docs/immutable_str.md) — forwarding header for `jh::immutable_str`
-- immutable_str.h — `jh::immutable_str`
-- [iterator](docs/conceptual/iterator.md) — temporary forwarding header for `jh::iterator`
-- [pod](docs/pods/overview.md) — forwarding header for `jh::pod`
-- pod.h — aggregate header for `jh::pod`
-- [pool](docs/pool.md) — forwarding header for `jh::pool`
-- pool.h — `jh::pool`, duck-typed `jh::sim_pool`
-- [runtime_arr](docs/runtime_arr.md) — forwarding header for `jh::runtime_arr`
-- runtime_arr.h — `jh::runtime_arr`
-- [sequence](docs/conceptual/sequence.md) — temporary forwarding header for `jh::sequence`
-- [sim_pool](docs/sim_pool.md) — forwarding header for `jh::sim_pool`
-- sim_pool.h — `jh::sim_pool`
-- [views](docs/ranges/views/overview.md) — forwarding header for `jh::views`
-- views.h — temporary aggregate header for `jh::views`
+ - [`<jh/generator>`](docs/asynchronous/generator.md)
+ - [`<jh/immutable_str>`](docs/core/immutable_str.md)
+ - [`<jh/iterator>`](docs/conceptual/iterator.md)
+ - [`<jh/meta>`](docs/metax/overview.md)
+ - [`<jh/pod>`](docs/pods/overview.md)
+ - [`<jh/pool>`](docs/core/pool.md)
+ - [`<jh/ranges_ext>`](docs/ranges/ranges_ext.md)
+ - [`<jh/runtime_arr>`](docs/core/runtime_arr.md)
+ - [`<jh/sequence>`](docs/conceptual/sequence.md)
+ - [`<jh/serio>`](docs/serialize_io/overview.md)
+ - [`<jh/sim_pool>`](docs/core/sim_pool.md)
+ - [`<jh/typed>`](docs/typing/overview.md)
+ - [`<jh/views>`](docs/ranges/views/overview.md)
 
 </details>
 
@@ -338,7 +326,7 @@ include/jh/
   <span>
     <img src="https://upload.wikimedia.org/wikipedia/commons/c/c3/Python-logo-notext.svg"
        alt="Python Logo"
-       height="28" valign="middle">
+       width="28" valign="middle">
   </span>
   <span style="font-size: large;">Pythonic Aesthetics and Philosophy in JH Toolkit</span>
 </h2>

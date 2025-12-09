@@ -63,7 +63,7 @@ that bridges lazy transformation, semantic extension, and structural normalizati
 |:-------------------------------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------:|
 |         🏠 **Back to README**         |                         [![Back to README](https://img.shields.io/badge/Back%20to%20README-blue?style=flat-square)](../../README.md)                          |
 |   📗 **Go to `<jh/views>` Module**    |                 [![Go to Views Overview](https://img.shields.io/badge/Go%20to%20Views%20Overview-green?style=flat-square)](views/overview.md)                 |
-| 📘 **Go to `<jh/ranges_ext>` Module** |             [![Go to Ranges Ext Overview](https://img.shields.io/badge/Go%20to%20Ranges%20Ext%20Overview-green?style=flat-square)](range_ext.md)              |
-|     📙 **Go to `range_wrapper`**      |       [![Go to Range Wrapper Reference](https://img.shields.io/badge/Go%20to%20Range%20Wrapper%20Reference-green?style=flat-square)](range_wrapper.md)        |
+| 📘 **Go to `<jh/ranges_ext>` Module** |             [![Go to Ranges Ext Overview](https://img.shields.io/badge/Go%20to%20Ranges%20Ext%20Overview-green?style=flat-square)](ranges_ext.md)              |
+|     📙 **Go to `range_wrapper`**      |       [![Go to Range Wrapper Reference](https://img.shields.io/badge/Go%20to%20Range%20Wrapper%20Reference-green?style=flat-square)](range_adaptor.md)        |
 |        📗 **Go to `zip_view`**        |               [![Go to Zip View Reference](https://img.shields.io/badge/Go%20to%20Zip%20View%20Reference-green?style=flat-square)](zip_view.md)               |
 |   📘 **Go to `vis_transform_view`**   | [![Go to Visual Transform View Reference](https://img.shields.io/badge/Go%20to%20Vis%20Transform%20Reference-green?style=flat-square)](vis_transform_view.md) |

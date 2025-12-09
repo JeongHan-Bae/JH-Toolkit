@@ -36,7 +36,7 @@ It focuses on the **behavior of traversal**, not the presence of formal range tr
 This concept treats any object that supports consistent iteration as a sequence —
 STL containers, raw arrays, pointers, or custom types —
 and normalizes them into a range-compatible form through
-[`jh::ranges::range_wrapper`](../ranges/range_wrapper.md).
+[`jh::ranges::range_wrapper`](../ranges/range_adaptor.md).
 
 The const-qualified check ensures that `begin()` and `end()` are callable on a `const T&`,
 meaning iteration itself does not consume or mutate the underlying object,
@@ -135,7 +135,7 @@ so any subsequent call to `jh::to_range()` simply forwards the object unchanged.
 This is why the operation is *natively idempotent*—
 once an object has been adapted, further adaptation is a no-op.
 
-See [`range_wrapper`](../ranges/range_wrapper.md) for implementation details.
+See [`range_wrapper`](../ranges/range_adaptor.md) for implementation details.
 
 ---
 
