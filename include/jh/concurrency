@@ -26,3 +26,5 @@
 #pragma once
 
 #include "jh/concurrent/occ_box.h"
+#include "jh/concurrent/pointer_pool.h"
+#include "jh/concurrent/observe_pool.h"

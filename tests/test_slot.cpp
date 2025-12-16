@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 
 #include "jh/async"
+#include "jh/macros/platform.h"
 #include <chrono>
 #include <iostream>
 #include <vector>
@@ -320,12 +321,16 @@ TEST_CASE("Different-Type Event Test") {
 
         for (;;) {
             // Manually unpack to avoid gcc warning
+#if IS_GCC
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
             auto ev = co_await ml;
             auto idx = std::get<0>(ev);
             auto payload = std::get<1>(ev);
+#if IS_GCC
 #pragma GCC diagnostic pop
+#endif
             if (idx == 0) {
                 int v = std::get<int>(payload);
                 vec_int1.emplace_back(v);

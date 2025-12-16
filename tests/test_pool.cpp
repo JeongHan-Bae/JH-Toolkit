@@ -1,6 +1,5 @@
 #include <catch2/catch_all.hpp>
 
-#include "jh/sim_pool"
 #include "jh/pool"
 #include "jh/macros/platform.h"
 #include <memory>
@@ -8,11 +7,11 @@
 
 /**
  * @file
- * @brief Tests for <code>jh::pool</code> and <code>jh::sim_pool</code> including multithreading,
+ * @brief Tests for <code>jh::observe_pool</code> and <code>jh::conc::pointer_pool</code> including multithreading,
  *        expansion, shrinkage, and cleanup behavior.
  *
  * @details
- * This test suite validates the behavior of <code>jh::pool</code> and <code>jh::sim_pool</code> across
+ * This test suite validates the behavior of <code>jh::observe_pool</code> and <code>jh::conc::pointer_pool</code> across
  * multiple usage patterns: basic acquisition, expansion and contraction, cleanup behavior,
  * move semantics, and multi-threaded correctness checks.
  *
@@ -42,7 +41,7 @@
  *
  * @note
  * These Windows-specific limitations do not indicate any logical or correctness issues in
- * <code>jh::pool</code> or <code>jh::sim_pool</code>. All strict checks continue to apply on
+ * <code>jh::observe_pool</code> or <code>jh::conc::pointer_pool</code>. All strict checks continue to apply on
  * non-Windows platforms.
  *
  * @warning
@@ -98,12 +97,12 @@ namespace test {
         }
     };
 
-    using CustomizedPool = jh::sim_pool<TestObject, TestObjectHash, TestObjectEq>;
-    using DeducedPool = jh::pool<AutoPoolingObject>;
+    using CustomizedPool = jh::conc::pointer_pool<TestObject, TestObjectHash, TestObjectEq>;
+    using DeducedPool = jh::observe_pool<AutoPoolingObject>;
 } // namespace test
 
 // Basic Functionality Test
-TEST_CASE("sim_pool basic functionality") {
+TEST_CASE("pointer_pool basic functionality") {
     test::CustomizedPool pool;
 
     auto obj1 = pool.acquire(10);
@@ -115,7 +114,7 @@ TEST_CASE("sim_pool basic functionality") {
     REQUIRE(pool.size() == 2); // The pool should contain only two unique objects
 }
 
-TEST_CASE("pool basic functionality") {
+TEST_CASE("observe_pool basic functionality") {
     test::DeducedPool pool;
 
     auto obj1 = pool.acquire(10);
@@ -128,7 +127,7 @@ TEST_CASE("pool basic functionality") {
 }
 
 // Cleanup Test (Effect of Eq)
-TEST_CASE("sim_pool cleanup") {
+TEST_CASE("pointer_pool cleanup") {
     test::CustomizedPool pool;
 
     auto obj1 = pool.acquire(10);
@@ -147,7 +146,7 @@ TEST_CASE("sim_pool cleanup") {
 }
 
 // Cleanup Test (Effect of Eq)
-TEST_CASE("pool cleanup") {
+TEST_CASE("observe_pool cleanup") {
     test::DeducedPool pool;
 
     auto obj1 = pool.acquire(10);
@@ -166,7 +165,7 @@ TEST_CASE("pool cleanup") {
 }
 
 // Dynamic Expansion & Contraction Test
-TEST_CASE("sim_pool dynamic expansion and contraction") {
+TEST_CASE("pointer_pool dynamic expansion and contraction") {
     test::CustomizedPool pool(4); // Initial reserved_size = 4
 
     std::vector<std::shared_ptr<test::TestObject> > objects;
@@ -187,7 +186,7 @@ TEST_CASE("sim_pool dynamic expansion and contraction") {
 }
 
 // Dynamic Expansion & Contraction Test
-TEST_CASE("pool dynamic expansion and contraction") {
+TEST_CASE("observe_pool dynamic expansion and contraction") {
     test::DeducedPool pool(4); // Initial reserved_size = 4
 
     std::vector<std::shared_ptr<test::AutoPoolingObject> > objects;
@@ -208,7 +207,7 @@ TEST_CASE("pool dynamic expansion and contraction") {
 }
 
 // Move Semantics Test
-TEST_CASE("sim_pool move semantics") {
+TEST_CASE("pointer_pool move semantics") {
     test::CustomizedPool pool1;
     auto obj1 = pool1.acquire(10);
     auto obj2 = pool1.acquire(20);
@@ -231,7 +230,7 @@ TEST_CASE("sim_pool move semantics") {
     REQUIRE(pool3.reserved_size() == test::CustomizedPool::MIN_RESERVED_SIZE); // reserved_size should be reset
 }
 
-TEST_CASE("pool move semantics") {
+TEST_CASE("observe_pool move semantics") {
     test::DeducedPool pool1;
     auto obj1 = pool1.acquire(10);
     auto obj2 = pool1.acquire(20);
@@ -257,7 +256,7 @@ TEST_CASE("pool move semantics") {
 #if !IS_WINDOWS
 
 // Multithreading Test (128 Iterations for Data Race Detection): Not storing shared_ptr
-TEST_CASE("sim_pool multithreading without storing shared_ptr") {
+TEST_CASE("pointer_pool multithreading without storing shared_ptr") {
     test::CustomizedPool pool;
     constexpr int total_tests = 128;
 
@@ -293,7 +292,7 @@ TEST_CASE("sim_pool multithreading without storing shared_ptr") {
 }
 
 // Multithreading Test (128 Iterations for Data Race Detection): Not storing shared_ptr
-TEST_CASE("pool multithreading without storing shared_ptr") {
+TEST_CASE("observe_pool multithreading without storing shared_ptr") {
     test::DeducedPool pool;
     constexpr int total_tests = 128;
 
@@ -329,7 +328,7 @@ TEST_CASE("pool multithreading without storing shared_ptr") {
 }
 
 // Multithreading Test (128 Iterations for Data Race Detection): Storing shared_ptr
-TEST_CASE("sim_pool multithreading with storing shared_ptr") {
+TEST_CASE("pointer_pool multithreading with storing shared_ptr") {
     test::CustomizedPool pool;
     constexpr int total_tests = 128;
 
@@ -372,7 +371,7 @@ TEST_CASE("sim_pool multithreading with storing shared_ptr") {
 }
 
 // Multithreading Test (128 Iterations for Data Race Detection): Storing shared_ptr
-TEST_CASE("pool multithreading with storing shared_ptr") {
+TEST_CASE("observe_pool multithreading with storing shared_ptr") {
     test::DeducedPool pool;
     constexpr int total_tests = 128;
 
@@ -420,10 +419,10 @@ TEST_CASE("pool multithreading with storing shared_ptr") {
  * std::string itself is <b>not</b> an immutable type — its internal buffer may change.
  * This test only demonstrates that it <b>can</b> be pooled because it satisfies
  * <code>std::hash&lt;std::string&gt;</code> and <code>operator==</code<.
- * For stable, non-static, content-based pooling, use <code>jh::pool&lt;jh::immutable_str&gt;<code> instead.
+ * For stable, non-static, content-based pooling, use <code>jh::observe_pool&lt;jh::immutable_str&gt;<code> instead.
 */
-TEST_CASE("pool with std::string") {
-    jh::pool<std::string> pool;
+TEST_CASE("observe_pool with std::string") {
+    jh::observe_pool<std::string> pool;
 
     auto hello1 = pool.acquire("hello");
     auto hello2 = pool.acquire("hello");

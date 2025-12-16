@@ -323,10 +323,10 @@ namespace jh::avl {
         requires std::is_same_v<std::remove_cvref_t<KK>, K> &&
                  std::is_same_v<std::remove_cvref_t<VV>, V>
         [[maybe_unused]] avl_node(KK &&k, VV &&v,
-                 std::size_t parent_index = static_cast<std::size_t>(-1),
-                 std::size_t left_index = static_cast<std::size_t>(-1),
-                 std::size_t right_index = static_cast<std::size_t>(-1),
-                 std::uint16_t h = 1)
+                                  std::size_t parent_index = static_cast<std::size_t>(-1),
+                                  std::size_t left_index = static_cast<std::size_t>(-1),
+                                  std::size_t right_index = static_cast<std::size_t>(-1),
+                                  std::uint16_t h = 1)
                 : stored_(std::forward<KK>(k), std::forward<VV>(v)),
                   parent(parent_index),
                   left(left_index),
@@ -422,10 +422,10 @@ namespace jh::avl {
         requires std::is_same_v<std::remove_cvref_t<KK>, K> &&
                  std::is_same_v<std::remove_cvref_t<VV>, jh::typed::monostate>
         [[maybe_unused]] avl_node(KK &&k, VV &&,
-                 std::size_t parent_index = static_cast<std::size_t>(-1),
-                 std::size_t left_index = static_cast<std::size_t>(-1),
-                 std::size_t right_index = static_cast<std::size_t>(-1),
-                 std::uint16_t h = 1)
+                                  std::size_t parent_index = static_cast<std::size_t>(-1),
+                                  std::size_t left_index = static_cast<std::size_t>(-1),
+                                  std::size_t right_index = static_cast<std::size_t>(-1),
+                                  std::uint16_t h = 1)
                 : stored_(std::forward<KK>(k)),
                   parent(parent_index),
                   left(left_index),
@@ -656,6 +656,10 @@ namespace jh::avl {
         using node_type = detail::node_t<K, V>;
 
     public:
+        /// @brief Semantic allocator type as exposed to users, distinct from the internal node allocator.
+        using allocator_type [[maybe_unused]] = typename std::allocator_traits<Alloc>
+        ::template rebind_alloc<detail::value_t<K, V>>;
+
         /// @brief Vector storage type for all nodes.
         using vector_type = detail::node_vector_type<K, V, Alloc>;
 
@@ -2248,7 +2252,7 @@ namespace jh::avl {
         node_type::value_type &at(const node_type::key_type &key) requires(!jh::typed::monostate_t<V>) {
             auto it = find(key);
             if (it == end())
-                throw std::out_of_range("jh::ordered_map::at: key not found");
+                throw std::out_of_range("jh::ordered_map::at(): key not found");
 
             return it->second;
         }
@@ -2271,7 +2275,7 @@ namespace jh::avl {
         at(const node_type::key_type &key) const requires(!jh::typed::monostate_t<V>) {
             auto it = find(key);
             if (it == end())
-                throw std::out_of_range("jh::ordered_map::at: key not found");
+                throw std::out_of_range("jh::ordered_map::at(): key not found");
 
             return it->second;
         }
@@ -2445,12 +2449,32 @@ namespace jh::avl {
 
             nodes.pop_back();
 
-            if (parent_for_rebalance != static_cast<std::size_t>(-1) &&
-                parent_for_rebalance < nodes.size()) {
+            if (parent_for_rebalance < nodes.size()) {
+                // naturally supports != static_cast<std::size_t>(-1)
                 _rebalance(parent_for_rebalance);
             }
 
             return iterator(this, next_idx);
+        }
+
+        /**
+         * @brief Erase the element referenced by the given const iterator.
+         *
+         * @details
+         * Removes the element pointed to by <code>pos</code> by delegating to the
+         * non-const overload <code>erase(iterator)</code>. The behavior, iterator
+         * invalidation rules, and returned iterator semantics exactly match those of
+         * <code>erase(iterator)</code>.
+         *
+         * If <code>pos</code> equals <code>end()</code>, no removal occurs and
+         * <code>pos</code> is returned unchanged.
+         *
+         * @param pos Const iterator referring to the element to erase.
+         * @return An iterator to the in-order successor of the erased element,
+         *         or <code>end()</code> if no successor exists.
+         */
+        iterator erase(const_iterator pos) {
+            return erase(iterator{this, pos.idx});
         }
 
         /**

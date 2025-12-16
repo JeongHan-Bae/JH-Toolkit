@@ -220,13 +220,15 @@ namespace jh::ranges {
         }
 
     public:
-        constexpr operator zip_proxy_value_tuple_t<zip_reference_proxy>() const & {
+        constexpr operator zip_proxy_value_tuple_t<zip_reference_proxy>() // NOLINT
+                const & {
             return std::apply([](auto const&... e) {
                 return zip_proxy_value_tuple_t<zip_reference_proxy>{ unwrap_ref(e)... };
             }, elems);
         }
 
-        constexpr operator zip_proxy_value_tuple_t<zip_reference_proxy>() && {
+        constexpr operator zip_proxy_value_tuple_t<zip_reference_proxy>() // NOLINT
+                && {
             return std::apply([](auto&&... e) {
                 return zip_proxy_value_tuple_t<zip_reference_proxy>{ unwrap_ref(std::forward<decltype(e)>(e))... };
             }, std::move(elems));

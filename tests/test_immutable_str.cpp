@@ -8,7 +8,7 @@
 #include "jh/typed"
 
 namespace test {
-    using ImmutablePool = jh::pool<jh::immutable_str>;
+    using ImmutablePool = jh::observe_pool<jh::immutable_str>;
 
     // Generates a random string with visible characters only
     std::string generate_random_string(const size_t length) {
@@ -392,7 +392,7 @@ TEST_CASE("Switch with HashMap Example Test") {
     std::uniform_int_distribution<int> rand_dist(0, 5);
     constexpr int total_tests = 128;
 
-    jh::pool<jh::immutable_str> pool;
+    jh::observe_pool<jh::immutable_str> pool;
     // Recommended method: Directly map atomic immutable strings to unique identifiers
     static const std::unordered_map<jh::atomic_str_ptr, size_t, jh::atomic_str_hash, jh::atomic_str_eq> immutable_map =
     {

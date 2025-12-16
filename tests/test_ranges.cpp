@@ -13,6 +13,7 @@
 #include <memory_resource>
 #include "jh/views"
 #include "jh/pod"
+#include "jh/macros/platform.h"
 #include "jh/runtime_arr"
 #include "jh/ranges_ext"
 
@@ -350,11 +351,15 @@ TEST_CASE("adapt: direct call vs pipe form equivalence", "[adapt][equiv]") {
     for (auto x: r1) out1 << x << " ";
 
     // pipe form
+#if IS_GCC
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdangling-reference"
+#endif
     std::ostringstream out2;
     for (auto x: arr | jh::ranges::adapt()) out2 << x << " ";
+#if IS_GCC
 #pragma GCC diagnostic pop
+#endif
     REQUIRE(out1.str() == out2.str());
     REQUIRE(out1.str() == "10 20 30 ");
 }

@@ -179,7 +179,7 @@ namespace example {
     void pooling() {
         std::cout << "\n\U0001F539 Pooling Immutable Strings:\n";
 
-        jh::pool<jh::immutable_str> string_pool;
+        jh::observe_pool<jh::immutable_str> string_pool;
 
         auto pooled1 = string_pool.acquire("Pooled String");
         auto pooled2 = string_pool.acquire("Pooled String");
@@ -217,7 +217,7 @@ namespace example {
      * - This method is both **efficient and scalable**, making it the preferred way to implement `switch`-like behavior.
      */
     void switch_case_usage(const char *str) {
-        jh::pool<jh::immutable_str> string_pool;
+        jh::observe_pool<jh::immutable_str> string_pool;
 
         /*
          * Recommended method: Directly map atomic immutable strings to unique identifiers

@@ -30,7 +30,7 @@ void hello_async() {
 }
 
 void hello_immutable_str() {
-    auto pool = jh::pool<jh::immutable_str>();
+    auto pool = jh::observe_pool<jh::immutable_str>();
     const auto str = pool.acquire("Hello, Immutable String!\n");
     std::cout << str->view() << std::endl;
 }

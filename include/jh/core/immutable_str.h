@@ -92,7 +92,7 @@
  * #include &lt;iostream&gt;
  *
  * int main() {
- *     auto pool = jh::pool&lt;jh::immutable_str&gt;();
+ *     auto pool = jh::observe_pool&lt;jh::immutable_str&gt;();
  *     const auto str = pool.acquire("Hello, JH Toolkit!");
  *     std::cout &lt;&lt; str-&gt;view() &lt;&lt; std::endl;
  *     return 0;
@@ -108,15 +108,15 @@
  * <p>
  * This header automatically includes <code>jh/core/pool.h</code>, exposing the full
  * pooling behavior of <code>jh::immutable_str</code> without requiring any
- * additional include directives. Because <code>jh::pool</code> performs
+ * additional include directives. Because <code>jh::observe_pool</code> performs
  * duck-typed deduction (detecting <code>hash()</code> and <code>operator==</code>),
  * <code>immutable_str</code> instances are automatically compatible with
- * <code>jh::pool</code>.
+ * <code>jh::observe_pool</code>.
  * </p>
  *
  * <p>
  * In addition to providing <code>hash()</code> and <code>operator==</code>,
- * types used with <code>jh::pool</code> must guarantee <b>semantic immutability</b>:
+ * types used with <code>jh::observe_pool</code> must guarantee <b>semantic immutability</b>:
  * once an object is inserted into the pool, its <code>hash()</code> and
  * equality semantics must remain constant for its entire lifetime.
  * This ensures that pooled instances remain stable and deduplicated.
@@ -137,7 +137,7 @@
  * #include &lt;cstdio&gt;
  *
  * int main() {
- *     jh::pool&lt;jh::immutable_str&gt; pool;  // automatically available
+ *     jh::observe_pool&lt;jh::immutable_str&gt; pool;  // automatically available
  *     auto a = pool.acquire("JH Toolkit");
  *     auto b = pool.acquire("JH Toolkit");
  *
@@ -159,7 +159,7 @@
  *   <li><b>Automatic inclusion:</b> <code>jh/pool.h</code> is included by default.</li>
  *   <li><b>Value-based pooling:</b> Identical strings resolve to the same shared instance.</li>
  *   <li><b>Thread-safe:</b> Pool operations are safe since <code>immutable_str</code> itself is immutable.</li>
- *   <li><b>Duck-typed deduction:</b> <code>jh::pool</code> automatically recognizes
+ *   <li><b>Duck-typed deduction:</b> <code>jh::observe_pool</code> automatically recognizes
  *       compatible types implementing <code>hash()</code> and <code>operator==</code>.</li>
  * </ul>
  *
@@ -178,7 +178,7 @@
  *
  * <h3>See Also</h3>
  * <ul>
- *   <li><code>jh::pool</code> &mdash; efficient pooling system compatible with immutable_str.</li>
+ *   <li><code>jh::observe_pool</code> &mdash; efficient pooling system compatible with immutable_str.</li>
  *   <li><code>jh::atomic_str_ptr</code> &mdash; shared-pointer alias for efficient immutable string sharing.</li>
  * </ul>
  *
@@ -203,7 +203,7 @@
 #include <optional>         // for std::optional
 #include <type_traits>      // for std::remove_cvref_t
 #include "jh/synchronous/const_lock.h"
-#include "jh/core/pool.h"
+#include "jh/concurrent/observe_pool.h"
 #include "jh/pods/string_view.h"
 
 namespace jh::detail {
@@ -281,7 +281,7 @@ namespace jh {
      *
      * <h4>See Also</h4>
      * <ul>
-     *   <li><code>jh::pool</code> &mdash; object pool compatible with <code>immutable_str</code>.</li>
+     *   <li><code>jh::observe_pool</code> &mdash; object pool compatible with <code>immutable_str</code>.</li>
      *   <li><code>jh::atomic_str_ptr</code> &mdash; alias for <code>std::shared_ptr&lt;immutable_str&gt;</code>.</li>
      * </ul>
      */
