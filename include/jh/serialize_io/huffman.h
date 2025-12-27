@@ -188,15 +188,15 @@ namespace jh::serio {
 
         /// @brief Provides empty canonical_decoder for non-canonical Huffman variants.
         template<bool IsCanonical, size_t N>
-        struct canonical_decoder_selector {
-            struct type {
+        struct canonical_decoder_selector final {
+            struct type final {
             };
         };
 
         /// @brief Provides canonical_decoder only for canonical Huffman variants.
         template<size_t N>
-        struct canonical_decoder_selector<true, N> {
-            struct type {
+        struct canonical_decoder_selector<true, N> final {
+            struct type final {
                 std::uint8_t code_len[N];      ///< Code length per symbol
                 std::uint16_t count[33];       ///< Count of symbols per length L
                 std::uint32_t start[33];       ///< Starting code for each length L
@@ -244,7 +244,7 @@ namespace jh::serio {
      * @tparam Algo       Huffman codec variant (tree-based or canonical).
      */
     template<jh::meta::TStr Signature, huff_algo Algo = huff_algo::huff256_canonical>
-    class huffman {
+    class huffman final {
 
         static constexpr auto signature = Signature;
 
@@ -263,7 +263,7 @@ namespace jh::serio {
          * Internal nodes have <code>left</code> and <code>right</code> children.
          * Leaf nodes contain only <code>ch</code> and <code>freq</code>.
          */
-        struct node {
+        struct node final {
             std::uint16_t ch = 0;   ///< Symbol value (0–127 or 0–255)
             std::uint32_t freq = 0; ///< Symbol frequency
             int left = -1;          ///< Index of left child node
@@ -273,7 +273,7 @@ namespace jh::serio {
         };
 
         /// @brief Priority queue comparator used when building Huffman trees.
-        struct pq_cmp {
+        struct pq_cmp final {
             const std::vector<node> *pool;
 
             explicit pq_cmp(const std::vector<node> *p) : pool(p) {}
@@ -284,7 +284,7 @@ namespace jh::serio {
         };
 
         /// @brief Huffman code entry: bit pattern + length.
-        struct code {
+        struct code final {
             std::uint32_t bits; ///< Huffman bit pattern (MSB-first)
             std::uint8_t len;   ///< Number of valid bits
         };
@@ -435,7 +435,7 @@ namespace jh::serio {
                 const jh::pod::array<std::uint8_t, table_size> &len_tbl,
                 table_t &tbl
         ) requires(is_canonical) {
-            struct Item {
+            struct Item final {
                 int sym;
                 int len;
             };

@@ -180,7 +180,7 @@ namespace jh::conc {
          *
          * Holds the version counter and the managed value.
          */
-        struct state {
+        struct state final {
             std::uint64_t version;       ///< Monotonic version number, increments on each commit.
             std::shared_ptr<T> data;     ///< Pointer to the stored value of type <code>T</code>.
         };

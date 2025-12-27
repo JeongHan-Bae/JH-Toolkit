@@ -68,7 +68,7 @@ namespace jh::meta {
          * @tparam T Key canonical type.
          */
         template<typename T>
-        struct key_traits {
+        struct key_traits final {
             using canonical_type = T;
             using apparent_type = const T &;
 
@@ -92,7 +92,7 @@ namespace jh::meta {
          * @tparam none
          */
         template<>
-        struct key_traits<jh::pod::string_view> {
+        struct key_traits<jh::pod::string_view> final {
             using canonical_type = jh::pod::string_view;
 
             using apparent_type = std::string_view;
@@ -238,7 +238,7 @@ namespace jh::meta {
     template<typename K, typename V, size_t N, typename Hash> requires requires(K k) {
         { Hash{}(k) } -> std::convertible_to<size_t>;
     }
-    struct lookup_map {
+    struct lookup_map final {
 
         /**
          * @brief Single entry stored in the lookup table.
@@ -246,7 +246,7 @@ namespace jh::meta {
          * @details
          * Contains precomputed hash, the canonical key, and its associated value.
          */
-        struct entry {
+        struct entry final {
             size_t hash; ///< Precomputed hash.
             K key;       ///< Canonical key.
             V value;     ///< Stored value.

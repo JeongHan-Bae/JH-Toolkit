@@ -124,7 +124,7 @@ namespace jh::async {
      * <li>Always suspends when awaited.</li>
      * </ul>
      */
-    struct resume_t {
+    struct resume_t final {
     };
 
     /// @brief Global constant instance of <code>resume_t</code>.
@@ -211,7 +211,7 @@ namespace jh::async {
          *   <li><code>await_resume()</code> &mdash; no-op.</li>
          * </ul>
          */
-        struct promise_type {
+        struct promise_type final {
 
             /**
              * @brief Creates and returns the generator object.
@@ -265,7 +265,7 @@ namespace jh::async {
              */
             auto await_transform(resume_t) // NOLINT
             noexcept {
-                struct awaiter {
+                struct awaiter final {
                     /**
                      * @brief Indicates that suspension is always required.
                      * @return Always <code>false</code>.

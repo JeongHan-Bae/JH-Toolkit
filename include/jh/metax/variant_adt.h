@@ -159,7 +159,7 @@ namespace jh::meta {
 
         /// @brief Deduce transformed type at index I in Variant using TpTrans
         template<std::size_t I, typename Variant, template<typename> typename TpTrans>
-        struct deduce_type {
+        struct deduce_type final {
             using type =
                     typename TpTrans<std::variant_alternative_t<I, Variant>>::type;
         };
@@ -170,19 +170,19 @@ namespace jh::meta {
         /// @brief Transform all types in Variant using TpTrans
         template<template<typename...> typename V, typename... Ts,
                 template<typename> typename TpTrans>
-        struct variant_transform_impl<V<Ts...>, TpTrans> {
+        struct variant_transform_impl<V<Ts...>, TpTrans> final {
             using type [[maybe_unused]] = std::variant<typename TpTrans<Ts>::type...>;
         };
 
         // Extract one collapsed type
         template<typename T, template<typename> typename TpTrans, typename = void>
-        struct collapse_one {
+        struct collapse_one final {
             using type = void;               // SFINAE failure -> void
         };
 
         /// @brief Specialization when TpTrans<T>::type exists
         template<typename T, template<typename> typename TpTrans>
-        struct collapse_one<T, TpTrans, std::void_t<typename TpTrans<T>::type>> {
+        struct collapse_one<T, TpTrans, std::void_t<typename TpTrans<T>::type>> final {
             using type = typename TpTrans<T>::type;
         };
 
@@ -193,7 +193,7 @@ namespace jh::meta {
         /// @brief Specialization for variant types
         template<template<typename...> typename V, typename... Ts,
                 template<typename> typename TpTrans>
-        struct variant_collapse_impl<V<Ts...>, TpTrans> {
+        struct variant_collapse_impl<V<Ts...>, TpTrans> final {
 
             // The collapsed results of each alternative
             using first = typename collapse_one<
@@ -215,9 +215,9 @@ namespace jh::meta {
 
         /// @brief Checker to validate TpTrans produces non-void types
         template<template<typename> typename TpTrans>
-        struct is_valid_trans_holder {
+        struct is_valid_trans_holder final {
             template<typename T>
-            struct apply {
+            struct apply final {
                 static constexpr bool value = requires {
                     typename TpTrans<T>::type;
                     requires (!std::is_void_v<typename TpTrans<T>::type>);

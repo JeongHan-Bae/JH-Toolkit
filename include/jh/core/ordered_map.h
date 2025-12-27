@@ -232,6 +232,7 @@
 #include <stdexcept>
 #include <ranges>
 #include <vector>
+
 #include "jh/typing/monostate.h"
 #include "jh/conceptual/tuple_like.h"
 
@@ -645,9 +646,8 @@ namespace jh::avl {
      * @tparam Alloc  Allocator for node storage; defaults to vector-compatible allocator
      */
     template<typename K, typename V,
-            typename Alloc = std::allocator<detail::value_t<K, V>>
-    >
-    class tree_map {
+            typename Alloc = std::allocator<detail::value_t<K, V>>>
+    class tree_map final {
     private:
         /// @brief Allocator rebound to canonical node type.
         using alloc_type = detail::node_alloc_type<K, V, Alloc>;
@@ -665,7 +665,7 @@ namespace jh::avl {
 
     private:
         /// @brief Contiguous node pool storing the entire AVL tree.
-        vector_type nodes;
+        vector_type nodes_;
 
         /// @brief Root node index, or -1 if the tree is empty.
         std::size_t root = static_cast<std::size_t>(-1);
@@ -680,7 +680,7 @@ namespace jh::avl {
          * @brief Default constructor creating an empty tree with default allocator.
          */
         tree_map() noexcept(noexcept(alloc_type()))
-                : nodes(alloc_type()), root(static_cast<std::size_t>(-1)) {}
+                : nodes_(alloc_type()), root(static_cast<std::size_t>(-1)) {}
 
         /**
          * @brief Construct an empty tree with a specified allocator.
@@ -688,7 +688,7 @@ namespace jh::avl {
          * @param alloc allocator used for node storage
          */
         explicit tree_map(const Alloc &alloc)
-                : nodes(alloc_type(alloc)), root(static_cast<std::size_t>(-1)) {}
+                : nodes_(alloc_type(alloc)), root(static_cast<std::size_t>(-1)) {}
 
         /**
          * @brief Copy-construct from another tree whose canonical key/value
@@ -711,7 +711,7 @@ namespace jh::avl {
         requires detail::compatible_node_type<K, V, K_, V_> &&
                  std::same_as<Alloc, Alloc_>
         [[maybe_unused]] explicit tree_map(const tree_map<K_, V_, Alloc_> &other)
-                : nodes(other.nodes),
+                : nodes_(other.nodes_),
                   root(other.root) {}
 
         /**
@@ -733,7 +733,7 @@ namespace jh::avl {
         requires detail::compatible_node_type<K, V, K_, V_> &&
                  (!std::same_as<Alloc, Alloc_>)
         [[maybe_unused]] explicit tree_map(const tree_map<K_, V_, Alloc_> &other)
-                : nodes(other.nodes.begin(), other.nodes.end(), alloc_type{}),
+                : nodes_(other.nodes_.begin(), other.nodes_.end(), alloc_type{}),
                   root(other.root) {}
 
         /**
@@ -755,7 +755,7 @@ namespace jh::avl {
         template<typename K_, typename V_, typename Alloc_>
         requires detail::compatible_node_type<K, V, K_, V_>
         [[maybe_unused]] tree_map(const tree_map<K_, V_, Alloc_> &other, const Alloc &alloc)
-                : nodes(other.nodes.begin(), other.nodes.end(), alloc_type(alloc)),
+                : nodes_(other.nodes_.begin(), other.nodes_.end(), alloc_type(alloc)),
                   root(other.root) {}
 
         /**
@@ -780,7 +780,7 @@ namespace jh::avl {
         requires detail::compatible_node_type<K, V, K_, V_> &&
                  std::same_as<Alloc, Alloc_>
         [[maybe_unused]] explicit tree_map(tree_map<K_, V_, Alloc_> &&other) noexcept
-                : nodes(std::move(other.nodes)),
+                : nodes_(std::move(other.nodes_)),
                   root(other.root) {
             other.root = static_cast<std::size_t>(-1);
         }
@@ -808,9 +808,9 @@ namespace jh::avl {
         requires detail::compatible_node_type<K, V, K_, V_> &&
                  (!std::same_as<Alloc, Alloc_>)
         [[maybe_unused]] explicit tree_map(tree_map<K_, V_, Alloc_> &&other)
-                : nodes(
-                std::make_move_iterator(other.nodes.begin()),
-                std::make_move_iterator(other.nodes.end()),
+                : nodes_(
+                std::make_move_iterator(other.nodes_.begin()),
+                std::make_move_iterator(other.nodes_.end()),
                 alloc_type{}
         ),
                   root(other.root) {
@@ -838,9 +838,9 @@ namespace jh::avl {
         template<typename K_, typename V_, typename Alloc_>
         requires detail::compatible_node_type<K, V, K_, V_>
         [[maybe_unused]] tree_map(tree_map<K_, V_, Alloc_> &&other, const Alloc &alloc)
-                : nodes(
-                std::make_move_iterator(other.nodes.begin()),
-                std::make_move_iterator(other.nodes.end()),
+                : nodes_(
+                std::make_move_iterator(other.nodes_.begin()),
+                std::make_move_iterator(other.nodes_.end()),
                 alloc_type(alloc)
         ),
                   root(other.root) {
@@ -880,7 +880,7 @@ namespace jh::avl {
          * and decrement perform in-order successor/predecessor traversal with
          * amortized constant cost.
          */
-        struct iterator {
+        struct iterator final {
             /// @brief Owning tree type.
             using base_type = tree_map;
 
@@ -953,7 +953,7 @@ namespace jh::avl {
              * valid element (e.g., it equals <code>end()</code>).
              */
             reference operator*() {
-                return tree->nodes[idx].stored();
+                return tree->nodes_[idx].stored();
             }
 
             /**
@@ -965,7 +965,7 @@ namespace jh::avl {
              * Undefined behavior if the iterator equals <code>end()</code>.
              */
             pointer operator->() {
-                return &tree->nodes[idx].stored();
+                return &tree->nodes_[idx].stored();
             }
 
             /**
@@ -977,7 +977,7 @@ namespace jh::avl {
              * Undefined behavior if the iterator equals <code>end()</code>.
              */
             reference operator*() const {
-                return tree->nodes[idx].stored();
+                return tree->nodes_[idx].stored();
             }
 
             /**
@@ -989,7 +989,7 @@ namespace jh::avl {
              * Undefined behavior if the iterator equals <code>end()</code>.
              */
             pointer operator->() const {
-                return &tree->nodes[idx].stored();
+                return &tree->nodes_[idx].stored();
             }
 
             /**
@@ -1002,7 +1002,7 @@ namespace jh::avl {
              * to the ordering key. Undefined behavior if the iterator equals
              * <code>end()</code>.
              */
-            [[nodiscard]] const node_type::key_type &key() const { return tree->nodes[idx].key(); }
+            [[nodiscard]] const node_type::key_type &key() const { return tree->nodes_[idx].key(); }
 
             /**
              * @brief Advance to the in-order successor.
@@ -1033,23 +1033,23 @@ namespace jh::avl {
                 if (idx == static_cast<std::size_t>(-1))
                     return *this;
 
-                auto &tree_nodes = tree->nodes;
+                auto &tree_nodes_ = tree->nodes_;
                 std::size_t cur = idx;
 
                 // case 1: has right subtree
-                if (tree_nodes[cur].right != static_cast<std::size_t>(-1)) {
-                    cur = tree_nodes[cur].right;
-                    while (tree_nodes[cur].left != static_cast<std::size_t>(-1))
-                        cur = tree_nodes[cur].left;
+                if (tree_nodes_[cur].right != static_cast<std::size_t>(-1)) {
+                    cur = tree_nodes_[cur].right;
+                    while (tree_nodes_[cur].left != static_cast<std::size_t>(-1))
+                        cur = tree_nodes_[cur].left;
                     idx = cur;
                     return *this;
                 }
 
                 // case 2: go up until we exit right-side path
-                std::size_t parent = tree_nodes[cur].parent;
-                while (parent != static_cast<std::size_t>(-1) && tree_nodes[parent].right == cur) {
+                std::size_t parent = tree_nodes_[cur].parent;
+                while (parent != static_cast<std::size_t>(-1) && tree_nodes_[parent].right == cur) {
                     cur = parent;
-                    parent = tree_nodes[cur].parent;
+                    parent = tree_nodes_[cur].parent;
                 }
 
                 // parent may become -1 -> end()
@@ -1108,15 +1108,15 @@ namespace jh::avl {
              * @return Reference to <code>*this</code>.
              */
             iterator &operator--() {
-                auto &tree_nodes = tree->nodes;
+                auto &tree_nodes_ = tree->nodes_;
 
                 // end()-- &rarr; go to rightmost
                 if (idx == static_cast<std::size_t>(-1)) {
                     std::size_t cur = tree->root;
                     if (cur == static_cast<std::size_t>(-1))
                         return *this;
-                    while (tree_nodes[cur].right != static_cast<std::size_t>(-1))
-                        cur = tree_nodes[cur].right;
+                    while (tree_nodes_[cur].right != static_cast<std::size_t>(-1))
+                        cur = tree_nodes_[cur].right;
                     idx = cur;
                     return *this;
                 }
@@ -1124,19 +1124,19 @@ namespace jh::avl {
                 std::size_t cur = idx;
 
                 // case 1: has left subtree
-                if (tree_nodes[cur].left != static_cast<std::size_t>(-1)) {
-                    cur = tree_nodes[cur].left;
-                    while (tree_nodes[cur].right != static_cast<std::size_t>(-1))
-                        cur = tree_nodes[cur].right;
+                if (tree_nodes_[cur].left != static_cast<std::size_t>(-1)) {
+                    cur = tree_nodes_[cur].left;
+                    while (tree_nodes_[cur].right != static_cast<std::size_t>(-1))
+                        cur = tree_nodes_[cur].right;
                     idx = cur;
                     return *this;
                 }
 
                 // case 2: go up until we exit left-side path
-                std::size_t parent = tree_nodes[cur].parent;
-                while (parent != static_cast<std::size_t>(-1) && tree_nodes[parent].left == cur) {
+                std::size_t parent = tree_nodes_[cur].parent;
+                while (parent != static_cast<std::size_t>(-1) && tree_nodes_[parent].left == cur) {
                     cur = parent;
-                    parent = tree_nodes[cur].parent;
+                    parent = tree_nodes_[cur].parent;
                 }
 
                 // parent may become -1 -> end()
@@ -1203,7 +1203,7 @@ namespace jh::avl {
          * traversal semantics (increment, decrement, ordering) match those of
          * <code>iterator</code>.
          */
-        struct const_iterator {
+        struct const_iterator final {
             /// @brief Owning tree type.
             using base_type = tree_map;
 
@@ -1283,7 +1283,7 @@ namespace jh::avl {
              * Undefined behavior if the iterator is singular or equals <code>end()</code>.
              */
             reference operator*() const {
-                return tree->nodes[idx].stored();
+                return tree->nodes_[idx].stored();
             }
 
             /**
@@ -1295,7 +1295,7 @@ namespace jh::avl {
              * Undefined behavior if the iterator is singular or equals <code>end()</code>.
              */
             pointer operator->() const {
-                return &tree->nodes[idx].stored();
+                return &tree->nodes_[idx].stored();
             }
 
             /**
@@ -1306,7 +1306,7 @@ namespace jh::avl {
              * @details
              * Undefined behavior if the iterator is singular or equals <code>end()</code>.
              */
-            [[nodiscard]] const node_type::key_type &key() const { return tree->nodes[idx].key(); }
+            [[nodiscard]] const node_type::key_type &key() const { return tree->nodes_[idx].key(); }
 
             /**
              * @brief Advance to the in-order successor.
@@ -1454,8 +1454,8 @@ namespace jh::avl {
                 return iterator(this, static_cast<std::size_t>(-1));
 
             std::size_t cur = root;
-            while (nodes[cur].left != static_cast<std::size_t>(-1))
-                cur = nodes[cur].left;
+            while (nodes_[cur].left != static_cast<std::size_t>(-1))
+                cur = nodes_[cur].left;
 
             return iterator(this, cur);
         }
@@ -1484,8 +1484,8 @@ namespace jh::avl {
                 return const_iterator(this, static_cast<std::size_t>(-1));
 
             std::size_t cur = root;
-            while (nodes[cur].left != static_cast<std::size_t>(-1))
-                cur = nodes[cur].left;
+            while (nodes_[cur].left != static_cast<std::size_t>(-1))
+                cur = nodes_[cur].left;
 
             return const_iterator(this, cur);
         }
@@ -1600,7 +1600,7 @@ namespace jh::avl {
          * contributes height 0. Otherwise the stored height of the node is returned.
          */
         [[nodiscard]] std::uint16_t _height(std::size_t idx) const {
-            return (idx != static_cast<std::size_t>(-1)) ? nodes[idx].height : 0;
+            return (idx != static_cast<std::size_t>(-1)) ? nodes_[idx].height : 0;
         }
 
         /**
@@ -1611,7 +1611,7 @@ namespace jh::avl {
          * Used after structural modifications that may affect subtree heights.
          */
         void _update(std::size_t idx) {
-            auto &node = nodes[idx];
+            auto &node = nodes_[idx];
             std::uint16_t lh = _height(node.left);
             std::uint16_t rh = _height(node.right);
             node.height = (lh > rh ? lh : rh) + 1;
@@ -1625,7 +1625,7 @@ namespace jh::avl {
          * left-heavy subtrees; negative values indicate right-heavy subtrees.
          */
         [[nodiscard]] int _balance_factor(std::size_t idx) const {
-            const auto &node = nodes[idx];
+            const auto &node = nodes_[idx];
             return int(_height(node.left)) - int(_height(node.right));
         }
 
@@ -1650,9 +1650,9 @@ namespace jh::avl {
          * @return The index of the subtree's new root after rotation.
          */
         std::size_t _rotate_left(std::size_t x) {
-            std::size_t y = nodes[x].right;
-            auto &x_node = nodes[x];
-            auto &y_node = nodes[y];
+            std::size_t y = nodes_[x].right;
+            auto &x_node = nodes_[x];
+            auto &y_node = nodes_[y];
 
             std::size_t old_parent = x_node.parent;
             std::size_t T2 = y_node.left;
@@ -1662,14 +1662,14 @@ namespace jh::avl {
 
             x_node.right = T2;
             if (T2 != static_cast<std::size_t>(-1))
-                nodes[T2].parent = x;
+                nodes_[T2].parent = x;
 
             y_node.parent = old_parent;
 
             if (old_parent == static_cast<std::size_t>(-1)) {
                 root = y;
             } else {
-                auto &p = nodes[old_parent];
+                auto &p = nodes_[old_parent];
                 if (p.left == x)
                     p.left = y;
                 else
@@ -1703,9 +1703,9 @@ namespace jh::avl {
          * @return The index of the subtree's new root after rotation.
          */
         std::size_t _rotate_right(std::size_t y) {
-            std::size_t x = nodes[y].left;
-            auto &y_node = nodes[y];
-            auto &x_node = nodes[x];
+            std::size_t x = nodes_[y].left;
+            auto &y_node = nodes_[y];
+            auto &x_node = nodes_[x];
 
             std::size_t old_parent = y_node.parent;
             std::size_t T1 = x_node.right;
@@ -1715,14 +1715,14 @@ namespace jh::avl {
 
             y_node.left = T1;
             if (T1 != static_cast<std::size_t>(-1))
-                nodes[T1].parent = y;
+                nodes_[T1].parent = y;
 
             x_node.parent = old_parent;
 
             if (old_parent == static_cast<std::size_t>(-1)) {
                 root = x;
             } else {
-                auto &p = nodes[old_parent];
+                auto &p = nodes_[old_parent];
                 if (p.left == y)
                     p.left = x;
                 else
@@ -1770,20 +1770,20 @@ namespace jh::avl {
                 _update(idx);
                 int bf = _balance_factor(idx);
 
-                if (bf > 1 && _balance_factor(nodes[idx].left) >= 0) {
+                if (bf > 1 && _balance_factor(nodes_[idx].left) >= 0) {
                     idx = _rotate_right(idx);
-                } else if (bf > 1 && _balance_factor(nodes[idx].left) < 0) {
-                    std::size_t left = nodes[idx].left;
+                } else if (bf > 1 && _balance_factor(nodes_[idx].left) < 0) {
+                    std::size_t left = nodes_[idx].left;
                     _rotate_left(left);
                     idx = _rotate_right(idx);
-                } else if (bf < -1 && _balance_factor(nodes[idx].right) <= 0) {
+                } else if (bf < -1 && _balance_factor(nodes_[idx].right) <= 0) {
                     idx = _rotate_left(idx);
-                } else if (bf < -1 && _balance_factor(nodes[idx].right) > 0) {
-                    std::size_t right = nodes[idx].right;
+                } else if (bf < -1 && _balance_factor(nodes_[idx].right) > 0) {
+                    std::size_t right = nodes_[idx].right;
                     _rotate_right(right);
                     idx = _rotate_left(idx);
                 }
-                idx = nodes[idx].parent;
+                idx = nodes_[idx].parent;
             }
             return idx;
         }
@@ -1861,8 +1861,8 @@ namespace jh::avl {
         _insert_impl(KArg &&key, VArg &&value) {
 
             if (root == static_cast<std::size_t>(-1)) {
-                std::size_t idx = nodes.size();
-                nodes.emplace_back(
+                std::size_t idx = nodes_.size();
+                nodes_.emplace_back(
                         std::forward<KArg>(key),
                         std::forward<VArg>(value),
                         static_cast<std::size_t>(-1));
@@ -1874,7 +1874,7 @@ namespace jh::avl {
 
             while (cur != static_cast<std::size_t>(-1)) {
                 parent = cur;
-                auto &node = nodes[cur];
+                auto &node = nodes_[cur];
 
                 if (std::forward<KArg>(key) < node.key()) {
                     cur = node.left;
@@ -1888,12 +1888,12 @@ namespace jh::avl {
                 }
             }
 
-            std::size_t idx = nodes.size();
-            nodes.emplace_back(
+            std::size_t idx = nodes_.size();
+            nodes_.emplace_back(
                     std::forward<KArg>(key),
                     std::forward<VArg>(value),
                     parent);
-            auto &p_node = nodes[parent];
+            auto &p_node = nodes_[parent];
             if (std::forward<KArg>(key) < p_node.key())
                 p_node.left = idx;
             else
@@ -1933,20 +1933,20 @@ namespace jh::avl {
          */
         [[nodiscard]] std::size_t _successor_index(std::size_t idx) const {
             if (idx == static_cast<std::size_t>(-1)) return static_cast<std::size_t>(-1);
-            const auto &tree_nodes = nodes;
+            const auto &tree_nodes_ = nodes_;
 
-            if (tree_nodes[idx].right != static_cast<std::size_t>(-1)) {
-                std::size_t cur = tree_nodes[idx].right;
-                while (tree_nodes[cur].left != static_cast<std::size_t>(-1))
-                    cur = tree_nodes[cur].left;
+            if (tree_nodes_[idx].right != static_cast<std::size_t>(-1)) {
+                std::size_t cur = tree_nodes_[idx].right;
+                while (tree_nodes_[cur].left != static_cast<std::size_t>(-1))
+                    cur = tree_nodes_[cur].left;
                 return cur;
             }
             std::size_t cur = idx;
-            std::size_t parent = tree_nodes[cur].parent;
+            std::size_t parent = tree_nodes_[cur].parent;
 
-            while (parent != static_cast<std::size_t>(-1) && tree_nodes[parent].right == cur) {
+            while (parent != static_cast<std::size_t>(-1) && tree_nodes_[parent].right == cur) {
                 cur = parent;
-                parent = tree_nodes[cur].parent;
+                parent = tree_nodes_[cur].parent;
             }
             return parent; // may be -1 -> end()
         }
@@ -1971,7 +1971,7 @@ namespace jh::avl {
             std::size_t cur = root;
             auto candidate = static_cast<std::size_t>(-1);
             while (cur != static_cast<std::size_t>(-1)) {
-                const auto &node = nodes[cur];
+                const auto &node = nodes_[cur];
                 // node.key >= key
                 if (!(node.key() < key))  // NOLINT
                 {
@@ -2004,7 +2004,7 @@ namespace jh::avl {
             std::size_t cur = root;
             auto candidate = static_cast<std::size_t>(-1);
             while (cur != static_cast<std::size_t>(-1)) {
-                const auto &node = nodes[cur];
+                const auto &node = nodes_[cur];
                 // node.key > key
                 if (key < node.key()) {
                     candidate = cur;
@@ -2033,7 +2033,7 @@ namespace jh::avl {
             std::size_t cur = root;
 
             while (cur != static_cast<std::size_t>(-1)) {
-                const auto &node = nodes[cur];
+                const auto &node = nodes_[cur];
 
                 if (key == node.key()) {
                     return iterator(this, cur);
@@ -2061,7 +2061,7 @@ namespace jh::avl {
             std::size_t cur = root;
 
             while (cur != static_cast<std::size_t>(-1)) {
-                const auto &node = nodes[cur];
+                const auto &node = nodes_[cur];
 
                 if (key == node.key()) {
                     return const_iterator(this, cur);
@@ -2146,11 +2146,14 @@ namespace jh::avl {
          * <code>std::pair</code>, <code>std::tuple</code>, proxy references,
          * and structured-binding-compatible types) is therefore permitted if
          * its element types match exactly.
-         *
+         * <br>
          * If the key already exists, no insertion occurs and the boolean
          * return value is <code>false</code>.
          *
+         * @tparam P The tuple-like type providing key and mapped value.
+         *
          * @param p A tuple-like value providing key and mapped value.
+         *
          * @return A pair containing:
          *         <ol>
          *           <li>An iterator to the existing or newly inserted element.</li>
@@ -2301,10 +2304,10 @@ namespace jh::avl {
                 (const node_type::key_type &key) requires((!jh::typed::monostate_t<V>) &&
                                                           std::default_initializable<V>) {
             if (root == static_cast<std::size_t>(-1)) {
-                std::size_t idx = nodes.size();
-                nodes.emplace_back(key, std::remove_cvref_t<V>{}, static_cast<std::size_t>(-1));
+                std::size_t idx = nodes_.size();
+                nodes_.emplace_back(key, std::remove_cvref_t<V>{}, static_cast<std::size_t>(-1));
                 root = idx;
-                return nodes[idx].value();
+                return nodes_[idx].value();
             }
 
             std::size_t cur = root;
@@ -2312,7 +2315,7 @@ namespace jh::avl {
 
             while (cur != static_cast<std::size_t>(-1)) {
                 parent = cur;
-                auto &node = nodes[cur];
+                auto &node = nodes_[cur];
                 if (key < node.key()) {
                     cur = node.left;
                 } else if (node.key() < key) {
@@ -2321,17 +2324,17 @@ namespace jh::avl {
                     return node.value();
                 }
             }
-            std::size_t idx = nodes.size();
-            nodes.emplace_back(key, std::remove_cvref_t<V>{}, parent);
+            std::size_t idx = nodes_.size();
+            nodes_.emplace_back(key, std::remove_cvref_t<V>{}, parent);
 
-            auto &p_node = nodes[parent];
+            auto &p_node = nodes_[parent];
             if (key < p_node.key())
                 p_node.left = idx;
             else
                 p_node.right = idx;
 
             _rebalance(parent);
-            return nodes[idx].value();
+            return nodes_[idx].value();
         }
 
         /**
@@ -2386,19 +2389,19 @@ namespace jh::avl {
                 return pos;
 
             std::size_t next_idx = _successor_index(idx);
-            auto &node = nodes[idx];
+            auto &node = nodes_[idx];
             auto transplant = [&](std::size_t u, std::size_t v) {
-                std::size_t parent = nodes[u].parent;
+                std::size_t parent = nodes_[u].parent;
 
                 if (parent == static_cast<std::size_t>(-1)) {
                     root = v;
                 } else {
-                    auto &p = nodes[parent];
+                    auto &p = nodes_[parent];
                     if (p.left == u) p.left = v;
                     else p.right = v;
                 }
                 if (v != static_cast<std::size_t>(-1)) {
-                    nodes[v].parent = parent;
+                    nodes_[v].parent = parent;
                 }
             };
 
@@ -2410,46 +2413,46 @@ namespace jh::avl {
                 transplant(idx, node.left);
             } else {
                 std::size_t success = node.right;
-                while (nodes[success].left != static_cast<std::size_t>(-1))
-                    success = nodes[success].left;
+                while (nodes_[success].left != static_cast<std::size_t>(-1))
+                    success = nodes_[success].left;
 
-                if (nodes[success].parent != idx) {
-                    transplant(success, nodes[success].right);
-                    nodes[success].right = node.right;
+                if (nodes_[success].parent != idx) {
+                    transplant(success, nodes_[success].right);
+                    nodes_[success].right = node.right;
                     if (node.right != static_cast<std::size_t>(-1))
-                        nodes[node.right].parent = success;
+                        nodes_[node.right].parent = success;
                 }
                 transplant(idx, success);
-                nodes[success].left = node.left;
-                nodes[node.left].parent = success;
+                nodes_[success].left = node.left;
+                nodes_[node.left].parent = success;
 
                 parent_for_rebalance = success;
             }
 
-            std::size_t last = nodes.size() - 1;
+            std::size_t last = nodes_.size() - 1;
             if (idx != last) {
-                auto last_node = nodes[last];
+                auto last_node = nodes_[last];
                 if (last_node.parent != static_cast<std::size_t>(-1)) {
-                    auto &p = nodes[last_node.parent];
+                    auto &p = nodes_[last_node.parent];
                     if (p.left == last) p.left = idx;
                     else p.right = idx;
                 }
 
-                if (last_node.left != static_cast<std::size_t>(-1)) nodes[last_node.left].parent = idx;
-                if (last_node.right != static_cast<std::size_t>(-1)) nodes[last_node.right].parent = idx;
+                if (last_node.left != static_cast<std::size_t>(-1)) nodes_[last_node.left].parent = idx;
+                if (last_node.right != static_cast<std::size_t>(-1)) nodes_[last_node.right].parent = idx;
                 if (root == last)
                     root = idx;
 
-                nodes[idx] = std::move(last_node);
+                nodes_[idx] = std::move(last_node);
                 if (parent_for_rebalance == last)
                     parent_for_rebalance = idx;
                 else if (parent_for_rebalance > last)
                     parent_for_rebalance = static_cast<std::size_t>(-1);
             }
 
-            nodes.pop_back();
+            nodes_.pop_back();
 
-            if (parent_for_rebalance < nodes.size()) {
+            if (parent_for_rebalance < nodes_.size()) {
                 // naturally supports != static_cast<std::size_t>(-1)
                 _rebalance(parent_for_rebalance);
             }
@@ -2483,7 +2486,6 @@ namespace jh::avl {
          * @details
          * Searches for an element with the specified key and removes it if found.
          * Iterator validity follows the rules of single-element erase:
-         *
          * <ul>
          *   <li>
          *     If an element is erased, all iterators obtained prior to this call
@@ -2578,6 +2580,10 @@ namespace jh::avl {
          *   </li>
          *   <li>Does not modify the container.</li>
          * </ul>
+         *
+         * @param key The key to search for.
+         *
+         * @return A pair of iterators defining the range of matching elements.
          */
         std::pair<iterator, iterator>
         equal_range(const node_type::key_type &key) {
@@ -2591,6 +2597,17 @@ namespace jh::avl {
             return {lb, ub};
         }
 
+        /**
+         * @brief Return the range of elements equivalent to the given key (const overload).
+         *
+         * @details
+         * Behaves identically to the non-const version but returns a pair of
+         * <code>const_iterator</code>.
+         *
+         * @param key The key to search for.
+         *
+         * @return A pair of const iterators defining the range of matching elements.
+         */
         [[nodiscard]] std::pair<const_iterator, const_iterator>
         equal_range(const node_type::key_type &key) const {
             const_iterator lb = lower_bound(key);
@@ -2607,7 +2624,7 @@ namespace jh::avl {
          * @brief Const overload of equal_range.
          */
         [[nodiscard]] std::size_t size() const noexcept {
-            return nodes.size();
+            return nodes_.size();
         }
 
         /**
@@ -2620,7 +2637,7 @@ namespace jh::avl {
          * @return true if the container has no elements, otherwise false.
          */
         [[nodiscard]] bool empty() const noexcept {
-            return nodes.empty();
+            return nodes_.empty();
         }
 
         /**
@@ -2647,11 +2664,12 @@ namespace jh::avl {
          * containers, there is no need to traverse and destroy individual nodes;
          * the entire tree is discarded in one step.
          * </p>
+         *
          * @note
          * All iterators are invalidated.
          */
         void clear() noexcept {
-            nodes.clear();
+            nodes_.clear();
             root = static_cast<std::size_t>(-1);
         }
 
@@ -2670,8 +2688,8 @@ namespace jh::avl {
          * even if the underlying buffer is reallocated.
          * </p>
          * <p>
-         * Calling reserve with a value smaller than the current size is
-         * undefined, matching the behavior of vector.
+         * Calling reserve with a value smaller than the current size is no-op,
+         * according to ISO C++11+ standards for standard containers.
          * </p>
          * <p>
          * With polymorphic allocators (PMR), reserve typically has minimal
@@ -2681,8 +2699,8 @@ namespace jh::avl {
          *
          * @param n Minimum capacity to reserve.
          */
-        void reserve(std::size_t n) noexcept(noexcept(nodes.reserve(n))) {
-            nodes.reserve(n);
+        void reserve(std::size_t n) noexcept(noexcept(nodes_.reserve(n))) {
+            nodes_.reserve(n);
         }
 
         /**
@@ -2703,8 +2721,8 @@ namespace jh::avl {
          *       this operation never invalidates iterators.</li>
          * </ul>
          */
-        void shrink_to_fit() noexcept(noexcept(nodes.shrink_to_fit())) {
-            nodes.shrink_to_fit();
+        void shrink_to_fit() noexcept(noexcept(nodes_.shrink_to_fit())) {
+            nodes_.shrink_to_fit();
         }
 
         /**
@@ -2742,7 +2760,7 @@ namespace jh::avl {
         [[maybe_unused]] tree_map(It first, It last) {
             clear();
             if constexpr (std::random_access_iterator<It>) {
-                nodes.reserve(last - first);
+                nodes_.reserve(last - first);
             }
             for (; first != last; ++first)
                 insert(*first);
@@ -2777,7 +2795,7 @@ namespace jh::avl {
         [[maybe_unused]] explicit tree_map(R &&r) {
             clear();
             if constexpr (std::ranges::sized_range<R>) {
-                nodes.reserve(std::size(r));
+                nodes_.reserve(std::size(r));
             }
             for (auto &&x: r)
                 insert(x);
@@ -2913,8 +2931,8 @@ namespace jh::avl {
             tree_map res{};
             if (!size_n) return res;
             res.reserve(size_n);
-            res.nodes.resize(size_n);
-            auto &vec = res.nodes;
+            res.nodes_.resize(size_n);
+            auto &vec = res.nodes_;
             res.root = 0;
 
             if (size_n == 1) {

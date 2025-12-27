@@ -66,8 +66,6 @@
 namespace jh::sync {
 
     /**
-     * @class const_lock
-     * @ingroup locking
      * @brief Scope-based immutability barrier for <code>mutex_like</code> types.
      *
      * <p>
@@ -97,7 +95,7 @@ namespace jh::sync {
      * @tparam Mutex Any type satisfying <code>jh::concepts::mutex_like</code>.
      */
     template <jh::concepts::mutex_like Mutex>
-    class const_lock {
+    class const_lock final {
     public:
 
         /**

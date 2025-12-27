@@ -63,7 +63,7 @@ namespace jh::ranges {
          * auto view = seq | jh::ranges::adapt();
          * @endcode
          */
-        struct adapt_closure {
+        struct adapt_closure final {
 
             /**
              * @brief Converts a sequence to a range using <code>jh::to_range()</code>.
@@ -104,7 +104,7 @@ namespace jh::ranges {
          * Internally forwards to <code>jh::to_range()</code>,
          * preserving const-correctness and perfect forwarding.
          */
-        struct adapt_fn {
+        struct adapt_fn final {
 
             /**
              * @brief Direct invocation of the adaptor.

@@ -143,21 +143,21 @@ namespace jh::ranges {
     struct zip_reference_proxy;
 
     template<typename T>
-    struct is_zip_proxy : std::false_type {};
+    struct is_zip_proxy final : std::false_type {};
 
     template<typename... Ts>
-    struct is_zip_proxy<class zip_reference_proxy<Ts...>> : std::true_type {};
+    struct is_zip_proxy<class zip_reference_proxy<Ts...>> final : std::true_type {};
 
     template<typename T>
     inline constexpr bool is_zip_proxy_v = is_zip_proxy<T>::value;
 
     template<typename T>
-    struct zip_proxy_value_tuple {
+    struct zip_proxy_value_tuple final {
         using type = std::unwrap_reference_t<std::remove_cvref_t<T>>;
     };
 
     template<typename... Ts>
-    struct zip_proxy_value_tuple<class zip_reference_proxy<Ts...>> {
+    struct zip_proxy_value_tuple<class zip_reference_proxy<Ts...>> final {
         using type = std::tuple<
                 typename zip_proxy_value_tuple<std::remove_cvref_t<Ts>>::type...
         >;
@@ -204,7 +204,7 @@ namespace jh::ranges {
      * @see jh::ranges::zip_view
      */
     template<typename... Es>
-    struct zip_reference_proxy {
+    struct zip_reference_proxy final {
         std::tuple<Es...> elems;
 
     private:
@@ -297,7 +297,7 @@ namespace jh::ranges {
      * @see jh::ranges::zip_view
      */
     template<typename... Sentinels>
-    struct zip_sentinel {
+    struct zip_sentinel final {
         /// Tuple of underlying range end iterators.
         std::tuple<Sentinels...> ends;
     };
@@ -339,7 +339,7 @@ namespace jh::ranges {
      * @see jh::ranges::zip_view
      */
     template<typename... Iters>
-    struct [[maybe_unused]] zip_iterator {
+    struct [[maybe_unused]] zip_iterator final {
         std::tuple<Iters...> iters;
 
         using difference_type   = std::ptrdiff_t;
@@ -447,7 +447,7 @@ namespace jh::ranges {
      * @see jh::ranges::views::zip
      */
     template<std::ranges::view... Views>
-    class zip_view : public std::ranges::view_interface<zip_view<Views...>> {
+    class zip_view final : public std::ranges::view_interface<zip_view<Views...>> {
         /// @brief Tuple of underlying view objects.
         std::tuple<Views...> bases;
 

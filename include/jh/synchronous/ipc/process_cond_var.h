@@ -206,7 +206,7 @@ namespace jh::sync::ipc {
         static constexpr auto shm_name_ = jh::meta::TStr{"/"} + S;
         static constexpr mode_t shm_mode = JH_PROCESS_MUTEX_SHARED ? 0666 : 0644;
 
-        struct cond_data {
+        struct cond_data final {
             bool initialized;
             pthread_mutex_t mutex;
             pthread_cond_t cond;

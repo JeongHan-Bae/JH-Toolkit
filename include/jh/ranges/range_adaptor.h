@@ -67,7 +67,7 @@ namespace jh::ranges {
          * @tparam Sentinel The matching sentinel type (defaults to <code>Inner</code>).
          */
         template<typename Inner, typename Sentinel = Inner> requires jh::concepts::input_iterator<Inner, Sentinel>
-        struct completed_iterator : public Inner {
+        struct completed_iterator final : public Inner {
 
             // ---- Input Basics ----
             using inner_type [[maybe_unused]] = Inner;
@@ -333,7 +333,7 @@ namespace jh::ranges {
      * enabling tighter interoperability with standard range algorithms.
      */
     template<typename Seq>
-    class range_adaptor : public std::ranges::view_interface<range_adaptor<Seq>> {
+    class range_adaptor final : public std::ranges::view_interface<range_adaptor<Seq>> {
         using traits = jh::concepts::range_storage_traits<Seq, true>;
         typename traits::stored_t seq_;
     public:

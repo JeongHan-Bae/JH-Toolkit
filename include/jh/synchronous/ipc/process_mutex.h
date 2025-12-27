@@ -157,7 +157,6 @@ namespace jh::sync::ipc::detail {
 namespace jh::sync::ipc {
 
     /**
-     * @class process_mutex
      * @brief Cross-platform named process-wide mutex primitive.
      *
      * <h4>Overview</h4>
@@ -328,7 +327,7 @@ namespace jh::sync::ipc {
          *
          * @note See @c try_lock_until for details.
          */
-        template<class Rep, class Period>
+        template<typename Rep, typename Period>
         bool try_lock_for(const std::chrono::duration<Rep, Period> &d) {
             if (d <= d.zero()) return try_lock();
 #if IS_WINDOWS
@@ -363,7 +362,7 @@ namespace jh::sync::ipc {
          *
          * @note Backoff is doubled each iteration, capped at 5 ms, to balance responsiveness and CPU usage.
          */
-        template<class Clock, class Duration>
+        template<typename Clock, typename Duration>
         bool try_lock_until(const std::chrono::time_point<Clock, Duration> &tp) {
             if (tp <= Clock::now()) return try_lock();
 #if IS_WINDOWS

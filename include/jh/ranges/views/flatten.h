@@ -75,7 +75,7 @@ namespace jh::ranges::views {
          * and the resulting view preserves the consumption property of the input range.
          * </p>
          */
-        struct flatten_closure {
+        struct flatten_closure final {
 
             /**
              * @brief Applies the flatten adaptor directly to a range.
@@ -151,7 +151,7 @@ namespace jh::ranges::views {
          * if the input is single-pass, the resulting view is also single-pass.
          * </p>
          */
-        struct flatten_fn {
+        struct flatten_fn final {
             /**
              * @brief Applies <code>flatten</code> directly to a range.
              *

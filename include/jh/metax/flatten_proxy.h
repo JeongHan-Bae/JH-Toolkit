@@ -149,7 +149,7 @@ namespace jh::meta {
      * </p>
      */
     template<typename Tuple>
-    struct flatten_proxy {
+    struct flatten_proxy final {
         Tuple tuple;
 
         template<std::size_t I>

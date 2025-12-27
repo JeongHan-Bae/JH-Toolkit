@@ -88,7 +88,7 @@ namespace jh::meta {
      * concatenation, and hashing of string literals with <b>zero runtime overhead</b>.
      */
     template<std::uint16_t N> requires detail::t_str_size_legal<N>
-    struct t_str {
+    struct t_str final {
 
         /**
          * @brief Friendship is required for implementing <code>operator+</code>.

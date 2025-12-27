@@ -64,7 +64,7 @@ namespace jh::ranges::views {
          * @tparam Diff The integer difference type used for indexing.
          */
         template<typename Diff>
-        struct [[maybe_unused]] enumerate_closure {
+        struct [[maybe_unused]] enumerate_closure final {
             Diff start;
 
             template<jh::concepts::sequence Seq>
@@ -82,7 +82,7 @@ namespace jh::ranges::views {
             }
         };
 
-        struct enumerate_fn {
+        struct enumerate_fn final {
         private:
             /// @brief real implementation, based on deduced index type
             template<jh::concepts::sequence Seq>

@@ -85,7 +85,7 @@ namespace jh::ranges::views {
          * The result is always a non-consuming, observation-only view.
          */
         template<typename F>
-        struct vis_transform_closure {
+        struct vis_transform_closure final {
             [[no_unique_address]] F func;
 
             /**
@@ -121,7 +121,7 @@ namespace jh::ranges::views {
          * a <code>jh::ranges::vis_transform_view</code>. The transformation
          * is always non-consuming.
          */
-        struct vis_transform_fn {
+        struct vis_transform_fn final {
 
             /**
              * @brief Direct form &mdash; immediately constructs a <code>vis_transform_view</code>.

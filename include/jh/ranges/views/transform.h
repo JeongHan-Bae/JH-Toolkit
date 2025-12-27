@@ -87,7 +87,7 @@ namespace jh::ranges::views {
          * (<code>std::views::transform</code>).
          */
         template<typename F>
-        struct transform_closure {
+        struct transform_closure final {
             [[no_unique_address]] F func;
 
             /**
@@ -127,7 +127,7 @@ namespace jh::ranges::views {
          *   <li>Otherwise, uses <code>std::views::transform</code>.</li>
          * </ul>
          */
-        struct transform_fn {
+        struct transform_fn final {
 
             /**
              * @brief Direct form &mdash; immediately constructs the selected transform view.

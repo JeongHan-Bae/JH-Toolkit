@@ -72,19 +72,19 @@ namespace jh::detail::atomic {
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-    template<class T>
+    template<typename T>
     inline std::shared_ptr<T>
     load(const std::shared_ptr<T> *p, std::memory_order mo) noexcept {
         return std::atomic_load_explicit(p, mo);
     }
 
-    template<class T>
+    template<typename T>
     inline void
     store(std::shared_ptr<T> *p, std::shared_ptr<T> v, std::memory_order mo) noexcept {
         std::atomic_store_explicit(p, std::move(v), mo);
     }
 
-    template<class T>
+    template<typename T>
     inline bool
     cas(std::shared_ptr<T> *p,
         std::shared_ptr<T> *expected,

@@ -221,6 +221,7 @@
 #include <functional>
 #include <memory>
 #include <type_traits>
+
 #include "jh/conceptual/iterator.h"
 #include "jh/pods/pod_like.h"
 #include "jh/typing/monostate.h"
@@ -263,7 +264,7 @@ namespace jh {
          * @tparam Alloc Provided allocator type.
          */
         template<typename T, typename Alloc>
-        struct rt_arr_alloc {
+        struct rt_arr_alloc final {
             using type = decltype([]() {
                 if constexpr (jh::typed::monostate_t<Alloc>) {
                     return std::type_identity<jh::typed::monostate>{};
@@ -401,7 +402,7 @@ namespace jh {
 
     public:
 
-        struct uninitialized_t {
+        struct uninitialized_t final {
         };
 
         static constexpr uninitialized_t uninitialized{};
@@ -1114,7 +1115,7 @@ namespace jh {
          *   <li><code>jh::runtime_arr&lt;bool, runtime_arr_helper::bool_flat_alloc&gt;</code> &mdash; byte-based variant.</li>
          * </ul>
          */
-        struct bool_flat_alloc {
+        struct bool_flat_alloc final {
             /// @brief Allocate <code>n</code> bytes for a <code>bool</code> array (non-packed form).
             static bool *allocate(std::uint64_t n) { return new bool[n]; }
 
@@ -1307,7 +1308,7 @@ namespace jh {
          *   <li>Convertible to <code>bool</code> for read access.</li>
          * </ul>
          */
-        struct bit_ref {
+        struct bit_ref final {
         private:
             std::uint64_t &word_;
             std::uint64_t mask_;
@@ -1351,7 +1352,7 @@ namespace jh {
          * For a fully standards-compliant boolean range, use the non-packed form:
          * <code>jh::runtime_arr&lt;bool, jh::runtime_arr_helper::bool_flat_alloc&gt;</code>.
          */
-        struct bit_iterator {
+        struct bit_iterator final {
         public:
             runtime_arr *parent_;
             std::uint64_t index_;
@@ -1436,7 +1437,7 @@ namespace jh {
          * For a true boolean range, prefer
          * <code>jh::runtime_arr&lt;bool, jh::runtime_arr_helper::bool_flat_alloc&gt;</code>.
          */
-        struct bit_const_iterator {
+        struct bit_const_iterator final {
         public:
             const runtime_arr *parent_;
             std::uint64_t index_;

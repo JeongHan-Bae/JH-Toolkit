@@ -81,7 +81,7 @@ namespace jh::ranges {
      * </p>
      */
     template<std::ranges::range R, typename F> requires jh::concepts::vis_function_for<F, R>
-    class vis_transform_view : public std::ranges::view_interface<vis_transform_view<R, F>> {
+    class vis_transform_view final : public std::ranges::view_interface<vis_transform_view<R, F>> {
     public:
         using traits = jh::concepts::range_storage_traits<R, false>;
 

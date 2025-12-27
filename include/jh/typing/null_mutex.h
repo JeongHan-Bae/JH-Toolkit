@@ -95,7 +95,7 @@ namespace jh::typed {
      * @see jh::concepts::mutex_like
      * @see jh::sync::const_lock
      */
-    struct null_mutex_t {
+    struct null_mutex_t final {
 
         /**
          * @brief Marker tag indicating that this mutex supports idempotent reentrance.

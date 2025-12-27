@@ -227,7 +227,7 @@ namespace jh::ranges {
          * @see jh::ranges::to_adaptor
          */
         template<typename C, typename... Args>
-        struct [[maybe_unused]] to_closure {
+        struct [[maybe_unused]] to_closure final {
             /// @brief Stored argument tuple for forwarding into <code>to_adaptor</code>.
             std::tuple<Args...> args;
 
@@ -286,7 +286,7 @@ namespace jh::ranges {
      * @see jh::ranges::to
      */
     template<typename C>
-    struct to_fn {
+    struct to_fn final {
         /// @brief Construct container <code>C</code> directly from range <code>R</code> and optional arguments.
         template<std::ranges::range R, typename... Args>
         constexpr auto operator()(R &&r, Args &&... args) const {

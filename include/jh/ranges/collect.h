@@ -288,7 +288,7 @@ namespace jh::ranges {
          * @see jh::ranges::collect_adaptor
          */
         template<typename C>
-        struct collect_closure {
+        struct collect_closure final {
             /**
              * @brief Invoke the closure on a given range.
              * @param r The range to be materialized into <code>C</code>.
@@ -335,7 +335,7 @@ namespace jh::ranges {
      * @see jh::ranges::collect
      */
     template<typename C>
-    struct collect_fn {
+    struct collect_fn final {
         /// @brief Eagerly materialize the provided range into container type <code>C</code>.
         template<std::ranges::range R>
         constexpr auto operator()(R &&r) const {

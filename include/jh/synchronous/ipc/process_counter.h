@@ -196,7 +196,7 @@ namespace jh::sync::ipc {
 
         using lock_t = process_mutex<S + jh::meta::TStr{".loc"}, HighPriv>;
 
-        struct counter_data {
+        struct counter_data final {
             alignas(alignof(std::uint64_t)) std::uint64_t value;
             bool initialized;
         };

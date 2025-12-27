@@ -65,10 +65,10 @@ namespace jh::typed {
 
     /// @brief Type trait: checks whether T is <code>monostate</code>.
     template<typename T>
-    struct is_monostate : std::false_type {};
+    struct is_monostate final : std::false_type {};
 
     template<>
-    struct is_monostate<monostate> : std::true_type {};
+    struct is_monostate<monostate> final : std::true_type {};
 
     /// @brief Concept: satisfied only if T is <code>monostate</code>.
     template<typename T>

@@ -1051,7 +1051,7 @@ namespace jh::async {
      * @see jh::to_range
      */
     template<typename T>
-    class generator_range : std::ranges::view_interface<generator_range<T> > {
+    class generator_range final : std::ranges::view_interface<generator_range<T> > {
     public:
         using generator_factory_t = std::function<generator<T>()>;
 

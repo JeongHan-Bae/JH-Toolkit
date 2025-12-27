@@ -202,6 +202,8 @@
 #include <cstdint>          // for std::uint64_t
 #include <optional>         // for std::optional
 #include <type_traits>      // for std::remove_cvref_t
+#include <stdexcept>
+
 #include "jh/synchronous/const_lock.h"
 #include "jh/concurrent/observe_pool.h"
 #include "jh/pods/string_view.h"
@@ -842,7 +844,7 @@ namespace jh {
      *       heterogeneous lookup in standard unordered containers.</li>
      * </ul>
      */
-    struct atomic_str_hash {
+    struct atomic_str_hash final {
         /// @brief Enables <code>find(const char*)</code> or <code>find(const char (&lit)[N])</code> in hash-based containers.
         using is_transparent [[maybe_unused]] = void;
 
@@ -922,7 +924,7 @@ namespace jh {
      *       heterogeneous comparison in unordered containers.</li>
      * </ul>
      */
-    struct atomic_str_eq {
+    struct atomic_str_eq final {
         /// @brief Enables <code>find(const char*)</code> or <code>find(const char (&lit)[N])</code> in hash-based containers.
         using is_transparent [[maybe_unused]] = void;
 

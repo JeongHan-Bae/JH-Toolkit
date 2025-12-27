@@ -375,7 +375,7 @@ namespace jh::async {
          * @brief Slot coroutine promise type.
          * @details Manages the coroutine's suspension behavior, lifecycle hooks, and return semantics.
          */
-        struct [[maybe_unused]] promise_type {
+        struct [[maybe_unused]] promise_type final {
 
             /**
              * @brief Create a slot coroutine return object.

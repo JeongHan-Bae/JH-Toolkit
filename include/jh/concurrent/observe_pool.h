@@ -109,7 +109,7 @@ namespace jh {
      * @see jh::hash
      */
     template<typename T> requires jh::concepts::extended_hashable<T>
-    struct weak_ptr_hash {
+    struct weak_ptr_hash final {
         std::size_t operator()(const std::weak_ptr<T> &ptr) const noexcept {
             if (const auto sp = ptr.lock()) {
                 return jh::hash<T>{}(*sp);
@@ -140,7 +140,7 @@ namespace jh {
     template<typename T> requires requires(const T &lhs, const T &rhs){
         { lhs == rhs } -> std::convertible_to<bool>;
     }
-    struct weak_ptr_eq {
+    struct weak_ptr_eq final {
         bool operator()(const std::weak_ptr<T> &lhs, const std::weak_ptr<T> &rhs) const noexcept {
             const auto sp1 = lhs.lock();
             const auto sp2 = rhs.lock();

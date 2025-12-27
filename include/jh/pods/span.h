@@ -123,7 +123,7 @@ namespace jh::pod {
         }
 
         template<auto S, typename T>
-        struct ref_type_helper {
+        struct ref_type_helper final {
             static constexpr auto get() {
                 if constexpr (S.first == data_status::field) {
                     using ptr_t = decltype(&T::data);

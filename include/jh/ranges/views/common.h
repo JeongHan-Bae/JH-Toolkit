@@ -114,7 +114,7 @@ namespace jh::ranges::views {
          * <code>std::ranges::range</code> types.
          * </p>
          */
-        struct [[maybe_unused]] common_closure {
+        struct [[maybe_unused]] common_closure final {
             /**
              * @brief Applies the <code>common</code> adaptor to a given range or sequence.
              *
@@ -202,7 +202,7 @@ namespace jh::ranges::views {
          * or only <code>std::ranges::range</code>.
          * </p>
          */
-        struct [[maybe_unused]] common_fn {
+        struct [[maybe_unused]] common_fn final {
             /**
              * @brief Applies <code>common</code> to a given range or sequence directly.
              *

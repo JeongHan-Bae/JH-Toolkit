@@ -141,7 +141,7 @@ namespace jh::ranges::views {
          * @tparam Views The types of the captured view objects.
          */
         template <typename... Views>
-        struct [[maybe_unused]] zip_closure {
+        struct [[maybe_unused]] zip_closure final {
             /**
              * @brief The tuple storing the captured view objects.
              */
@@ -205,7 +205,7 @@ namespace jh::ranges::views {
          * <p>Internally, the single-argument version produces a <code>zip_closure</code>
          * object that stores the captured views.</p>
          */
-        struct zip_fn {
+        struct zip_fn final {
             /**
              * @brief Zips multiple sequences directly.
              *
@@ -265,7 +265,7 @@ namespace jh::ranges::views {
          * Unlike the standard zip, this version always returns a closure,
          * so it can be safely used in pipelines with multiple parameters.
          */
-        struct zip_pipe_fn {
+        struct zip_pipe_fn final {
             template <jh::concepts::sequence... Seq>
             constexpr auto operator()(Seq&&... seqs) const {
                 return zip_closure<decltype(std::views::all(jh::to_range(seqs)))...>{

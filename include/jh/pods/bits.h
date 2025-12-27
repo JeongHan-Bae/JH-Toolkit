@@ -376,27 +376,27 @@ namespace jh::pod {
      * @warning This structure is low-level. All operations assume caller correctness.
      */
     template<std::uint16_t N> requires (N % 8 == 0 && N <= 8 * max_pod_bitflags_bytes)
-    struct bitflags : detail::bitflags_bytes<N / 8> {
+    struct bitflags final : detail::bitflags_bytes<N / 8> {
     }; ///< @brief Generic fallback specialization for non-native sizes (e.g. 24, 120 bits, etc).
 
     /// @brief Specialization for 8-bit bitflags.
     template<>
-    struct bitflags<8> : detail::bitflags_uint<std::uint8_t> {
+    struct bitflags<8> final : detail::bitflags_uint<std::uint8_t> {
     };
 
     /// @brief Specialization for 16-bit bitflags.
     template<>
-    struct bitflags<16> : detail::bitflags_uint<std::uint16_t> {
+    struct bitflags<16> final : detail::bitflags_uint<std::uint16_t> {
     };
 
     /// @brief Specialization for 32-bit bitflags.
     template<>
-    struct bitflags<32> : detail::bitflags_uint<std::uint32_t> {
+    struct bitflags<32> final : detail::bitflags_uint<std::uint32_t> {
     };
 
     /// @brief Specialization for 64-bit bitflags.
     template<>
-    struct bitflags<64> : detail::bitflags_uint<std::uint64_t> {
+    struct bitflags<64> final : detail::bitflags_uint<std::uint64_t> {
     };
 
     template<std::uint16_t N>

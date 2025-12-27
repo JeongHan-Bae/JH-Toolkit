@@ -155,7 +155,7 @@ namespace jh::sync::ipc {
 
         using lock_t = process_mutex<S + jh::meta::TStr{".loc"}, HighPriv>;
 
-        struct shm_data {
+        struct shm_data final {
             alignas(alignof(T)) T obj;
             bool initialized;
         };
