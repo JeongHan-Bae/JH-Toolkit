@@ -183,7 +183,7 @@ Performs cleanup and conditionally reduces capacity.
 ### 📊 **Capacity Query**
 
 ```cpp
-[[nodiscard]] std::uint64_t reserved_size() const;
+[[nodiscard]] std::uint64_t capacity() const;
 ```
 
 Returns current reserved capacity (adaptive threshold).

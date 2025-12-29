@@ -27,3 +27,4 @@
 
 #include "jh/synchronous/ipc.h"
 #include "jh/synchronous/const_lock.h"
+#include "jh/synchronous/control_buf.h"

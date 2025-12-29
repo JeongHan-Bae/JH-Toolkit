@@ -160,8 +160,9 @@ namespace jh {
      * </p>
      *
      * <p>
-     * All concurrency, cleanup, and adaptive resizing behavior is inherited
-     * directly from <code>jh::conc::pointer_pool</code>.
+     * All concurrency, cleanup, and adaptive resizing behavior is defined entirely
+     * by <code>jh::conc::pointer_pool</code>, of which <code>observe_pool</code> is
+     * a direct alias with fixed template parameters.
      * </p>
      *
      * @tparam T

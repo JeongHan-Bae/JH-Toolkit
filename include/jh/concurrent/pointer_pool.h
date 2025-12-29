@@ -17,9 +17,9 @@
  */
 /**
  * @file pointer_pool.h
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
-
+ *
  * @brief Pointer-based interning for non-copyable, non-movable, structurally immutable objects.
+ * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
  *
  * <h3>Overview</h3>
  * <p>
@@ -291,9 +291,9 @@ namespace jh::conc {
          * (<tt>16</tt>), ensuring predictable allocation behavior and avoiding
          * frequent reallocation during low-load periods.
          */
-        explicit pointer_pool(const std::uint64_t reserve_size = MIN_RESERVED_SIZE)
-                : reserved_size_(reserve_size) {
-            pool_.reserve(reserved_size_.load());
+        explicit pointer_pool(std::uint64_t reserve_size = MIN_RESERVED_SIZE)
+                : capacity_(reserve_size) {
+            pool_.reserve(capacity_.load());
         }
 
         /**
@@ -337,7 +337,7 @@ namespace jh::conc {
         pointer_pool(pointer_pool &&other) noexcept {
             std::unique_lock write_lock(other.pool_mutex_);
             pool_ = std::move(other.pool_);
-            reserved_size_.store(other.reserved_size_.load());
+            capacity_.store(other.capacity_.load());
             other.pool_.clear();  // Ensure valid empty state after move.
         }
 
@@ -369,7 +369,7 @@ namespace jh::conc {
                 std::lock_guard lock_this(pool_mutex_);
                 std::lock_guard lock_other(other.pool_mutex_);
                 pool_ = std::move(other.pool_);
-                reserved_size_.store(other.reserved_size_.load());
+                capacity_.store(other.capacity_.load());
                 other.pool_.clear();  // Ensure safe use after move.
             }
             return *this;
@@ -488,13 +488,13 @@ namespace jh::conc {
             cleanup_no_lock();
 
             auto current_size = pool_.size();
-            auto current_reserved = reserved_size_.load();
+            auto current_reserved = capacity_.load();
 
             const auto low_watermark =
                     static_cast<std::uint64_t>(static_cast<double>(current_reserved) * LOW_WATERMARK_RATIO);
 
             if (current_size <= low_watermark) {
-                reserved_size_.store(std::max(current_reserved / 2, MIN_RESERVED_SIZE));
+                capacity_.store(std::max(current_reserved / 2, MIN_RESERVED_SIZE));
             }
         }
 
@@ -511,8 +511,8 @@ namespace jh::conc {
          * @brief Gets the current reserved size of the pool.
          * @return The reserved size limit before expansion or contraction.
          */
-        [[nodiscard]] std::uint64_t reserved_size() const {
-            return reserved_size_.load();
+        [[nodiscard]] std::uint64_t capacity() const {
+            return capacity_.load();
         }
 
         /**
@@ -520,7 +520,7 @@ namespace jh::conc {
          *
          * <p>
          * Removes all elements from the internal container and resets
-         * <code>reserved_size_</code> to <code>MIN_RESERVED_SIZE</code>.
+         * <code>capacity_</code> to <code>MIN_RESERVED_SIZE</code>.
          * This operation is functionally equivalent to <code>clear()</code>
          * on standard containers, but is <strong>thread-safe</strong> and
          * ensures consistent internal state for concurrent environments.
@@ -538,7 +538,7 @@ namespace jh::conc {
          *   <li>For <strong>structurally immutable resource or handle pools</strong>,
          *       calling <code>clear()</code> is not recommended, as it abandons
          *       tracking of active handles and may cause side effects.</li>
-         *   <li>After clearing, <code>reserved_size()</code> is reset to
+         *   <li>After clearing, <code>capacity()</code> is reset to
          *       <code>MIN_RESERVED_SIZE</code>, fully restoring the pool to
          *       its initial baseline.</li>
          *   <li>Unlike move operations, which preserve capacity to prevent
@@ -549,12 +549,12 @@ namespace jh::conc {
         void clear() {
             std::unique_lock write_lock(pool_mutex_);
             pool_.clear();
-            reserved_size_.store(MIN_RESERVED_SIZE);
+            capacity_.store(MIN_RESERVED_SIZE);
         }
 
     private:
         std::unordered_set<std::weak_ptr<T>, Hash, Eq> pool_; ///< Storage for weak_ptr objects.
-        std::atomic<std::uint64_t> reserved_size_; ///< The dynamically managed reserved size.
+        std::atomic<std::uint64_t> capacity_; ///< The dynamically managed reserved size.
         mutable std::shared_mutex pool_mutex_; ///< Ensures thread-safe access.
 
         /**
@@ -574,7 +574,7 @@ namespace jh::conc {
          * @return A <code>shared_ptr&lt;T&gt;</code> to the existing or newly inserted object.
          */
         std::shared_ptr<T> get_or_insert(const std::shared_ptr<T> &obj) {
-            if (pool_.size() >= reserved_size_.load()) {
+            if (pool_.size() >= capacity_.load()) {
                 expand_and_cleanup(); // This function is already acquiring the lock.
             }
             std::unique_lock write_lock(pool_mutex_); // Lock for pool access.
@@ -660,7 +660,7 @@ namespace jh::conc {
             cleanup_no_lock();
 
             auto current_size = pool_.size();
-            auto current_reserved = reserved_size_.load();
+            auto current_reserved = capacity_.load();
 
             const auto high_watermark =
                     static_cast<std::uint64_t>(static_cast<double >(current_reserved) * HIGH_WATERMARK_RATIO);
@@ -669,10 +669,10 @@ namespace jh::conc {
 
             if (current_size >= current_reserved || current_size >= high_watermark) {
                 // Expand if size exceeds the limit or crosses the high watermark.
-                reserved_size_.store(current_reserved * 2);
+                capacity_.store(current_reserved * 2);
             } else if (current_size <= low_watermark) {
                 // Shrink if size falls below the low watermark.
-                reserved_size_.store(std::max(current_reserved / 2, MIN_RESERVED_SIZE));
+                capacity_.store(std::max(current_reserved / 2, MIN_RESERVED_SIZE));
             }
         }
     };

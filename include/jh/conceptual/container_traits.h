@@ -272,4 +272,68 @@ namespace jh::concepts {
     template<typename C>
     using container_value_t = typename detail::container_value_type_impl<C>::type;
 
+    /**
+     * @brief Concept that constrains types usable in contiguous, reallocating containers.
+     *
+     * @details
+     * <p>
+     * This concept models the requirements for a type <code>T</code> to be safely used as
+     * an element type in containers that:
+     * store elements contiguously (e.g. <code>std::vector</code>, <code>std::deque</code>), and
+     * may perform reallocation and element relocation during growth.</li>
+     * </p><p>
+     * In addition, it guarantees that elements obtained from the container
+     * (via <code>operator[]</code> or iterator dereference yielding <code>T&amp;</code>)
+     * can be assigned from values produced externally.
+     * </p>
+     *
+     * <h5>Semantic requirements</h5>
+     * A type <code>T</code> satisfies <code>is_contiguous_reallocable</code> if and only if:
+     * <ol>
+     *   <li>
+     *     <b>Object type:</b>
+     *     <code>T</code> is an object type (<code>std::is_object_v&lt;T&gt;</code>).
+     *   </li>
+     *   <li>
+     *     <b>External assignability:</b>
+     *     <p>
+     *     <code>std::assignable_from&lt;T&amp;, T&gt;</code> ensures that an assignment
+     *     expression of the form
+     *     <code>std::declval&lt;T&amp;&gt;() = std::declval&lt;T&gt;()</code> is well-formed.
+     *     </p><p>
+     *     This implies that <code>T</code> provides at least one viable assignment
+     *     interface capable of assigning into an existing object from a value of
+     *     the same type. The concrete form of this interface is intentionally
+     *     unconstrained and may correspond to a move assignment, copy assignment,
+     *     or a by-value assignment operator (e.g. copy-and-swap).
+     *     </p><p>
+     *     As a result, any location exposing a mutable reference to a contained
+     *     element (such as <code>operator[]</code> or iterator dereference yielding
+     *     <code>T&amp;</code>) is guaranteed to support assignment by the user.
+     *     </p>
+     *   </li>
+     *   <li>
+     *     <b>Reallocation support:</b>
+     *     <code>T</code> is either move-constructible or copy-constructible
+     *     (<code>std::is_move_constructible_v&lt;T&gt; || std::is_copy_constructible_v&lt;T&gt;</code>),
+     *     guaranteeing that elements can be relocated when the container reallocates.
+     *   </li>
+     * </ol>
+     *
+     * <h5>Intended use</h5>
+     * This concept is designed to express the minimal semantic contract required by
+     * vector-like containers that: <br>
+     * reallocate their storage, and expose mutable references to their elements.
+     * <br>
+     * It is suitable for constraining generic algorithms or container adapters that
+     * assume both reallocation safety and external assignment into container elements.
+     *
+     * @tparam T Element type to be checked.
+     */
+    template<typename T>
+    concept is_contiguous_reallocable =
+    std::is_object_v<T> &&
+    std::assignable_from<T &, T> &&
+    (std::is_move_constructible_v<T> || std::is_copy_constructible_v<T>);
+
 } // namespace jh::concepts

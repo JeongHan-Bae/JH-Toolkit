@@ -3,6 +3,7 @@
 #include "jh/pool"
 #include "jh/macros/platform.h"
 #include <memory>
+#include <memory_resource>
 #include <thread>
 
 /**
@@ -175,14 +176,14 @@ TEST_CASE("pointer_pool dynamic expansion and contraction") {
     }
 
     REQUIRE(pool.size() == 10); // 10 unique objects
-    REQUIRE(pool.reserved_size() >= 16); // Expansion triggered (reserved_size *= 2)
+    REQUIRE(pool.capacity() >= 16); // Expansion triggered (reserved_size *= 2)
 
     for (auto &obj: objects) {
         obj.reset(); // Release all shared_ptrs
     }
 
     pool.cleanup(); // Trigger shrinkage
-    REQUIRE(pool.reserved_size() <= 16); // Shrinkage triggered (reserved_size /= 2)
+    REQUIRE(pool.capacity() <= 16); // Shrinkage triggered (reserved_size /= 2)
 }
 
 // Dynamic Expansion & Contraction Test
@@ -196,14 +197,14 @@ TEST_CASE("observe_pool dynamic expansion and contraction") {
     }
 
     REQUIRE(pool.size() == 10); // 10 unique objects
-    REQUIRE(pool.reserved_size() >= 16); // Expansion triggered (reserved_size *= 2)
+    REQUIRE(pool.capacity() >= 16); // Expansion triggered (reserved_size *= 2)
 
     for (auto &obj: objects) {
         obj.reset(); // Release all shared_ptrs
     }
 
     pool.cleanup(); // Trigger shrinkage
-    REQUIRE(pool.reserved_size() <= 16); // Shrinkage triggered (reserved_size /= 2)
+    REQUIRE(pool.capacity() <= 16); // Shrinkage triggered (reserved_size /= 2)
 }
 
 // Move Semantics Test
@@ -227,7 +228,7 @@ TEST_CASE("pointer_pool move semantics") {
 
     pool3.clear();
     REQUIRE(pool3.size() == 0); // pool3 should now be empty
-    REQUIRE(pool3.reserved_size() == test::CustomizedPool::MIN_RESERVED_SIZE); // reserved_size should be reset
+    REQUIRE(pool3.capacity() == test::CustomizedPool::MIN_RESERVED_SIZE); // reserved_size should be reset
 }
 
 TEST_CASE("observe_pool move semantics") {
@@ -250,7 +251,7 @@ TEST_CASE("observe_pool move semantics") {
 
     pool3.clear();
     REQUIRE(pool3.size() == 0); // pool3 should now be empty
-    REQUIRE(pool3.reserved_size() == test::DeducedPool::MIN_RESERVED_SIZE); // reserved_size should be reset
+    REQUIRE(pool3.capacity() == test::DeducedPool::MIN_RESERVED_SIZE); // reserved_size should be reset
 }
 
 #if !IS_WINDOWS
@@ -284,7 +285,7 @@ TEST_CASE("pointer_pool multithreading without storing shared_ptr") {
             // but size() does not necessarily become 0 until expand_and_cleanup is triggered
             REQUIRE(pool.size() <= OBJECTS_PER_THREAD * THREADS);
             pool.cleanup_shrink(); // Explicit cleanup
-            REQUIRE(pool.reserved_size() == test::CustomizedPool::MIN_RESERVED_SIZE);
+            REQUIRE(pool.capacity() == test::CustomizedPool::MIN_RESERVED_SIZE);
             // reserved_size should remain unchanged
             REQUIRE(pool.size() == 0); // After cleanup, the pool should be empty
         }
@@ -320,7 +321,7 @@ TEST_CASE("observe_pool multithreading without storing shared_ptr") {
             // but size() does not necessarily become 0 until expand_and_cleanup is triggered
             REQUIRE(pool.size() <= OBJECTS_PER_THREAD * THREADS);
             pool.cleanup_shrink(); // Explicit cleanup
-            REQUIRE(pool.reserved_size() == test::DeducedPool::MIN_RESERVED_SIZE);
+            REQUIRE(pool.capacity() == test::DeducedPool::MIN_RESERVED_SIZE);
             // reserved_size should remain unchanged
             REQUIRE(pool.size() == 0); // After cleanup, the pool should be empty
         }
@@ -361,10 +362,10 @@ TEST_CASE("pointer_pool multithreading with storing shared_ptr") {
             }
 
             REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS); // Ensure all objects are alive
-            REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS / 2); // Ensure reserved_size has expanded
+            REQUIRE(pool.capacity() >= OBJECTS_PER_THREAD * THREADS); // Ensure reserved_size has expanded
             stored_objects.clear(); // Release all shared_ptrs
             pool.cleanup(); // Trigger cleanup
-            REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS);
+            REQUIRE(pool.capacity() >= OBJECTS_PER_THREAD * THREADS);
             REQUIRE(pool.size() == 0); // After cleanup, the pool should be empty
         }
     }
@@ -402,11 +403,12 @@ TEST_CASE("observe_pool multithreading with storing shared_ptr") {
             for (auto &w: workers) {
                 w.join();
             }
+
             REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS); // Ensure all objects are alive
-            REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS / 2); // Ensure reserved_size has expanded
+            REQUIRE(pool.capacity() >= OBJECTS_PER_THREAD * THREADS); // Ensure reserved_size has expanded
             stored_objects.clear(); // Release all shared_ptrs
             pool.cleanup(); // Trigger cleanup
-            REQUIRE(pool.reserved_size() >= OBJECTS_PER_THREAD * THREADS);
+            REQUIRE(pool.capacity() >= OBJECTS_PER_THREAD * THREADS);
             REQUIRE(pool.size() == 0); // After cleanup, the pool should be empty
         }
     }
@@ -426,7 +428,7 @@ TEST_CASE("observe_pool with std::string") {
 
     auto hello1 = pool.acquire("hello");
     auto hello2 = pool.acquire("hello");
-    auto world  = pool.acquire("world");
+    auto world = pool.acquire("world");
 
     REQUIRE(hello1 == hello2);   // identical strings should be reused
     REQUIRE(hello1 != world);    // distinct strings should not be reused
@@ -439,4 +441,297 @@ TEST_CASE("observe_pool with std::string") {
     REQUIRE(pool.size() == 2);   // expired entries remain until cleanup
     pool.cleanup();
     REQUIRE(pool.size() == 0);   // after cleanup, pool becomes empty
+}
+
+TEST_CASE("resource_pool_set single-thread basic usage") {
+    jh::resource_pool_set<int> pool;
+
+    auto p1 = pool.acquire(42);
+    REQUIRE(*p1 == 42);
+
+    {
+        auto p2 = p1;
+        REQUIRE(*p2 == 42);
+        REQUIRE(pool.size() == 1);
+    }
+
+    REQUIRE(*p1 == 42);
+
+    p1.reset();
+
+    {
+        std::vector<jh::resource_pool_set<int>::ptr> vec;
+        vec.reserve(20);
+        for (int i = 0; i < 20; ++i)
+            vec.emplace_back(pool.acquire(i));
+        REQUIRE(pool.size() == 20);
+    }
+
+    auto p3 = pool.acquire(99);
+    REQUIRE(*p3 == 99);
+
+    {
+        const auto [capacity, size] = pool.occupancy_rate();
+        REQUIRE(capacity >= size);
+    }
+
+    pool.resize_pool();
+
+    {
+        const auto [capacity, size] = pool.occupancy_rate();
+        REQUIRE(capacity >= size);
+    }
+
+    p3.reset();
+
+    auto p4 = pool.find(99);
+    REQUIRE(p4 == nullptr);
+
+    REQUIRE(pool.empty());
+}
+
+TEST_CASE("resource_pool single-thread key-value") {
+    jh::resource_pool<int, std::unique_ptr<std::string>> pool;
+
+    auto p1 = pool.acquire(1, std::tie("hello"));
+    REQUIRE(p1->first == 1);
+    REQUIRE(*p1->second == "hello");
+
+    auto p2 = pool.acquire(2, std::forward_as_tuple("world"));
+    REQUIRE(*p2->second == "world");
+
+    // same key: value constructor must not be evaluated
+    auto p3 = pool.acquire(1, std::tie("ignored"));
+    REQUIRE(*p3->second == "hello");
+
+    p1.reset();
+    p2.reset();
+    p3.reset();
+
+    auto p4 = pool.acquire(3, std::forward_as_tuple("new"));
+    REQUIRE(*p4->second == "new");
+
+    auto check0 = (pool.find(3) != nullptr);
+    auto check1 = (pool.find(1) != nullptr);
+
+    REQUIRE(check0);
+    REQUIRE(check1 == false);
+}
+
+TEST_CASE("resource_pool_set multithreading without storing ptr") {
+    jh::resource_pool_set<int> pool;
+    constexpr int total_tests = 128;
+
+    for (int idx = 0; idx < total_tests; ++idx) {
+        SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {
+            constexpr int OBJECTS_PER_THREAD = 200;
+            constexpr int THREADS = 8;
+
+            std::vector<std::thread> workers;
+            workers.reserve(THREADS);
+            for (int t = 0; t < THREADS; ++t) {
+                workers.emplace_back([&pool] {
+                    for (int i = 0; i < OBJECTS_PER_THREAD; ++i) {
+                        pool.acquire(i);
+                    }
+                });
+            }
+
+            for (auto &w: workers) {
+                w.join();
+            }
+
+            REQUIRE(pool.size() <= OBJECTS_PER_THREAD * THREADS);
+            pool.resize_pool();
+            REQUIRE(pool.capacity() < OBJECTS_PER_THREAD * THREADS);
+        }
+    }
+}
+
+TEST_CASE("resource_pool_set multithreading with storing ptr") {
+    jh::resource_pool_set<int> pool;
+    constexpr int total_tests = 128;
+
+    for (int idx = 0; idx < total_tests; ++idx) {
+        SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {
+            constexpr int OBJECTS_PER_THREAD = 200;
+            constexpr int THREADS = 8;
+
+            std::vector<jh::resource_pool_set<int>::ptr> stored;
+            std::mutex mtx;
+            std::vector<std::thread> workers;
+            workers.reserve(THREADS);
+
+            for (int t = 0; t < THREADS; ++t) {
+                workers.emplace_back([&pool, &stored, &mtx, t] {
+                    for (int i = t * OBJECTS_PER_THREAD;
+                         i < (t + 1) * OBJECTS_PER_THREAD;
+                         ++i) {
+                        auto p = pool.acquire(i);
+                        std::lock_guard lock(mtx);
+                        stored.push_back(p);
+                    }
+                });
+            }
+
+            for (auto &w: workers) {
+                w.join();
+            }
+
+            REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS);
+            REQUIRE(pool.capacity() >= OBJECTS_PER_THREAD * THREADS);
+
+            stored.clear();
+            pool.resize_pool();
+            REQUIRE(pool.size() == 0);
+        }
+    }
+}
+
+TEST_CASE("resource_pool<int, string> multithreading without storing ptr") {
+    jh::resource_pool<int, std::string> pool;
+    constexpr int total_tests = 128;
+
+    for (int idx = 0; idx < total_tests; ++idx) {
+        SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {
+            constexpr int OBJECTS_PER_THREAD = 200;
+            constexpr int THREADS = 8;
+
+            std::vector<std::thread> workers;
+            workers.reserve(THREADS);
+            for (int t = 0; t < THREADS; ++t) {
+                workers.emplace_back([&pool, t] {
+                    for (int i = 0; i < OBJECTS_PER_THREAD; ++i) {
+                        const int key = i;
+                        pool.acquire(
+                                key,
+                                std::forward_as_tuple(
+                                        std::to_string(key) + "-" + std::to_string(t)
+                                )
+                        );
+                    }
+                });
+            }
+
+            for (auto &w: workers) {
+                w.join();
+            }
+
+            REQUIRE(pool.size() <= OBJECTS_PER_THREAD * THREADS);
+            pool.resize_pool();
+            REQUIRE(pool.capacity() < OBJECTS_PER_THREAD * THREADS);
+        }
+    }
+}
+
+TEST_CASE("resource_pool<int, string> multithreading with storing ptr") {
+    jh::resource_pool<int, std::string> pool;
+    constexpr int total_tests = 128;
+
+    for (int idx = 0; idx < total_tests; ++idx) {
+        SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {
+            constexpr int OBJECTS_PER_THREAD = 200;
+            constexpr int THREADS = 8;
+
+            std::vector<jh::resource_pool<int, std::string>::ptr> stored;
+            std::mutex mtx;
+            std::vector<std::thread> workers;
+            workers.reserve(THREADS);
+
+            for (int t = 0; t < THREADS; ++t) {
+                workers.emplace_back([&pool, &stored, &mtx, t] {
+                    for (int i = t * OBJECTS_PER_THREAD;
+                         i < (t + 1) * OBJECTS_PER_THREAD;
+                         ++i) {
+
+                        auto p = pool.acquire(
+                                i,
+                                std::forward_as_tuple(
+                                        std::to_string(i) + "-" + std::to_string(t)
+                                )
+                        );
+
+                        std::lock_guard lock(mtx);
+                        stored.push_back(p);
+                    }
+                });
+            }
+
+            for (auto &w: workers) {
+                w.join();
+            }
+
+            REQUIRE(pool.size() == OBJECTS_PER_THREAD * THREADS);
+            REQUIRE(pool.capacity() >= OBJECTS_PER_THREAD * THREADS);
+
+            stored.clear();
+            pool.resize_pool();
+
+            REQUIRE(pool.size() == 0);
+        }
+    }
+}
+
+TEST_CASE("pmr resource_pool multithreading with duplicated keys") {
+    constexpr int total_tests = 128;
+
+    for (int idx = 0; idx < total_tests; ++idx) {
+        SECTION("Sim Pool Stress Test Run " + std::to_string(idx + 1)) {
+            constexpr int OBJECTS_PER_THREAD = 200;
+            constexpr int THREADS = 8;
+            constexpr int UNIQUE_KEYS = OBJECTS_PER_THREAD * THREADS / 2;
+
+            std::pmr::monotonic_buffer_resource rsrc{1024 * 1024};
+
+            using pool_t =
+                    jh::resource_pool<
+                            int,
+                            std::pmr::string,
+                            std::pmr::polymorphic_allocator<
+                                    jh::conc::detail::value_t<int, std::pmr::string>
+                            >
+                    >;
+
+            pool_t pool{&rsrc};
+
+            std::vector<pool_t::ptr> stored;
+            std::mutex mtx;
+            std::vector<std::thread> workers;
+            workers.reserve(THREADS);
+
+            for (int t = 0; t < THREADS; ++t) {
+                workers.emplace_back([&pool, &stored, &mtx, t] {
+                    for (int i = t * OBJECTS_PER_THREAD;
+                         i < (t + 1) * OBJECTS_PER_THREAD;
+                         ++i) {
+
+                        const int key = i % UNIQUE_KEYS;
+
+                        auto p = pool.acquire(
+                                key,
+                                std::forward_as_tuple(
+                                        std::to_string(key) + "-" + std::to_string(t)
+                                )
+                        );
+
+                        std::lock_guard lock(mtx);
+                        stored.push_back(p);
+                    }
+                });
+            }
+
+            for (auto &w: workers) {
+                w.join();
+            }
+
+            auto [capacity, size] = pool.occupancy_rate();
+            REQUIRE(size == UNIQUE_KEYS);
+            REQUIRE(capacity >= UNIQUE_KEYS);
+
+            stored.clear();
+            pool.resize_pool();
+
+            REQUIRE(pool.size() == 0);
+        }
+    }
 }

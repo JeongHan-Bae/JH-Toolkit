@@ -171,13 +171,13 @@ Cleans up expired entries and conditionally halves capacity.
 ### 📊 **Capacity Query**
 
 ```cpp
-[[nodiscard]] std::uint64_t reserved_size() const;
+[[nodiscard]] std::uint64_t capacity() const;
 [[nodiscard]] std::uint64_t size() const;
 ```
 
 | Function          | Description                                                |
 |-------------------|------------------------------------------------------------|
-| `reserved_size()` | Returns current adaptive capacity.                         |
+| `capacity()` | Returns current adaptive capacity.                         |
 | `size()`          | Returns number of stored weak entries (including expired). |
 
 ---

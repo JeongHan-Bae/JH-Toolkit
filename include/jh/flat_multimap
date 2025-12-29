@@ -1,0 +1,21 @@
+/**
+ * @file flat_multimap
+ * @brief Forwarding header for <code>jh::flat_multimap</code>.
+ *
+ * <p>
+ * This header provides the canonical include entry for
+ * <code>jh::flat_multimap&lt;K, V, Alloc&gt;</code>&mdash; a flat
+ * associative container that allows multiple values per key.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/flat_multimap&gt;</code></pre>
+ *
+ * <p>
+ * Internally, this file forwards to <code>jh/core/flat_multimap.h</code>
+ * and defines no additional symbols.
+ * </p>
+ */
+
+#pragma once
+
+#include "jh/core/flat_multimap.h"

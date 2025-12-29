@@ -366,11 +366,11 @@ TEST_CASE("pool<immutable_str> - Expansion and Contraction") {
     }
 
     REQUIRE(pool.size() == 10);
-    REQUIRE(pool.reserved_size() >= 16); // Expansion
+    REQUIRE(pool.capacity() >= 16); // Expansion
 
     objects.clear(); // Release all objects
     pool.cleanup(); // Trigger contraction
-    REQUIRE(pool.reserved_size() <= 16); // Contraction
+    REQUIRE(pool.capacity() <= 16); // Contraction
 }
 
 // Clear pool
@@ -383,7 +383,7 @@ TEST_CASE("pool<immutable_str> - Clear Pool") {
     REQUIRE(pool.size() == 2);
     pool.clear();
     REQUIRE(pool.size() == 0);
-    REQUIRE(pool.reserved_size() == test::ImmutablePool::MIN_RESERVED_SIZE);
+    REQUIRE(pool.capacity() == test::ImmutablePool::MIN_RESERVED_SIZE);
 }
 
 TEST_CASE("Switch with HashMap Example Test") {

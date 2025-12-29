@@ -28,3 +28,5 @@
 #include "jh/concurrent/occ_box.h"
 #include "jh/concurrent/pointer_pool.h"
 #include "jh/concurrent/observe_pool.h"
+#include "jh/concurrent/flat_pool.h"
+#include "jh/concurrent/resource_pool.h"
