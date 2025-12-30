@@ -78,7 +78,7 @@ These components together reproduce the complete semantics of `std::ranges::zip_
 | Aspect                  | Description                                                                                      |
 |:------------------------|:-------------------------------------------------------------------------------------------------|
 | **Purpose**             | Provides C++20-compatible `zip_view` equivalent to the C++23 standard version.                   |
-| **Input model**         | Accepts any `std::ranges::input_range` and works transparently with `jh::ranges::range_wrapper`. |
+| **Input model**         | Accepts any `std::ranges::input_range` and works transparently with `jh::ranges::range_adaptor`. |
 | **Iteration**           | Yields tuples of element references aggregated via proxy.                                        |
 | **Termination**         | Ends when any underlying range is exhausted (shortest-range rule).                               |
 | **Const compatibility** | Supports const iteration if all subranges allow it.                                              |

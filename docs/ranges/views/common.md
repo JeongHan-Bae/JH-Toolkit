@@ -80,7 +80,7 @@ and dispatches to one of **five** normalization paths:
 | ① | Already `common_range`                               | Iterator and sentinel types are identical.                                         | Returned directly (transparent pass-through).                                                                                                                                       |
 | ② | Fully reentrant and `std::views::all`–compatible     | Copy/move–capable reentrant ranges or sequences.                                   | Forwarded transparently via `jh::to_range()` → `std::views::all` → `std::ranges::common_view`.                                                                                      |
 | ③ | Reentrant but restricted (move-only / stable-holder) | Copy/move incomplete types that must not transfer ownership.                       | Wrapped into `std::ranges::subrange`, then passed through `std::views::all` → `std::ranges::common_view`.                                                                           |
-| ④ | Sequence-only (not a range)                          | Duck-typed iterable meeting `jh::concepts::sequence` but not `std::ranges::range`. | Promoted to compliant range via [`jh::to_range()`](../../conceptual/sequence.md#jhto_rangeseq) <br> → `jh::ranges::range_wrapper` → `std::views::all` → `std::ranges::common_view`. |
+| ④ | Sequence-only (not a range)                          | Duck-typed iterable meeting `jh::concepts::sequence` but not `std::ranges::range`. | Promoted to compliant range via [`jh::to_range()`](../../conceptual/sequence.md#jhto_rangeseq) <br> → `jh::ranges::range_adaptor` → `std::views::all` → `std::ranges::common_view`. |
 | ⑤ | Consuming range (non-reentrant)                      | Single-pass generators such as `iota`, `enumerate`, etc.                           | Forwarded directly to `std::views::common()` (standard consumptive path).                                                                                                           |
 
 Each normalization path guarantees **iterator compatibility**,
@@ -135,7 +135,7 @@ Normalization logic proceeds as follows:
 
 4. **Sequence-only types**  
    Non-range iterables are promoted to standard-compliant ranges via `jh::to_range()`,
-   which produces a `jh::ranges::range_wrapper` preserving all observable semantics.
+   which produces a `jh::ranges::range_adaptor` preserving all observable semantics.
 
 5. **Consuming ranges**  
    One-shot streams (like `std::views::iota`, `enumerate`, `istream_view`)

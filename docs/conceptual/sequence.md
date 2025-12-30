@@ -29,6 +29,9 @@ This header defines the **semantic concept of a "sequence"** within the JH Toolk
 a type that can be traversed through `begin()` and `end()` in a stable, repeatable manner,
 without assuming it must behave like a full `std::ranges::range`.
 
+This is a form of tolerance for third-party or user-defined containers. 
+As long as you appear to be a container that permits non-exhaustive traversal, we can promote you to a `range`.
+
 Unlike the standard `range` concept,  
 `jh::concepts::sequence` models the *everyday programming notion* of "something iterable".
 It focuses on the **behavior of traversal**, not the presence of formal range traits.
@@ -36,7 +39,7 @@ It focuses on the **behavior of traversal**, not the presence of formal range tr
 This concept treats any object that supports consistent iteration as a sequence —
 STL containers, raw arrays, pointers, or custom types —
 and normalizes them into a range-compatible form through
-[`jh::ranges::range_wrapper`](../ranges/range_wrapper.md).
+[`jh::ranges::range_adaptor`](../ranges/range_adaptor.md).
 
 The const-qualified check ensures that `begin()` and `end()` are callable on a `const T&`,
 meaning iteration itself does not consume or mutate the underlying object,
@@ -114,28 +117,33 @@ Behavior:
     * otherwise wraps it with `std::ranges::subrange` for const-lvalue access.
 * If the input does *not* model `std::ranges::range`:
 
-    * wraps lvalues using `jh::ranges::range_wrapper<Seq&>`;
-    * wraps rvalues or values using `jh::ranges::range_wrapper<Seq>`.
+    * wraps lvalues using `jh::ranges::range_adaptor<Seq&>`;
+    * wraps rvalues or values using `jh::ranges::range_adaptor<Seq>`.
 
 The resulting object is always **movable and forwardable**, even when the original sequence is not.
 Some STL range algorithms perform overly strict move/copy checks —
 **even when the algorithm itself never actually moves or copies the range**.
 `jh::to_range()` guarantees such checks will pass by producing a proxy object that
-behaves as a movable `std::ranges::range` through `range_wrapper` or `subrange`.
+behaves as a movable `std::ranges::range` through `range_adaptor` or `subrange`.
 
 This adaptation is **idempotent for all valid inputs**, following four deterministic paths:
 
 1. **`std::ranges::range` + movable/copyable** → returned directly (transparent pass-through).
 2. **`std::ranges::range` + not movable/copyable** → wrapped by `std::ranges::subrange`.
-3. **`sequence` lvalue** → wrapped by `jh::ranges::range_wrapper<Seq&>`.
-4. **`sequence` rvalue/value** → wrapped by `jh::ranges::range_wrapper<Seq>`.
+3. **`sequence` lvalue** → wrapped by `jh::ranges::range_adaptor<Seq&>`.
+4. **`sequence` rvalue/value** → wrapped by `jh::ranges::range_adaptor<Seq>`.
 
 The outputs of cases 2–4 all satisfy case 1,
 so any subsequent call to `jh::to_range()` simply forwards the object unchanged.
 This is why the operation is *natively idempotent*—
 once an object has been adapted, further adaptation is a no-op.
 
-See [`range_wrapper`](../ranges/range_wrapper.md) for implementation details.
+In practice, this requires that the input must satisfy `jh::concepts::sequence`, 
+meaning it must be iterable and iteration itself must not consume the container.
+This guarantees that the output must be a `std::ranges::range`. 
+If the input is a lvalue, the output must be compatible with `std::views::all`.
+
+See [`range_adaptor`](../ranges/range_adaptor.md) for implementation details.
 
 ---
 
@@ -161,7 +169,7 @@ for objects that can be traversed consistently, without imposing strict STL `ran
 
 - It formalizes the programmer's intuitive sense of "iterable" types,
 and acts as the semantic foundation for `jh::to_range()`,
-`jh::ranges::range_wrapper`, and `jh::views` throughout the toolkit.
+`jh::ranges::range_adaptor`, and `jh::views` throughout the toolkit.
 
 ## 📦 **Forwarding Header — `jh/sequence` (1.3.x only)**
 

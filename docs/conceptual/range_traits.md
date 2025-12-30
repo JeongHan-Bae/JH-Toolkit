@@ -125,7 +125,7 @@ value category.
 ## 🧩 Integration Notes
 
 * `range_storage_traits` is used by view types such as
-  `jh::ranges::range_wrapper` and `jh::ranges::vis_transform_view`.
+  `jh::ranges::range_adaptor` and `jh::ranges::vis_transform_view`.
 * Ensures uniform forwarding and lifetime handling across all range adaptors.
 * `vis_function_for` complements it by providing callable validation for
   non-mutating traversal semantics.

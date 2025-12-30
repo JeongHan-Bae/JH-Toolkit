@@ -90,7 +90,7 @@ which classifies sequences into three categories:
 |------|----------------------------------------------------------------------|-------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
 | ①    | **Standard reentrant range (copy/move capable)**                     | Transparent forwarding        | Already models `std::ranges::range` and is viewable; forwarded directly without wrapping.                                            |
 | ②    | **Standard reentrant range (restricted: move-only / stable-holder)** | `std::ranges::subrange` proxy | Iterator/sentinel pair is valid, but type cannot satisfy `viewable_range` due to ownership or lifetime; wrapped as `subrange`.       |
-| ③    | **Sequence-only type (non-range)**                                   | `jh::ranges::range_wrapper`   | Object models `jh::concepts::sequence` but not `std::ranges::range`; promoted to a compliant wrapper preserving iteration semantics. |
+| ③    | **Sequence-only type (non-range)**                                   | `jh::ranges::range_adaptor`   | Object models `jh::concepts::sequence` but not `std::ranges::range`; promoted to a compliant wrapper preserving iteration semantics. |
 
 Every valid `jh::concepts::sequence` falls into one of these three paths —
 there is **no undefined case** or runtime overhead.
