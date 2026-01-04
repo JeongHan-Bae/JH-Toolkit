@@ -135,6 +135,7 @@
 #pragma once
 
 #include "jh/conceptual/tuple_like.h"
+#include <functional>
 #include <tuple>
 #include <utility>
 #include <type_traits>
