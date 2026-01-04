@@ -71,8 +71,8 @@ foreach(i RANGE 0 ${max_index})
 
     add_executable(${target} ${source})
     target_link_libraries(${target} PRIVATE ${lib} Catch2::Catch2)
-    target_sources(${target} PRIVATE ${CMAKE_SOURCE_DIR}/tests/main.cpp)
-    target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/tests)
+    target_sources(${target} PRIVATE ${PROJECT_SOURCE_DIR}/tests/main.cpp)
+    target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/tests)
 
     if (USE_GCC_WORKAROUND)
         target_compile_options(${target} PRIVATE

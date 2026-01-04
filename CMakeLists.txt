@@ -107,49 +107,49 @@ if (ENABLE_POD)
     add_library(jh-toolkit-pod INTERFACE)
 
     target_include_directories(jh-toolkit-pod INTERFACE
-            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     )
 
     # Install forwarding header 'pod' (no extension, so must use FILES)
     install(FILES
-            ${CMAKE_SOURCE_DIR}/include/jh/pod
+            ${PROJECT_SOURCE_DIR}/include/jh/pod
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh
     )
 
     # Install header directory 'pods/'
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/jh/pods
+    install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/jh/pods
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh
     )
 
     # Install depending headers in directory 'typing/'
     install(FILES
-            ${CMAKE_SOURCE_DIR}/include/jh/typing/monostate.h
+            ${PROJECT_SOURCE_DIR}/include/jh/typing/monostate.h
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/typing
     )
 
     # Install depending headers in directory 'macros/'
     install(FILES
-            ${CMAKE_SOURCE_DIR}/include/jh/macros/platform.h
-            ${CMAKE_SOURCE_DIR}/include/jh/macros/type_name.h
+            ${PROJECT_SOURCE_DIR}/include/jh/macros/platform.h
+            ${PROJECT_SOURCE_DIR}/include/jh/macros/type_name.h
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/macros
     )
 
     # Install depending headers in directory 'metax/'
     install(FILES
-            ${CMAKE_SOURCE_DIR}/include/jh/metax/hash.h
+            ${PROJECT_SOURCE_DIR}/include/jh/metax/hash.h
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/metax
     )
 
     # Install depending headers in directory 'serialize_io/'
     install(FILES
-            ${CMAKE_SOURCE_DIR}/include/jh/serialize_io/base64.h
+            ${PROJECT_SOURCE_DIR}/include/jh/serialize_io/base64.h
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/serialize_io
     )
 
     # Install depending headers in directory 'detail/'
     install(FILES
-            ${CMAKE_SOURCE_DIR}/include/jh/detail/base64_common.h
+            ${PROJECT_SOURCE_DIR}/include/jh/detail/base64_common.h
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/detail
     )
 
@@ -171,19 +171,19 @@ if (ENABLE_ALL)
     add_library(jh-toolkit INTERFACE
             include/jh/)
     target_include_directories(jh-toolkit INTERFACE
-            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     )
 
     # Define the STATIC library for compiled components (e.g., immutable_str.cpp)
     file(GLOB JH_TOOLKIT_SOURCES CONFIGURE_DEPENDS
-            "${CMAKE_SOURCE_DIR}/src/*.cpp"
+            "${PROJECT_SOURCE_DIR}/src/*.cpp"
     )
 
     # Build the static library (no header-only restriction during build)
     add_library(jh-toolkit-static STATIC ${JH_TOOLKIT_SOURCES})
     target_include_directories(jh-toolkit-static PUBLIC
-            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     )
     target_link_libraries(jh-toolkit-static PUBLIC jh-toolkit)
@@ -230,7 +230,7 @@ write_basic_package_version_file(
 )
 
 configure_file(
-        "${CMAKE_SOURCE_DIR}/cmake/jh-toolkit-config.cmake.in"
+        "${PROJECT_SOURCE_DIR}/cmake/jh-toolkit-config.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/jh-toolkit-config.cmake"
         @ONLY
 )

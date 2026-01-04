@@ -17,7 +17,7 @@ foreach(src ${EXAMPLE_SOURCES})
     get_filename_component(fname ${src} NAME)
     get_filename_component(target ${fname} NAME_WE)
     add_executable(${target} ${src})
-    target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/include)
 endforeach()
 
 # Add process_lock subdirectory (defines writer/reader)
