@@ -196,12 +196,14 @@
 #include <cstdint>
 #include <tuple>
 #include <memory>
+#include <mutex>
 #include <algorithm>
 #include <type_traits>
 #include <stdexcept>
 
 #include "jh/typing/monostate.h"
 #include "jh/core/ordered_map.h"
+#include "jh/conceptual/hashable.h"
 #include "jh/synchronous/control_buf.h"
 
 namespace jh::conc {

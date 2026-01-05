@@ -181,6 +181,7 @@
 #include <vector>           // for std::vector
 #include <unordered_set>    // for std::unordered_set
 #include <mutex>            // For std::shared_mutex
+#include <memory>
 #include <shared_mutex>
 
 
