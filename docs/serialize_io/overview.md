@@ -3,8 +3,8 @@
 📁 **Module:** `<jh/serio>`  
 📦 **Namespace:** `jh::serio`  
 📍 **Location:** `jh/serialize_io/`  
-📅 **Version:** 1.3.5+ (2025)  
-👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`  
+📅 **Version:** **1.4.x** (2025)  
+👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
 
@@ -16,46 +16,70 @@
 
 ## 🧭 Introduction
 
-`jh::serio` defines the **Serialization I/O layer** of the JH Toolkit —
-a collection of **codec utilities** for data serialization and deserialization.  
-It provides portable, type-safe tools for converting between binary and text forms.
+`jh::serio` provides the **Serialization I/O utilities** of the JH Toolkit.
 
----
+The module contains **standalone codecs** for transforming data between
+representations, with a focus on:
 
-## 🌍 Overview
+* explicit behavior
+* deterministic decoding
+* binary correctness
+* minimal abstraction
 
-The `jh::serio` module focuses on creating a consistent and safe interface
-for encoding and decoding operations across formats.  
-It emphasizes correctness, constexpr verification,
-and compatibility with standard binary–text representations.
+It does **not** provide object serialization frameworks or schema-based formats.
 
 ---
 
 ## 🔹 Core Submodules
 
-| Submodule             | Header                       |  Status  | Description                                                                                                                                                                                           |
-|-----------------------|------------------------------|:--------:|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`base64`](base64.md) | `<jh/serialize_io/base64.h>` | ✅ Stable | Implements both **Base64** (RFC 4648 §4) and **Base64URL** (RFC 4648 §5). <br> Two namespaces — `jh::serio::base64` and `jh::serio::base64url` <br> — share a unified API for binary–text conversion. |
+| Submodule               | Header                        |  Status  | Description                                                                                                                                                                 |
+|-------------------------|-------------------------------|:--------:|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`base64`](base64.md)   | `<jh/serialize_io/base64.h>`  | ✅ Stable | Binary-to-text encoding using Base64 / Base64URL (RFC 4648). Output is ASCII-safe and **universally decodable** by any compliant Base64 implementation.                     |
+| [`huffman`](huffman.md) | `<jh/serialize_io/huffman.h>` | ✅ Stable | Binary compression codec implementing standard and canonical Huffman algorithms. Streams are **signature-bound** and must be decoded using the same `Signature` definition. |
+
+---
+
+## 🔐 Decoding and Recoverability
+
+The codecs in `jh::serio` differ intentionally in **who can recover the data**.
+
+### `base64`
+
+* Output is standard-compliant ASCII text
+* Can be decoded by **any Base64 / Base64URL implementation**
+* No library- or project-specific metadata is required
+* Designed for interoperability and transport
+
+### `huffman`
+
+* Output is a **custom binary format**
+* Stream begins with a compile-time `Signature`
+* Decoding **requires the same signature definition**
+* Intended for controlled environments using this library
+
+A mismatched or missing signature causes decompression to fail explicitly.
 
 ---
 
 ## 🧠 Design Notes
 
-* Provides a unified interface for serialization codecs.
-* Ensures type safety and constexpr-driven validation.
-* Uses clear exception signaling for all decoding errors.
-* Designed for predictable and cross-language interoperability.
+* Each submodule exposes a **self-contained codec**.
+* All decoding errors are reported via exceptions.
+* Binary formats perform structural validation before decoding.
+* No implicit format detection or fallback behavior is provided.
 
 ---
 
 ## 🧭 Navigation
 
-|       Resource        |                                                           Link                                                            |
-|:---------------------:|:-------------------------------------------------------------------------------------------------------------------------:|
-| 🏠 **Back to README** |       [![Back to README](https://img.shields.io/badge/Back%20to%20README-blue?style=flat-square)](../../README.md)        |
-| 📘 **Go to `base64`** | [![Go to Base64 Reference](https://img.shields.io/badge/Go%20to%20Base64%20Reference-green?style=flat-square)](base64.md) |
+| Resource               |                                                             Link                                                             |
+|------------------------|:----------------------------------------------------------------------------------------------------------------------------:|
+| 🏠 **Back to README**  |         [![Back to README](https://img.shields.io/badge/Back%20to%20README-blue?style=flat-square)](../../README.md)         |
+| 📗 **Go to `base64`**  |  [![Go to Base64 Reference](https://img.shields.io/badge/Go%20to%20Base64%20Reference-green?style=flat-square)](base64.md)   |
+| 📘 **Go to `huffman`** | [![Go to Huffman Reference](https://img.shields.io/badge/Go%20to%20Huffman%20Reference-green?style=flat-square)](huffman.md) |
 
 ---
 
-> 📌 The `jh::serio` module forms the foundation
-> for all serialization and deserialization tools in the JH Toolkit.
+> 📌 `jh::serio` defines **low-level, explicit serialization codecs**.
+> Recoverability, interoperability, and validation behavior are determined
+> by the chosen submodule.

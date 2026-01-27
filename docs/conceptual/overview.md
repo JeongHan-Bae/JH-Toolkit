@@ -3,7 +3,7 @@
 📁 **Module:** `<jh/concepts>`  
 📦 **Namespace** `jh::concepts`  
 📍 **Location:** `jh/conceptual/`  
-📅 **Version:** 1.3.5+ (2025)  
+📅 **Version:** 1.4.x (2026)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -49,6 +49,7 @@ iteration, range adaptation, container construction, structural hashing, and syn
 | [`collectable_container`](collectable_container.md) | `<jh/conceptual/collectable_container.h>` | ✅ Stable | Defines incremental population models for range-to-container materialization.                                         |
 | [`hashable`](hashable.md)                           | `<jh/conceptual/hashable.h>`              | ✅ Stable | Provides unified semantic hashing detection (STL, ADL, member).                                                       |
 | [`mutex_like`](mutex_like.md)                       | `<jh/conceptual/mutex_like.h>`            | ✅ Stable | Defines structural synchronization and lock-like behavioral traits.                                                   |
+| [`pod_concepts`](pod_concepts.md)                   | `<jh/conceptual/pod_concepts.h>`          | ✅ Stable | Aggregates POD-related concepts and constants exposed under `jh::concepts`.                                           |
 
 ---
 
@@ -84,3 +85,4 @@ an ever-growing foundation that recognizes types by *behavior* rather than *decl
 | 📘 **Go to `collectable_container`** | [![Collectable Container](https://img.shields.io/badge/Go%20to%20Collectable%20Container-green?style=flat-square)](collectable_container.md) |
 |       📗 **Go to `hashable`**        |                     [![Hashable](https://img.shields.io/badge/Go%20to%20Hashable-green?style=flat-square)](hashable.md)                      |
 |      📙 **Go to `mutex_like`**       |               [![Mutex-Like](https://img.shields.io/badge/Go%20to%20Mutex%20Reference-green?style=flat-square)](mutex_like.md)               |
+|      📘**Go to `pod_concepts`**      |              [![POD Concepts](https://img.shields.io/badge/Go%20to%20POD%20Concepts-green?style=flat-square)](pod_concepts.md)               |
