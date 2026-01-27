@@ -70,7 +70,7 @@ Ideal for:
 | **Immutability Level** | Memory-enforced, no writable API.                             |
 | **Hashing**            | Cached, lazily computed once.                                 |
 | **Build Mode**         | Header-only or static library via Dual-Mode system.           |
-| **Integration**        | Works directly with `jh::pool` for deduplication.             |
+| **Integration**        | Works directly with `jh::observe_pool` for deduplication.     |
 
 ---
 
@@ -273,10 +273,10 @@ std::uint64_t h = shared->hash();
 
 ## 🔹 Pool Integration
 
-`immutable_str` is natively compatible with [`jh::pool<T>`](pool.md) for **automatic deduplication**:
+`immutable_str` is natively compatible with [`jh::observe_pool<T>`](../concurrent/observe_pool.md) for **automatic deduplication**:
 
 ```cpp
-jh::pool<jh::immutable_str> pool;
+jh::observe_pool<jh::immutable_str> pool;
 auto x = pool.acquire("JH Toolkit");
 auto y = pool.acquire("JH Toolkit");
 
@@ -285,7 +285,7 @@ if (x.get() == y.get()) {
 }
 ```
 
-`jh::pool` compares objects by `hash()` and `operator==`,
+`jh::observe_pool` compares objects by `hash()` and `operator==`,
 so semantically identical strings share a single immutable instance.  
 
 ---
