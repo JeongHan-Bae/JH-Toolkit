@@ -27,6 +27,12 @@ It provides:
 All updates replace the entire state with a single CAS.
 No reader ever observes partial or torn writes.
 
+> We highly recommend using `occ_box<T>` during the prototype development/MVP phase, as it significantly reduces
+> cognitive load.  
+> The primary overhead of `occ_box` stems from its versatility (supporting lambda calls and generic operations).
+> Once your business logic is fully implemented, if performance becomes a bottleneck, we suggest designing your own
+> `occ_T` business model based on `occ_box<T>`. `occ_box` already provides various implementation approaches and models.
+
 ---
 
 ## Concurrency Model
