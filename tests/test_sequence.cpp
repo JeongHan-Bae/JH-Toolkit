@@ -1,6 +1,5 @@
-#define CATCH_CONFIG_MAIN
-
 #include <catch2/catch_all.hpp>
+
 #include <vector>
 #include <list>
 #include <deque>
@@ -11,7 +10,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "jh/conceptual/sequence.h"
-#include "jh/pods/array.h"
+#include "jh/pod"
 
 namespace test {
     struct NonTemplateSequence {
@@ -54,9 +53,9 @@ namespace test {
     };
 
     struct NoBeginEnd {
-    }; // ❌ No `begin()` / `end()`
+    }; // No `begin()` / `end()`
 
-    struct FakeSequence { // ❌ Has `begin()` / `end()` but they are not iterators
+    struct FakeSequence { // Has `begin()` / `end()` but they are not iterators
         [[nodiscard]] static int begin() { return 42; }
 
         [[nodiscard]] static int end() { return 99; }
@@ -277,7 +276,7 @@ namespace test {
     };
 } // namespace test
 
-// ✅ Recognizing STL Sequences
+// Recognizing STL Sequences
 TEST_CASE("STL Sequences Recognition") {
     REQUIRE(jh::concepts::is_sequence<std::vector<int>>);
     REQUIRE(jh::concepts::is_sequence<std::list<double>>);
@@ -290,7 +289,7 @@ TEST_CASE("STL Sequences Recognition") {
     REQUIRE(jh::concepts::is_sequence<std::unordered_map<int, int>>);
 }
 
-// ✅ Extracting Sequence Value Types
+// Extracting Sequence Value Types
 TEST_CASE("Extracting Sequence Value Types") {
     REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<std::vector<int>>, int>);
     REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<std::array<const double, 3>>, double>);
@@ -311,7 +310,7 @@ TEST_CASE("Non-Sequences Should Fail") {
     REQUIRE_FALSE(jh::concepts::is_sequence<test::FakeSequence>);
 }
 
-// ✅ Handling `const` and `mutable`
+// Handling `const` and `mutable`
 TEST_CASE("Handling Modifiers in Sequences") {
     REQUIRE(jh::concepts::is_sequence<const std::vector<int>>);
     REQUIRE(jh::concepts::is_sequence<std::list<double>>);
@@ -321,13 +320,13 @@ TEST_CASE("Handling Modifiers in Sequences") {
     REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<std::list<double>>, double>);
 }
 
-// ✅ Custom Sequence Recognition
+// Custom Sequence Recognition
 TEST_CASE("Custom Non-Template Sequence") {
     REQUIRE(jh::concepts::is_sequence<test::NonTemplateSequence>);
     REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<test::NonTemplateSequence>, int>);
 }
 
-// ✅ Custom Template Sequence Recognition
+// Custom Template Sequence Recognition
 TEST_CASE("Custom Template Sequence") {
     REQUIRE(jh::concepts::is_sequence<test::TemplateSequence<int>>);
     REQUIRE(jh::concepts::is_sequence<test::TemplateSequence<std::string>>);
@@ -336,13 +335,13 @@ TEST_CASE("Custom Template Sequence") {
     REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<test::TemplateSequence<std::string>>, std::string>);
 }
 
-// ✅ Custom Sequence with `const begin()`
+// Custom Sequence with `const begin()`
 TEST_CASE("Custom ConstIterSequence") {
     REQUIRE(jh::concepts::is_sequence<test::ConstIterSequence>);
     REQUIRE(std::is_same_v<jh::concepts::sequence_value_t<test::ConstIterSequence>, int>);
 }
 
-// ❌ Custom Sequence with Mutable Iterators (Should NOT be a sequence)
+// Custom Sequence with Mutable Iterators (Should NOT be a sequence)
 TEST_CASE("Mutable Iterator Sequence") {
     REQUIRE_FALSE(jh::concepts::is_sequence<test::MutableIterSequence>);
 }
@@ -438,24 +437,24 @@ TEST_CASE("Iterator deduces from array, pointer, and sequence-like") {
 TEST_CASE("Iterator rejection: structurally similar but invalid") {
     using namespace test;
 
-    // ❌ BasicInputOrOutputIterator: basic iterator but can do nothing
+    // BasicInputOrOutputIterator: basic iterator but can do nothing
     REQUIRE(jh::concepts::is_iterator<BasicInputOrOutputIterator>);
     REQUIRE_FALSE(jh::concepts::input_iterator<BasicInputOrOutputIterator>);
     REQUIRE_FALSE(jh::concepts::output_iterator<BasicInputOrOutputIterator, int>);
 
-    // ❌ FakeIterNoDeref: defines value_type but not dereferenceable
+    // FakeIterNoDeref: defines value_type but not dereferenceable
     REQUIRE_FALSE(jh::concepts::is_iterator<FakeIterNoDeref>);
     REQUIRE_FALSE(jh::concepts::input_iterator<FakeIterNoDeref>);
 
-    // ❌ FakeIterTypeMissmatch: invalid type mismatch on dereference
+    // FakeIterTypeMissmatch: invalid type mismatch on dereference
     REQUIRE_FALSE(jh::concepts::is_iterator<FakeIterTypeMissmatch>);
     REQUIRE_FALSE(jh::concepts::input_iterator<FakeIterTypeMissmatch>);
     REQUIRE_FALSE(jh::concepts::output_iterator<FakeIterTypeMissmatch, int>);
 
-    // ❌ FakeOutputNoInc: no ++ operators
+    // FakeOutputNoInc: no ++ operators
     REQUIRE_FALSE(jh::concepts::output_iterator<FakeOutputNoInc, int>);
 
-    // ❌ FakeOutputNoAssign: ++ works but cannot assign
+    // FakeOutputNoAssign: ++ works but cannot assign
     REQUIRE_FALSE(jh::concepts::output_iterator<FakeOutputNoAssign, int>);
 }
 
@@ -470,7 +469,7 @@ TEST_CASE("Sequence rejection: fake begin() types") {
 TEST_CASE("iterator_t deduction coverage") {
     using namespace test;
 
-    // ✅ STL containers
+    // STL containers
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::vector<int>>, std::vector<int>::iterator>);
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::list<double>>, std::list<double>::iterator>);
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::deque<char>>, std::deque<char>::iterator>);
@@ -481,34 +480,34 @@ TEST_CASE("iterator_t deduction coverage") {
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::forward_list<int>>, std::forward_list<int>::iterator>);
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<std::array<int, 5>>, int*>); // std::array::begin returns T*
 
-    // ✅ POD arrays and pointers
+    // POD arrays and pointers
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<int[3]>, int*>);
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<const int[3]>, const int*>);
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<int*>, int*>);
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<const double*>, const double*>);
 
-    // ✅ Custom sequence-like types
+    // Custom sequence-like types
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<NonTemplateSequence>, std::vector<int>::const_iterator>);
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<TemplateSequence<float>>, std::vector<float>::const_iterator>);
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<ConstIterSequence>, std::vector<int>::const_iterator>);
 
-    // ✅ jh::pod::array acts like array
+    // jh::pod::array acts like array
     STATIC_REQUIRE(std::is_same_v<jh::concepts::iterator_t<const jh::pod::array<int, 3>>, const int*>);
 
-    // ✅ MutableIterSequence - no const begin(), but still a begin
+    // MutableIterSequence - no const begin(), but still a begin
     constexpr bool has_iter_mutable = requires { typename jh::concepts::iterator_t<test::MutableIterSequence>; };
     STATIC_REQUIRE(has_iter_mutable);
 
-    // ✅ NoBeginEnd and FakeSequence - must not be deducible
+    // NoBeginEnd and FakeSequence - must not be deducible
     STATIC_REQUIRE(!test::can_deduce_iterator_v<test::NoBeginEnd>);
     STATIC_REQUIRE(!test::can_deduce_iterator_v<test::FakeSequence>);
 
-    // ✅ Builtin scalar / non-iterable types
+    // Builtin scalar / non-iterable types
     STATIC_REQUIRE(!test::can_deduce_iterator_v<int>);
     STATIC_REQUIRE(!test::can_deduce_iterator_v<void>);
     STATIC_REQUIRE(!test::can_deduce_iterator_v<std::tuple<int, double>>);
 
-    // ✅ Cross-check jh::concepts::is_iterator consistency with iterator_t
+    // Cross-check jh::concepts::is_iterator consistency with iterator_t
     STATIC_REQUIRE(jh::concepts::is_iterator<jh::concepts::iterator_t<std::vector<int>>>);
     STATIC_REQUIRE(jh::concepts::input_iterator<jh::concepts::iterator_t<std::list<int>>>);
     STATIC_REQUIRE(jh::concepts::bidirectional_iterator<jh::concepts::iterator_t<std::set<int>>>);

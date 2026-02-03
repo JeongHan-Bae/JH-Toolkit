@@ -4,23 +4,23 @@
  *
  * <p>
  * This header provides the canonical include entry for
- * <code>jh::immutable_str</code> — an immutable, thread-safe string type
+ * <code>jh::immutable_str</code> &mdash; an immutable, thread-safe string type
  * with automatic pooling support.
  * </p>
  *
  * <pre><code>#include &lt;jh/immutable_str&gt;</code></pre>
  *
  * <p>
- * Internally, it forwards to <code>jh/immutable_str.h</code> and defines
+ * Internally, it forwards to <code>jh/core/immutable_str.h</code> and defines
  * no additional symbols.
  * </p>
  *
  * <h4>See Also</h4>
  * <ul>
- *   <li><code>jh::pool</code> — automatically integrated pooling system.</li>
+ *   <li><code>jh::pool</code> &mdash; automatically integrated pooling system.</li>
  * </ul>
  */
 
 #pragma once
 
-#include "jh/immutable_str.h"
+#include "jh/core/immutable_str.h"

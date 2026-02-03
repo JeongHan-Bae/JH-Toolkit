@@ -31,7 +31,7 @@ It provides two cooperating headers:
 Together they allow one `.h` file to safely express declarations and definitions
 depending on the current **build context**.  
 
-> This mechanism is used by [`jh::immutable_str`](../immutable_str.md)
+> This mechanism is used by [`jh::immutable_str`](../core/immutable_str.md)
 > and `jh::runtime_arr` to realize JH Toolkit's
 > *"write once, build differently"* principle.
 
@@ -89,7 +89,7 @@ Example from `immutable_str.cpp`:
 
 ```cpp
 #define JH_HEADER_IMPL_BUILD
-#include "jh/immutable_str.h"
+#include "jh/core/immutable_str.h"
 ```
 
 This single inclusion generates all strong definitions for that module.  

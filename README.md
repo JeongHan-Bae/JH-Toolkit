@@ -18,12 +18,21 @@
 <div align="center" style="margin-left: 8%; margin-right: 8%; font-size: medium;">
 
 <strong>
-A Modern, Duck-Typed C++20 Toolkit for Generic and Asynchronous Programming — Featuring
-Concurrency-Safe Infrastructure, POD Subsystems, Concept-Bridged Type Compatibility, and Extended Range Utilities —
-Fully Template-Driven and RTTI-Free.
+A modern C++20 toolkit built on duck-typed concepts and fully static, template-driven design.
+<br><br>
+It offers object pooling, safe immutable strings, coroutine-powered async facilities with sync-style syntax,
+a lightweight POD framework, expressive metaprogramming utilities, semantically rich range/view extensions, 
+inter-process coordination primitives, new associative containers, 
+and stable serialization components 
+<br> — entirely RTTI-free and concurrency-friendly.
 </strong>
 </div>
-
+<br>
+<div align="center" style="margin-left: 8%; margin-right: 8%; font-size: small;">
+In other words, we aim to help you reclaim your understanding of modern C++ from the perspective of a 
+"software engineer" rather than a "system programmer/language enthusiast": a language for software development that offers richer semantics, superior
+performance, and enhanced security.
+</div>
 
 <div align="center">
 <p></p>
@@ -31,30 +40,33 @@ Fully Template-Driven and RTTI-Free.
 <!-- ✅ Core Info -->
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-violet.svg)](https://en.cppreference.com/w/cpp/20)
-[![Header-Only](https://img.shields.io/badge/header--only-supported-green)](#)
-[![Static Build](https://img.shields.io/badge/static--build-supported-green)](#)
+![Header-Only](https://img.shields.io/badge/header--only-supported-green)
+![Static Build](https://img.shields.io/badge/static--build-supported-green)
 
 <!-- ✅ CI / Contributors / Wiki -->
-[![CI](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml)
+[![CI](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml/badge.svg?branch=1.3.x-LTS)](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml)
 [![Contributors](https://img.shields.io/github/contributors/JeongHan-Bae/JH-Toolkit.svg)](https://github.com/JeongHan-Bae/JH-Toolkit/graphs/contributors)
 [![Wiki](https://img.shields.io/badge/docs-wiki-blue)](https://github.com/JeongHan-Bae/JH-Toolkit/wiki)
 
 
 <!-- ✅ Feature Highlights -->
-[![Object Pool](https://img.shields.io/badge/object--pooling-optimized-brown)](docs/pool.md)
-[![Immutable Strings](https://img.shields.io/badge/immutable--strings-pure-brown)](docs/immutable_str.md)
-[![Generators](https://img.shields.io/badge/generators-coroutines-brown)](docs/generator.md)
-[![POD System](https://img.shields.io/badge/pod--system-trivial-brown)](docs/pod.md)
-[![Duck Concepts](https://img.shields.io/badge/duck--concepts-flexible-brown)](docs/concepts.md)
-
+![Pooling](https://img.shields.io/badge/pooling-powerful-brown)
+![Immutable Strings](https://img.shields.io/badge/immutable--strings-safe-brown)
+![Async](https://img.shields.io/badge/async%20%28coroutines%29-zero--boilerplate-brown)
+![POD System](https://img.shields.io/badge/plain--old--data-primitive-brown)
+![Duck Concepts](https://img.shields.io/badge/duck--concepts-smart-brown)
+![Meta Programming](https://img.shields.io/badge/metaprogramming-compile--time-brown)
+![Ranges and Views](https://img.shields.io/badge/ranges%20%26%20views-semantically--rich-brown)
+![IPC](https://img.shields.io/badge/inter--process%20coordination-simple-brown)
+![Serialization](https://img.shields.io/badge/serialization-stable-brown)
 </div>
 
----
-
-<div align="center" style="margin-top: 16px; margin-bottom: -8px">
-  <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Oree.svg"
-       alt="Oree mascot"
-       style="width: 128px; height: auto;">
+<div align="center">
+  <img
+    src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Oree.svg"
+    alt="Oree mascot"
+    width="128"
+  >
 </div>
 
 <p align="center" style="font-size: large;">
@@ -77,222 +89,281 @@ Fully Template-Driven and RTTI-Free.
 
 ---
 
+## Why C++20 Is Used (Brief)
+
+JH Toolkit uses **C++20** as a *baseline*, not as a showcase.
+
+The choice is driven by the need for **foundational language guarantees and tooling support**, including:
+
+* C++17+ guaranteed RVO/NRVO for predictable value semantics
+* C++17 facilities such as `std::string_view` and `std::variant`
+* C++20 coroutines for zero-boilerplate async composition
+* C++20 NTTPs for compile-time identity and structural binding
+
+More importantly, C++20 enables **SFINAE + concepts–based constraints**, which are used to:
+
+* ensure behavior is **locally and globally predictable**
+* enforce semantics that match the documented intent
+* prevent invalid or ambiguous usage at compile time
+* help compilers—**especially LLVM-Clang**—perform deeper analysis, pruning, and optimization
+
+This improves both **safety** and **performance**, often by eliminating entire classes of misuse before code generation.
+
+C++20 is therefore adopted as an **engineering tool**, not as a language feature showcase.
+The goal is not to demonstrate what "modern C++" can express, but to use the language to **constrain behavior, reduce
+ambiguity, and support reliable system design**.
+
+
+> **Modern C++ is already a strong fit for software development workloads.**  
+> Even when it is not used as the exclusive implementation language, it can reliably take responsibility for *critical
+> parts* of a system—such as high-performance paths, security-sensitive components, or logic that requires strong semantic
+> guarantees.  
+> Modern C++ integrates cleanly with long-lived, stable interfaces such as **gRPC**, **HTTP-based services**, and 
+> **Cython bindings**, allowing it to coexist naturally in polyglot systems. In such architectures, it is preferable to
+> rely on **typed, structured interfaces** rather than raw C ABIs, which tend to erase semantics and weaken safety and
+> auditability.  
+> Importantly, modern C++ enables **auditable and highly predictable systems**. Its type system, constexpr facilities,
+> and concepts allow illegal or ambiguous behavior to be intercepted at compile time, rather than deferred to runtime.
+> This makes it possible to enforce design intent mechanically, not socially.  
+> Modern C++ also supports **safe semantic encapsulation of system-level primitives**. Low-level APIs (for example,
+> POSIX IPCs) can be wrapped into higher-level, intention-revealing abstractions with explicit guarantees—such as
+> `jh::ipc`, which provides a semantic, constrained interface over POSIX IPC mechanisms.  
+> From a performance standpoint, modern C++ is inherently fast—*significantly faster than all dynamic languages*,
+> including those using ahead-of-time compilation. This performance comes without requiring heavyweight runtimes or hidden
+> dynamic metadata.  
+> Finally, modern C++ operates naturally in **no-RTTI environments**, does not require additional dynamic type data, and
+> avoids bloated runtime infrastructures. When combined with specialized, allocation-aware data structures (such as those
+> provided by JH Toolkit), it enables low fragmentation, compact memory layouts, and predictable resource usage—properties
+> that are essential for long-running, production-grade software systems.
+
+---
+
 ## 🧰 Build & Platform Guide
 
-For detailed build instructions, supported compilers, and Conan packaging notes,  
-please refer to the [Build & Platform Guide](./docs/build.md).
+The project builds with **GCC 13+ or Clang 15+**, with **GCC 14+ or LLVM 20** strongly recommended for optimal
+performance and language support.
+**MSVC is not supported.**
 
-> Covers: toolchains, CMake targets, Conan `.tar.gz` releases, and dual-mode headers.
+For complete build instructions, supported toolchains, and Conan packaging notes, refer to the
+[Build & Platform Guide](./docs/build.md).
 
----
+> Covers: toolchains, CMake targets, Conan `.tar.gz` releases, and the dual-mode header design.
 
-## 📚 JH Toolkit Modules Overview
-
----
-
-### 🧩 Conceptual & Ranges-Views System — Duck Typing Philosophy
-
-The **`jh::concepts`** & **`jh::views`** system embodies JH Toolkit's **duck typing philosophy** —
-if a type behaves like a sequence, it is treated as one.
-This system generalizes iteration and range utilities through behavior rather than inheritance,
-bridging standard and non-standard containers seamlessly.
-
-`jh::concepts` defines JH Toolkit's **duck-typing model for iteration**,
-recognizing **behavioral compatibility** rather than formal inheritance.
-
-Any type that supports range-for iteration — readable or writable —
-and **preserves its state across iterations** is treated as a **duck sequence**.
-`jh::concepts::iterator` and `jh::concepts::sequence` together enable
-**`jh::to_range()`**, which transparently proxies such types into a standard-like range view.
-
-`jh::views` provides **lazy, allocation-free adapters** that extend this model.
-**`jh::views::zip`** and **`jh::views::enumerate`** operate on duck sequences through `jh::to_range()`,
-built upon **`jh::ranges::zip_view`**, a C++20 implementation mirroring
-C++23's `std::ranges::zip_view` when available.
-
-> In all **1.3.x releases**, `jh::concepts` are **globally down-leveled to `jh::*`**
-> for backward compatibility, while `jh::views::*` remains the canonical interface,
-> following the same convention as the C++ standard library (`std::views::*`).
+The project has **no runtime dependencies**.  
+Its **only build-time requirement** is a conforming **C++20 standard library**.  
+Testing uses **Catch2**.  
+For version details, see: [Dependencies](dependencies.toml).
 
 ---
 
-### 🌀 Async System — Cooperative Concurrency, True Parallelism
+## API Documentation References
 
-**`jh::async` — Unified Asynchronous Semantics**
+Below is the complete list of **user-facing aggregate forwarding headers** provided by **JH-Toolkit**.
+These headers are the **recommended entry points** for reading the API documentation.
 
-`jh::async` defines the asynchronous behavior model of JH Toolkit.
-It provides coroutine-based lazy evaluation through **`jh::async::generator`**,
-a **deferred state machine** that models computation rather than storage.
-Generators are **consumable**, representing one logical evaluation path per lifetime,
-and are exposed under both `jh::generator` and `jh::async::generator` for convenience.
+All listed headers are **suffix-free** (for example, `<jh/async>`).
+Headers ending with `.h` are **implementation headers** and are **not intended** as primary reading targets.
 
-The upcoming **1.4.x series** extends `jh::async` with other concurrency primitives:
-- **`occ_box`** for optimistic transactional control
-- **`process_mutex`** for timed interprocess synchronization
-- **`process_launcher`** for isolated, parallel process execution
+Each link below points to an **overview document** for the corresponding forwarding header.
+From there, you can **navigate downward** into each concrete submodule and its detailed API documentation.
 
-> Concurrency in JH Toolkit is defined by **behavior**, not class hierarchy —
-> every asynchronous primitive follows explicit lifetime and deterministic semantics.
+> In short:
+> **Start from the forwarding header overview → then drill down into specific APIs as needed.**
 
 ---
 
-### 🧊 POD System — Plain Old Data, Modern Discipline
+### User-Facing API Entry Points
 
-`jh::pod` defines a **layout-stable, trivially copyable type system** for C++20.
-It provides a suite of **fixed-layout value primitives** — like `pod::pair`, `pod::array`, `pod::optional`, and `pod::bitflags` —
-built for **raw memory safety**, **placement-new**, and **binary serialization**.
-
-All `pod` types are:
-
-* 🧩 **`memcpy`-safe**, trivially copyable, and standard-layout
-* 🧱 Designed for `mmap`, `arena`, and **zero-overhead serialization**
-* ⚙️ Usable inside STL containers with no hidden heap or lifetime coupling
-
-> `*_view` and `span<T>` types are **non-owning references** — they borrow external memory
-> and must not outlive their backing buffers or mapped regions.
-> They are designed for **inspection, slicing, and serialization**, not ownership or mutation.
-
-`jh::pod` also introduces lightweight tools for structure definition and validation:
-
-* **`JH_POD_STRUCT(...)`** — define POD structs with compile-time layout checks
-* **`JH_ASSERT_POD_LIKE(T)`** — enforce POD compliance on existing types
-
-Together they form a foundation for **safe binary data modeling** —
-bridging high-level C++ templates with low-level, deterministic memory control.
-
-> ✅ 64-bit only, fully constexpr, header-only, and STL-compatible.
-> Designed for predictable layout, not legacy C-style "plain structs."
+* [`<jh/async>` 🌀 API References](docs/asynchronous/overview.md)
+* [`<jh/concepts>` 🧩 API References](docs/conceptual/overview.md)
+* [`<jh/concurrency>` 🎍 API References](docs/concurrent/overview.md)
+* [`<jh/flat_multimap>` 🧱 API References](docs/core/flat_multimap.md)
+* [`<jh/generator>` 🌀API References](docs/asynchronous/generator.md)
+* [`<jh/immutable_str>` 🧱 API References](docs/core/immutable_str.md)
+* [`<jh/ipc>`(InterProcess Coordination) 🛰️ API References](docs/synchronous/ipc.md)
+* [`<jh/jindallae>` ⚗️ API References](docs/metax/overview.md#-aggregation-headers)
+* [`<jh/meta>` ⚗️ API References](docs/metax/overview.md)
+* [`<jh/ordered_map>` 🧱 API References](docs/core/ordered_map.md)
+* [`<jh/pod>` 🧊 API References](docs/pods/overview.md)
+* [`<jh/pool>` 🎍 API References](docs/concurrent/overview.md#-introduction)
+* [`<jh/ranges_ext>` 🌗 API References](docs/ranges/range_ext.md)
+* [`<jh/runtime_arr>` 🧱 API References](docs/core/runtime_arr.md)
+* [`<jh/serio>` 🍯 API References](docs/serialize_io/overview.md)
+* [`<jh/sync>` ⏱️ API References](docs/synchronous/overview.md)
+* [`<jh/typed>` 🧬 API References](docs/typing/overview.md)
+* [`<jh/views>` 🔭 API References](docs/ranges/views/overview.md)
 
 ---
 
-### 🧱 Core System — Immutable, Pooled, Runtime-Stable
+### Reading Guidance
 
-The **Core System** (`immutable_str`, `runtime_arr`, `sim_pool`)
-provides stable storage, safe sharing, and deterministic ownership across threads.
+These forwarding headers represent the **entire public surface area** of JH-Toolkit.
+They are designed to **aggregate stable user-facing APIs**, independent of internal layout or implementation details.
 
-* **`jh::immutable_str`** — a **fully immutable string**, managed via smart pointers.
-  Objects are never moved or modified; only their handles (`unique_ptr` / `shared_ptr`) are replaceable.
+From each overview page, you may continue navigating into:
 
-* **`jh::runtime_arr<T>`** — a **mutable buffer container**,
-  uniquely owned or shared through smart pointers.
-  Specialized precompiled variants (bit-packed and byte-based) ensure layout stability and performance.
+* individual components
+* submodules
+* concrete type and function references
 
-* **`jh::sim_pool<T>`** — a **Smart Immutable-objects Managing Pool**,
-  acting as a non-owning **observer and redistributor**.
-  It tracks objects via **weak references**, allowing automatic reuse without owning lifetimes.
-  The lightweight **`jh::pool<T>`** is its duck-type counterpart.
-
-> 🧩 Identical API for both **header-only** and **static-build** modes —
-> same code, different linkage (`jh::jh-toolkit` / `jh::jh-toolkit-static`).
-
-> 📦 Located under `jh::*` and `<jh/*>` —
-> STL-compatible, ABI-stable, and designed for concurrent environments.
+This structure intentionally **replaces long conceptual introductions** with a **clear API map**, allowing users to
+quickly locate relevant functionality and then explore it at the desired depth.
 
 ---
 
-## 🔗 Quick Links to Module Docs
+## How to Read the JH-Toolkit Project
 
+All **API documentation for every code file** can be found under the `docs/` directory. These documents are the
+**primary entry point** for understanding the library.
 
-### 🧩 Project Structure
-<details>
-  <summary>
-    Click to expand ▶️ / collapse 🔽
-  </summary>
+It is important to note that the files under `src/` are **not the actual source of truth**. They exist mainly as
+**precompiled instantiation translation units (TUs)** to support static builds and faster compilation.
+**All real definitions, semantics, and guarantees live in `include/`.**
 
-```
-include/jh/
-    ├── asynchronous           # jh::async
-    │   ├── generator.h        # jh::async::generator
-    │   └── ...                # future 1.4.x jh::async submodules
-    ├── conceptual             # jh::concepts
-    │   ├── iterator.h         # jh::concepts::iterator
-    │   └── sequence.h         # jh::concepts::sequence
-    ├── macros                 # jh::macros
-    │   ├── header_begin.h     # dual-mode header basic
-    │   ├── header_end.h       # dual-mode header basic
-    │   ├── platform.h         # macro defined platform detection
-    │   └── type_name.h        # jh::macros::type_name
-    ├── pods                   # jh::pod
-    │   ├── ...                # array, bits, bytes_view, optional, pair, pod_like, span, string_view
-    │   ├── stringify.h        # visualize jh::pod debugging output
-    │   └── tools.h            # supporting macros for jh::pod
-    ├── ranges                 # jh::ranges bases
-    │   ├── views              # jh::views
-    │   │   ├── enumerate.h    # jh::views::enumerate based on zip
-    │   │   └── zip.h          # jh::views::zip based on zip_view
-    │   ├── range_wrapper.h    # jh::to_range base
-    │   └── zip_view.h         # jh::ranges::zip_view mimic C++23
-    ├── utils                  # jh::utils
-    │   ├── ...                # jh::utils::base64, hash_fn
-    │   ├── platform.h         # 1.3.x temporary alias for jh/macros/platform.h
-    │   └── typed.h            # jh::typed::monostate
-    ├── generator              # forwarding header for jh::generator
-    ├── immutable_str          # forwarding header for jh::immutable_str
-    ├── immutable_str.h        # jh::immutable_str
-    ├── iterator               # 1.3.x temporary forwarding header for jh::iterator
-    ├── pod                    # forwarding header for jh::pod
-    ├── pod.h                  # aggregate header for jh::pod
-    ├── pool                   # forwarding header for jh::pool
-    ├── pool.h                 # jh::pool, duck typed jh::sim_pool
-    ├── runtime_arr            # forwarding header for jh::runtime_arr
-    ├── runtime_arr.h          # jh::runtime_arr
-    ├── sequence               # 1.3.x temporary forwarding header for jh::sequence
-    ├── sim_pool               # forwarding header for jh::sim_pool
-    ├── sim_pool.h             # jh::sim_pool
-    ├── views                  # forwarding header for jh::views
-    └── views.h                # 1.3.x temporary aggregate header for jh::views
-```
+Under **modern C++ semantics**, directly inspecting implementations is **generally discouraged**.
+The **interface already defines the behavior**. Reading the implementation alone does not necessarily reveal the correct
+semantics, constraints, or design intent.
 
-</details>
+Therefore, the recommended approach is:
 
-### Documentation Navigation
-<details>
-  <summary>
-    Click to expand ▶️ / collapse 🔽
-  </summary>
+* Read **Doxygen comments** embedded in headers
+* Read the **API documentation in `docs/`**
+* Treat implementations as **replaceable details**, not specifications
 
-- [asynchronous/](docs/asynchronous/overview.md) — `jh::async`
-  - generator.h — `jh::async::generator`
-  - ... — future 1.4.x `jh::async` submodules
-- [conceptual/](docs/conceptual/overview.md) — `jh::concepts`
-  - iterator.h — `jh::concepts::iterator`
-  - sequence.h — `jh::concepts::sequence`
-- [macros/](docs/macros/overview.md) — `jh::macros`
-  - header_begin.h — dual-mode header basic
-  - header_end.h — dual-mode header basic
-  - platform.h — macro-defined platform detection
-  - type_name.h — `jh::macros::type_name`
-- [pods/](docs/pods/overview.md) — `jh::pod`
-  - ... — `array`, `bits`, `bytes_view`, `optional`, `pair`, `pod_like`, `span`, `string_view`
-  - stringify.h — visualize `jh::pod` debugging output
-  - tools.h — supporting macros for `jh::pod`
-- [ranges/](docs/ranges/overview.md) — `jh::ranges` bases
-  - [views/](docs/ranges/views/overview.md) — `jh::views`
-    - enumerate.h — `jh::views::enumerate`
-    - zip.h — `jh::views::zip`
-  - range_wrapper.h — `jh::to_range` base
-  - zip_view.h — `jh::ranges::zip_view`
-- [utils/](docs/utils/overview.md) — `jh::utils`
-  - ... — `jh::utils::base64`, `jh::utils::hash_fn`
-  - platform.h — alias for `jh/macros/platform.h`
-  - typed.h — `jh::typed::monostate`
-- [generator](docs/asynchronous/generator.md) — forwarding header for `jh::generator`
-- [immutable_str](docs/immutable_str.md) — forwarding header for `jh::immutable_str`
-- immutable_str.h — `jh::immutable_str`
-- [iterator](docs/conceptual/iterator.md) — temporary forwarding header for `jh::iterator`
-- [pod](docs/pods/overview.md) — forwarding header for `jh::pod`
-- pod.h — aggregate header for `jh::pod`
-- [pool](docs/pool.md) — forwarding header for `jh::pool`
-- pool.h — `jh::pool`, duck-typed `jh::sim_pool`
-- [runtime_arr](docs/runtime_arr.md) — forwarding header for `jh::runtime_arr`
-- runtime_arr.h — `jh::runtime_arr`
-- [sequence](docs/conceptual/sequence.md) — temporary forwarding header for `jh::sequence`
-- [sim_pool](docs/sim_pool.md) — forwarding header for `jh::sim_pool`
-- sim_pool.h — `jh::sim_pool`
-- [views](docs/ranges/views/overview.md) — forwarding header for `jh::views`
-- views.h — temporary aggregate header for `jh::views`
+When using **classic CLion**, Doxygen comments written in standard HTML style are rendered **inline**, directly inside
+the source code view.
+This creates a reading experience where **documentation and code interleave naturally**, similar to reading a Jupyter
+Notebook in PyCharm or Google Colab—an analogy many users may already be familiar with.
 
-</details>
+If classic CLion cannot be used, you may alternatively generate **Doxygen HTML pages** using a custom `Doxyfile` (not
+provided yet).
+We are considering offering this officially in the future via a dedicated **GitHub Pages site hosting rendered Doxygen
+documentation**.
+
+Based on the author's testing, **as of early 2026**, classic CLion can be installed and used normally on all supported
+platforms:
+**macOS, Ubuntu, and Windows**.
+
+When reading the project, focus on **what the Doxygen documentation states**, not on how the code happens to be
+implemented today.
+
+* Implementations may change
+* Reading implementation alone can lead to **incorrect semantic assumptions**
+* This is especially risky when relying on AI to infer behavior purely from code
+
+Doxygen is where **semantic guarantees, design philosophy, and intentional limitations** are documented.
+Implementation details are mentioned only when necessary, while the API documentation focuses on **how to use the
+library correctly and safely**.
+
+In short:
+**Doxygen explains the design and intent; implementations merely realize it.**
+
+## Recommended IDE for Best Source Code + Doxygen Experience
+
+For the best experience when browsing the source code together with Doxygen documentation, **CLion** is strongly
+recommended.
+
+This recommendation is based on the fact that **classic CLion** can correctly render **standard Doxygen comments
+(HTML-tags style)** and seamlessly integrate them into source code navigation.  
+Specifically:
+
+- Doxygen comments written in standard HTML-style tags are properly rendered inline in the editor.
+- Hover tooltips display **fully rendered, highly readable Doxygen documentation**, rather than plain text.
+- This greatly improves readability when inspecting type definitions, APIs, and implementation philosophies.
+
+All Doxygen comments in our codebase are written using **standard Doxygen (HTML-tags style)**, as this format is
+significantly more expressive and helpful for understanding definitions and semantics.
+
+### Supported CLion Versions
+
+- A **non-commercial license** is sufficient.
+- CLion has been verified to work correctly **up to version 2025.3.2**.
+- Please use **version 2025.3.2 or earlier**.
+- Newer versions are **not guaranteed** to work as expected.
+
+### Do NOT Use CLion Nova
+
+Please **do not use CLion Nova**.
+
+In recent CLion releases, **CLion Nova has been merged into the main CLion IDE** and is **enabled by default**. This can
+negatively affect source code indexing and Doxygen navigation.
+
+### Why CLion Nova Is Not Recommended
+
+CLion Nova is not recommended because it only supports a **JetBrains-specific documentation rendering format**, which:
+
+- Uses a Markdown-like / JavaDoc-style syntax instead of standard Doxygen HTML tags
+- Does **not fully support native Doxygen tags**
+- Cannot correctly render parts of our existing Doxygen documentation
+
+As a result, using Nova leads to degraded documentation rendering and a poorer code-reading experience.
+
+### How to Disable CLion Nova
+
+To disable the Nova engine, follow these steps:
+
+1. Open **Settings**
+2. Go to **Advanced Settings**
+3. Navigate to **CLion**
+4. Locate the option:
+    -[ ] Use ReSharper C++ language engine (CLion Nova)
+5. **Uncheck** this option
+6. **Restart the IDE**
+
+After restarting, CLion will use the classic C++ engine, which provides a more stable and accurate code + Doxygen
+reading experience.
+
+## Engineering-Oriented Scope and Intent
+
+JH Toolkit is **not designed solely for final production code**.
+
+A portion of its components are intentionally built to **empower early-stage prototyping**, lowering cognitive load
+while guiding users toward correct and scalable designs.
+
+For example, some utilities (such as `jh::conc::occ_box`) are explicitly aimed at **prototype-driven development**.
+They preserve generality while exposing **complete compare-and-swap (CAS) reasoning models**, encouraging users to write
+logically sound concurrency code from the start.
+The goal is not to lock users into these abstractions, but to make it easier to later migrate toward project-specific,
+optimized implementations with minimal redesign cost.
+
+In contrast, other components—such as `jh::ordered_map` and `jh::ipc`—are shaped by **engineering constraints rather
+than maximal generality**.
+Compared to STL or Boost equivalents, these modules intentionally reduce language-level freedom ("I want to do this, I
+want to do that") in favor of **operational stability** ("this is what we repeatedly do in real systems, and it must be
+reliable").
+
+The `jh::ipc` module follows a similar philosophy:
+it treats **POSIX semantics as the final deployment target**, while still allowing **Windows-based prototyping and early
+modeling**.
+This enables cross-platform experimentation without obscuring the actual production execution model.
+
+The `jh::concepts` module—especially the `sequence` concept and iterator-related duck-typing—focuses on **adapting
+third-party or non-standard containers**.
+Its purpose is to elevate such types to valid `std::ranges::range` participants, unlocking modern range-based algorithms
+without forcing invasive rewrites.
+
+The `jh::pod` module supports **early modeling and legacy code migration** toward C++20 by enforcing a strict separation
+between:
+
+* *semantic objects* (behavior, invariants, logic)
+* *semantic data* (plain, transportable, inspectable state)
+
+This separation is crucial for long-term maintainability and safe system evolution.
+
+Across modules such as `jh::async`, `jh::meta`, and `jh::ipc`, the toolkit also provides **philosophical engineering
+guidance**.
+APIs are shaped to encourage patterns that scale better in real systems, nudging users toward more disciplined and
+production-oriented practices.
+
+In summary, **JH Toolkit is an engineering-first toolkit**.
+It is oriented toward practice rather than language experimentation, with the explicit goal of helping C++ developers:
+
+* internalize engineering-oriented thinking,
+* adopt modern C++20 idioms naturally,
+* and reduce the friction of moving from prototypes to robust systems.
+
+The library is not about showing what modern C++ *can* do—it is about helping engineers do what they *need* to do,
+correctly and sustainably.
 
 ---
 
@@ -331,7 +402,7 @@ Developed by **JeongHan-Bae**
 
 This project is licensed under the **Apache 2.0 License**. See the [LICENSE](LICENSE) file for details.
 
-## 🤝 Contributing
+## 🤝 [Contributing](CONTRIBUTING.md)
 
 Contributions are welcome! Feel free to open issues and pull requests to enhance the library.
 

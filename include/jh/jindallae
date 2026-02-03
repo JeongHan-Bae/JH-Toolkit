@@ -1,0 +1,42 @@
+/**
+ * @file jindallae
+ * @brief Symbolic umbrella header exposing <code>jh::meta</code> as <code>jh::jindallae</code>.
+ *
+ * <p>
+ * This header serves as a poetic alias to <code>jh::meta</code> &mdash;
+ * a tribute to the spirit of expressive meta-programming, inspired by
+ * the legendary Boost.Hana library, whose very name was itself a <tt>"flower"</tt>.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/jindallae&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it simply includes <code>&lt;jh/meta&gt;</code> and re-exports
+ * its namespace under <code>jh::jindallae</code>.
+ * </p>
+ *
+ * <h4>Overview</h4>
+ * <ul>
+ *   <li>Includes all components from <code>jh::meta</code>.</li>
+ *   <li>Defines <code>jh::jindallae</code> as a symbolic alias namespace.</li>
+ *   <li>Intended as a nod to elegant meta-programming design,
+ *       similar in philosophy to Boost.Hana.</li>
+ * </ul>
+ *
+ * <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/jindallae.svg" alt="Jindallae mascot" width="64">
+ *
+ * <h4>Design Note</h4>
+ * <p>
+ * <code>jh::jindallae</code> is functionally identical to <code>jh::meta</code>,
+ * but exists as a lightweight symbolic layer &mdash; a small tribute to beauty
+ * in compile-time expression.
+ * </p>
+ */
+
+#pragma once
+
+#include "jh/meta"
+
+namespace jh::jindallae {
+    using namespace jh::meta;
+}

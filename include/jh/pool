@@ -1,24 +1,22 @@
 /**
  * @file pool
- * @brief Forwarding header for <code>jh::pool</code>.
+ * @brief Forward-aggregator header for all <code>jh::&#42;_pool</code>s.
  *
  * <p>
  * This header provides the canonical include entry for
- * <code>jh::pool&lt;T&gt;</code> — a high-level, duck-typed wrapper
- * around <code>jh::sim_pool</code> that automatically deduces
- * hashing and equality semantics from user-defined types.
+ * <code>jh::&#42;_pool&lt;...&gt;</code>s &mdash; a high-level, user facing
+ * around <code>jh::conc::&#42;_pool&lt;...&gt;</code> pool bases.
  * </p>
  *
  * <pre><code>#include &lt;jh/pool&gt;</code></pre>
  *
  * <p>
- * Internally, this file forwards to <code>jh/pool.h</code>
- * and defines no additional symbols.
+ * Internally, it includes the user facing pool interfaces from
+ * <code>jh/concurrent/&#42;.h</code> and exposes them collectively.
  * </p>
- *
- * @see jh::sim_pool
  */
 
 #pragma once
 
-#include "jh/pool.h"
+#include "jh/concurrent/observe_pool.h"
+#include "jh/concurrent/resource_pool.h"

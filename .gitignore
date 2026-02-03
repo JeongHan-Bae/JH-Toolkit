@@ -1,14 +1,17 @@
 # Build artifacts
-/build*/
-/build-debug*/
-/out/
-/bin/
-/lib/
-/obj/
-/dist/
-/CMakeFiles/
-cmake-build-*/
-/CMakeCache.txt
+*build*/
+*Build*/
+*BUILD*/
+Debug*/
+Release*/
+out/
+Out*/
+bin/
+lib/
+obj/
+dist/
+CMakeFiles/
+CMakeCache.txt
 Makefile
 cmake_install.cmake
 compile_commands.json
@@ -48,3 +51,12 @@ Thumbs.db
 *.swp
 *.swo
 *.bak
+
+# Doxygen generated files
+html/
+latex/
+man/
+rtf/
+xml/
+*.tag
+Doxyfile.tmp

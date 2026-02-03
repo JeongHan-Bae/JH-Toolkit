@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)  # Ensure standardized installation directories
 
-set(PROJECT_VERSION 1.3.3)
+set(PROJECT_VERSION 1.4.0)
 
 # Register custom build type
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel;FastDebug" CACHE STRING "" FORCE)
@@ -107,37 +107,50 @@ if (ENABLE_POD)
     add_library(jh-toolkit-pod INTERFACE)
 
     target_include_directories(jh-toolkit-pod INTERFACE
-            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     )
 
     # Install forwarding header 'pod' (no extension, so must use FILES)
-    # Install aggregator header 'pod.h'
     install(FILES
-            ${CMAKE_SOURCE_DIR}/include/jh/pod
-            ${CMAKE_SOURCE_DIR}/include/jh/pod.h
+            ${PROJECT_SOURCE_DIR}/include/jh/pod
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh
     )
 
     # Install header directory 'pods/'
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/jh/pods
+    install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/jh/pods
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh
     )
 
-    # Install depending headers in directory 'utils/'
+    # Install depending headers in directory 'typing/'
     install(FILES
-            ${CMAKE_SOURCE_DIR}/include/jh/utils/hash_fn.h
-            ${CMAKE_SOURCE_DIR}/include/jh/utils/typed.h
-            ${CMAKE_SOURCE_DIR}/include/jh/utils/base64.h
-            ${CMAKE_SOURCE_DIR}/include/jh/utils/platform.h # alias in 1.3.x, will be removed in 1.4.0
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/utils
+            ${PROJECT_SOURCE_DIR}/include/jh/typing/monostate.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/typing
     )
 
     # Install depending headers in directory 'macros/'
     install(FILES
-            ${CMAKE_SOURCE_DIR}/include/jh/macros/platform.h
-            ${CMAKE_SOURCE_DIR}/include/jh/macros/type_name.h
+            ${PROJECT_SOURCE_DIR}/include/jh/macros/platform.h
+            ${PROJECT_SOURCE_DIR}/include/jh/macros/type_name.h
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/macros
+    )
+
+    # Install depending headers in directory 'metax/'
+    install(FILES
+            ${PROJECT_SOURCE_DIR}/include/jh/metax/hash.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/metax
+    )
+
+    # Install depending headers in directory 'serialize_io/'
+    install(FILES
+            ${PROJECT_SOURCE_DIR}/include/jh/serialize_io/base64.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/serialize_io
+    )
+
+    # Install depending headers in directory 'detail/'
+    install(FILES
+            ${PROJECT_SOURCE_DIR}/include/jh/detail/base64_common.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jh/detail
     )
 
     # Install the INTERFACE target
@@ -158,19 +171,19 @@ if (ENABLE_ALL)
     add_library(jh-toolkit INTERFACE
             include/jh/)
     target_include_directories(jh-toolkit INTERFACE
-            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     )
 
     # Define the STATIC library for compiled components (e.g., immutable_str.cpp)
     file(GLOB JH_TOOLKIT_SOURCES CONFIGURE_DEPENDS
-            "${CMAKE_SOURCE_DIR}/src/*.cpp"
+            "${PROJECT_SOURCE_DIR}/src/*.cpp"
     )
 
     # Build the static library (no header-only restriction during build)
     add_library(jh-toolkit-static STATIC ${JH_TOOLKIT_SOURCES})
     target_include_directories(jh-toolkit-static PUBLIC
-            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     )
     target_link_libraries(jh-toolkit-static PUBLIC jh-toolkit)
@@ -185,27 +198,6 @@ if (ENABLE_ALL)
     )
 
     set_target_properties(jh-toolkit-static PROPERTIES
-            EXPORT_COMPILE_DEFINITIONS ON
-    )
-
-    # Compatibility layer for old versions
-    # It simply forwards to jh-toolkit-static
-    add_library(jh-toolkit-impl INTERFACE)
-    target_link_libraries(jh-toolkit-impl INTERFACE jh-toolkit-static)
-
-    # Make sure it uses the same include paths
-    target_include_directories(jh-toolkit-impl INTERFACE
-            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
-            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-    )
-
-    # Propagate the same header-only define
-    target_compile_definitions(jh-toolkit-impl
-            INTERFACE
-            JH_HEADER_NO_IMPL
-    )
-
-    set_target_properties(jh-toolkit-impl PROPERTIES
             EXPORT_COMPILE_DEFINITIONS ON
     )
 
@@ -227,9 +219,6 @@ if (ENABLE_ALL)
             DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/jh-toolkit
     )
 
-    # Install the compatibility target as well
-    install(TARGETS jh-toolkit-impl EXPORT jh-toolkitTargets)
-
 endif ()
 
 # Manually written CMake configuration file (for find_package)
@@ -241,7 +230,7 @@ write_basic_package_version_file(
 )
 
 configure_file(
-        "${CMAKE_SOURCE_DIR}/cmake/jh-toolkit-config.cmake.in"
+        "${PROJECT_SOURCE_DIR}/cmake/jh-toolkit-config.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/jh-toolkit-config.cmake"
         @ONLY
 )
@@ -251,6 +240,13 @@ install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/jh-toolkit-config-version.cmake"
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/jh-toolkit
 )
+
+if (WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+    message(STATUS "Windows Release/RelWithDebInfo: enabling tests")
+    enable_testing()
+    add_subdirectory(tests)
+    add_subdirectory(examples)
+endif ()
 
 # Enable tests and examples only in Debug mode
 if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "FastDebug")

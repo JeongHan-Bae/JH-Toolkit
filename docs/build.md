@@ -38,7 +38,7 @@ Conan packages are distributed **as `.tar.gz` archives** attached to **GitHub Re
 | Package Name              | Platform Dependent | Compiler Dependent | Description                                  |
 |---------------------------|--------------------|--------------------|----------------------------------------------|
 | `jh-toolkit-pod`          | ❌                  | ❌                  | Header-only, platform-agnostic POD module    |
-| `jh-toolkit-linux-x86_64` | ✅                  | ✅ (GCC 12+)        | Built on `ubuntu-latest` using GCC toolchain |
+| `jh-toolkit-linux-x86_64` | ✅                  | ✅ (GCC 13+)        | Built on `ubuntu-latest` using GCC toolchain |
 | `jh-toolkit-macos-arm64`  | ✅                  | ✅ (LLVM 20+)       | Built on `macos-latest` with Homebrew LLVM   |
 
 #### Manual Cache Extraction
@@ -77,15 +77,15 @@ If your system differs from the CI presets, you can always [build from source](#
 
 | Platform           | Recommended Compiler                          | Notes                                   |
 |--------------------|-----------------------------------------------|-----------------------------------------|
-| **Linux**          | **GCC 12+**                                   | CI-tested (`ubuntu-latest`)             |
+| **Linux**          | **GCC 13+**                                   | CI-tested (`ubuntu-latest`)             |
 | **macOS (Darwin)** | **LLVM Clang 20+** via `brew install llvm@20` | Most stable; preferred over Apple Clang |
-| **Windows**        | **MSYS2 UCRT64 (GCC 13+)**                    | Required for full C++20 compliance      |
+| **Windows**        | **MSYS2 UCRT64 (GCC 14+)**                    | Required for full C++20 compliance      |
 
 #### ✅ Minimum Supported Versions
 
 | Compiler             | Version Range     | Status                                                            | Notes                |
 |----------------------|-------------------|-------------------------------------------------------------------|----------------------|
-| **GCC**              | ≥ 11              | ✅ Supported                                                       | Recommended: GCC 12+ |
+| **GCC**              | ≥ 13              | ✅ Supported                                                       | Recommended: GCC 14+ |
 | **LLVM Clang**       | 15–16             | ✅ Supported                                                       | Fully compatible     |
 | **LLVM Clang 17–18** | ⚠️ **Rejected**   | Known to cause unresolved linkage (`std::hash<std::string_view>`) |                      |
 | **LLVM Clang 19**    | 🚫 Not Tested     | Unsupported                                                       |                      |
@@ -93,7 +93,7 @@ If your system differs from the CI presets, you can always [build from source](#
 | **MSVC**             | ❌ Prohibited      | Incomplete C++20 and ABI inconsistencies                          |                      |
 
 > ✅ **Summary:**
-> Prefer **LLVM 20+** on macOS and **GCC 12+** on Linux.
+> Prefer **LLVM 20+** on macOS and **GCC 13+** on Linux.
 > Clang 17–18 are **explicitly disallowed** due to reproducible linker instability.
 
 ---
@@ -222,7 +222,7 @@ target_link_libraries(my_project PRIVATE jh::jh-toolkit-static)   # Optimized st
 ## 🧩 Dual-Mode Headers
 
 `jh-toolkit` provides a set of **dual-mode headers** under
-[`include/jh/macros/`](../include/jh/macros/) — mainly:
+[`include/jh/macros/`](../include/jh/macros/header_begin.h) — mainly:
 
 * `header_begin.h`
 * `header_end.h`
@@ -287,7 +287,7 @@ ctest --test-dir build-debug --output-on-failure
 ### 🧠 Notes on MinGW
 
 * Older `mingw64` lacks full C++20 features.
-* ✅ Fully supported with **MSYS2 UCRT64 + GCC 13+**.
+* ✅ Fully supported with **MSYS2 UCRT64 + GCC 14+**.
 * Header-only mode works even on older MinGW.
 
 ---
@@ -299,7 +299,7 @@ ctest --test-dir build-debug --output-on-failure
 #include <iostream>
 
 int main() {
-    jh::pool<jh::immutable_str> pool;
+    jh::observe_pool<jh::immutable_str> pool;
     const auto str = pool.acquire("Hello, Oree!");
     std::cout << str->view() << std::endl;
 }
@@ -316,9 +316,9 @@ g++ -std=c++20 -I/usr/local/include main.cpp -o test
 
 | Category               | Recommended                         |
 |------------------------|-------------------------------------|
-| **Compiler (Linux)**   | GCC 12+                             |
+| **Compiler (Linux)**   | GCC 13+                             |
 | **Compiler (macOS)**   | LLVM 20+ (`brew install llvm@20`)   |
-| **Compiler (Windows)** | MSYS2 UCRT64 (GCC 13+)              |
+| **Compiler (Windows)** | MSYS2 UCRT64 (GCC 14+)              |
 | **CMake**              | ≥ 3.20                              |
 | **System**             | 64-bit only                         |
 | **Distribution**       | Conan `.tar.gz` via GitHub Releases |

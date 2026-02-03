@@ -2,7 +2,7 @@
 
 📁 **Header:** `<jh/ranges/views/enumerate.h>`  
 📦 **Namespace:** `jh::ranges::views`  
-📅 **Version:** 1.3.x → 1.4.0-dev (2025)  
+📅 **Version:** 1.3.5+ (2025)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -17,59 +17,89 @@
 
 ## 🧭 Introduction
 
-`jh::ranges::views::enumerate` is a **C++20-compatible adaptor** that pairs each element of a sequence
-with its corresponding index, equivalent to `std::views::enumerate` (C++23 proposal).
-It is implemented using [`jh::ranges::views::zip`](zip.md) and [`std::views::iota`](https://en.cppreference.com/w/cpp/ranges/iota_view).
+`jh::ranges::views::enumerate` is a **sequence-aware range adaptor** that lazily pairs
+each element of a sequence with its corresponding index.  
+It provides a C++20-compatible alternative to the proposed `std::views::enumerate` (C++23).
 
-Each element is first normalized through [`jh::to_range()`](../../conceptual/sequence.md#jhto_rangeseq),
-ensuring compatibility with all **duck-typed sequences** recognized by
-[`jh::concepts::sequence`](../../conceptual/sequence.md).
+This adaptor is implemented via [`jh::ranges::views::zip`](zip.md) and
+[`std::views::iota`](https://en.cppreference.com/w/cpp/ranges/iota_view).  
+It can be used in both **direct-call** and **pipe** forms, and supports
+any index type convertible to the sequence's `difference_type`.
 
 ---
 
 ## 🔹 Definition
 
-Creates a zipped range of `(index, element)` pairs by combining an index sequence and the input sequence.
+```cpp
+namespace jh::ranges::views {
+
+inline constexpr detail::enumerate_fn enumerate{};
+
+}
+```
+
+---
+
+## 🔹 Interface
+
+The public interface supports two forms:
+
+1. **Direct call form**
+
+   ```cpp
+   template <jh::concepts::sequence Seq, typename Int>
+   constexpr auto enumerate(Seq&& seq, Int start = 0);
+   ```
+
+2. **Pipe form**
+
+   ```cpp
+   template <typename Int = std::ptrdiff_t>
+   constexpr auto enumerate(Int start = 0);
+   ```
+
+The second form returns a closure object, enabling syntax like:
 
 ```cpp
-template <jh::concepts::sequence Seq>
-constexpr auto enumerate(
-    Seq&& seq,
-    jh::concepts::sequence_difference_t<Seq> start = 0
-);
+seq | jh::ranges::views::enumerate(5)
 ```
 
 ---
 
 ## 🔹 Description
 
-`enumerate()` behaves like Python's `enumerate`, but implemented as a **lazy range adaptor**.
-It takes any sequence, normalizes it via [`jh::to_range()`](../../conceptual/sequence.md#jhto_rangeseq),
-and pairs each element with a sequential index starting from `start` (default `0`).
+`enumerate()` constructs a **lazy zipped range** by pairing
+an arithmetic index view with the given sequence.
 
-Internally, it works by zipping:
+Internally, it combines:
 
 ```cpp
-std::views::iota(start)
+std::views::iota(static_cast<diff_t>(start))
 ```
 
-with the input range, effectively creating a range of tuples `(index, value)`.
+with the input range using `jh::ranges::views::zip`.  
+Here `diff_t` is deduced as:
 
-This allows you to iterate with indices without manual counters, while maintaining
-full compatibility with the C++20 ranges pipeline and all **JH duck-typed sequences**.
+```cpp
+jh::concepts::sequence_difference_t<std::remove_cvref_t<Seq>>
+```
+
+The function supports any `start` value that can be `static_cast`
+to `diff_t`. Invalid casts result in ill-formed code at compile time.
 
 ---
 
 ## 🔹 Behavior
 
-| Aspect                  | Description                                                             |
-| ----------------------- | ----------------------------------------------------------------------- |
-| **Index generation**    | Uses `std::views::iota(start)` to produce an arithmetic index sequence. |
-| **Input normalization** | The input is passed through `jh::to_range()` for range compliance.      |
-| **Iteration model**     | Elements are traversed in lockstep with their index.                    |
-| **Reference semantics** | Dereferencing yields `(index, reference)` pairs — no copying.           |
-| **Compatibility**       | Works with STL containers, arrays, pointers, and JH duck-typed types.   |
-| **Laziness**            | Entirely lazy, zero allocation or eager evaluation.                     |
+| Aspect                  | Description                                                               |
+|-------------------------|---------------------------------------------------------------------------|
+| **Index generation**    | Uses `std::views::iota(start)` to generate an index sequence.             |
+| **Type deduction**      | Index type deduced via `jh::concepts::sequence_difference_t<Seq>`.        |
+| **Input handling**      | The sequence is forwarded as-is (no copying).                             |
+| **Reference semantics** | Yields `(index, reference)` pairs — fully lazy and non-owning.            |
+| **Pipe compatibility**  | Callable in both direct and pipe forms.                                   |
+| **Type constraints**    | `start` must be convertible to the deduced difference type.               |
+| **Composition**         | Fully composable with other range adaptors, identical to `zip` semantics. |
 
 ---
 
@@ -83,39 +113,54 @@ full compatibility with the C++20 ranges pipeline and all **JH duck-typed sequen
 int main() {
     std::vector<std::string> words = {"alpha", "beta", "gamma"};
 
-    for (auto [i, w] : jh::ranges::views::enumerate(words, 1)) {
+    // Direct call
+    for (auto [i, w] : jh::ranges::views::enumerate(words, 1))
         std::cout << i << ": " << w << '\n';
-    }
+
+    // Pipe form
+    for (auto [i, w] : words | jh::ranges::views::enumerate(10))
+        std::cout << i << ": " << w << '\n';
 }
 ```
 
-*Output:*
+**Output:**
 
 ```
 1: alpha
 2: beta
 3: gamma
+10: alpha
+11: beta
+12: gamma
 ```
+
+---
+
+## 🔹 Index Type (`diff_t`)
+
+The index type is deduced as `jh::concepts::sequence_difference_t<Seq>`,
+resolved through the following rules:
+
+1. If the iterator defines a valid `difference_type`, it is used.
+2. If subtraction (`it - it`) is available, its result type is used.
+3. If neither exists, it falls back to `std::ptrdiff_t`.
+4. Mismatched definitions of the above invalidate the sequence concept.
+5. `start` is `static_cast` to this type; invalid conversions are ill-formed.
 
 ---
 
 ## 🔹 Integration Notes
 
-* `enumerate()` acts as syntactic sugar for pairing indices with elements.
-* Relies on `jh::ranges::views::zip` — thus inherits all its range semantics.
-* `jh::to_range()` ensures seamless support for STL containers, arrays, and custom sequence-like objects.
-* Can be combined with other adaptors in pipelines, e.g.:
-
-  ```cpp
-  seq | jh::views::enumerate() | std::views::filter(...)
-  ```
-* Included automatically by `<jh/views>` (1.3.3+) or via direct include `<jh/ranges/views/enumerate.h>`.
+* Identical in composition and laziness to [`jh::ranges::views::zip`](zip.md).
+* `enumerate()` acts as syntactic sugar for pairing elements with indices.
+* Works transparently with STL containers, arrays, pointers, and JH duck-typed sequences.
+* Included automatically by `<jh/views>` (since **v1.3.3+**) or via `<jh/ranges/views/enumerate.h>`.
 
 ---
 
-### 🧩 **Summary**
+## 🧩 Summary
 
-`jh::ranges::views::enumerate` provides a **lazy, index-value pairing adaptor**
-that emulates Python-style enumeration while maintaining full C++20 range compatibility.
-It bridges the gap between JH Toolkit's sequence abstraction and standard range pipelines,
-offering a zero-overhead way to iterate with explicit indices.
+`jh::ranges::views::enumerate` provides a **zero-overhead, lazy index-value adaptor**
+compatible with the full C++20 ranges pipeline.  
+It offers the same ergonomics as Python's `enumerate`, while remaining fully generic
+and type-safe across all sequence-like objects modeled by JH's sequence concept.

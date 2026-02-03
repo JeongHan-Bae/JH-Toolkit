@@ -1,18 +1,47 @@
 /**
  * @file pod
- * @brief Forwarding header for <code>jh::pod</code>.
+ * @brief Forward-aggregator header for <code>jh::pod</code> &mdash; the Plain-Old-Data utilities.
  *
  * <p>
- * This header provides a modern include style:
+ * This header serves as the unified include point for all Plain-Old-Data (POD) and lightweight
+ * value-type utilities within the <code>jh::pod</code> module.
  * </p>
+ *
  * <pre><code>#include &lt;jh/pod&gt;</code></pre>
  *
  * <p>
- * Internally, it simply forwards to <code>jh/pod.h</code>.
- * It contains no additional code.
+ * Internally, it includes the underlying POD-like and data-handling helpers from
+ * <code>jh/pods/</code>, providing a consolidated entry for strongly-typed, constexpr-enabled
+ * POD structures and utilities such as <code>pair</code>, <code>tuple</code>, <code>span</code>,
+ * and <code>bytes_view</code>.
+ * </p>
+ *
+ * <h4>Overview</h4>
+ * <ul>
+ *   <li>Defines <code>jh::pod</code> as the user-facing namespace for lightweight data utilities.</li>
+ *   <li>Aggregates all POD-related helpers &mdash; <code>pair</code>, <code>array</code>,
+ *       <code>optional</code>, <code>tuple</code>, etc.</li>
+ *   <li>Focuses on constexpr-capable, header-only, type-safe POD abstractions.</li>
+ * </ul>
+ *
+ * <h4>Design Note</h4>
+ * <p>
+ * <code>jh::pod</code> provides a consistent layer for building interoperable,
+ * serialization-friendly value types, emphasizing simplicity, zero-overhead abstraction,
+ * and clear semantics across both compile-time and runtime contexts.
  * </p>
  */
 
 #pragma once
 
-#include "jh/pod.h"
+#include "jh/pods/pod_like.h"
+#include "jh/pods/pair.h"
+#include "jh/pods/array.h"
+#include "jh/pods/bits.h"
+#include "jh/pods/bytes_view.h"
+#include "jh/pods/span.h"
+#include "jh/pods/string_view.h"
+#include "jh/pods/tools.h"
+#include "jh/pods/optional.h"
+#include "jh/pods/stringify.h"
+#include "jh/pods/tuple.h"

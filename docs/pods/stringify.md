@@ -2,7 +2,7 @@
 
 📁 **Header:** `<jh/pods/stringify.h>`  
 📦 **Namespace:** `jh::pod`  
-📅 **Version:** 1.4.0 (2025)  
+📅 **Version:** 1.3.4+  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -91,6 +91,7 @@ concept streamable_pod =
 | `bytes_view`           | `base64'...encoded_bytes...'` | Uses `jh::utils::base64::encode()`  |
 | `span<T>`              | `span<int>[1, 2, 3]`          | Includes element type name          |
 | `string_view`          | `string_view"hello world"`    | No escaping — literal text only     |
+| `tuple<Ts...>`         | `()` / `(1,)` / `(1, 2, 3)`   | Pythonic style                      |
 | `jh::typed::monostate` | `null`                        | Used for empty or placeholder types |
 
 ---

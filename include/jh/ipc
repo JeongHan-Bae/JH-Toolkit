@@ -1,0 +1,49 @@
+/**
+ * @file ipc
+ * @brief Forward-aggregator header for <code>jh::ipc</code>.
+ *
+ * <p>
+ * This header provides a flattened entry point to the <code>jh::sync::ipc</code>
+ * module under the simplified namespace <code>jh::ipc</code>.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/ipc&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it includes the synchronous IPC implementation from
+ * <code>jh/synchronous/ipc.h</code> and re-exports it under
+ * <code>jh::ipc</code>.
+ * </p>
+ *
+ * <h4>Overview</h4>
+ * <ul>
+ *   <li>Defines <code>jh::ipc</code> as the user-facing namespace.</li>
+ *   <li>Aggregates and flattens the <code>jh::sync::ipc</code> hierarchy.</li>
+ *   <li>All actual implementation details remain under
+ *       <code>jh/synchronous/ipc.h</code>.</li>
+ *   <li>Unlike <code>jh/sync</code>, this header exposes symbols directly under
+ *       <code>jh::ipc</code> without the <code>jh::sync</code> prefix.</li>
+ * </ul>
+ *
+ * <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Ojing.svg" alt="Ojing mascot" width="64">
+ *
+ * <h4>Design Note</h4>
+ * <p>
+ * <code>jh::ipc</code> model is built on the idea that inter-process
+ * primitives should behave like ordinary language constructs:
+ *   <tt>named at compile time</tt>,
+ *   <tt>globally addressable</tt>,
+ *   and free of <tt>runtime registries</tt> or <tt>supervising daemons</tt>
+ * By binding each object to a static identity and mapping directly to OS facilities,
+ * the system guarantees deterministic linkage, decentralized coordination, and zero-configuration
+ * synchronization across processes.
+ * </p>
+ */
+
+#pragma once
+
+#include "jh/synchronous/ipc.h"
+
+namespace jh::ipc {
+    using namespace jh::sync::ipc;
+}

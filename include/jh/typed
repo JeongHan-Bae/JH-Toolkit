@@ -1,0 +1,37 @@
+/**
+ * @file typed
+ * @brief Forward-aggregator header for <code>jh::typed</code>.
+ *
+ * <p>
+ * This header aggregates all type-related utilities under
+ * the <code>jh::typed</code> namespace.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/typed&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it includes the underlying type utilities from
+ * <code>jh/typing/</code> to provide a unified include entry under
+ * <code>jh::typed</code>.
+ * </p>
+ *
+ * <h4>Overview</h4>
+ * <ul>
+ *   <li>Defines <code>jh::typed</code> as the user-facing namespace.</li>
+ *   <li>Aggregates basic type helpers (e.g. <code>monostate</code>,
+ *       <code>null_mutex</code>).</li>
+ *   <li>All implementations are located in <code>jh/typing/&#42;.h</code>.</li>
+ * </ul>
+ *
+ * <h4>Design Note</h4>
+ * <p>
+ * <code>jh::typed</code> focuses on lightweight type-level utilities that
+ * simplify structural or synchronization semantics while maintaining
+ * strong type clarity.
+ * </p>
+ */
+
+#pragma once
+
+#include "jh/typing/monostate.h"
+#include "jh/typing/null_mutex.h"

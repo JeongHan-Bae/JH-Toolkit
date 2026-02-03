@@ -2,7 +2,7 @@
 
 📁 **Header:** `<jh/pods/span.h>`  
 📦 **Namespace:** `jh::pod`  
-📅 **Version:** 1.4.0-dev (2025)  
+📅 **Version:** 1.3.5+  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -173,11 +173,11 @@ jh::pod::to_span(const T(&arr)[N]);
 jh::pod::to_span(container);
 ```
 
-| Source            | Result                                           |
-|-------------------|--------------------------------------------------|
-| Raw array         | Creates `span<T>` directly.                      |
-| `const` raw array | Creates `span<const T>`.                         |
-| Linear container  | Deduces element type from `.data()` + `.size()`. |
+| Source             | Result                                       |
+|--------------------|----------------------------------------------|
+| Raw array          | Creates `span<T>` directly.                  |
+| `const` raw array  | Creates `span<const T>`.                     |
+| `linear_container` | Deduces element type and size automatically. |
 
 ```cpp
 int arr[4] = {1, 2, 3, 4};
@@ -186,6 +186,60 @@ auto s1 = jh::pod::to_span(arr);
 std::vector<int> v{5, 6, 7};
 auto s2 = jh::pod::to_span(v);
 ```
+
+---
+
+#### 🔹 Linear Container Enhancement (since v1.3.5)
+
+Starting from **v1.3.5**, `jh::pod::to_span()` supports **generalized linear containers**,
+whose *data pointer* and *length* can appear in any **3×3 combination** of access patterns: 
+
+| Accessor   | POD Field | Class Method | ADL Override  |
+|------------|-----------|--------------|---------------|
+| **Data**   | `c.data`  | `c.data()`   | `get_data(c)` |
+| **Length** | `c.len`   | `c.size()`   | `get_size(c)` |
+
+> All nine combinations are valid and resolved at compile time.
+> The detection uses constexpr introspection (`compute_view_status`),
+> ensuring zero runtime overhead and full POD safety.
+
+```cpp
+// Valid examples under v1.3.5
+struct A { int* data; std::uint64_t len; };      // POD field form
+struct B { int* data(); std::uint64_t size(); }; // class-style container
+struct C { int* data; std::uint64_t size(); };   // mixed access form
+struct D {};  // ADL override (get_data, get_size)
+
+auto sa = jh::pod::to_span(a);
+auto sb = jh::pod::to_span(b);
+auto sc = jh::pod::to_span(c);
+auto sd = jh::pod::to_span(d);
+```
+
+**Detection Priority:**
+
+```
+get_data() / get_size()   →   data / len fields   →   data() / size() methods
+```
+
+* **ADL** has the highest priority, letting you override access rules explicitly.
+* **Field form (`data` + `len`)** represents POD-style layouts.
+* **Method form (`data()` + `size()`)** represents STL-like containers.
+
+---
+
+**Notes:**
+
+* This helper is **pure syntactic sugar** — if your container uses nonstandard naming,
+  construct spans explicitly:
+
+  ```cpp
+  jh::pod::span sp{ container.real_data, container.my_size };
+  ```
+* Detection is **constexpr**; no RTTI or runtime lookup is involved.
+* Defining both field and method (e.g. `data` and `data()`) is **undefined behavior**.
+* Prefer `data/len` for POD structs and `data()/size()` for class containers.
+* ADL (`get_data`, `get_size`) can override either form for deterministic behavior.
 
 ---
 
@@ -232,7 +286,7 @@ std::cout << sp;
 // → span<int>[1, 2, 3, 4]
 ```
 
-Type names are resolved via `jh::macro::type_name<T>()`,
+Type names are resolved via [`jh::macro::type_name<T>()`](../macros/type_name.md),
 which extracts the unmangled name from `__PRETTY_FUNCTION__`
 (Clang/GCC) without RTTI.
 

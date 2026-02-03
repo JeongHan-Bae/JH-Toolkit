@@ -40,13 +40,11 @@
 
 #include <cstdint>
 #include <type_traits>
-#include "array.h"
+#include "jh/pods/array.h"
 #include "jh/macros/platform.h"
 
 #if !(IS_CLANG || IS_GCC)
-
 #include <bit>
-
 #endif
 
 
@@ -64,7 +62,6 @@ namespace jh::pod {
     // True if the bitflag length is backed by a native integer type.
     template<std::uint16_t N>
     constexpr bool is_native_bitflags = N == 8 || N == 16 || N == 32 || N == 64;
-    // ------------------------------------------------------
 
     /**
      * @brief Convert an unsigned integer into a little-endian byte array.
@@ -156,16 +153,12 @@ namespace jh::pod {
                 return static_cast<std::uint16_t>(__builtin_popcountll(static_cast<unsigned long long>(value)));
             }
         }
-
 #else
-
         template<typename T>
         [[nodiscard]] constexpr std::uint16_t popcount(T value) noexcept {
             return static_cast<std::uint16_t>(std::popcount(value));
         }
-
 #endif
-
         /**
          * @brief Bitflags implementation using a native unsigned integer.
          *
@@ -343,7 +336,7 @@ namespace jh::pod {
 
             constexpr bool operator==(const bitflags_bytes &rhs) const noexcept = default;
         };
-    }
+    } // namespace detail
 
     /**
      * @brief POD-compatible fixed-size bitflags structure.
@@ -352,8 +345,8 @@ namespace jh::pod {
      *
      * <b>Storage strategy:</b>
      * <ul>
-     *   <li>N = 8,16,32,64 → backed by a native unsigned integer</li>
-     *   <li>Other valid multiples of 8 → backed by a fixed-size byte array (little-endian)</li>
+     *   <li>N = 8,16,32,64 &rarr; backed by a native unsigned integer</li>
+     *   <li>Other valid multiples of 8 &rarr; backed by a fixed-size byte array (little-endian)</li>
      * </ul>
      *
      * <h4>Properties:</h4>
@@ -383,28 +376,56 @@ namespace jh::pod {
      * @warning This structure is low-level. All operations assume caller correctness.
      */
     template<std::uint16_t N> requires (N % 8 == 0 && N <= 8 * max_pod_bitflags_bytes)
-    struct bitflags : detail::bitflags_bytes<N / 8> {
+    struct bitflags final : detail::bitflags_bytes<N / 8> {
     }; ///< @brief Generic fallback specialization for non-native sizes (e.g. 24, 120 bits, etc).
 
     /// @brief Specialization for 8-bit bitflags.
     template<>
-    struct bitflags<8> : detail::bitflags_uint<std::uint8_t> {
+    struct bitflags<8> final : detail::bitflags_uint<std::uint8_t> {
     };
 
     /// @brief Specialization for 16-bit bitflags.
     template<>
-    struct bitflags<16> : detail::bitflags_uint<std::uint16_t> {
+    struct bitflags<16> final : detail::bitflags_uint<std::uint16_t> {
     };
 
     /// @brief Specialization for 32-bit bitflags.
     template<>
-    struct bitflags<32> : detail::bitflags_uint<std::uint32_t> {
+    struct bitflags<32> final : detail::bitflags_uint<std::uint32_t> {
     };
 
     /// @brief Specialization for 64-bit bitflags.
     template<>
-    struct bitflags<64> : detail::bitflags_uint<std::uint64_t> {
+    struct bitflags<64> final : detail::bitflags_uint<std::uint64_t> {
     };
+
+    template<std::uint16_t N>
+    requires (is_native_bitflags<N>)
+    [[nodiscard]] constexpr bitflags<N>
+    operator|(const bitflags<N>& lhs, const bitflags<N>& rhs) noexcept {
+        return bitflags<N>{ lhs | rhs };
+    }
+
+    template<std::uint16_t N>
+    requires (is_native_bitflags<N>)
+    [[nodiscard]] constexpr bitflags<N>
+    operator&(const bitflags<N>& lhs, const bitflags<N>& rhs) noexcept {
+        return bitflags<N>{ lhs & rhs };
+    }
+
+    template<std::uint16_t N>
+    requires (is_native_bitflags<N>)
+    [[nodiscard]] constexpr bitflags<N>
+    operator^(const bitflags<N>& lhs, const bitflags<N>& rhs) noexcept {
+        return bitflags<N>{ lhs ^ rhs };
+    }
+
+    template<std::uint16_t N>
+    requires (is_native_bitflags<N>)
+    [[nodiscard]] constexpr bitflags<N>
+    operator~(const bitflags<N>& v) noexcept {
+        return bitflags<N>{ ~v };
+    }
 
     /**
      * @brief Serialize a <code>bitflags&lt;N&gt;</code> into a little-endian byte array (snapshot).
@@ -432,5 +453,4 @@ namespace jh::pod {
             return {arr.data}; // pod types -> safe copy
         }
     }
-}
-
+} // namespace jh::pod

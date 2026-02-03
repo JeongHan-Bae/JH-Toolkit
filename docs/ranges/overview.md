@@ -2,7 +2,7 @@
 
 📦 **Namespace:** `jh::ranges`  
 📍 **Location:** `jh/ranges/`  
-📅 **Version:** 1.3.x → 1.4.0-dev (2025)  
+📅 **Version:** 1.3.5 (2025)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -15,47 +15,55 @@
 
 ## 🧭 Introduction
 
-`jh::ranges` is a **support repository** providing range adapters and view bases
-that operate within the standard C++ ranges framework.
+`jh::ranges` is the **core repository** of the JH Toolkit’s range ecosystem.  
+It defines the **foundational range infrastructure** that unifies:
 
-All components here are valid `std::ranges::range` models.
-They exist to ensure interoperability and consistency between
-JH Toolkit's lazy evaluation utilities and standard range algorithms.
+* the **view adaptor layer** (`<jh/views>`), and
+* the **semantic extension layer** (`<jh/ranges_ext>`).
 
-Unlike higher-level modules, this repository exposes **no aggregated header**.
-It serves as an internal infrastructure layer used primarily by `jh::ranges::views`.
+This repository is **not a single header** like `<ranges>` in STL;  
+it is a **modular repository** providing range–view–extension interoperability
+across the entire JH Toolkit.
 
----
-
-## 🔹 Core Components
-
-| Component                              | Header                        | Status                | Description                                                                                                              |
-|----------------------------------------|-------------------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------|
-| [`range_wrapper<T>`](range_wrapper.md) | `<jh/ranges/range_wrapper.h>` | ✅ Stable              | Wraps any `jh::concepts::sequence` into a standard `std::ranges::range`; provides sequence–range bridging.               |
-| [`zip_view<...>`](zip_view.md)         | `<jh/ranges/zip_view.h>`      | ✅ Stable              | Early implementation of C++23 `std::ranges::zip_view`; acts as a lazy tuple-based range combiner.                        |
-| [`views/`](views/overview.md)          | `<jh/ranges/views/>`          | ✅ Stable / Extensible | Extensible repository of range adaptors built atop this layer; each adaptor composes directly over `std::ranges::range`. |
+All components here conform to `std::ranges::range` semantics
+and ensure full compatibility with both C++20 and C++23 range algorithms.
 
 ---
 
-## 🧩 Repository Summary
+## 🔹 Repository Composition
 
-`jh::ranges` defines the **range-level infrastructure** of the JH Toolkit —
-a lightweight repository of adapters and pre-standard range components.
+| Module / Component   | Header / Path                      | Status   | Role                                                                                     |
+|----------------------|------------------------------------|----------|------------------------------------------------------------------------------------------|
+| `<jh/views>`         | `jh/ranges/views/`                 | ✅ Stable | Range adaptor layer — defines transform, zip, enumerate, flatten, etc.                   |
+| `<jh/ranges_ext>`    | `jh/ranges/`                       | ✅ Stable | Semantic extension layer — implements `adapt`, `collect`, `to` for conversion semantics. |
+| `range_adaptor`      | `<jh/ranges/range_adaptor.h>`      | ✅ Stable | Bridges any `jh::concepts::sequence` into a valid `std::ranges::range`.                  |
+| `zip_view`           | `<jh/ranges/zip_view.h>`           | ✅ Stable | C++20-compatible fallback for `std::ranges::zip_view`.                                   |
+| `vis_transform_view` | `<jh/ranges/vis_transform_view.h>` | ✅ Stable | Non-consuming observational transform view backing `jh::views::vis_transform`.           |
 
-`range_wrapper` bridges behavioral sequences into range-conformant forms,
-while `zip_view` anticipates the standardized `std::ranges::zip_view`
-to maintain forward compatibility across C++ versions.
+---
 
-This repository focuses purely on **structural consistency**
-and **compatibility with the evolving C++ ranges model**.
+## 🧩 Structural Overview
+
+The `jh::ranges` repository represents the **complete range model** of JH Toolkit:
+
+| Layer                    | Representative Components                                       | Purpose and Design Role                                            |
+|--------------------------|-----------------------------------------------------------------|--------------------------------------------------------------------|
+| **Range Infrastructure** | `range_adaptor`, `zip_view`, `vis_transform_view`               | Core primitives ensuring compatibility and structural consistency. |
+| **View Adaptors**        | `<jh/views>` — transform, zip, enumerate, flatten, common, etc. | Lazy evaluation and pipeline composition.                          |
+| **Semantic Extensions**  | `<jh/ranges_ext>` — adapt, collect, to                          | Materialization and conversion semantics beyond standard adaptors. |
+
+Together, they provide a **pre-C++23-complete range ecosystem**
+that bridges lazy transformation, semantic extension, and structural normalization.
 
 ---
 
 ## 🧭 Navigation
 
-|            Resource             |                                                                       Link                                                                       |
-|:-------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------:|
-|      🏠 **Back to README**      |                   [![Back to README](https://img.shields.io/badge/Back%20to%20README-blue?style=flat-square)](../../README.md)                   |
-|  📘 **Go to `range_wrapper`**   | [![Go to Range Wrapper Reference](https://img.shields.io/badge/Go%20to%20Range%20Wrapper%20Reference-green?style=flat-square)](range_wrapper.md) |
-|     📗 **Go to `zip_view`**     |        [![Go to Zip View Reference](https://img.shields.io/badge/Go%20to%20Zip%20View%20Reference-green?style=flat-square)](zip_view.md)         |
-| 🔭 **Go to `views` Repository** |          [![Go to Views Overview](https://img.shields.io/badge/Go%20to%20Views%20Overview-orange?style=flat-square)](views/overview.md)          |
+|               Resource                |                                                                             Link                                                                              |
+|:-------------------------------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+|         🏠 **Back to README**         |                         [![Back to README](https://img.shields.io/badge/Back%20to%20README-blue?style=flat-square)](../../README.md)                          |
+|   📗 **Go to `<jh/views>` Module**    |                 [![Go to Views Overview](https://img.shields.io/badge/Go%20to%20Views%20Overview-green?style=flat-square)](views/overview.md)                 |
+| 📘 **Go to `<jh/ranges_ext>` Module** |             [![Go to Ranges Ext Overview](https://img.shields.io/badge/Go%20to%20Ranges%20Ext%20Overview-green?style=flat-square)](range_ext.md)              |
+|     📙 **Go to `range_adaptor`**      |       [![Go to Range Adaptor Reference](https://img.shields.io/badge/Go%20to%20Range%20Adaptor%20Reference-green?style=flat-square)](range_adaptor.md)        |
+|        📗 **Go to `zip_view`**        |               [![Go to Zip View Reference](https://img.shields.io/badge/Go%20to%20Zip%20View%20Reference-green?style=flat-square)](zip_view.md)               |
+|   📘 **Go to `vis_transform_view`**   | [![Go to Visual Transform View Reference](https://img.shields.io/badge/Go%20to%20Vis%20Transform%20Reference-green?style=flat-square)](vis_transform_view.md) |

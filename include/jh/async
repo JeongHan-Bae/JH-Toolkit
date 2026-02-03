@@ -1,0 +1,30 @@
+/**
+ * @file async
+ * @brief Forward-aggregator header for <code>jh::async</code>.
+ *
+ * <p>
+ * This header aggregates all asynchronous facilities under the
+ * <code>jh::async</code> namespace.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/async&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it includes the underlying asynchronous modules from
+ * <code>jh/asynchronous/</code> and exposes them collectively through
+ * <code>jh::async</code>.
+ * </p>
+ *
+ * <h4>Overview</h4>
+ * <ul>
+ *   <li>Defines <code>jh::async</code> as the user-facing namespace.</li>
+ *   <li>Aggregates all asynchronous components.
+ *   <li>All implementations are located under
+ *       <code>jh/asynchronous/&#42;.h</code>.</li>
+ * </ul>
+ */
+#pragma once
+
+#include "jh/asynchronous/fiber.h"
+#include "jh/asynchronous/generator.h"
+#include "jh/asynchronous/slot.h"

@@ -1,0 +1,62 @@
+/**
+ * @file concepts
+ * @brief Forward-aggregator header for <code>jh::concepts</code> &mdash; the behavioral foundation layer of the JH Toolkit.
+ *
+ * <p>
+ * This header serves as the unified include point for all compile-time concepts and trait
+ * definitions within the <code>jh::concepts</code> module &mdash; a centralized system for
+ * <strong>duck-typed semantic recognition</strong> and behavioral abstraction.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/concepts&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it includes the full suite of conceptual and trait definitions from
+ * <code>jh/conceptual/</code>, consolidating behavior contracts for containers, iterators,
+ * synchronization primitives, and POD-like structures.
+ * </p>
+ *
+ * <h4>Overview</h4>
+ * <ul>
+ *   <li>Defines <code>jh::concepts</code> as the behavioral foundation layer of the toolkit.</li>
+ *   <li>Unifies all conceptual traits.</li>
+ *   <li>Encapsulates the duck-typing–based recognition system for type semantics and composition.</li>
+ * </ul>
+ *
+ * <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Oree.svg" alt="Oree mascot" width="64">
+ *
+ * <h4>Design Note</h4>
+ * <p>
+ * <code>jh::concepts</code> establishes the meta-structural layer of the JH Toolkit,
+ * bridging low-level type traits with high-level behavioral contracts. It provides
+ * constexpr-friendly, SFINAE-free, and C++20-concept–driven abstractions to ensure
+ * expressive and safe compile-time reasoning across the entire codebase.
+ * </p>
+ *
+ * <h4>Included Components</h4>
+ * <ul>
+ *   <li><code>closable_container.h</code> &mdash; defines direct range-to-container constructibility.</li>
+ *   <li><code>collectable_container.h</code> &mdash; extends closability with incremental insertion modes.</li>
+ *   <li><code>container_traits.h</code> &mdash; provides unified value-type deduction for containers.</li>
+ *   <li><code>hashable.h</code> &mdash; generalizes <code>std::hash</code> through ADL and member discovery.</li>
+ *   <li><code>iterator.h</code> &mdash; behavioral iterator and sentinel recognition layer.</li>
+ *   <li><code>mutex_like.h</code> &mdash; defines the synchronization and reentrance concept hierarchy.</li>
+ *   <li><code>pod_concepts.h</code> &mdash; fundamental POD and trivial-type recognition concepts.</li>
+ *   <li><code>range_traits.h</code> &mdash; provides callable validation and storage policy traits for ranges.</li>
+ *   <li><code>sequence.h</code> &mdash; defines duck-typed sequence semantics and <code>to_range()</code> support.</li>
+ *   <li><code>tuple_like.h</code> &mdash; structural validation for tuple-compatible and proxy types.</li>
+ * </ul>
+ */
+
+#pragma once
+
+#include "jh/conceptual/closable_container.h"
+#include "jh/conceptual/collectable_container.h"
+#include "jh/conceptual/container_traits.h"
+#include "jh/conceptual/hashable.h"
+#include "jh/conceptual/iterator.h"
+#include "jh/conceptual/mutex_like.h"
+#include "jh/conceptual/pod_concepts.h"
+#include "jh/conceptual/range_traits.h"
+#include "jh/conceptual/sequence.h"
+#include "jh/conceptual/tuple_like.h"

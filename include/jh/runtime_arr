@@ -4,22 +4,18 @@
  *
  * <p>
  * This header provides the canonical include entry for
- * <code>jh::runtime_arr&lt;T, Alloc&gt;</code> — a runtime-sized,
+ * <code>jh::runtime_arr&lt;T, Alloc&gt;</code> &mdash; a runtime-sized,
  * fixed-capacity array container.
  * </p>
  *
  * <pre><code>#include &lt;jh/runtime_arr&gt;</code></pre>
  *
  * <p>
- * Internally, this file forwards to <code>jh/runtime_arr.h</code>
+ * Internally, this file forwards to <code>jh/core/runtime_arr.h</code>
  * and defines no additional symbols.
  * </p>
- *
- * @see jh::pod::pod_like
- * @see jh::typed::monostate
- * @see jh::iterator
  */
 
 #pragma once
 
-#include "jh/runtime_arr.h"
+#include "jh/core/runtime_arr.h"

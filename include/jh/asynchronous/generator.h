@@ -38,19 +38,19 @@
  *
  * <h4>Include Behavior</h4>
  * <ul>
- *   <li><code>#include &lt;jh/asynchronous/generator.h&gt;</code> → defines <code>jh::async::generator</code></li>
- *   <li><code>#include &lt;jh/generator&gt;</code> → also defines <code>jh::generator</code> as alias of <code>jh::async::generator</code></li>
+ *   <li><code>#include &lt;jh/asynchronous/generator.h&gt;</code> &rarr; defines <code>jh::async::generator</code></li>
+ *   <li><code>#include &lt;jh/generator&gt;</code> &rarr; also defines <code>jh::generator</code> as alias of <code>jh::async::generator</code></li>
  * </ul>
  *
  * <h4>Design Motivation</h4>
  * <p>
  * In Python, <code>Generator[T, U, R]</code> expresses three roles:
  * <ul>
- *   <li><code>T</code> — values <b>yielded</b> by the generator.</li>
- *   <li><code>U</code> — values <b>sent</b> into the generator.</li>
- *   <li><code>R</code> — the value returned when the generator finishes.</li>
+ *   <li><code>T</code> &mdash; values <b>yielded</b> by the generator.</li>
+ *   <li><code>U</code> &mdash; values <b>sent</b> into the generator.</li>
+ *   <li><code>R</code> &mdash; the value returned when the generator finishes.</li>
  * </ul>
- * However, Python's <code>R</code> is not a true return value — it is part of the coroutine
+ * However, Python's <code>R</code> is not a true return value &mdash; it is part of the coroutine
  * exit mechanism (an exception-based control path).
  * In C++, such behavior can be cleanly modeled using standard exception handling (<tt>try</tt>/<tt>catch</tt>).
  * Therefore, <b>JH's</b> <code>generator&lt;T, U&gt;</code> intentionally omits <code>R</code>
@@ -59,14 +59,14 @@
  *
  * <h4>Core Concepts</h4>
  * <ul>
- *   <li><b>Yield type (<code>T</code>)</b> — values produced by <code>co_yield</code>,
+ *   <li><b>Yield type (<code>T</code>)</b> &mdash; values produced by <code>co_yield</code>,
  *       accessible via <code>generator.value()</code> as <code>std::optional&lt;T&gt;</code>.
  *       The optional may be empty if the coroutine has completed.</li>
  *
- *   <li><b>Await type (<code>U</code>)</b> — values received by <code>co_await</code>,
+ *   <li><b>Await type (<code>U</code>)</b> &mdash; values received by <code>co_await</code>,
  *       corresponding to inputs provided through <code>send()</code> or <code>send_ite()</code>.</li>
  *
- *   <li><b>Return type (<code>R</code>)</b> — intentionally omitted.
+ *   <li><b>Return type (<code>R</code>)</b> &mdash; intentionally omitted.
  *       In Python's <code>Generator[T, U, R]</code> model, <code>R</code> represents a
  *       special termination channel, but in C++ it can be naturally handled via
  *       <code>try</code>/<code>catch</code> and normal function return semantics.
@@ -84,7 +84,7 @@
  *
  * <h4>Usage Notes</h4>
  * <ul>
- *   <li>Generators are <b>single-pass</b> — iteration consumes them.</li>
+ *   <li>Generators are <b>single-pass</b> &mdash; iteration consumes them.</li>
  *   <li>Copying is disallowed (coroutine handles are unique and non-shareable).</li>
  *   <li>Prefer POD or trivially copyable types for best performance.</li>
  *   <li><code>U</code> defaults to <code>typed::monostate</code> (no input behavior).</li>
@@ -107,7 +107,7 @@
 
 #include "jh/conceptual/sequence.h"
 #include "jh/conceptual/iterator.h"
-#include "jh/utils/typed.h"
+#include "jh/typing/monostate.h"
 
 namespace jh::async {
 
@@ -119,11 +119,11 @@ namespace jh::async {
      * Python's <tt>Generator[T, U, None]</tt>.
      * It provides a clear and type-safe interface for two-way coroutine communication:
      * <ul>
-     *   <li><b>Yield</b> — values are produced via <code>co_yield</code>.</li>
-     *   <li><b>Await</b> — inputs are received via <code>co_await</code>, corresponding to <code>send()</code>.</li>
+     *   <li><b>Yield</b> &mdash; values are produced via <code>co_yield</code>.</li>
+     *   <li><b>Await</b> &mdash; inputs are received via <code>co_await</code>, corresponding to <code>send()</code>.</li>
      * </ul>
      *
-     * A generator is a <b>consumable object</b> — each call to <code>next()</code> or
+     * A generator is a <b>consumable object</b> &mdash; each call to <code>next()</code> or
      * <code>send()</code> advances its internal coroutine state.
      * Once advanced, previously yielded values cannot be revisited.
      *
@@ -165,9 +165,11 @@ namespace jh::async {
     class generator final {
     public:
 
-        using value_type = T; ///< @brief Type alias for the value type produced by the generator.
+        /// @brief Type alias for the value type produced by the generator.
+        using value_type = T;
 
-        using send_type = U; ///< @brief Type alias for the value type sent to the generator.
+        ///< @brief Type alias for the value type sent to the generator.
+        using send_type = U;
 
         /**
          * <h4>Iterator</h4>
@@ -187,11 +189,11 @@ namespace jh::async {
          *
          * <h5>Operations</h5>
          * <ul>
-         *   <li><code>iterator(generator&amp; g)</code> — constructs an iterator bound to a generator.</li>
-         *   <li><code>operator++()</code> — advances to the next yielded value.</li>
-         *   <li><code>operator*()</code> — returns a const reference to the current value.</li>
-         *   <li><code>operator-&gt;()</code> — returns a pointer to the current value.</li>
-         *   <li><code>operator==(const iterator&amp;)</code> / <code>operator!=()</code> — compare iterator positions.</li>
+         *   <li><code>iterator(generator&amp; g)</code> &mdash; constructs an iterator bound to a generator.</li>
+         *   <li><code>operator++()</code> &mdash; advances to the next yielded value.</li>
+         *   <li><code>operator*()</code> &mdash; returns a const reference to the current value.</li>
+         *   <li><code>operator-&gt;()</code> &mdash; returns a pointer to the current value.</li>
+         *   <li><code>operator==(const iterator&amp;)</code> / <code>operator!=()</code> &mdash; compare iterator positions.</li>
          * </ul>
          *
          * <p>
@@ -201,7 +203,7 @@ namespace jh::async {
          *
          * <h5>Input Restrictions</h5>
          * <p>
-         * Iteration is always supported, even when <code>U ≠ typed::monostate</code>;
+         * Iteration is always supported, even when <code>U != typed::monostate</code>;
          * however, <code>begin()</code> and <code>end()</code> are deliberately omitted
          * to prevent unintended ranged-for iteration with implicit empty input.
          * </p>
@@ -214,12 +216,13 @@ namespace jh::async {
          * </p>
          *
          * <p>
-         * Within the coroutine, <code>co_await</code> may appear selectively—
+         * Within the coroutine, <code>co_await</code> may appear selectively&mdash;
          * if no value is sent, a default-constructed <code>U{}</code> is supplied.
          * </p>
          */
         struct iterator final {
-            using iterator_category [[maybe_unused]] = std::input_iterator_tag;
+            using iterator_concept = std::input_iterator_tag;
+            using iterator_category [[maybe_unused]] = iterator_concept;
             using value_type = T;
             using difference_type [[maybe_unused]] = std::ptrdiff_t;
             using pointer = value_type *;
@@ -262,7 +265,9 @@ namespace jh::async {
                        (gen && other.gen && std::addressof(gen->get()) == std::addressof(other.gen->get()));
             }
 
-            bool operator!=(const iterator &other) const { return !(*this == other); }
+            bool operator!=(const iterator &other) const {
+                return !(*this == other); // NOLINT
+            }
 
         private:
             void begin_check() noexcept {
@@ -346,19 +351,19 @@ namespace jh::async {
          *
          * <h5>Member Variables</h5>
          * <ul>
-         *   <li><code>std::optional&lt;T&gt; current_value</code> — latest value produced by <code>co_yield</code>.</li>
-         *   <li><code>std::optional&lt;U&gt; last_sent_value</code> — most recent input value provided by <code>send()</code>.</li>
-         *   <li><code>std::exception_ptr exception</code> — captures any uncaught exceptions raised during execution.</li>
+         *   <li><code>std::optional&lt;T&gt; current_value</code> &mdash; latest value produced by <code>co_yield</code>.</li>
+         *   <li><code>std::optional&lt;U&gt; last_sent_value</code> &mdash; most recent input value provided by <code>send()</code>.</li>
+         *   <li><code>std::exception_ptr exception</code> &mdash; captures any uncaught exceptions raised during execution.</li>
          * </ul>
          *
          * <h5>Coroutine Lifecycle Hooks</h5>
          * <ul>
-         *   <li><code>get_return_object()</code> — constructs and returns the bound <code>generator</code> instance.</li>
-         *   <li><code>initial_suspend()</code> — always suspends before the first resumption (<code>std::suspend_always</code>).</li>
-         *   <li><code>final_suspend()</code> — always suspends upon coroutine completion, ensuring handle safety.</li>
-         *   <li><code>yield_value(T)</code> — stores the yielded value and suspends execution.</li>
-         *   <li><code>return_void()</code> — marks normal coroutine completion (no explicit return value).</li>
-         *   <li><code>unhandled_exception()</code> — catches and stores any unhandled exceptions.</li>
+         *   <li><code>get_return_object()</code> &mdash; constructs and returns the bound <code>generator</code> instance.</li>
+         *   <li><code>initial_suspend()</code> &mdash; always suspends before the first resumption (<code>std::suspend_always</code>).</li>
+         *   <li><code>final_suspend()</code> &mdash; always suspends upon coroutine completion, ensuring handle safety.</li>
+         *   <li><code>yield_value(T)</code> &mdash; stores the yielded value and suspends execution.</li>
+         *   <li><code>return_void()</code> &mdash; marks normal coroutine completion (no explicit return value).</li>
+         *   <li><code>unhandled_exception()</code> &mdash; catches and stores any unhandled exceptions.</li>
          * </ul>
          *
          * <h5>Awaiter Mechanism</h5>
@@ -367,21 +372,11 @@ namespace jh::async {
          * When the coroutine executes <code>co_await U{}</code>, the following occurs:
          * </p>
          * <ul>
-         *   <li><code>await_ready()</code> — always returns <code>false</code>, forcing suspension.</li>
-         *   <li><code>await_suspend()</code> — performs no action (passive suspension point).</li>
-         *   <li><code>await_resume()</code> — retrieves the last value sent to the coroutine,
+         *   <li><code>await_ready()</code> &mdash; always returns <code>false</code>, forcing suspension.</li>
+         *   <li><code>await_suspend()</code> &mdash; performs no action (passive suspension point).</li>
+         *   <li><code>await_resume()</code> &mdash; retrieves the last value sent to the coroutine,
          *       or a default-constructed <code>U{}</code> if no value was provided.</li>
          * </ul>
-         *
-         * <h5>Compiler Notes</h5>
-         * <p>
-         * Several functions (e.g., <code>initial_suspend()</code>, <code>final_suspend()</code>, <code>return_void()</code>)
-         * contain lines like:
-         * <pre><code>[[maybe_unused]] auto *self = this;</code></pre>
-         * These are intentional <b>anti-diagnostic placeholders</b> to prevent
-         * Clang-Tidy from incorrectly suggesting <code>static</code> conversion for methods
-         * that must remain instance-bound under coroutine semantics.
-         * </p>
          */
         struct promise_type final {
             std::optional<T> current_value;   ///< Stores the current yielded value.
@@ -400,19 +395,15 @@ namespace jh::async {
              * @brief Suspends execution initially.
              * @return Always returns <code>std::suspend_always</code> to suspend execution at the start.
              */
-            std::suspend_always initial_suspend() noexcept {
-                [[maybe_unused]] auto *self = this; // Prevents Clang-Tidy from suggesting static
-                return {};
-            }
+            std::suspend_always initial_suspend() // NOLINT
+            noexcept { return {}; }
 
             /**
              * @brief Suspends execution at the final stage.
              * @return Always returns <code>std::suspend_always</code> to suspend execution at the end.
              */
-            std::suspend_always final_suspend() noexcept {
-                [[maybe_unused]] auto *self = this; // Prevents Clang-Tidy from suggesting static
-                return {};
-            }
+            std::suspend_always final_suspend() // NOLINT
+            noexcept { return {}; }
 
             /**
              * @brief Yields a value from the generator.
@@ -465,7 +456,8 @@ namespace jh::async {
             /**
              * @brief Defines the behavior when the coroutine completes.
              */
-            void return_void() noexcept { [[maybe_unused]] auto *self = this; }
+            void return_void() // NOLINT
+            noexcept {}
 
             /**
              * @brief Handles uncaught exceptions by storing them.
@@ -489,9 +481,9 @@ namespace jh::async {
          * <p>
          * This enables Python-like semantics for defining and using coroutine generators:
          * <ul>
-         *   <li><code>jh::async::generator&lt;T, U&gt; Func(Args...) { scope_with_co_yield(); }</code> — defines a coroutine generator.</li>
-         *   <li><code>Func(args...)</code> — directly obtains a generator instance, without explicitly handling <code>std::coroutine_handle</code>.</li>
-         *   <li><code>jh::to_range([...] { Func(args...); })</code> — wraps the generator-producing function into a reusable, re-entrant range.</li>
+         *   <li><code>jh::async::generator&lt;T, U&gt; Func(Args...) { scope_with_co_yield(); }</code> &mdash; defines a coroutine generator.</li>
+         *   <li><code>Func(args...)</code> &mdash; directly obtains a generator instance, without explicitly handling <code>std::coroutine_handle</code>.</li>
+         *   <li><code>jh::to_range([...] { Func(args...); })</code> &mdash; wraps the generator-producing function into a reusable, re-entrant range.</li>
          * </ul>
          * </p>
          * <p>
@@ -575,6 +567,7 @@ namespace jh::async {
 
             co_ro.promise().last_sent_value = value; // Store input value
             co_ro.resume(); // Resume coroutine after sending
+            if (co_ro.promise().exception) std::rethrow_exception(co_ro.promise().exception);
 
             return !co_ro.done();
         }
@@ -695,7 +688,7 @@ namespace jh::async {
          *
          * <p>
          * Because it performs no coroutine access, <code>end()</code> is
-         * <strong>idempotent</strong> — it can be safely invoked multiple times
+         * <strong>idempotent</strong> &mdash; it can be safely invoked multiple times
          * without affecting the generator state.
          * </p>
          *
@@ -713,43 +706,6 @@ namespace jh::async {
         }
 
     };
-}
-
-namespace jh {
-    /**
-     * @brief Specialization of <code>jh::iterator<></code> for <code>jh::async::generator</code>.
-     * @details
-     * Provides a mapping between <code>jh::async::generator&lt;T, U&gt;</code> and its
-     * internal iterator type <code>generator&lt;T, U&gt;::iterator</code>.
-     *
-     * <p>
-     * This specialization is used by the <code>jh::iterator_t&lt;Container&gt;</code>
-     * deduction system to support <strong>duck-typed iterator resolution</strong>.
-     * It allows generic code such as:
-     * </p>
-     * <pre><code>
-     * using it_t = jh::iterator_t&lt;jh::async::generator&lt;int&gt;&gt;;
-     * </code></pre>
-     * to correctly deduce <code>jh::async::generator&lt;int&gt;::iterator</code>
-     * as the valid iterator type.
-     *
-     * <p>
-     * This integration ensures that <code>jh::async::generator</code> participates fully
-     * in the generic <code>iterator_t&lt;&gt;</code> deduction model,
-     * alongside STL containers and other user-defined structures.
-     * </p>
-     *
-     * @tparam T The generator's yielded value type.
-     * @tparam U The generator's input (sent) value type.
-     * @see jh::iterator_t
-     * @see jh::async::generator
-     */
-    template<typename T, typename U>
-    struct iterator<jh::async::generator<T, U>> {
-        using type = typename jh::async::generator<T, U>::iterator;
-    };
-}
-namespace jh::async {
 
     /**
      * @brief Converts a duck-typed <strong>sequence-like</strong> object into a generator.
@@ -763,7 +719,7 @@ namespace jh::async {
      *
      * <p>
      * Unlike <code>std::ranges::range</code>, a <code>jh::sequence</code> does <strong>not</strong>
-     * guarantee forwarding or lifetime semantics — only that it can be read immutably.
+     * guarantee forwarding or lifetime semantics &mdash; only that it can be read immutably.
      * Therefore, this overload uses <strong>const reference</strong> and avoids forwarding
      * or move-based iteration.
      * </p>
@@ -781,9 +737,10 @@ namespace jh::async {
      * @param seq The sequence-like object to convert (read-only).
      * @return A generator yielding elements from <code>seq</code>.
      */
-    template<concepts::sequence SeqType>
-    requires (!std::ranges::range<SeqType>)
-    [[maybe_unused]] generator<concepts::sequence_value_t<SeqType> > make_generator(const SeqType &seq) {
+    template<concepts::sequence SeqType> requires (!std::ranges::range<SeqType>)
+    [[maybe_unused]] generator<concepts::sequence_value_t < SeqType> >
+
+    make_generator(const SeqType &seq) {
         for (const auto &elem: seq) {
             // Use range-based for-loop
             co_yield elem;
@@ -806,7 +763,7 @@ namespace jh::async {
      *
      * <ul>
      *   <li>Preserves const correctness and supports read-only iteration.</li>
-     *   <li>Allows moving temporary or view-based ranges directly into the coroutine —
+     *   <li>Allows moving temporary or view-based ranges directly into the coroutine &mdash;
      *       the generator takes ownership of the iteration sequence.</li>
      *   <li>Unlike the <code>sequence</code> overload, this version fully supports
      *       <strong>forwarded rvalue ranges</strong> and <strong>lazy views</strong>.</li>
@@ -835,7 +792,7 @@ namespace jh::async {
      * <ul>
      *   <li>Intended for output-only generators.</li>
      *   <li>Preserves iteration order and copies each yielded element.</li>
-     *   <li>Acts as the most lightweight way to “materialize” a generator sequence.</li>
+     *   <li>Acts as the most lightweight way to "materialize" a generator sequence.</li>
      * </ul>
      *
      * @tparam T The generator's <strong>yielded value type</strong>.
@@ -858,7 +815,7 @@ namespace jh::async {
      *
      * @details
      * This overload supports interactive generators that expect an input type
-     * (<code>U ≠ typed::monostate</code>).
+     * (<code>U != typed::monostate</code>).
      * It sends the same <strong>input value</strong> at every coroutine step via <code>send()</code>,
      * producing a deterministic output sequence.
      *
@@ -973,7 +930,7 @@ namespace jh::async {
      *
      * @details
      * This overload supports interactive generators that expect an input type
-     * (<code>U ≠ typed::monostate</code>).
+     * (<code>U != typed::monostate</code>).
      * It sends the same <strong>input value</strong> at every coroutine step via <code>send()</code>,
      * pushing each yielded element into a <code>std::deque</code>.
      *
@@ -1082,7 +1039,7 @@ namespace jh::async {
      *   <li>Each call to <code>begin()</code> constructs a new generator instance via the stored factory.</li>
      *   <li>Fully compatible with <code>std::ranges</code> and STL algorithms.</li>
      *   <li>Usable in <code>for(auto v : range)</code>, <code>std::views::zip(...)</code>, and similar constructs.</li>
-     *   <li>Guarantees value-type semantics — <code>T</code> must be copyable.</li>
+     *   <li>Guarantees value-type semantics &mdash; <code>T</code> must be copyable.</li>
      * </ul>
      *
      * @note The factory does <strong>not</strong> accept runtime arguments.
@@ -1094,7 +1051,7 @@ namespace jh::async {
      * @see jh::to_range
      */
     template<typename T>
-    class generator_range : std::ranges::view_interface<generator_range<T> > {
+    class generator_range final : std::ranges::view_interface<generator_range<T> > {
     public:
         using generator_factory_t = std::function<generator<T>()>;
 
@@ -1107,22 +1064,24 @@ namespace jh::async {
             using value_type = T;
             using reference = const T &;
             using pointer = const T *;
-            using iterator_category [[maybe_unused]] = std::input_iterator_tag;
+            using iterator_concept = std::input_iterator_tag;
+            using iterator_category [[maybe_unused]] = iterator_concept;
             using difference_type [[maybe_unused]] = std::ptrdiff_t;
 
+            /// @brief Default-constructs an <code>iterator</code> in an inactive state.
             iterator() = default;
 
+            /// @brief Copy construction is disabled to preserve single-pass generator semantics.
             iterator(const iterator &) = delete;
 
+            /// @brief Copy assignment is disabled because an <code>iterator</code> cannot be duplicated safely.
             iterator &operator=(const iterator &) = delete;
 
+            /// @brief Move-constructs an <code>iterator</code>, transferring ownership of the underlying generator.
             iterator(iterator &&) noexcept = default;
 
+            /// @brief Move-assigns an <code>iterator</code>, transferring ownership of the underlying generator.
             iterator &operator=(iterator &&) noexcept = default;
-            // Copy operations are disabled because `generator_range` only supports
-            // valid iteration from `begin()`. Copying an iterator in the middle of
-            // iteration would imply duplicating the underlying `std::unique_ptr<generator<T>>`,
-            // which is semantically invalid and would break single-pass generator behavior.
 
             explicit iterator(generator_factory_t factory)
                     : gen_(std::make_unique<generator<T> >(factory())) {
@@ -1164,7 +1123,7 @@ namespace jh::async {
             }
 
             friend bool operator!=(const iterator &lhs, const iterator &rhs) {
-                return !(lhs == rhs);
+                return !(lhs == rhs); // NOLINT
             }
 
             // Support std::default_sentinel_t as the end
@@ -1173,7 +1132,7 @@ namespace jh::async {
             }
 
             friend bool operator!=(const iterator &it, std::default_sentinel_t s) {
-                return !(it == s);
+                return !(it == s); // NOLINT
             }
 
         private:
@@ -1191,7 +1150,7 @@ namespace jh::async {
     private:
         generator_factory_t factory_;
     };
-}
+} // namespace jh::async
 
 namespace jh {
     /**

@@ -1,0 +1,43 @@
+/**
+ * @file meta
+ * @brief Forward-aggregator header for <code>jh::meta</code>.
+ *
+ * <p>
+ * This header aggregates all meta-programming utilities under
+ * the <code>jh::meta</code> namespace.
+ * </p>
+ *
+ * <pre><code>#include &lt;jh/meta&gt;</code></pre>
+ *
+ * <p>
+ * Internally, it includes the underlying meta-utility implementations from
+ * <code>jh/metax/</code> to provide a unified include entry under
+ * <code>jh::meta</code>.
+ * </p>
+ *
+ * <h4>Overview</h4>
+ * <ul>
+ *   <li>Defines <code>jh::meta</code> as the user-facing namespace.</li>
+ *   <li>Aggregates all meta-programming utilities (e.g. <code>adl_apply</code>,
+ *       <code>flatten_proxy</code>, <code>hash</code>).</li>
+ *   <li>All implementations are located in <code>jh/metax/&#42;.h</code>.</li>
+ * </ul>
+ *
+ * <h4>Design Note</h4>
+ * <p>
+ * <code>jh::meta</code> provides tools for compile-time computation and
+ * template deduction assistance &mdash; usable during <code>consteval</code> or
+ * template instantiation.
+ * </p>
+ */
+
+#pragma once
+
+#include "jh/metax/adl_apply.h"
+#include "jh/metax/base64.h"
+#include "jh/metax/char.h"
+#include "jh/metax/flatten_proxy.h"
+#include "jh/metax/hash.h"
+#include "jh/metax/lookup_map.h"
+#include "jh/metax/t_str.h"
+#include "jh/metax/variant_adt.h"

@@ -1,10 +1,7 @@
-#define CATCH_CONFIG_MAIN
-
-#include <iostream>
 #include <numeric>
 #include <random>
 #include <catch2/catch_all.hpp>
-#include "jh/asynchronous/generator.h"
+#include "jh/generator"
 #include <type_traits>
 
 // Helper template to check if a class has a given member function
@@ -496,7 +493,7 @@ TEST_CASE("Generator with 'Send_Ite' Step by Step") {
     }
 }
 
-TEST_CASE("deque -> Generator -> deque Equivalence Test") {
+TEST_CASE("deque -> jh::generator -> deque Equivalence Test") {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution size_dist(1, 100); // deque size
@@ -549,7 +546,6 @@ TEST_CASE("Ranged-For Loop test") {
             int expected_value = start;
             for (const auto a: generator) {
                 REQUIRE(a == expected_value);
-                std::cout << "Generated: " << a << " | Expected: " << expected_value << std::endl;
                 ++expected_value;
             }
 
@@ -582,7 +578,6 @@ TEST_CASE("Ranged-For Range Loop test") {
 
             std::ranges::for_each(range_, [&](const int a) {
                 REQUIRE(a == expected_value);
-                std::cout << "Generated: " << a << " | Expected: " << expected_value << std::endl;
                 ++expected_value;
             });
 
@@ -614,7 +609,6 @@ TEST_CASE("Iterator For Loop test") {
             int expected_value = start;
             for (auto iter = generator.begin(); iter != jh::async::generator<int, jh::typed::monostate>::end(); ++iter) {
                 REQUIRE(*iter == expected_value);
-                std::cout << "Generated: " << *iter << " | Expected: " << expected_value << std::endl;
                 ++expected_value;
             }
 
@@ -724,4 +718,145 @@ TEST_CASE("Generator to_range repeatable iteration test") {
             REQUIRE(first_pass == second_pass);
         }
     }
+}
+
+/// Throw and Catch Tests
+
+TEST_CASE("Generator throws during execution") {
+    using namespace jh::async;
+
+    auto generator = []() -> jh::generator<int> {
+        co_yield 1;
+        throw std::runtime_error("Test exception");
+        co_yield 2; // NOLINT has to declare to ensure reentering (never reached)
+    }();
+
+    // First OK
+    REQUIRE(generator.next());
+    REQUIRE(generator.value().value() == 1);
+
+    // Second -> should throw
+    REQUIRE_THROWS_AS(generator.next(), std::runtime_error);
+}
+
+TEST_CASE("Generator throws immediately") {
+    using namespace jh::async;
+
+    auto generator = []() -> jh::generator<int> {
+        throw std::logic_error("Immediate failure");
+        co_return; // NOLINT has to declare to ensure reentering
+    }();
+
+    REQUIRE_THROWS_AS(generator.next(), std::logic_error);
+}
+
+TEST_CASE("Generator throws on send() and next()") {
+    using namespace jh::async;
+
+    auto generator = []() -> jh::generator<int,int> {
+        co_yield 0;
+        int v = co_await int{};
+        if (v == 42)
+            throw std::runtime_error("send error");
+        co_yield 1;
+    }();
+
+    REQUIRE(generator.next());
+    REQUIRE(generator.value().value() == 0);
+
+    REQUIRE_NOTHROW(generator.send(1));
+
+    REQUIRE(generator.value().value() == 0);
+
+    REQUIRE(generator.next());
+    REQUIRE(generator.value().value() == 1);
+
+    auto generator2 = []() -> jh::generator<int,int> {
+        co_yield 0;
+        int v = co_await int{};
+        if (v == 42)
+            throw std::runtime_error("send error");
+        co_yield 1;
+    }();
+
+    REQUIRE(generator2.next());
+    REQUIRE(generator2.value().value() == 0);
+
+    REQUIRE_NOTHROW(generator2.next());
+
+    REQUIRE_THROWS_AS(generator2.send(42), std::runtime_error);
+
+    auto generator3 = []() -> jh::generator<int,int> {
+        co_yield 0;
+        int v = co_await int{};
+        if (v == 42)
+            throw std::runtime_error("send error");
+        co_yield 1;
+    }();
+
+    REQUIRE(generator3.next());
+
+    REQUIRE_THROWS_AS(generator3.send_ite(42), std::runtime_error);
+}
+
+TEST_CASE("Exception inside ranged-for consumption") {
+    using namespace jh::async;
+
+    auto generator = []() -> jh::generator<int> {
+        for (int i = 0; i < 3; ++i)
+            co_yield i;
+        throw std::runtime_error("end fail");
+    }();
+
+    int count = 0;
+
+    try {
+        for (int v : generator) {
+            REQUIRE(v == count);
+            ++count;
+        }
+        FAIL("Exception expected but not thrown");
+    }
+    catch (const std::runtime_error& e) {
+        REQUIRE(std::string(e.what()) == "end fail");
+        REQUIRE(count == 3);
+    }
+}
+
+TEST_CASE("to_vector propagates exceptions") {
+    using namespace jh::async;
+
+    auto generator = []() -> jh::generator<int> {
+        co_yield 1;
+        throw std::runtime_error("explode");
+    }();
+
+    REQUIRE_THROWS_AS(to_vector(generator), std::runtime_error);
+}
+
+TEST_CASE("Generator destructor cleans up after exception") {
+    using namespace jh::async;
+
+    static bool cleaned = false;
+
+    struct Cleaner {
+        ~Cleaner() { cleaned = true; }
+    };
+
+    {
+        auto generator = []() -> jh::generator<int> {
+            Cleaner c; // local RAII object
+            co_yield 1;
+            throw std::runtime_error("boom");
+        }();
+
+        // First ok
+        REQUIRE(generator.next());
+        REQUIRE(generator.value().value() == 1);
+
+        // second throws
+        REQUIRE_THROWS(generator.next());
+    }
+
+    REQUIRE(cleaned);  // RAII must be executed
 }
