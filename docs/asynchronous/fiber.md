@@ -126,7 +126,7 @@ Important rules:
 * **Resuming the same fiber from different threads is undefined behavior**.
 
 > A `fiber` must be treated as **thread-affine**.
-> It is the caller’s responsibility to ensure that all `resume()` calls
+> It is the caller's responsibility to ensure that all `resume()` calls
 > occur on the same thread.
 
 `fiber` is therefore **not a synchronization primitive** and **not thread-safe**.

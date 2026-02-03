@@ -50,7 +50,7 @@ The slot system will never:
 
 * align events from different sources,
 * infer barriers or rounds,
-* buffer values to “wait for the rest”.
+* buffer values to "wait for the rest".
 
 If synchronization is required, it must be **external and explicit**.
 Once synchronized, the result should be delivered as **one logical event**.

@@ -93,7 +93,7 @@ It provides a **compile-time policy** that determines whether a range is:
 * stored **via reference wrapper** for deferred safe access.
 
 This abstraction allows all wrapper-based views in JH Toolkit to maintain
-consistent lifetime and forwarding semantics regardless of the range’s
+consistent lifetime and forwarding semantics regardless of the range's
 value category.
 
 ---

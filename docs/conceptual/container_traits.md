@@ -41,7 +41,7 @@ regardless of its internal structure or declaration form.
 
 It ensures that all higher-level components —
 especially those performing range-to-container transformations —
-operate on a consistent and validated notion of “element type”.
+operate on a consistent and validated notion of "element type".
 
 ---
 

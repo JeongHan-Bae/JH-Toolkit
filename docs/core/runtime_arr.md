@@ -3,7 +3,7 @@
 📁 **Header:** `<jh/core/runtime_arr.h>`  
 🔄 **Forwarding Header:** `<jh/runtime_arr>`  
 📦 **Namespace:** `jh`  
-📅 **Version:** 1.3.5+ (2025)  
+📅 **Version:** 1.4.0 (2026)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -131,7 +131,7 @@ using const_iterator    = const_pointer;     ///< Const iterator = const pointer
   standard `std::ranges` algorithms can access elements directly.
 * Fully satisfies `std::ranges::range` (iterable via begin/end).
 * Deterministic memory layout; trivially copyable and POD-friendly.
-* Iterators are *raw pointers* (`T*`), so `std::contiguous_iterator` is satisfied automatically.
+* Iterators are *raw pointers* (<code>T*</code>), so `std::contiguous_iterator` is satisfied automatically.
 
 ### Specialization: `runtime_arr<bool>`
 
@@ -333,6 +333,48 @@ All other types remain inline and header-only.
 |                            | Bit-packed                                                                   | 64 bits per word; not contiguous in bool*.                        |
 |                            | Safe RAII                                                                    | Fully managed via `unique_ptr<uint64_t[]>`.                       |
 
+
+---
+
+## ⚠️ Note on `runtime_arr<bool>` Usage
+
+The `bool` specialization of `jh::runtime_arr` is a **space-optimized container**, not a general-purpose range.
+
+Unlike `runtime_arr<T>` for non-`bool` types, `runtime_arr<bool>` uses **bit-packed storage** and **proxy-based access**.
+As a result, its access and iteration characteristics differ significantly:
+
+* Element access is **not direct** — every read and write involves bit masking and shifting.
+* Reads are slower than plain memory access; writes are even more expensive.
+* No contiguous `bool*` view exists.
+* No `std::span<bool>` conversion is provided.
+* Iterators are **proxy iterators**, not raw pointers.
+* It should **not** be treated as a regular `std::ranges::range`.
+
+The `bool` variant exists primarily to **reduce memory footprint**.
+In most real-world scenarios, this optimization is unnecessary and not worth the performance cost.
+
+### Recommended Usage
+
+* Treat `runtime_arr<bool>` strictly as a **container**, not as a range abstraction.
+* Prefer index-based access (`operator[]`, `at()`, `set()`, `test()`).
+* Avoid piping it into range algorithms or views.
+* If iteration is required, only use simple range-style `for` loops:
+
+```cpp
+for (auto& bit : arr) {
+    // proxy access only
+}
+```
+
+Do **not** rely on iterator category properties, contiguous semantics, or span-based APIs — they intentionally do not exist for this specialization.
+
+If you need a range-friendly or performance-oriented boolean sequence, prefer:
+
+* `runtime_arr<bool, bool_flat_alloc>` (flat byte storage), or
+* `runtime_arr<uint8_t>`
+
+depending on semantics.
+
 ---
 
 ## 🧩 Summary
@@ -346,7 +388,7 @@ and static specialization where it truly improves performance.
 ---
 
 > **Tip:**
-> Include `<jh/runtime_arr>` (without `.h`) for modern import style.
+> Include `<jh/runtime_arr>`
 >
 > Choose your CMake linkage:
 >

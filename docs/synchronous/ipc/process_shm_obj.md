@@ -64,7 +64,7 @@ Important clarification:
 This system follows a **strict engineering model** rather than an object-sharing or messaging model.
 
 The core assumption is that **shared state is finite, enumerable, and explicitly named**.
-Under this assumption, the problem is not “communication”, but **coordination of state visibility**.
+Under this assumption, the problem is not "communication", but **coordination of state visibility**.
 
 ---
 
@@ -167,6 +167,8 @@ This means:
 
 If any field is `const` or `volatile`, **the type is not a valid POD**
 and **`process_shm_obj` will not instantiate**.
+
+See: [`jh::pod::cv_free_pod_like`](../../pods/pod_like.md#cv_free_pod_liket)
 
 This is a **compile-time enforced rule**, not a guideline.
 
@@ -438,7 +440,7 @@ This guarantees that each write is **published as a whole**.
 
 ### Read Side (Optional Locking)
 
-Readers **will never observe a “half-written” state** as long as:
+Readers **will never observe a "half-written" state** as long as:
 
 * Writers follow the rule above
 * Reads occur **after** a completed `flush_release()`

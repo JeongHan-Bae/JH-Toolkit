@@ -43,7 +43,7 @@ and extended iterable abstractions from heterogeneous sources.
 | `jh::views::enumerate`     | `<jh/ranges/views/enumerate.h>`     | ✅ Stable | Index-value adaptor equivalent to Python-style enumerate; implemented via zip.                 |
 | `jh::views::flatten`       | `<jh/ranges/views/flatten.h>`       | ✅ Stable | Observation-preserving flatten adaptor compatible with both consuming and non-consuming flows. |
 | `jh::views::transform`     | `<jh/ranges/views/transform.h>`     | ✅ Stable | Unified transform adaptor that dispatches between consumptive and observational semantics.     |
-| `jh::views::vis_transform` | `<jh/ranges/views/vis_transform.h>` | ✅ Stable | Explicitly non-consuming “visual” transform for reentrant, observation-only projections.       |
+| `jh::views::vis_transform` | `<jh/ranges/views/vis_transform.h>` | ✅ Stable | Explicitly non-consuming "visual" transform for reentrant, observation-only projections.       |
 | `jh::views::common`        | `<jh/ranges/views/common.h>`        | ✅ Stable | Upgraded common adaptor with transparent forwarding and extended normalization support.        |
 
 ---

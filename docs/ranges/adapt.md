@@ -23,7 +23,7 @@ into a valid [`std::ranges::viewable_range`](https://en.cppreference.com/w/cpp/r
 
 It serves as a **pipeline-friendly wrapper** around
 [`jh::to_range()`](../conceptual/sequence.md#jhto_rangeseq),
-bridging user-defined or non-standard “sequence-like” objects with
+bridging user-defined or non-standard "sequence-like" objects with
 the C++ standard ranges infrastructure.
 
 This adaptor provides **uniform entry semantics** for any sequence

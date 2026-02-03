@@ -65,7 +65,7 @@ static constexpr std::size_t BLOCK_SIZE = JH_FIXED_VEC_BLOCK_SIZE;
 
    ```cpp
    #define JH_FIXED_VEC_BLOCK_SIZE 128
-   #include <jh/synchronous/control_buf.h>
+   #include <jh/sync>
    ```
 
 2. **Build system (recommended)**

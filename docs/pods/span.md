@@ -286,7 +286,7 @@ std::cout << sp;
 // → span<int>[1, 2, 3, 4]
 ```
 
-Type names are resolved via `jh::macro::type_name<T>()`,
+Type names are resolved via [`jh::macro::type_name<T>()`](../macros/type_name.md),
 which extracts the unmangled name from `__PRETTY_FUNCTION__`
 (Clang/GCC) without RTTI.
 

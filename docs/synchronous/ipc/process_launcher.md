@@ -78,7 +78,7 @@ This identity is:
 * **non-substitutable**
 * **non-polymorphic**
 
-There is no generic “process handle” type by design.
+There is no generic "process handle" type by design.
 
 ---
 

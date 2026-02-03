@@ -15,7 +15,7 @@
 <div align="center" style="margin-top: -32px;">
   <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Oree.svg"
        alt="Oree mascot"
-       style="width: 96px; height: auto;">
+       width=96px;>
 </div>
 
 ## 🧭 Introduction
@@ -27,7 +27,7 @@ Unlike functional modules such as `jh::async`, which extend features outward,
 `jh::concepts` evolves *inward* — continuously absorbing and unifying
 behavioral models across the entire toolkit.
 
-Its design follows JH Toolkit’s **duck typing philosophy**:
+Its design follows JH Toolkit's **duck typing philosophy**:
 
 > 🦆 *"If a type behaves like one, it is treated as one."*
 
@@ -66,7 +66,7 @@ iteration, range adaptation, container construction, structural hashing, and syn
 
 ## 🧩 Module Summary
 
-`jh::concepts` forms the JH Toolkit’s **behavioral semantics layer** —
+`jh::concepts` forms the JH Toolkit's **behavioral semantics layer** —
 an ever-growing foundation that recognizes types by *behavior* rather than *declaration*.
 
 ---
@@ -85,4 +85,4 @@ an ever-growing foundation that recognizes types by *behavior* rather than *decl
 | 📘 **Go to `collectable_container`** | [![Collectable Container](https://img.shields.io/badge/Go%20to%20Collectable%20Container-green?style=flat-square)](collectable_container.md) |
 |       📗 **Go to `hashable`**        |                     [![Hashable](https://img.shields.io/badge/Go%20to%20Hashable-green?style=flat-square)](hashable.md)                      |
 |      📙 **Go to `mutex_like`**       |               [![Mutex-Like](https://img.shields.io/badge/Go%20to%20Mutex%20Reference-green?style=flat-square)](mutex_like.md)               |
-|      📘**Go to `pod_concepts`**      |              [![POD Concepts](https://img.shields.io/badge/Go%20to%20POD%20Concepts-green?style=flat-square)](pod_concepts.md)               |
+|     📘 **Go to `pod_concepts`**      |              [![POD Concepts](https://img.shields.io/badge/Go%20to%20POD%20Concepts-green?style=flat-square)](pod_concepts.md)               |

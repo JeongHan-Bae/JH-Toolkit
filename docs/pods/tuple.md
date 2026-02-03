@@ -218,7 +218,7 @@ They are weakly linked and can be safely overridden if desired.
 | Compiler          | Behavior                              | Recommended form              |
 |-------------------|---------------------------------------|-------------------------------|
 | **Clang ≥ 15**    | Accepts direct `{}` init              | ✅ `tuple<int,float>{7,3.14f}` |
-| **GCC ≤ 13**      | May reject as “too many initializers” | ✅ use `make_tuple()`          |
+| **GCC ≤ 13**      | May reject as "too many initializers" | ✅ use `make_tuple()`          |
 | **All compilers** | Aggregate-safe with nested braces     | ✅ portable but verbose        |
 
 Prefer `jh::pod::make_tuple()` for clarity and portability.

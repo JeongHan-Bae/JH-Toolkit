@@ -2,7 +2,7 @@
 
 📁 **Header:** `<jh/conceptual/tuple_like.h>`  
 📦 **Namespace:** `jh::concepts`  
-📅 **Version:** 1.3.5+ (2025)  
+📅 **Version:** 1.4.0 (2026)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -14,32 +14,41 @@
 
 ---
 
-## 🧭 Submodule Notice
+## 🧭 Submodule Scope
 
-`jh::concepts::tuple_like` defines the **structural rule set**
-for detecting and validating tuple-compatible types.  
-It generalizes `std::tuple`, `std::pair`, and similar structured aggregates,
-while preserving compatibility with proxy-based tuple models such as
-range zip proxies or nested view elements.
+`jh::concepts::tuple_like` defines the **formal structural contract**
+used across the JH Toolkit to recognize **explicit tuple-protocol types**.
+
+This header does **not** introduce tuple semantics.
+It only validates whether a type already conforms to the tuple model
+used by:
+
+* structured bindings
+* associative container insertion
+* range and view adaptors
+* generic tuple-based metaprogramming
+
+Implicit aggregate decomposition is intentionally excluded.
 
 ---
 
 ## 🧩 Introduction
 
-`tuple_like` is a **structural concept**:  
-a type `T` is tuple-like if it satisfies the standard tuple protocol —
+A type `T` is considered *tuple-like* if it satisfies the standard tuple protocol:
 
-1. `std::tuple_size<T>` is defined.
-2. `std::tuple_element<I, T>` is defined for all indices `I`.
-3. `get<I>(t)` is callable via ADL for each `I`.
+* `std::tuple_size<T>` is defined
+* `std::tuple_element<I, T>` is defined for all valid indices
+* `get<I>(t)` is available via ADL for all valid indices
 
-Additionally, the return type of `get<I>(t)` must form a valid
-`std::common_reference_t` with `std::tuple_element_t<I, T>`,
-ensuring element-level semantic compatibility.
+In addition, `tuple_like` enforces a **semantic compatibility rule**:
 
-This design allows not only plain tuples and aggregates,
-but also **proxy or view types** that model tuple behavior through
-custom reference wrappers or structured bindings.
+> For each index `I`,
+> `decltype(get<I>(t))` must form a valid
+> `std::common_reference_t` with
+> `std::tuple_element_t<I, T>`.
+
+This allows proxy references, wrapped values, and view-based tuple elements
+to participate safely in generic tuple algorithms.
 
 ---
 
@@ -49,40 +58,50 @@ custom reference wrappers or structured bindings.
 
 Satisfied when:
 
-```cpp
-requires {
-    typename std::tuple_size<std::remove_cvref_t<T>>::type;
-    typename std::tuple_element_t<I, std::remove_cvref_t<T>>;
-    get<I>(std::declval<T>());
-    requires std::common_reference_t<
-        decltype(get<I>(std::declval<T>())),
-        std::tuple_element_t<I, std::remove_cvref_t<T>>
-    >;
-}
+```pseudocode
+std::tuple_size<std::remove_cvref_t<T>> is defined
+AND
+for all valid indices I:
+    get<I>(t) is ADL-callable
+    AND
+    std::common_reference_t<
+        decltype(get<I>(t)),
+        std::tuple_element_t<I, T>
+    > is well-formed
 ```
 
-This validation is folded across all valid indices of `std::tuple_size_v<T>`.
+This validation is folded at compile time across all indices.
 
-The check is **tolerant** — it doesn't require exact type matches.  
-Instead, it validates *semantic compatibility* through `std::common_reference_t`,
-so proxy references, wrapped values, and nested tuple elements
-can coexist safely under structured bindings.
+### Properties
+
+* purely structural
+* constexpr-only
+* zero runtime cost
+* proxy-friendly
+* excludes implicit aggregates by design
 
 ---
 
-## 🔹 Why `std::common_reference_t`
+## 🔹 Why `std::common_reference_t` Is Required
 
-`std::common_reference_t` serves as the **semantic bridge**
-between what `tuple_element` *declares* and what `get<I>()` *returns*.
+`std::common_reference_t` acts as the **semantic compatibility gate**
+between:
 
-This allows legitimate cases such as:
+* what `tuple_element<I, T>` *declares*
+* what `get<I>(t)` *returns*
 
-* Returning `std::reference_wrapper<T>` for an element declared as `T&`.
-* Returning proxy objects convertible to the declared element type.
-* Nested or layered proxies that ultimately behave as tuples.
+Exact type equality is not required.
+Semantic equivalence is.
 
-As long as a valid `std::common_reference_t` exists between the two,
-the concept considers them semantically equivalent.
+This enables:
+
+* proxy references
+* `std::reference_wrapper`
+* layered or transformed tuple views
+* lazy or deferred element access
+
+If no valid common reference exists, the type is considered structurally inconsistent
+and is rejected.
 
 ---
 
@@ -159,6 +178,79 @@ the `const proxy&` bridge is unnecessary and generally not recommended.
 
 You only need the const version when your proxy's getter explicitly
 differs between const / non-const overloads or lacks deducible reference return.
+
+---
+
+## 🔹 Strict Pair Semantics for Associative Containers
+
+### `jh::concepts::pair_like_for<P, K, V>`
+
+`pair_like_for` is a **strict specialization** of `tuple_like`
+designed specifically for **associative container insertion**.
+
+It is inspired by **Clang's permissive associative-container insert rules**
+for tuple-like arguments.
+
+#### Motivation
+
+In practice, associative containers:
+
+* do **not** construct their elements by copying or moving a `pair` object
+* instead, they **extract the key and value separately**
+* and construct internal storage from those extracted components
+
+This is true even when the input object *is* an actual `std::pair`.
+
+As a result:
+
+* the input type only needs to *behave like* a `(key, value)` tuple
+* not necessarily be constructible as a `pair` itself
+
+This observation motivated Clang's acceptance of tuple-like objects
+in `map::insert` and related APIs.
+
+---
+
+### Concept Definition
+
+`pair_like_for<P, K, V>` is satisfied when:
+
+* `P` satisfies `tuple_like`
+* `std::tuple_size_v<P> == 2`
+* `get<0>(p)` has **exact type** `K` after `remove_cvref`
+* `get<1>(p)` has **exact type** `V` after `remove_cvref`
+* no implicit conversions are permitted
+
+Semantic compatibility is **not sufficient** here;
+exact type identity is required.
+
+---
+
+### Where It Is Used
+
+This concept is used by JH associative containers, including:
+
+* [`jh::ordered_map`](../core/ordered_map.md)
+* [`jh::flat_multimap`](../core/flat_multimap.md)
+
+These containers follow the same construction model:
+
+* extract key and mapped value independently
+* construct internal storage from those components
+* never copy or move a `pair` object as a whole
+
+---
+
+### Why Exact Matching Is Required
+
+Unlike `tuple_like`, `pair_like_for` enforces **exact element types** because:
+
+* keys must not undergo implicit conversion
+* mapped values must not be reinterpreted
+* container invariants depend on precise type identity
+
+This ensures deterministic behavior for insertion APIs
+while still allowing tuple-like flexibility at the call site.
 
 ---
 

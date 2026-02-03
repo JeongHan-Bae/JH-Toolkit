@@ -17,7 +17,7 @@
 ## 🧭 Introduction
 
 `jh::meta::adl_apply` provides a **constexpr-safe, ADL-enabled universal tuple invocation**
-compatible with any type modeling [`jh::concepts::tuple_like`](../conceptual/tuple_like.md).
+compatible with any type modeling [`jh::concepts::tuple_like`](../conceptual/tuple_like.md#-core-concept).
 
 It is functionally equivalent to `std::apply`,
 but extends applicability to all tuple-like structures by resolving `get<I>` via **unqualified lookup (ADL)**.

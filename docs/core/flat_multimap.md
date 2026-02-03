@@ -1,6 +1,7 @@
 # 🧱 JH Toolkit — `jh::flat_multimap` API Reference
 
 📁 **Header:** `<jh/core/flat_multimap.h>`  
+🔄 **Forwarding Header:** `<jh/flat_multimap>`  
 📦 **Namespace:** `jh`  
 📅 **Version:** 1.4.x (2026)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
@@ -91,6 +92,224 @@ This is not a workaround — it is the **fast path by design**.
 
 ---
 
+## API Overview
+
+### Lookup
+
+```cpp
+iterator find(const K& key);
+const_iterator find(const K& key) const;
+
+std::pair<iterator, iterator> equal_range(const K& key);
+std::pair<const_iterator, const_iterator> equal_range(const K& key) const;
+```
+
+Semantics:
+
+* `find(key)`
+
+    * returns an iterator to the **first** element with the given key
+    * returns `end()` if the key does not exist
+    * equivalent to `equal_range(key).first` when the range is non-empty
+
+* `equal_range(key)`
+
+    * returns `{lower_bound(key), upper_bound(key)}`
+    * the returned range is **half-open**
+    * all elements in the range have keys equivalent to `key`
+    * if no such key exists, both iterators equal `end()`
+
+Complexity:
+
+* all lookup operations are **non-mutating**
+* complexity is `O(log N)` via binary search
+* no iterator stability guarantees are provided
+
+---
+
+### Insertion — multimap semantics
+
+Unlike `ordered_map`, **duplicate keys are always allowed**.
+Insertion never fails due to key duplication.
+
+---
+
+#### `emplace`
+
+```cpp
+template<typename... Args>
+iterator emplace(Args&&... args);
+```
+
+Semantics:
+
+* constructs a temporary `std::pair<K, V>` from `args...`
+* the key and mapped value are then **moved independently**
+  into the container
+* the new element is inserted **after all existing equivalents**
+  of the same key
+* preserves relative order among equivalent keys
+
+Notes:
+
+* this follows standard `emplace` intent, but
+  **no in-place node construction occurs**
+* all iterators are invalidated except the returned one
+
+---
+
+#### `insert` — tuple-like generalized insertion
+
+```cpp
+template<typename P>
+requires jh::concepts::pair_like_for<P, K, V>
+iterator insert(P&& p);
+```
+
+Semantics:
+
+* accepts **any tuple-like value** `p` such that:
+
+    * `get<0>(p)` is exactly `K` (after `remove_cvref`)
+    * `get<1>(p)` is exactly `V` (after `remove_cvref`)
+
+* the container **consumes the key and value separately**
+
+* the element is inserted **after all existing equivalents**
+  of the same key
+
+Accepted examples:
+
+```cpp
+std::pair<K, V>
+std::tuple<K, V>
+structured-binding-compatible proxy types
+reference-returning tuple adaptors
+```
+
+Rejected examples:
+
+* mismatched element types
+* implicit conversions
+* tuple-like values with more or fewer than two elements
+
+Notes:
+
+* `value_type` (`std::pair<K, V>`) is **not required**
+* this reflects the actual semantic model: *key + mapped value*
+* insertion order among equivalent keys is preserved
+
+For precise requirements, see [
+`jh::concepts::pair_like_for`](../conceptual/tuple_like.md#-strict-pair-semantics-for-associative-containers).
+
+---
+
+### Erase
+
+```cpp
+iterator erase(iterator pos);
+iterator erase(const_iterator pos);
+
+iterator erase(iterator first, iterator last);
+iterator erase(const_iterator first, const_iterator last);
+
+size_t erase(const K& key);
+```
+
+Erase behavior:
+
+* `erase(pos)`
+
+    * removes the element at `pos`
+    * returns the logical successor iterator
+
+* `erase(first, last)`
+
+    * removes the entire half-open range `[first, last)`
+    * throws `std::logic_error` if `last` precedes `first`
+
+* `erase(key)`
+
+    * removes **all elements with the given key**
+    * implemented as a **single contiguous range erase**
+    * returns the number of elements removed
+
+Iterator rules:
+
+* any erase invalidates **all iterators**
+* except the iterator explicitly returned by the call
+
+---
+
+### Capacity & lifecycle
+
+```cpp
+bool empty() const;
+size_t size() const;
+
+void clear() noexcept;
+void reserve(size_t n);
+void shrink_to_fit();
+```
+
+Semantics:
+
+* `clear()`
+
+    * resets the underlying vector
+    * preserves capacity
+    * effectively constant-time
+    * particularly efficient under PMR allocators
+
+* `reserve(n)`
+
+    * requests capacity for at least `n` elements
+    * does not change ordering or size
+
+* `shrink_to_fit()`
+
+    * non-binding request to reduce capacity
+    * may or may not reallocate
+    * iterator validity is preserved if no reallocation occurs
+
+---
+
+### Bulk insertion
+
+```cpp
+template<typename It>
+void bulk_insert(It first, It last);
+```
+
+Semantics:
+
+* appends all elements in `[first, last)` to the container
+* then performs a **stable sort of the entire sequence**
+* preserves relative order among equivalent keys
+* invalidates all iterators
+
+Design intent:
+
+* this is the **preferred construction path**
+  for large datasets
+* optimized for append-heavy and rebuild-oriented workflows
+* explicitly trades incremental cost for predictable bulk behavior
+
+---
+
+### Summary of insertion semantics
+
+| Operation     | Allows duplicates | Preserves order | Notes                     |
+|---------------|-------------------|-----------------|---------------------------|
+| `insert`      | yes               | yes             | tuple-like, generalized   |
+| `emplace`     | yes               | yes             | constructs temporary pair |
+| `bulk_insert` | yes               | yes             | append + stable rebuild   |
+
+`flat_multimap` never rejects insertion based on key existence.
+All multimap semantics are expressed through **range structure**, not key uniqueness.
+
+---
+
 ## Why Not Extend [`ordered_map`](ordered_map.md)?
 
 Multimap workloads are **structurally range-oriented**:
@@ -119,7 +338,7 @@ Attempting to support these would compromise their core invariants.
 
 `flat_multimap` takes the opposite approach:
 
-> **Turn the “sorted vector + stable binary search” algorithm into a container with explicit semantics.**
+> **Turn the "sorted vector + stable binary search" algorithm into a container with explicit semantics.**
 
 It provides:
 

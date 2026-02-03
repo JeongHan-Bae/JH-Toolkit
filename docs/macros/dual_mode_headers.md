@@ -89,7 +89,7 @@ Example from `immutable_str.cpp`:
 
 ```cpp
 #define JH_HEADER_IMPL_BUILD
-#include "jh/immutable_str.h"
+#include "jh/core/immutable_str.h"
 ```
 
 This single inclusion generates all strong definitions for that module.  

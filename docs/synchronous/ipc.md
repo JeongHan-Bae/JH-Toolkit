@@ -18,7 +18,7 @@
 <div align="center" style="margin-top: -32px;">
   <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Ojing.svg" 
        alt="Ojing mascot"
-       style="width: 96px; height: auto;">
+       width=96px;>
 </div>
 
 ---
@@ -169,7 +169,7 @@ This results in:
 * clearer ownership
 * deterministic topology
 
-The design intentionally avoids “feature richness” in favor of **predictable engineering behavior**.
+The design intentionally avoids "feature richness" in favor of **predictable engineering behavior**.
 
 ---
 

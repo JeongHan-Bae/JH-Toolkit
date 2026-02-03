@@ -17,7 +17,8 @@
 
 ## 🧭 Introduction
 
-`jh::meta::t_str<N>` (name `t_str` and alias `TStr` are shortened forms of "Template String Literal") is a **C++20 compile-time string wrapper** designed to make
+`jh::meta::t_str<N>` (name `t_str` and alias `TStr` are shortened forms of "Template String Literal") is a **C++20
+compile-time string wrapper** designed to make
 **string literals usable as non-type template parameters (NTTP)**.
 
 It stores the literal in a fixed-size `jh::pod::array<char, N>`, **always including
@@ -206,10 +207,12 @@ Rules:
 
 ```cpp
 constexpr std::uint64_t id =
-    t_str{"user_name"}.hash();
+    t_str{"user_name"}.hash(); // default: jh::meta::c_hash::fnv1a64
 ```
 
-Supported algorithms:
+See: [`jh::meta::hash`](hash.md) for details.
+
+Supported algorithms (selectable via `jh::meta::c_hash` enum):
 
 * `fnv1a64` (default)
 * `fnv1_64`
@@ -218,7 +221,13 @@ Supported algorithms:
 * `murmur64`
 * `xxhash64`
 
+(`murmur64` and `xxhash64` are designed for compile-time use instead of full-complexity runtime variants.)
 Optional inclusion of the null terminator is supported.
+
+If you need compile-time switch-like lookups based on string keys, consider using
+[`jh::meta::lookup_map`](lookup_map.md). `jh::meta::lookup_map` with [`jh::pod::string_view`](../pods/string_view.md)
+keys can support transparent lookups from `t_str` (constructed canonical `string_view`s from `t_str` instances).
+`jh::meta::lookup_map` can avoid hash collisions as it checks `hash` and key equality both at compile time and runtime.
 
 ---
 

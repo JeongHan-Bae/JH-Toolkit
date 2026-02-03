@@ -1,6 +1,7 @@
 # 🧱 **JH Toolkit — `jh::ordered_map` / `jh::ordered_set` API Reference**
 
 📁 **Header:** `<jh/core/ordered_map.h>`  
+🔄 **Forwarding Header:** `<jh/ordered_map>`  
 📦 **Namespace:** `jh`  
 📅 **Version:** 1.4.x (2026)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
@@ -162,7 +163,7 @@ std::pair<iterator, bool> emplace(Args&&... args);
 
 ```cpp
 template<typename P>
-requires jh::concepts::pair_like_for<K, V, P>
+requires jh::concepts::pair_like_for<P, K, V>
 std::pair<iterator, bool> insert(P&& p);
 
 std::pair<iterator, bool>
@@ -178,7 +179,7 @@ Notes:
 * key and mapped value are consumed separately
 * any tuple-like `(K, V)` is accepted if types match
 
-See [`jh::concepts::pair_like_for`](../conceptual/tuple_like.md) for details.
+See [`jh::concepts::pair_like_for`](../conceptual/tuple_like.md#-strict-pair-semantics-for-associative-containers) for details.
 
 ---
 
@@ -461,7 +462,7 @@ However:
 * there is **no L3 pointer-chasing regression**
 * no TLB explosion
 * no allocator free-list degeneration
-* the worst case is simply “no locality benefit”, not *worse than STL*
+* the worst case is simply "no locality benefit", not *worse than STL*
 
 By contrast, pointer-based trees **never had prefetchability to begin with**.
 
@@ -504,7 +505,7 @@ Unlike `std::map` / `std::multimap`, this container:
 
 This reflects real usage:
 
-* ordered maps are rarely used as “delete-heavy” structures
+* ordered maps are rarely used as "delete-heavy" structures
 * bulk deletion is usually followed by rebuild
 * PMR + `clear()` is the intended reset mechanism
 
