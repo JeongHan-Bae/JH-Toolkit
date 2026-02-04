@@ -106,10 +106,10 @@ If your system differs from the CI presets, you can always [build from source](#
 git clone https://github.com/JeongHan-Bae/jh-toolkit.git
 ```
 
-#### 🔹 **Option 2: Latest LTS Release (1.3.0+)**
+#### 🔹 **Option 2: Latest LTS Release (1.4.0+)**
 
 ```bash
-git clone --branch 1.3.x-LTS --depth=1 https://github.com/JeongHan-Bae/jh-toolkit.git
+git clone --branch 1.4.x-LTS --depth=1 https://github.com/JeongHan-Bae/jh-toolkit.git
 ```
 
 👉 Or download from: **[JH Toolkit Latest LTS Release](https://github.com/JeongHan-Bae/JH-Toolkit/releases/latest)**
@@ -222,7 +222,7 @@ target_link_libraries(my_project PRIVATE jh::jh-toolkit-static)   # Optimized st
 ## 🧩 Dual-Mode Headers
 
 `jh-toolkit` provides a set of **dual-mode headers** under
-[`include/jh/macros/`](../include/jh/macros/header_begin.h) — mainly:
+[`include/jh/macros/`](macros/dual_mode_headers.md) — mainly:
 
 * `header_begin.h`
 * `header_end.h`

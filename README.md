@@ -118,7 +118,7 @@ ambiguity, and support reliable system design**.
 > Even when it is not used as the exclusive implementation language, it can reliably take responsibility for *critical
 > parts* of a system—such as high-performance paths, security-sensitive components, or logic that requires strong semantic
 > guarantees.  
-> Modern C++ integrates cleanly with long-lived, stable interfaces such as **gRPC**, **HTTP-based services**, and 
+> Modern C++ integrates cleanly with long-lived, stable interfaces such as **gRPC**, **HTTP-based services**, and
 > **Cython bindings**, allowing it to coexist naturally in polyglot systems. In such architectures, it is preferable to
 > rely on **typed, structured interfaces** rather than raw C ABIs, which tend to erase semantics and weaken safety and
 > auditability.  
@@ -305,8 +305,8 @@ To disable the Nova engine, follow these steps:
 1. Open **Settings**
 2. Go to **Advanced Settings**
 3. Navigate to **CLion**
-4. Locate the option:
-    -[ ] Use ReSharper C++ language engine (CLion Nova)
+4. Locate the option:  
+   - [ ] Use ReSharper C++ language engine (CLion Nova)  
 5. **Uncheck** this option
 6. **Restart the IDE**
 
@@ -398,13 +398,15 @@ Developed by **JeongHan-Bae**
 📧 [mastropseudo@gmail.com](mailto:mastropseudo@gmail.com)  
 🔗 [GitHub Profile](https://github.com/JeongHan-Bae)
 
-## 📜 License
+## 📜 [License](https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme)
 
-This project is licensed under the **Apache 2.0 License**. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the **Apache 2.0 License**.  
+See the license text at the link above for full details.
 
-## 🤝 [Contributing](CONTRIBUTING.md)
+## 🤝 [Contributing](https://github.com/JeongHan-Bae/JH-Toolkit?tab=contributing-ov-file#readme)
 
-Contributions are welcome! Feel free to open issues and pull requests to enhance the library.
+Contributions are welcome!  
+Please refer to the contribution guidelines linked above before opening issues or pull requests.
 
 ---
 
