@@ -1,5 +1,5 @@
 /**
- * @file ipc.h (synchronous)
+ * @file ipc.h
  * @brief Aggregated header for inter-process communication primitives under <code>jh::sync</code>.
  *
  * <p>
@@ -23,7 +23,7 @@
  *   <li><code>process_cond_var</code> &mdash; condition variable for processes.</li>
  *   <li><code>process_counter</code> &mdash; atomic counter for process coordination.</li>
  *   <li><code>process_shm_obj</code> &mdash; shared memory allocator and container.</li>
- *   <li><code>shared_process_mutex</code> &mdash; engineering-grade reader–writer lock
+ *   <li><code>shared_process_mutex</code> &mdash; engineering-grade reader-writer lock
  *       built on shared memory, conceptually similar to
  *       <code>std::shared_timed_mutex</code> but supporting
  *       <b>reentrancy</b> and <b>privileged read-to-write promotion</b>

@@ -1,24 +1,25 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
  * @file ordered_map.h
  * @brief Contiguous AVL-based ordered container with fragmentation-free semantics.
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <h3>Overview</h3>
  * <p>
@@ -127,20 +128,20 @@
  *
  * <p>
  * Benchmarks (Apple M3, LLVM clang++20, 2025) show stable behavior across
- * 5 000–1 000 000 elements:
+ * 5 000-1 000 000 elements:
  * </p>
  *
  * <table>
  *   <tr>
- *     <th><nobr>Operation</nobr></th>
- *     <th><nobr><code>std::set/map</code></nobr></th>
- *     <th><nobr><code>jh::ordered_set/map</code></nobr></th>
- *     <th><nobr>Notes</nobr></th>
+ *     <th>Operation</th>
+ *     <th><code>std::set/map</code></th>
+ *     <th><code>jh::ordered_set/map</code></th>
+ *     <th>Notes</th>
  *   </tr>
  *   <tr>
  *     <td>Random insert</td>
  *     <td>fast start, large jitter</td>
- *     <td>&asymp; 10–40% overhead but small jitter</td>
+ *     <td>&asymp; 10-40% overhead but small jitter</td>
  *     <td>AVL maintenance but contiguous memory</td>
  *   </tr>
  *   <tr>
@@ -158,7 +159,7 @@
  *   <tr>
  *     <td>Iteration</td>
  *     <td>pointer chasing</td>
- *     <td>&asymp; 15–30% faster</td>
+ *     <td>&asymp; 15-30% faster</td>
  *     <td>sequential memory</td>
  *   </tr>
  *   <tr>
@@ -177,7 +178,7 @@
  *
  * <h4>Observed Behavior in Large Datasets</h4>
  * <ul>
- *   <li>For 100k–1M string keys, performance gap tightens to within ~10%.</li>
+ *   <li>For 100k-1M string keys, performance gap tightens to within ~10%.</li>
  *   <li>For fully ordered input, <code>ordered_set</code> often surpasses std::set.</li>
  *   <li>Lookup variance is consistently lower due to contiguous cachelines.</li>
  *   <li>Iteration is measurably faster at all scales.</li>
@@ -202,7 +203,7 @@
  *
  * <h3>Use Cases</h3>
  * <ul>
- *   <li>Memory-fragmentation–sensitive systems (game engines, GUI trees, routing).</li>
+ *   <li>Memory-fragmentation-sensitive systems (game engines, GUI trees, routing).</li>
  *   <li>Real-time components requiring predictable latency.</li>
  *   <li>Systems with massive clear/repoulate cycles using PMR.</li>
  *   <li>Large ordered indexes requiring sequential iteration.</li>
@@ -247,7 +248,7 @@ namespace jh::avl {
      * @details
      * Represents a single AVL node stored inside a contiguous vector.
      * Links are expressed as indices rather than pointers. Each node
-     * contains a key–value pair, parent/left/right indices, and an
+     * contains a key-value pair, parent/left/right indices, and an
      * explicit height field used for balancing. No per-node allocation
      * occurs; nodes are relocated only during erase compactification.
      */
@@ -527,7 +528,7 @@ namespace jh::avl {
      * <p>
      * This structure aims to provide an STL-like ordered associative container with
      * performance and predictability guarantees that are difficult to achieve using
-     * the traditional node-based red–black tree employed by <code>std::map</code> and
+     * the traditional node-based red-black tree employed by <code>std::map</code> and
      * <code>std::set</code>.
      * It is not intended as a drop-in replacement, but rather a complementary tool
      * focused on:
@@ -563,10 +564,10 @@ namespace jh::avl {
      * equivalent of default-constructing and inserting N elements), AVL
      * rebalancing introduces a measurable overhead at small scales. For data
      * sets around 10&nbsp;k, construction is typically
-     * <b>&asymp; 1.3–1.6&times;</b> the cost of <code>std::map</code>.
+     * <b>&asymp; 1.3-1.6&times;</b> the cost of <code>std::map</code>.
      * As N grows, this overhead rapidly diminishes due to contiguous storage and
      * negligible per-rotation cost; by 500&nbsp;k elements the difference is
-     * only <b>~5–10%</b>, and by 1&nbsp;million elements insertion cost becomes
+     * only <b>~5-10%</b>, and by 1&nbsp;million elements insertion cost becomes
      * effectively comparable to <code>std::map</code>.
      * </p>
      *
@@ -582,8 +583,8 @@ namespace jh::avl {
      * iteration&mdash;benefit strongly from contiguous memory layout and the smaller
      * height of AVL trees. Beyond ~5&nbsp;k elements, these operations are
      * consistently faster than <code>std::map</code>, and remain faster at every
-     * larger scale tested. Across the 5&nbsp;k–1&nbsp;M range, typical speedups
-     * fall in the <b>&asymp; 15–30% faster</b> range due to improved cache locality and
+     * larger scale tested. Across the 5&nbsp;k-1&nbsp;M range, typical speedups
+     * fall in the <b>&asymp; 15-30% faster</b> range due to improved cache locality and
      * stable successor cost.
      * </p>
      *
@@ -2127,7 +2128,7 @@ namespace jh::avl {
         }
 
         /**
-         * @brief Insert a key–value pair into the map.
+         * @brief Insert a key-value pair into the map.
          *
          * @details
          * This overload generalizes the traditional
@@ -2171,7 +2172,7 @@ namespace jh::avl {
         }
 
         /**
-         * @brief Insert a key–value pair or assign to the mapped value.
+         * @brief Insert a key-value pair or assign to the mapped value.
          *
          * @details
          * This function provides the combined "insert or assign" behavior used by
@@ -2205,7 +2206,7 @@ namespace jh::avl {
         }
 
         /**
-         * @brief Insert a key–value pair by constructing it from arbitrary arguments.
+         * @brief Insert a key-value pair by constructing it from arbitrary arguments.
          *
          * @details
          * This function preserves the usual <code>emplace</code> semantics: the
@@ -2748,7 +2749,7 @@ namespace jh::avl {
          * a type that is fundamentally bidirectional or forward must not provide
          * random-access operations (e.g., <code>operator[]</code>, <code>operator+(int)</code>) by
          * emulating them via repeated <code>operator++</code> or <code>operator--</code> steps.
-         * Such "pseudo–random-access" iterators degrade performance severely,
+         * Such "pseudo-random-access" iterators degrade performance severely,
          * because the implementation may assume <tt>O(1)</tt> distance and indexing while
          * the actual cost is <tt>O(n)</tt>. Iterator category tags must accurately reflect
          * the iterator's capabilities.
@@ -2784,7 +2785,7 @@ namespace jh::avl {
          * @warning
          * As with iterator-based construction, range types must not provide a
          * misleading random-access iterator category. Emulating random-access
-         * semantics atop a non–random-access traversal (e.g., implementing
+         * semantics atop a non-random-access traversal (e.g., implementing
          * <code>operator[]</code> by repeated increment operations) causes unnecessary
          * <tt>O(n)</tt> behavior and defeats the intended performance guarantees.
          */
@@ -3055,7 +3056,7 @@ namespace jh {
      * stored in sorted key order, and the mapped value is accessible via
      * key lookup or iterator dereferencing. Internally this type is backed
      * by <code>avl::tree_map</code>, using a contiguous storage layout
-     * rather than the pointer-based red–black tree used by STL maps.
+     * rather than the pointer-based red-black tree used by STL maps.
      *
      * @tparam K     Key type.
      * @tparam V     Mapped value type.

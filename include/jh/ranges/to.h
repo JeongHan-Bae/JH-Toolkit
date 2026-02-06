@@ -1,25 +1,26 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file to.h (ranges)
+ * @file to.h
  * @brief Container adaptation adaptor &mdash; constructs a target container <code>C</code>
  *        directly from a compatible range <code>R</code>.
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <p>
  * The <code>jh::ranges::to</code> adaptor provides a high-efficiency way to
@@ -97,7 +98,7 @@
  *     <th>Optimization Result</th>
  *   </tr>
  *   <tr>
- *     <td><nobr><b>collect&lt;V&gt;()</b></nobr></td>
+ *     <td><b>collect&lt;V&gt;()</b></td>
  *     <td>Terminates lazy views and produces a normalized, value-semantic
  *         container (e.g. <code>std::vector&lt;pair&lt;K,V&gt;&gt;</code>).</td>
  *     <td>Constructs a temporary container on the caller's stack.</td>
@@ -105,7 +106,7 @@
  *         move is required.</td>
  *   </tr>
  *   <tr>
- *     <td><nobr><b>to&lt;C&gt;()</b></nobr></td>
+ *     <td><b>to&lt;C&gt;()</b></td>
  *     <td>Adapts the collected data into the final container <code>C</code>
  *         via its constructor (<code>[begin, end)</code>, move-iterators,
  *         or adapter dispatch).</td>

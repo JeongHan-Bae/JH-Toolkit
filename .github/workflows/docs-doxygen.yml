@@ -1,0 +1,83 @@
+name: Generate and Deploy Doxygen
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  doxygen:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Get Project Version
+        id: get_version
+        run: |
+          if [ -f .github/workflows/generate_dependencies.py ]; then
+            VERSION=$(python .github/workflows/generate_dependencies.py --get-version)
+          else
+            VERSION="unknown"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "PROJECT_VERSION=v$VERSION" >> $GITHUB_ENV
+
+      - name: Get Repository Description
+        id: get_desc
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DESC=$(curl -s \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }} \
+            | jq -r '.description // empty')
+
+          if [ -z "$DESC" ] || [ "$DESC" = "null" ]; then
+            DESC="C++ Toolkit for software engineering"
+          fi
+
+          echo "PROJECT_DESCRIPTION=$DESC" >> $GITHUB_ENV
+
+      - name: Generate Doxyfile
+        run: |
+          ESCAPED_VERSION=$(echo "$PROJECT_VERSION" | sed 's/|/\\|/g')
+          ESCAPED_DESC=$(echo "$PROJECT_DESCRIPTION" | sed 's/|/\\|/g')
+
+          sed \
+            -e "s|__VERSION__|$ESCAPED_VERSION|g" \
+            -e "s|__DESCRIPTION__|$ESCAPED_DESC|g" \
+            docs/doxy_settings/Doxyfile > Doxyfile.tmp
+
+      - name: Install Doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
+
+      - name: Run Doxygen
+        run: doxygen Doxyfile.tmp
+
+      - name: Deploy to doxy_pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: doxy_pages
+          publish_dir: ./doxy/html
+          force_orphan: true
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: "docs: update doxygen for ${{ env.PROJECT_VERSION }}"

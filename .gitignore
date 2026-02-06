@@ -55,6 +55,7 @@ Thumbs.db
 # Doxygen generated files
 html/
 latex/
+doxy/
 man/
 rtf/
 xml/

@@ -1,23 +1,24 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file base64_common.h (detail)
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @file base64_common.h
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  * @brief Internal base64/base64url common utilities and tables.
  *
  * <p>
@@ -142,17 +143,17 @@ namespace jh::detail::base64_common {
             table[i] = 64;
         }
 
-        // A–Z
+        // A-Z
         for (int i = 'A'; i <= 'Z'; ++i) {
             table[i] = i - 'A';
         }
 
-        // a–z
+        // a-z
         for (int i = 'a'; i <= 'z'; ++i) {
             table[i] = i - 'a' + 26;
         }
 
-        // 0–9
+        // 0-9
         for (int i = '0'; i <= '9'; ++i) {
             table[i] = i - '0' + 52;
         }

@@ -1,23 +1,24 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file huffman.h (serialize_io)
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @file huffman.h
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  * @brief High-performance Huffman encoder/decoder supporting both canonical and
  * standard tree-based algorithms, with selectable symbol ranges (128 or 256).
  *
@@ -27,8 +28,8 @@
  * </p>
  *
  * <ul>
- *   <li><code>huff128</code> &mdash; Standard Huffman for ASCII (0–127)</li>
- *   <li><code>huff256</code> &mdash; Standard Huffman for full byte range (0–255)</li>
+ *   <li><code>huff128</code> &mdash; Standard Huffman for ASCII (0-127)</li>
+ *   <li><code>huff256</code> &mdash; Standard Huffman for full byte range (0-255)</li>
  *   <li><code>huff128_canonical</code> &mdash; Canonical Huffman (ASCII)</li>
  *   <li><code>huff256_canonical</code> &mdash; Canonical Huffman (full byte range)</li>
  * </ul>
@@ -42,18 +43,18 @@
  * <h3>Feature Comparison</h3>
  * <table>
  *   <tr>
- *     <th><nobr>Feature</nobr></th>
- *     <th><nobr><code>huff128</code></nobr></th>
- *     <th><nobr><code>huff128_canonical</code></nobr></th>
- *     <th><nobr><code>huff256</code></nobr></th>
- *     <th><nobr><code>huff256_canonical</code></nobr></th>
+ *     <th>Feature</th>
+ *     <th><code>huff128</code></th>
+ *     <th><code>huff128_canonical</code></th>
+ *     <th><code>huff256</code></th>
+ *     <th><code>huff256_canonical</code></th>
  *     </tr>
  *   <tr>
  *     <td>Symbol range</td>
- *     <td>0–127</td>
- *     <td>0–127</td>
- *     <td>0–255</td>
- *     <td>0–255</td>
+ *     <td>0-127</td>
+ *     <td>0-127</td>
+ *     <td>0-255</td>
+ *     <td>0-255</td>
  *   </tr>
  *   <tr>
  *     <td>Encoding speed</td>
@@ -94,60 +95,60 @@
  *
  * <h3>Measured Performance</h3>
  * <p>
- * Apple Silicon M3, LLVM clang++ 20, input size 20k–200k bytes (2025).
+ * Apple Silicon M3, LLVM clang++ 20, input size 20k-200k bytes (2025).
  * </p>
  *
  * <table>
  *   <tr>
- *     <th><nobr>Operation</nobr></th>
- *     <th><nobr><code>huff128</code></nobr></th>
- *     <th><nobr><code>huff128_canonical</code></nobr></th>
- *     <th><nobr><code>huff256</code></nobr></th>
- *     <th><nobr><code>huff256_canonical</code></nobr></th>
+ *     <th>Operation</th>
+ *     <th><code>huff128</code></th>
+ *     <th><code>huff128_canonical</code></th>
+ *     <th><code>huff256</code></th>
+ *     <th><code>huff256_canonical</code></th>
  *   </tr>
  *   <tr><td colspan="5"><b>Debug (unoptimized)</b></td></tr>
  *   <tr>
  *     <td>Encode</td>
- *     <td>0.45–4.3 ms</td>
- *     <td>0.44–4.6 ms</td>
- *     <td>0.54–4.0 ms</td>
- *     <td>0.48–3.8 ms</td>
+ *     <td>0.45-4.3 ms</td>
+ *     <td>0.44-4.6 ms</td>
+ *     <td>0.54-4.0 ms</td>
+ *     <td>0.48-3.8 ms</td>
  *   </tr>
  *   <tr>
  *     <td>Decode</td>
- *     <td>1.4–15 ms</td>
- *     <td>0.39–3.8 ms</td>
- *     <td>1.5–15 ms</td>
- *     <td>0.44–4.2 ms</td>
+ *     <td>1.4-15 ms</td>
+ *     <td>0.39-3.8 ms</td>
+ *     <td>1.5-15 ms</td>
+ *     <td>0.44-4.2 ms</td>
  *   </tr>
  *   <tr>
  *     <td>Relative decode speed</td>
  *     <td>1&times; (baseline)</td>
- *     <td>&asymp; 3.5–4&times; faster</td>
+ *     <td>&asymp; 3.5-4&times; faster</td>
  *     <td>1&times; (baseline)</td>
- *     <td>&asymp; 3.5–4&times; faster</td>
+ *     <td>&asymp; 3.5-4&times; faster</td>
  *   </tr>
  *   <tr><td colspan="5"><b>O3 optimized</b></td></tr>
  *   <tr>
  *     <td>Encode</td>
- *     <td>0.155–1.51 ms</td>
- *     <td>0.154–1.49 ms</td>
- *     <td>0.156–1.52 ms</td>
- *     <td>0.156–1.48 ms</td>
+ *     <td>0.155-1.51 ms</td>
+ *     <td>0.154-1.49 ms</td>
+ *     <td>0.156-1.52 ms</td>
+ *     <td>0.156-1.48 ms</td>
  *   </tr>
  *   <tr>
  *     <td>Decode</td>
- *     <td>0.406–2.27 ms</td>
- *     <td>0.290–2.17 ms</td>
- *     <td>0.265–2.27 ms</td>
- *     <td>0.260–2.16 ms</td>
+ *     <td>0.406-2.27 ms</td>
+ *     <td>0.290-2.17 ms</td>
+ *     <td>0.265-2.27 ms</td>
+ *     <td>0.260-2.16 ms</td>
  *   </tr>
  *   <tr>
  *     <td>Relative decode speed</td>
  *     <td>1&times; (baseline)</td>
- *     <td>&asymp;1.05–1.4&times; faster</td>
+ *     <td>&asymp;1.05-1.4&times; faster</td>
  *     <td>1&times; (baseline)</td>
- *     <td>&asymp;1.02–1.05&times; faster</td>
+ *     <td>&asymp;1.02-1.05&times; faster</td>
  *   </tr>
  * </table>
  *
@@ -264,7 +265,7 @@ namespace jh::serio {
          * Leaf nodes contain only <code>ch</code> and <code>freq</code>.
          */
         struct node final {
-            std::uint16_t ch = 0;   ///< Symbol value (0–127 or 0–255)
+            std::uint16_t ch = 0;   ///< Symbol value (0-127 or 0-255)
             std::uint32_t freq = 0; ///< Symbol frequency
             int left = -1;          ///< Index of left child node
             int right = -1;         ///< Index of right child node

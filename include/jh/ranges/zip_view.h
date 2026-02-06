@@ -1,5 +1,5 @@
 /**
- * @file zip_view.h (ranges)
+ * @file zip_view.h
  * @brief Internal implementation for <code>jh::ranges::zip_view</code>.
  *
  * <p>
