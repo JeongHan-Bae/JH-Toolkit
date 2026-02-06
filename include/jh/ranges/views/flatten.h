@@ -226,11 +226,9 @@ namespace jh::ranges::views {
      * </ul>
      *
      * @note
-     * <p>
      * The flatten adaptor determines flattenability purely by duck typing:
      * any object that supports structured binding is recursively expanded.
-     * </p>
-     * <p>
+     * <br>
      * The following are recognized as part of the framework's standard set
      * of tuple-like types to prevent accidental misuse:
      * <ul>
@@ -239,19 +237,16 @@ namespace jh::ranges::views {
      *   <li><code>jh::ranges::zip_view</code> element proxies
      *       (<code>jh::ranges::zip_reference_proxy</code>)</li>
      * </ul>
-     * </p>
-     * <p>
+     * <br>
      * User-defined POD or aggregate types that do not declare structured binding
      * are never flattened and are treated as atomic values. Flattening applies
      * only to types that explicitly declare structured binding.
-     * </p>
-     * <p>
+     * <br>
      * Because such a declaration requires explicit <code>std</code>
      * specialization, it cannot occur accidentally. Therefore,
      * <strong>declaring structured binding is considered explicit permission
      * for recursive deconstruction</strong>, consistent with
      * <code>jh::concepts::tuple_like</code>.
-     * </p>
      *
      * @see jh::meta::flatten_proxy
      * @see jh::ranges::views::transform

@@ -1,4 +1,4 @@
-@mainpage [JH-Toolkit](https://github.com/JeongHan-Bae/JH-Toolkit#readme)
+@mainpage JH-Toolkit
 
 # JH-Toolkit
 
@@ -26,9 +26,9 @@ You can start reading the documentation in two primary ways:
 - **Top navigation bar** — for conceptual and high-level entry points  
 - **Left navigation tree** — for hierarchical exploration of namespaces, modules, and headers
 
-> **Recommended approach:**  
-> Start from the forwarding header overviews (for example `<jh/async>`, `<jh/concepts>`, `<jh/ipc>`),  
-> then drill down into specific components as needed.
+\note **Recommended approach:**  
+\note Start from the forwarding header overviews (for example `<jh/async>`, `<jh/concepts>`, `<jh/ipc>`),  
+\note then drill down into specific components as needed.
 
 ---
 
@@ -80,9 +80,9 @@ The **source of truth** for JH-Toolkit lives in:
 Files under `src/` exist mainly as **instantiation translation units** for static builds
 and should not be treated as specifications.
 
-> **Important:**  
-> Reading implementation alone is discouraged.  
-> The documented interface defines the behavior.
+\note **Important:**  
+\note Reading implementation alone is discouraged.  
+\note The documented interface defines the behavior.
 
 ---
 

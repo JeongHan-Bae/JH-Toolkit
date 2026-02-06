@@ -13,7 +13,7 @@
 </div>
 
 <div align="center" style="margin-top: -32px;">
-  <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Oree.svg"
+  <img src="https://raw.githubusercontent.com/JeongHan-Bae/JH-Toolkit/main/docs/img/Oree.svg"
        alt="Oree mascot"
        width=96px;>
 </div>

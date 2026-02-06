@@ -63,7 +63,7 @@ performance, and enhanced security.
 
 <div align="center">
   <img
-    src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Oree.svg"
+    src="https://raw.githubusercontent.com/JeongHan-Bae/JH-Toolkit/main/docs/img/Oree.svg"
     alt="Oree mascot"
     width="128"
   >

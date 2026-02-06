@@ -210,6 +210,7 @@ namespace jh::meta {
      * @note
      * ADL lookup ensures correctness for user-defined tuple-like proxies and
      * prevents illegal specialization of <code>std::get</code>.
+     * <br>
      * This approach is fully conforming and generates identical code to
      * <code>std::apply</code> for standard tuple types.
      */

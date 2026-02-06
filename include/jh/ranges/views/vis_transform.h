@@ -191,12 +191,10 @@ namespace jh::ranges::views {
      * </ul>
      *
      * @note
-     * <p>
      * When combined with <code>jh::ranges::views::common()</code>, a
      * <code>vis_transform</code>-based pipeline can be materialized directly
      * into a container via <code>jh::ranges::to</code> &mdash; no intermediate
      * <code>collect()</code> is required.
-     * </p>
      *
      * @see jh::ranges::vis_transform_view
      * @see jh::concepts::vis_function_for

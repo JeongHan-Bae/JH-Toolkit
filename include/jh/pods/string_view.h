@@ -278,7 +278,8 @@ namespace jh::pod {
          * @param hash_method Algorithm to use for hashing (default: <code>fnv1a64</code>).
          * @return 64-bit hash of the view data, or <code>-1</code> if <code>data == nullptr</code>.
          *
-         * @note <ul>
+         * @note
+         * <ul>
          *   <li>This is <strong>not cryptographic</strong>; do not use it for security-sensitive logic.</li>
          *   <li>If <code>data</code> is null, the return value is <code>-1</code> (sentinel).</li>
          *   <li>Hashing is based only on contents and length, not on pointer identity.</li>

@@ -7,13 +7,19 @@ on:
       - '**/*dev'
       - 'dev*'
       - '**/dev*'
-    paths:
+    paths: &shared_paths
       - 'CMakeLists.txt'
       - 'src/**'
       - 'include/**'
       - 'examples/**'
       - 'tests/**'
       - '.github/workflows/ci.yml'
+
+  pull_request:
+    branches:
+      - main
+    paths: *shared_paths
+
   workflow_dispatch:
 
 jobs:

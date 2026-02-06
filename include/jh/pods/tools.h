@@ -79,9 +79,6 @@ static_assert(false,
  *   <li>If the type violates POD requirements (e.g., contains <code>std::string</code> or <code>unique_ptr</code>),
  *       it triggers a compile-time error.</li>
  * </ul>
- *
- * @note Highly recommended over manual struct declarations when using
- *       <code>jh::pod_stack</code> or other POD-only containers.
  */
 #define JH_POD_STRUCT(NAME, ...)                                  \
     struct NAME {                                                 \

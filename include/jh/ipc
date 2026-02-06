@@ -25,7 +25,7 @@
  *       <code>jh::ipc</code> without the <code>jh::sync</code> prefix.</li>
  * </ul>
  *
- * <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Ojing.svg" alt="Ojing mascot" width="64">
+ * <img src="https://raw.githubusercontent.com/JeongHan-Bae/JH-Toolkit/main/docs/img/Ojing.svg" alt="Ojing mascot" width="64">
  *
  * <h4>Design Note</h4>
  * <p>

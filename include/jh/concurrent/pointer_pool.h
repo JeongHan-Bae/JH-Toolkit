@@ -233,24 +233,21 @@ namespace jh::conc {
      * </ul>
      *
      * @note
-     * <p>
      * Hash and equality functors need only reflect object-level identity. When using
      * <code>jh::observe_pool</code>, these are automatically derived from <code>std::hash&lt;T&gt;()</code> or
      * adl <code>hash(t)</code> or <code>t.hash()</code>, and <code>operator==()</code> to ensure consistent behavior.
-     * </p>
      *
      * @warning
-     * <p>
      * On Windows environments based on the Universal CRT (including MinGW variants),
      * <code>std::shared_ptr</code> and <code>std::weak_ptr</code> may exhibit incorrect reference-count
      * synchronization under high concurrency. As a result, <code>weak_ptr::lock()</code> may succeed
      * against an object whose underlying <code>shared_ptr</code> has already been destroyed, leading to
      * invalid access or crashes even under otherwise correct usage. Additionally, insertion of
      * <code>std::weak_ptr</code> into <code>std::unordered_*</code> containers on these platforms incurs
-     * significant jitter.</p>
-     * <p>
+     * significant jitter.
+     * <br>
      * Due to these platform-specific defects, high-pressure concurrent use of
-     * <code>pointer_pool</code> is not recommended on Windows UCRT-based toolchains.</p>
+     * <code>pointer_pool</code> is not recommended on Windows UCRT-based toolchains.
      */
     template<typename T, typename Hash, typename Eq>
     requires(
@@ -355,7 +352,7 @@ namespace jh::conc {
          * This only removes the pool's <em>observation</em> of those objects &mdash;
          * their actual lifetimes remain intact because ownership is held by
          * external <code>std::shared_ptr</code> instances.
-         *
+         * <br>
          * Moving represents transfer of observation scope. Since deduplication
          * is tolerant to transient duplicates, the existence of similar entries
          * in both pools after move is not a correctness issue.

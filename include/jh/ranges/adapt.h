@@ -151,14 +151,14 @@ namespace jh::ranges {
      * <b>non-copyable</b> or <b>non-movable</b>. Such ranges cannot satisfy
      * <code>std::ranges::viewable_range</code>, and thus cannot be used
      * directly with <code>std::views::*</code> adaptors.
-     *
+     * <br>
      * Passing <b>non-copyable</b> or <b>non-movable</b> <tt>ranges</tt>
      * or any <b>non-standard</b> <tt>sequences</tt> through <code>adapt</code> (or equivalently
      * <code>jh::to_range()</code>) constructs a safe proxy &mdash;
      * typically a <code>std::ranges::subrange</code> or
      * <code>jh::ranges::range_adaptor</code> &mdash; that <b>restores
      * viewable_range compatibility</b>.
-     *
+     * <br>
      * Once adapted, these ranges can participate freely in
      * <code>std::views</code> pipelines or <code>jh::ranges::views</code>
      * adaptors.
