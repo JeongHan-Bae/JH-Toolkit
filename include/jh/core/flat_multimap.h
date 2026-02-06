@@ -1,24 +1,25 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
  * @file flat_multimap.h
  * @brief Flat ordered multimap container.
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <h3>Design Rationale &mdash; Why <code>flat_multimap</code> Exists</h3>
  *
@@ -122,7 +123,7 @@
  * </p>
  *
  * <p>
- * Unlike <code>flat_multimap</code>, which must expose key–value association
+ * Unlike <code>flat_multimap</code>, which must expose key-value association
  * and range-based deletion, a hypothetical <code>flat_multiset</code> would
  * amount to a thin wrapper over an existing algorithm without providing
  * meaningful additional structure or guarantees.
@@ -141,10 +142,10 @@
  *
  * <table>
  *   <tr>
- *     <th><nobr>Operation</nobr></th>
- *     <th><nobr><code>std::multimap</code></nobr></th>
- *     <th><nobr><code>jh::flat_multimap</code></nobr></th>
- *     <th><nobr>Notes</nobr></th>
+ *     <th>Operation</th>
+ *     <th><code>std::multimap</code></th>
+ *     <th><code>jh::flat_multimap</code></th>
+ *     <th>Notes</th>
  *   </tr>
  *   <tr>
  *     <td>Random insert (5k)</td>
@@ -161,7 +162,7 @@
  *   <tr>
  *     <td>Bulk construction (50k)</td>
  *     <td>allocator-dominated</td>
- *     <td>&asymp; 2–4&times; faster</td>
+ *     <td>&asymp; 2-4&times; faster</td>
  *     <td>single append + stable sort</td>
  *   </tr>
  *   <tr>
@@ -173,7 +174,7 @@
  *   <tr>
  *     <td>Iteration</td>
  *     <td>pointer chasing</td>
- *     <td>&asymp; 50–90&times; faster</td>
+ *     <td>&asymp; 50-90&times; faster</td>
  *     <td>sequential memory traversal</td>
  *   </tr>
  *   <tr>
@@ -562,7 +563,7 @@ namespace jh {
     public:
 
         /**
-         * @brief Insert a key–value pair by constructing it from arbitrary arguments.
+         * @brief Insert a key-value pair by constructing it from arbitrary arguments.
          *
          * @details
          * This function preserves the usual <code>emplace</code> semantics: the
@@ -586,7 +587,7 @@ namespace jh {
         }
 
         /**
-         * @brief Insert a key–value pair into the map.
+         * @brief Insert a key-value pair into the map.
          *
          * @details
          * This overload generalizes the traditional

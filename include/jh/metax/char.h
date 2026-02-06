@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file char.h (metax)
+ * @file char.h
  * @brief Character-semantics concept and utilities &mdash; constexpr-safe character classification
  *        and transformation for 1-byte fundamental types.
  * @author
@@ -39,14 +40,14 @@
  *
  * <h3>Included utilities</h3>
  * <ul>
- *   <li><code>is_alpha()</code> &mdash; check for alphabetic characters (<tt>A–Z</tt>, <tt>a–z</tt>).</li>
- *   <li><code>is_digit()</code> &mdash; check for decimal digits (<tt>0–9</tt>).</li>
+ *   <li><code>is_alpha()</code> &mdash; check for alphabetic characters (<tt>A-Z</tt>, <tt>a-z</tt>).</li>
+ *   <li><code>is_digit()</code> &mdash; check for decimal digits (<tt>0-9</tt>).</li>
  *   <li><code>is_alnum()</code> &mdash; check for alphanumeric (letter or digit).</li>
- *   <li><code>is_hex_char()</code> &mdash; check for valid hexadecimal characters (<tt>0–9</tt>, <tt>A–F</tt>, <tt>a–f</tt>).</li>
- *   <li><code>is_base64_core()</code> &mdash; check if part of the standard Base64 alphabet (<tt>A–Z</tt>, <tt>a–z</tt>, <tt>0–9</tt>, '+', '/').</li>
- *   <li><code>is_base64url_core()</code> &mdash; check if part of the Base64URL alphabet (<tt>A–Z</tt>, <tt>a–z</tt>, <tt>0–9</tt>, '-', '_').</li>
- *   <li><code>is_ascii()</code> &mdash; verify whether a character is within the 7-bit ASCII range (<tt>0–127</tt>).</li>
- *   <li><code>is_printable_ascii()</code> &mdash; check if character is a printable 7-bit ASCII symbol (<tt>32–126</tt> inclusive).</li>
+ *   <li><code>is_hex_char()</code> &mdash; check for valid hexadecimal characters (<tt>0-9</tt>, <tt>A-F</tt>, <tt>a-f</tt>).</li>
+ *   <li><code>is_base64_core()</code> &mdash; check if part of the standard Base64 alphabet (<tt>A-Z</tt>, <tt>a-z</tt>, <tt>0-9</tt>, '+', '/').</li>
+ *   <li><code>is_base64url_core()</code> &mdash; check if part of the Base64URL alphabet (<tt>A-Z</tt>, <tt>a-z</tt>, <tt>0-9</tt>, '-', '_').</li>
+ *   <li><code>is_ascii()</code> &mdash; verify whether a character is within the 7-bit ASCII range (<tt>0-127</tt>).</li>
+ *   <li><code>is_printable_ascii()</code> &mdash; check if character is a printable 7-bit ASCII symbol (<tt>32-126</tt> inclusive).</li>
  *   <li><code>is_valid_char()</code> &mdash; check that character is not a control or DEL (returns true for all non-control bytes).</li>
  *   <li><code>to_upper()</code> &mdash; convert a letter to uppercase; leave others unchanged.</li>
  *   <li><code>to_lower()</code> &mdash; convert a letter to lowercase; leave others unchanged.</li>
@@ -128,13 +129,13 @@ namespace jh::meta {
     std::same_as<T, unsigned char>;
 
 
-    /// @brief Check if character is an alphabetic letter (A–Z, a–z).
+    /// @brief Check if character is an alphabetic letter (A-Z, a-z).
     template<any_char Char>
     [[nodiscard]] constexpr bool is_alpha(Char c) noexcept {
         return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
     }
 
-    /// @brief Check if character is a decimal digit (0–9).
+    /// @brief Check if character is a decimal digit (0-9).
     template<any_char Char>
     [[nodiscard]] constexpr bool is_digit(Char c) noexcept {
         return (c >= '0' && c <= '9');

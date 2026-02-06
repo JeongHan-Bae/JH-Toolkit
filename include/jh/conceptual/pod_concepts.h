@@ -1,5 +1,5 @@
 /**
- * @file pod_concepts.h (conceptual)
+ * @file pod_concepts.h
  * @brief Aggregated header for POD-related concepts under <code>jh::concepts</code>.
  *
  * <p>

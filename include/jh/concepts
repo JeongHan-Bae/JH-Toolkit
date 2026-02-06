@@ -20,7 +20,7 @@
  * <ul>
  *   <li>Defines <code>jh::concepts</code> as the behavioral foundation layer of the toolkit.</li>
  *   <li>Unifies all conceptual traits.</li>
- *   <li>Encapsulates the duck-typing–based recognition system for type semantics and composition.</li>
+ *   <li>Encapsulates the duck-typing-based recognition system for type semantics and composition.</li>
  * </ul>
  *
  * <img src="https://raw.githubusercontent.com/bulgogi-framework/.github/main/res/img/Oree.svg" alt="Oree mascot" width="64">
@@ -29,7 +29,7 @@
  * <p>
  * <code>jh::concepts</code> establishes the meta-structural layer of the JH Toolkit,
  * bridging low-level type traits with high-level behavioral contracts. It provides
- * constexpr-friendly, SFINAE-free, and C++20-concept–driven abstractions to ensure
+ * constexpr-friendly, SFINAE-free, and C++20-concept-driven abstractions to ensure
  * expressive and safe compile-time reasoning across the entire codebase.
  * </p>
  *

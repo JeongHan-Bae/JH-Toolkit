@@ -24,7 +24,7 @@
  *
  * <h4>Design Note</h4>
  * <p>
- * <code>jh::serio</code> unifies binary–text serialization tools into a single, consistent
+ * <code>jh::serio</code> unifies binary-text serialization tools into a single, consistent
  * interface, minimizing low-level boilerplate and ensuring strong validation and portability.
  * </p>
  */

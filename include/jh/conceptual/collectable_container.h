@@ -1,23 +1,24 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file collectable_container.h (conceptual)
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @file collectable_container.h
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * @brief Compile-time deduction of <em>collectable containers</em> &mdash; determining
  *        whether and how a container <code>C</code> can accept elements of a range
@@ -106,7 +107,7 @@
  * </ul>
  * <p>
  * Arbitrary aggregates or user-defined proxies are not implicitly unpacked,
- * ensuring deterministic behavior and preserving the element’s semantic identity.
+ * ensuring deterministic behavior and preserving the element's semantic identity.
  * </p>
  *
  * <h3>Relationship with other modules</h3>
@@ -116,7 +117,7 @@
  *   <li><b><code>jh::ranges::to</code></b> &mdash; skips this classification entirely,
  *       performing direct container construction when <code>closable</code>.</li>
  *   <li><b><code>jh::concepts::closable_container_for</code></b> &mdash; represents the
- *       complementary “construction-level” concept for <code>to</code>.</li>
+ *       complementary "construction-level" concept for <code>to</code>.</li>
  * </ul>
  *
  * <h3>Semantic guarantee</h3>
@@ -216,7 +217,7 @@ namespace jh::concepts::detail {
     concept emplace_unpackable = is_emplace_unpackable<C, T>();
 
     /**
-     * @brief Compute the <code>collectable_status</code> of a container–range pair.
+     * @brief Compute the <code>collectable_status</code> of a container-range pair.
      *
      * @details
      * This <em>constexpr deduction routine</em> examines, in order of priority,
@@ -278,7 +279,7 @@ namespace jh::concepts::detail {
     }
 
     /**
-     * @brief Internal trait evaluating collectability of a container–range pair.
+     * @brief Internal trait evaluating collectability of a container-range pair.
      *
      * @tparam C container type
      * @tparam R range type

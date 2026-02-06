@@ -1,24 +1,25 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
  * @file runtime_arr.h
  * @brief RAII-managed, non-resizable runtime array &mdash; a safe modern replacement for C99 VLA.
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <h3>Overview</h3>
  * <p>
@@ -56,11 +57,11 @@
  * <h3>Comparison vs Related Containers</h3>
  * <table>
  *   <tr>
- *     <th><nobr>Feature</nobr></th>
- *     <th><nobr><code>std::vector&lt;T&gt;</code></nobr></th>
- *     <th><nobr><code>jh::runtime_arr&lt;T&gt;</code></nobr></th>
- *     <th><nobr><code>std::array&lt;T, N&gt;</code></nobr></th>
- *     <th><nobr><code>VLA (C99)</code></nobr></th>
+ *     <th>Feature</th>
+ *     <th><code>std::vector&lt;T&gt;</code></th>
+ *     <th><code>jh::runtime_arr&lt;T&gt;</code></th>
+ *     <th><code>std::array&lt;T, N&gt;</code></th>
+ *     <th><code>VLA (C99)</code></th>
  *   </tr>
  *   <tr>
  *     <td>Compile-time size</td>
@@ -180,10 +181,10 @@
  *
  * <table>
  *   <tr><th>Optimization Level</th><th><code>std::vector&lt;T&gt;</code></th><th><code>runtime_arr&lt;T&gt;</code></th><th>Relative Speedup</th></tr>
- *   <tr><td>-O0</td><td>&asymp; 7.6 &micro;s</td><td>&asymp; 0.15 &micro;s</td><td>&asymp; 50×</td></tr>
- *   <tr><td>-O2</td><td>&asymp; 0.13 &micro;s</td><td>&asymp; 0.017 &micro;s</td><td>&asymp; 7×</td></tr>
- *   <tr><td>-O3</td><td>&asymp; 0.15 &micro;s</td><td>&asymp; 0.017 &micro;s</td><td>&asymp; 8×</td></tr>
- *   <tr><td>-Ofast</td><td>&asymp; 0.16 &micro;s</td><td>&asymp; 0.017 &micro;s</td><td>&asymp; 9×</td></tr>
+ *   <tr><td>-O0</td><td>&asymp; 7.6 &micro;s</td><td>&asymp; 0.15 &micro;s</td><td>&asymp; 50&times;</td></tr>
+ *   <tr><td>-O2</td><td>&asymp; 0.13 &micro;s</td><td>&asymp; 0.017 &micro;s</td><td>&asymp; 7&times;</td></tr>
+ *   <tr><td>-O3</td><td>&asymp; 0.15 &micro;s</td><td>&asymp; 0.017 &micro;s</td><td>&asymp; 8&times;</td></tr>
+ *   <tr><td>-Ofast</td><td>&asymp; 0.16 &micro;s</td><td>&asymp; 0.017 &micro;s</td><td>&asymp; 9&times;</td></tr>
  * </table>
  *
  * <h4>Observations</h4>
@@ -192,7 +193,7 @@
  *   <li>For trivially constructible POD types, <code>runtime_arr</code> exhibits allocation cost virtually identical to raw <code>operator new[]</code>.</li>
  *   <li>From <code>-O2</code> upward, both <code>std::vector</code> and <code>runtime_arr</code> reach optimization saturation;
  *       higher levels (<code>-O3</code>, <code>-Ofast</code>) bring negligible gains.</li>
- *   <li>The consistent 6–9× advantage stems from <code>runtime_arr</code>'s simplified layout,
+ *   <li>The consistent 6-9&times; advantage stems from <code>runtime_arr</code>'s simplified layout,
  *       absence of <code>allocator_traits</code> indirection, and elimination of dynamic capacity management.</li>
  *   <li>Measured variance &lt; 1 % across runs, confirming deterministic RAII allocation and compiler inlining behavior.</li>
  * </ul>
@@ -379,13 +380,13 @@ namespace jh {
 
     public:
 
-        using value_type = T;                                        ///< Value type alias.
-        using size_type [[maybe_unused]] = std::uint64_t;            ///< Size type alias (64-bit).
-        using difference_type [[maybe_unused]] = std::ptrdiff_t;     ///< Difference type alias.
-        using reference = value_type &;                              ///< Reference type.
-        using const_reference [[maybe_unused]] = const value_type &; ///< Const reference type.
-        using pointer = value_type *;                                ///< Pointer type.
-        using const_pointer = const value_type *;                    ///< Const pointer type.
+        using value_type = T;                            ///< Value type alias.
+        using size_type = std::uint64_t;                 ///< Size type alias (64-bit).
+        using difference_type = std::ptrdiff_t;          ///< Difference type alias.
+        using reference = value_type &;                  ///< Reference type.
+        using const_reference = const value_type &;      ///< Const reference type.
+        using pointer = value_type *;                    ///< Pointer type.
+        using const_pointer = const value_type *;        ///< Const pointer type.
         using iterator = pointer;
         using const_iterator = const_pointer;
         using allocator_type = detail::rt_arr_alloc_t<T, Alloc>;
@@ -1055,7 +1056,7 @@ namespace jh {
 
         [[nodiscard]] std::span<const value_type> as_span() const noexcept { return {data(), size()}; }
 
-        [[maybe_unused]] [[maybe_unused]] static bool is_static_built() {
+        [[maybe_unused]] static bool is_static_built() {
 #ifdef JH_IS_STATIC_BUILD
             return true;
 #else
@@ -1133,7 +1134,7 @@ namespace jh {
      * <p>
      * This specialization provides a <b>memory-efficient representation</b> for <code>bool</code> values,
      * storing them as individual bits within 64-bit words (<code>uint64_t[]</code>).
-     * Each bit represents a boolean value, achieving <b>8× memory compression</b> compared to
+     * Each bit represents a boolean value, achieving <b>8&times; memory compression</b> compared to
      * the generic <code>runtime_arr&lt;T, Alloc&gt;</code> template (which stores one byte per <code>bool</code>).
      * </p>
      *
@@ -1237,29 +1238,29 @@ namespace jh {
      *     <th>set()</th><th>read()</th><th>reset_all()</th>
      *   </tr>
      *   <tr><td>-O0</td>
-     *     <td>~20× slower</td><td>~2.8× slower</td><td>~2.8× slower</td>
-     *     <td>~0.3× faster</td><td>~2.3× slower</td><td>~2.3× slower</td></tr>
+     *     <td>~20&times; slower</td><td>~2.8&times; slower</td><td>~2.8&times; slower</td>
+     *     <td>~0.3&times; faster</td><td>~2.3&times; slower</td><td>~2.3&times; slower</td></tr>
      *   <tr><td>-O2</td>
-     *     <td>~38× slower</td><td>~160× slower</td><td>~130× slower</td>
-     *     <td>~0.55× faster</td><td>~61× slower</td><td>~60× slower</td></tr>
+     *     <td>~38&times; slower</td><td>~160&times; slower</td><td>~130&times; slower</td>
+     *     <td>~0.55&times; faster</td><td>~61&times; slower</td><td>~60&times; slower</td></tr>
      *   <tr><td>-O3</td>
-     *     <td>~59× slower</td><td>~140× slower</td><td>~130× slower</td>
-     *     <td>~0.6× faster</td><td>~62× slower</td><td>~61× slower</td></tr>
+     *     <td>~59&times; slower</td><td>~140&times; slower</td><td>~130&times; slower</td>
+     *     <td>~0.6&times; faster</td><td>~62&times; slower</td><td>~61&times; slower</td></tr>
      *   <tr><td>-Ofast</td>
-     *     <td>~51× slower</td><td>~150× slower</td><td>~125× slower</td>
-     *     <td>~0.5× faster</td><td>~61× slower</td><td>~59× slower</td></tr>
+     *     <td>~51&times; slower</td><td>~150&times; slower</td><td>~125&times; slower</td>
+     *     <td>~0.5&times; faster</td><td>~61&times; slower</td><td>~59&times; slower</td></tr>
      * </table>
      *
      * <h5>Interpretation</h5>
      * <ul>
-     *   <li><b>Small arrays (≤1K):</b> Bit-packing may outperform byte-based storage
-     *       in write-heavy scenarios due to 8× lower memory bandwidth usage.
+     *   <li><b>Small arrays (&le;1K):</b> Bit-packing may outperform byte-based storage
+     *       in write-heavy scenarios due to 8&times; lower memory bandwidth usage.
      *       Reads and resets remain slower due to bit masking overhead.</li>
-     *   <li><b>Large arrays (≥1M):</b> Bitwise access overhead dominates;
-     *       <code>set()</code> is typically ~30–60× slower,
-     *       and <code>read()</code> / <code>reset_all()</code> are ~120–160× slower but mostly memory-bound.</li>
+     *   <li><b>Large arrays (&ge;1M):</b> Bitwise access overhead dominates;
+     *       <code>set()</code> is typically ~30-60&times; slower,
+     *       and <code>read()</code> / <code>reset_all()</code> are ~120-160&times;&plusmn; slower but mostly memory-bound.</li>
      *   <li><b>Optimization scaling:</b> <code>-O2</code> already achieves full inlining;
-     *       <code>-O3</code> and <code>-Ofast</code> differences are within measurement noise (±2%).</li>
+     *       <code>-O3</code> and <code>-Ofast</code> differences are within measurement noise (&plusmn;2%).</li>
      *   <li><b>Static instantiation:</b> A precompiled specialization provides a
      *       <b>debug fallback</b>, mitigating <code>-O0</code> template inlining overhead.</li>
      * </ul>
@@ -1357,7 +1358,7 @@ namespace jh {
             runtime_arr *parent_;
             std::uint64_t index_;
             using iterator_concept = std::random_access_iterator_tag;
-            using iterator_category [[maybe_unused]] = iterator_concept;
+            using iterator_category = iterator_concept;
             using value_type = bool;
             using difference_type = std::ptrdiff_t;
             using reference = bit_ref;
@@ -1443,7 +1444,7 @@ namespace jh {
             std::uint64_t index_;
 
             using iterator_concept = std::random_access_iterator_tag;
-            using iterator_category [[maybe_unused]] = iterator_concept;
+            using iterator_category = iterator_concept;
             using value_type = bool;
             using difference_type = std::ptrdiff_t;
             using reference = bit_ref;
@@ -1514,7 +1515,7 @@ namespace jh {
         using raw_type = std::uint64_t;
         using value_type = bool;
         using size_type = std::uint64_t;
-        using difference_type [[maybe_unused]] = std::ptrdiff_t;
+        using difference_type = std::ptrdiff_t;
         using reference = bit_ref;
         using const_reference = bool;
         using iterator = bit_iterator;
@@ -1912,7 +1913,7 @@ namespace jh {
         /// @brief Copy assignment deleted &mdash; bit array is non-copyable by design.
         runtime_arr &operator=(const runtime_arr &) = delete;
 
-        [[maybe_unused]] [[maybe_unused]] static bool is_static_built();
+        [[maybe_unused]] static bool is_static_built();
     };
 
 } // namespace jh
@@ -1955,7 +1956,7 @@ namespace jh {
         return storage_.get();
     }
 
-    [[maybe_unused]] [[maybe_unused]] [[maybe_unused]] [[maybe_unused]] JH_INLINE auto
+    [[maybe_unused]] [[maybe_unused]] JH_INLINE auto
     runtime_arr<bool>::raw_data() const noexcept -> const raw_type * {
         return storage_.get();
     }

@@ -16,7 +16,8 @@
  * \endverbatim
  */
 /**
- * @file occ_box.h (concurrent)
+ * @file occ_box.h
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  * @brief A generic container abstraction based on
  *        <strong>OCC (Optimistic Concurrency Control)</strong>.
  *
@@ -73,7 +74,7 @@
  *   <li>Users may implement exponential backoff or jitter in retry lambdas to mitigate contention.
  *       See <code>examples/example_occ_box.cpp</code> for a full example. In short:
  *       the lambda can take a <code>duration&amp;</code>, sleep if nonzero, update it
- *       (0 &rarr; min &rarr; min×base … capped at max), then run business logic.</li>
+ *       (0 &rarr; min &rarr; min&times;base ... capped at max), then run business logic.</li>
  * </ul>
  *
  * <h3>Atomicity and contention</h3>
@@ -164,7 +165,7 @@ namespace jh::conc {
      *
      * <h4>Retry model</h4>
      * <ul>
-     *   <li>All <code>try_*()</code> APIs attempt once outside the loop, then retry up to N−1 times.</li>
+     *   <li>All <code>try_*()</code> APIs attempt once outside the loop, then retry up to N-1 times.</li>
      *   <li><code>retries == 0</code> is equivalent to one attempt.</li>
      *   <li>Backoff and jitter strategies can be layered on top (see examples).</li>
      * </ul>
@@ -300,7 +301,7 @@ namespace jh::conc {
          *
          * <h4>Semantics</h4>
          * <ul>
-         *   <li>Performs a load–invoke–validate sequence under optimistic concurrency.</li>
+         *   <li>Performs a load-invoke-validate sequence under optimistic concurrency.</li>
          *   <li>If the state changes between two atomic loads, the read retries internally.</li>
          *   <li>Wait-free for readers: never blocks writers.</li>
          * </ul>
@@ -358,7 +359,7 @@ namespace jh::conc {
          *
          * <h4>Semantics</h4>
          * <ul>
-         *   <li>Performs optimistic load–invoke–validate like <code>read()</code>.</li>
+         *   <li>Performs optimistic load-invoke-validate like <code>read()</code>.</li>
          *   <li>Unlike <code>read()</code>, it gives up after at most <code>retries</code> attempts.</li>
          *   <li>Retry count <code>0</code> is normalized to one attempt.</li>
          * </ul>
@@ -425,7 +426,7 @@ namespace jh::conc {
          *
          * <h4>Semantics</h4>
          * <ul>
-         *   <li>Performs a load–copy–invoke–CAS loop until commit succeeds.</li>
+         *   <li>Performs a load-copy-invoke-CAS loop until commit succeeds.</li>
          *   <li>Always copies the current object before applying <code>f</code>.</li>
          *   <li>Guarantees atomic replacement: readers never see a partially written object.</li>
          * </ul>
@@ -594,7 +595,7 @@ namespace jh::conc {
          * <h4>Recommended scenarios</h4>
          * <ul>
          *   <li>When the object contains fields that can be safely discarded
-         *       (e.g. large buffers or caches you don’t need to preserve).</li>
+         *       (e.g. large buffers or caches you don't need to preserve).</li>
          *   <li>When the object has resizable members (like <code>std::vector</code>
          *       or <code>std::string</code>), and constructing directly at the new
          *       size is cheaper than copying and then resizing.</li>

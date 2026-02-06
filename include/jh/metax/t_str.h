@@ -1,23 +1,24 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file t_str.h (metax)
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @file t_str.h
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  * @brief A C++20 compile-time string wrapper enabling string literals as non-type template parameters (NTTP).
  *
  * @details
@@ -184,10 +185,10 @@ namespace jh::meta {
          * @param hash_method The hash algorithm to use (default: <code>c_hash::fnv1a64</code>).
          *        Supported algorithms:
          *        <ul>
-         *          <li><code>c_hash::fnv1a64</code> – FNV-1a 64-bit hash (default, fast and well-distributed).</li>
-         *          <li><code>c_hash::fnv1_64</code> – FNV-1 64-bit hash (multiply before xor).</li>
-         *          <li><code>c_hash::djb2</code> – DJB2 hash (classic string hash).</li>
-         *          <li><code>c_hash::sdbm</code> – SDBM hash (used in readdir, DBM).</li>
+         *          <li><code>c_hash::fnv1a64</code> - FNV-1a 64-bit hash (default, fast and well-distributed).</li>
+         *          <li><code>c_hash::fnv1_64</code> - FNV-1 64-bit hash (multiply before xor).</li>
+         *          <li><code>c_hash::djb2</code> - DJB2 hash (classic string hash).</li>
+         *          <li><code>c_hash::sdbm</code> - SDBM hash (used in readdir, DBM).</li>
          *          <li><code>c_hash::murmur64</code> - constexpr-safe MurmurHash variant (seedless)</li>
          *          <li><code>c_hash::xxhash64</code> - constexpr xxHash64 variant (seedless)</li>
          *        </ul>
@@ -234,7 +235,7 @@ namespace jh::meta {
          * @details
          * <ul>
          *   <li>Performs constexpr-safe concatenation without dynamic allocation.</li>
-         *   <li>The total size must satisfy <code>t_str_concat_legal</code> (≤ 16 KB).</li>
+         *   <li>The total size must satisfy <code>t_str_concat_legal</code> (&#8804; 16 KB).</li>
          *   <li>The null terminator of the left string is ignored during concatenation,
          *       and a new null terminator is appended at the end.</li>
          * </ul>
@@ -248,7 +249,7 @@ namespace jh::meta {
         }
 
         /**
-         * @brief Check if all characters are decimal digits (0–9).
+         * @brief Check if all characters are decimal digits (0-9).
          * @note This only checks that each character is a digit.
          *       To validate if the whole string represents a number
          *       (with optional sign, decimal point, or exponent),
@@ -331,7 +332,7 @@ namespace jh::meta {
         }
 
         /**
-         * @brief Check if all characters are alphabetic (A–Z, a–z).
+         * @brief Check if all characters are alphabetic (A-Z, a-z).
          * @return true if all characters are alphabetic, false otherwise.
          */
         [[nodiscard]] constexpr bool is_alpha() const noexcept {
@@ -352,7 +353,7 @@ namespace jh::meta {
 
         /**
          * @brief Check if all characters are 7-bit ASCII.
-         * @return true if all characters are in range 0–127, false otherwise.
+         * @return true if all characters are in range 0-127, false otherwise.
          */
         [[nodiscard]] constexpr bool is_ascii() const noexcept {
             for (std::uint64_t i = 0; i < size(); i++)
@@ -472,7 +473,7 @@ namespace jh::meta {
 
     public:
         /**
-         * @brief Convert all alphabetic characters to uppercase (A–Z).
+         * @brief Convert all alphabetic characters to uppercase (A-Z).
          * @return A new <code>t_str</code> with characters transformed to uppercase.
          */
         [[nodiscard]] constexpr auto to_upper() const noexcept {
@@ -480,7 +481,7 @@ namespace jh::meta {
         }
 
         /**
-         * @brief Convert all alphabetic characters to lowercase (a–z).
+         * @brief Convert all alphabetic characters to lowercase (a-z).
          * @return A new <code>t_str</code> with characters transformed to lowercase.
          */
         [[nodiscard]] constexpr auto to_lower() const noexcept {
@@ -582,7 +583,7 @@ namespace jh::meta {
          * @details
          * <ul>
          *   <li>This function treats <code>bytes</code> as pure binary data.</li>
-         *   <li>No validation is performed &mdash; any byte value (0–255) is accepted.</li>
+         *   <li>No validation is performed &mdash; any byte value (0-255) is accepted.</li>
          *   <li>The resulting <code>t_str</code> is always null-terminated internally,
          *       because <code>t_str</code> is semantically a C-string wrapper.</li>
          *   <li>

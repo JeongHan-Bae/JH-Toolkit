@@ -1,23 +1,24 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file iterator.h (conceptual)
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @file iterator.h
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  * @brief Forward declaration and <strong>duck-typed</strong> iterator concept definitions.
  *
  * @details
@@ -91,46 +92,46 @@
  * <table>
  *   <tr><th>Concept</th><th>Behavior Checked</th><th>Primary Use</th></tr>
  *
- *   <tr><td><nobr><code>is_iterator</code></nobr></td>
+ *   <tr><td><code>is_iterator</code></td>
  *       <td>Basic iteration (<code>*it</code>, <code>++it</code>)</td>
  *       <td>Type detection</td></tr>
  *
- *   <tr><td><nobr><code>indirectly_readable</code></nobr></td>
+ *   <tr><td><code>indirectly_readable</code></td>
  *       <td>Dereference validity and value/reference consistency</td>
  *       <td>Readable element access</td></tr>
  *
- *   <tr><td><nobr><code>indirectly_writable&lt;Out, T&gt;</code></nobr></td>
+ *   <tr><td><code>indirectly_writable&lt;Out, T&gt;</code></td>
  *       <td>Supports assignment through <code>*it = value</code></td>
  *       <td>Writable element access</td></tr>
  *
- *   <tr><td><nobr><code>sentinel_for&lt;S, I&gt;</code></nobr></td>
+ *   <tr><td><code>sentinel_for&lt;S, I&gt;</code></td>
  *       <td>Equality/inequality comparability between iterator and sentinel</td>
  *       <td>Range boundary detection</td></tr>
  *
- *   <tr><td><nobr><code>input_iterator</code></nobr></td>
+ *   <tr><td><code>input_iterator</code></td>
  *       <td>Readable, comparable iteration; refines <code>is_iterator</code> and <code>indirectly_readable</code></td>
  *       <td>Single-pass sequential read</td></tr>
  *
- *   <tr><td><nobr><code>output_iterator</code></nobr></td>
+ *   <tr><td><code>output_iterator</code></td>
  *       <td>Writable via <code>*it = value</code>; refines <code>is_iterator</code> and <code>indirectly_writable</code></td>
  *       <td>Single-pass sequential write</td></tr>
  *
- *   <tr><td><nobr><code>forward_iterator</code></nobr></td>
+ *   <tr><td><code>forward_iterator</code></td>
  *       <td>Refines <code>input_iterator</code>; multi-pass, copyable, and
  *           <strong>self-sentinel</strong> (<code>sentinel_for&lt;I, I&gt;</code>)</td>
  *       <td>Stable, reentrant traversal</td></tr>
  *
- *   <tr><td><nobr><code>bidirectional_iterator</code></nobr></td>
+ *   <tr><td><code>bidirectional_iterator</code></td>
  *       <td>Refines <code>forward_iterator</code>; supports reverse movement
  *           (<code>--it</code>, <code>it--</code>)</td>
  *       <td>Reversible traversal</td></tr>
  *
- *   <tr><td><nobr><code>random_access_iterator</code></nobr></td>
+ *   <tr><td><code>random_access_iterator</code></td>
  *       <td>Refines <code>bidirectional_iterator</code>; supports arithmetic and indexing
  *           (<code>it + n</code>, <code>it[n]</code>)</td>
  *       <td>Contiguous or offset access</td></tr>
  *
- *   <tr><td><nobr><code>iterator_t&lt;T&gt;</code></nobr></td>
+ *   <tr><td><code>iterator_t&lt;T&gt;</code></td>
  *       <td>Unified iterator deduction via specialization, <code>begin()</code>, pointer, or array decay</td>
  *       <td>Meta-type for resolving iterator type</td></tr>
  * </table>

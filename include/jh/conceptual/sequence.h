@@ -16,8 +16,8 @@
  * \endverbatim
  */
 /**
- * @file sequence.h (conceptual)
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @file sequence.h
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  * @brief Concept and utilities for immutable sequence detection in C++20.
  *
  * @details

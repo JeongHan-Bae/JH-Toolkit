@@ -1,23 +1,24 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file platform.h (macros)
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @file platform.h
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  * @brief Base platform checks and macros for all modules.
  *
  * <p>
@@ -88,16 +89,16 @@
 #endif
 
 #if IS_MSVC
-    #pragma message("🚫 MSVC is not supported.")
+    #pragma message("\uD83D\uDEAB MSVC is not supported.")
     #pragma message("MSVC is currently unsupported due to poor and incomplete support for C++17/20.")
     #pragma message("This includes broken handling of concepts, inconsistent SFINAE behavior,")
     #pragma message("and unstable headers/linking across versions.")
     #pragma message("")
-    #pragma message("➡️ Recommended alternatives:")
+    #pragma message("\u27A1 Recommended alternatives:")
     #pragma message(" - GCC >= 10 (including MinGW-w64 on Windows)")
     #pragma message(" - Clang >= 11 (via MSYS2 or WSL2)")
     #pragma message("")
-    #pragma message("❗ If you're on Windows, try:")
+    #pragma message("\u2757 If you're on Windows, try:")
     #pragma message(" - MSYS2: https://www.msys2.org/")
     #pragma message(" - WSL2 + Ubuntu: sudo apt install g++")
     #pragma message("")

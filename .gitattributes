@@ -1,6 +1,7 @@
 # Ignore auxiliary directories from GitHub Linguist stats
 .github/** linguist-vendored
 tools/** linguist-vendored
+docs/** linguist-vendored
 
 # Explicitly ignore experimental/ which is not ignored by default
 experimental/* linguist-vendored
