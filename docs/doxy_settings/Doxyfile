@@ -1,7 +1,7 @@
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "JH-Toolkit"
 PROJECT_NUMBER         = __VERSION__
-PROJECT_BRIEF          = "An engineering-oriented C++20 toolkit with duck-typed concepts, static design, async coroutines, and semantic containers — header-only, RTTI-free, and concurrency-friendly."
+PROJECT_BRIEF          = __DESCRIPTION__
 PROJECT_LOGO           = "docs/img/Oree.svg"
 PROJECT_ICON           = "docs/img/Jindallae.svg"
 OUTPUT_DIRECTORY       = "doxy"
