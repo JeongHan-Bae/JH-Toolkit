@@ -50,7 +50,7 @@
  * implemented under <code>jh/metax/</code>.
  * <br>
  * This module defines the <b>compile-time infrastructure layer</b> of the
- * JH Toolkit, supplying constexpr / consteval–safe building blocks for
+ * JH Toolkit, supplying constexpr / consteval-safe building blocks for
  * structural type manipulation, NTTP-based string identity, deterministic
  * hashing, and static data modeling.
  * <br>

@@ -4,14 +4,9 @@ import os
 
 ROOT = pathlib.Path("include/jh")
 
-EXCLUDE_FILES = {
-    ROOT / "macros/header_begin.h",
-    ROOT / "macros/header_end.h",
-    }
+EXCLUDE_FILES = {}
 
-EXCLUDE_DIRS = {
-    ROOT / "detail",
-    }
+EXCLUDE_DIRS = {}
 
 def is_excluded(path: pathlib.Path) -> bool:
     if path in EXCLUDE_FILES:
@@ -35,6 +30,7 @@ def is_ascii(data: bytes) -> bool:
 
 missing_copyright: list[str] = []
 non_ascii_files: list[str] = []
+bad_newline_files: list[str] = []
 
 for p in ROOT.rglob("*"):
     if not p.is_file():
@@ -52,6 +48,10 @@ for p in ROOT.rglob("*"):
 
     if not is_ascii(data):
         non_ascii_files.append(str(p))
+
+    # newline-at-eof check: exactly one '\n'
+    if not data.endswith(b"\n") or data.endswith(b"\n\n"):
+        bad_newline_files.append(str(p))
 
     if is_header:
         text = data.decode("ascii", errors="ignore")
@@ -86,7 +86,18 @@ if non_ascii_files:
         sections.append(f"- `{p}`")
     sections.append("")
 
-if not missing_copyright and not non_ascii_files:
+if bad_newline_files:
+    sections.append("## ⚠️ Invalid EOF Newline")
+    sections.append(
+        "The following public headers must end with **exactly one `\\n`**. "
+        "Files with no trailing newline or with multiple trailing newlines are invalid:"
+    )
+    sections.append("")
+    for p in bad_newline_files:
+        sections.append(f"- `{p}`")
+    sections.append("")
+
+if not missing_copyright and not non_ascii_files and not bad_newline_files:
     sections.append("## ✅ Header Hygiene OK")
     sections.append("All checked public headers passed hygiene checks.")
 
@@ -107,4 +118,9 @@ if missing_copyright:
 if non_ascii_files:
     print(
         f"::warning::{len(non_ascii_files)} public header(s) contain non-ASCII characters"
+    )
+
+if bad_newline_files:
+    print(
+        f"::warning::{len(bad_newline_files)} public header(s) have invalid EOF newline"
     )
