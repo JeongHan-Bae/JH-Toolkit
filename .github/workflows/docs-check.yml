@@ -1,0 +1,125 @@
+# This workflow performs two independent documentation-related checks:
+#
+# 1. Documentation Presence Check
+#    - Ensures that public headers have corresponding Markdown documentation files.
+#    - Triggered ONLY by:
+#        * add/remove under include/jh/**
+#        * add/remove under docs/**
+#        * workflow file changes
+#
+# 2. Documentation Hygiene Check
+#    - Ensures public headers satisfy hygiene rules (ASCII-only, copyright, etc.).
+#    - Triggered by:
+#        * ANY change under include/jh/** (add / delete / modify)
+#        * workflow file changes
+#
+# IMPORTANT:
+# - Content modification alone does NOT trigger presence checks.
+# - Both checks emit WARNINGS only and never fail the workflow.
+
+name: Documentation Integrity Check
+
+on:
+  push:
+    branches:
+      - main
+      - '*-dev'
+    paths:
+      - 'include/jh/**'
+      - 'docs/**'
+      - '.github/workflows/docs-check.yml'
+
+  pull_request:
+    branches:
+      - main
+      - '*-dev'
+    paths:
+      - 'include/jh/**'
+      - 'docs/**'
+      - '.github/workflows/docs-check.yml'
+
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run_presence: ${{ steps.decide.outputs.run_presence }}
+      run_hygiene:  ${{ steps.decide.outputs.run_hygiene }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - id: decide
+        shell: bash
+        run: |
+          set -e
+
+          RUN_PRESENCE=false
+          RUN_HYGIENE=false
+
+          # Manual trigger → run both
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RUN_PRESENCE=true
+            RUN_HYGIENE=true
+          fi
+
+          BASE=HEAD^
+          TARGET=HEAD
+
+          # Workflow file change → run both
+          if git diff --name-only "$BASE" "$TARGET" -- .github/workflows/docs-check.yml | grep -q .; then
+            RUN_PRESENCE=true
+            RUN_HYGIENE=true
+          fi
+
+          # docs add/delete → presence only
+          if git diff --name-only --diff-filter=AD "$BASE" "$TARGET" -- docs | grep -q .; then
+            RUN_PRESENCE=true
+          fi
+
+          # include add/delete → presence
+          if git diff --name-only --diff-filter=AD "$BASE" "$TARGET" -- include/jh | grep -q .; then
+            RUN_PRESENCE=true
+          fi
+
+          # include any change → hygiene
+          if git diff --name-only "$BASE" "$TARGET" -- include/jh | grep -q .; then
+            RUN_HYGIENE=true
+          fi
+
+          echo "run_presence=$RUN_PRESENCE" >> "$GITHUB_OUTPUT"
+          echo "run_hygiene=$RUN_HYGIENE" >> "$GITHUB_OUTPUT"
+
+  documentation-presence-check:
+    needs: gate
+    if: needs.gate.outputs.run_presence == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Documentation Presence Check
+        run: |
+          python .github/workflows/docs_presence_check.py
+
+  documentation-hygiene-check:
+    needs: gate
+    if: needs.gate.outputs.run_hygiene == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Public Header Hygiene Check
+        run: |
+          python .github/workflows/docs_hygiene_check.py
