@@ -15,6 +15,25 @@
   >
 </p>
 
+<p align="center">
+  <a href="https://jeonghan-bae.github.io/JH-Toolkit/">
+    <picture>
+      <!-- Dark mode -->
+      <source
+        media="(prefers-color-scheme: dark)"
+        srcset="https://img.shields.io/badge/API%20Documentation-e5e7eb?logo=github&logoColor=000000"
+      />
+      <!-- Light mode -->
+      <img
+        src="https://img.shields.io/badge/API%20Documentation-black?logo=github"
+        alt="API Documentation"
+        width="196"
+      />
+    </picture>
+  </a>
+</p>
+
+
 <div align="center" style="margin-left: 8%; margin-right: 8%; font-size: medium;">
 
 <strong>
@@ -38,7 +57,7 @@ performance, and enhanced security.
 <p></p>
 
 <!-- ✅ Core Info -->
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/JeongHan-Bae/JH-Toolkit/tree/main?tab=Apache-2.0-1-ov-file#readme)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-violet.svg)](https://en.cppreference.com/w/cpp/20)
 ![Header-Only](https://img.shields.io/badge/header--only-supported-green)
 ![Static Build](https://img.shields.io/badge/static--build-supported-green)
@@ -48,6 +67,7 @@ performance, and enhanced security.
 [![Contributors](https://img.shields.io/github/contributors/JeongHan-Bae/JH-Toolkit.svg)](https://github.com/JeongHan-Bae/JH-Toolkit/graphs/contributors)
 [![Wiki](https://img.shields.io/badge/docs-wiki-blue)](https://github.com/JeongHan-Bae/JH-Toolkit/wiki)
 
+<br>
 
 <!-- ✅ Feature Highlights -->
 ![Pooling](https://img.shields.io/badge/pooling-powerful-brown)
@@ -116,8 +136,8 @@ ambiguity, and support reliable system design**.
 
 > **Modern C++ is already a strong fit for software development workloads.**  
 > Even when it is not used as the exclusive implementation language, it can reliably take responsibility for *critical
-> parts* of a system—such as high-performance paths, security-sensitive components, or logic that requires strong semantic
-> guarantees.  
+> parts* of a system—such as high-performance paths, security-sensitive components, or logic that requires strong
+> semantic guarantees.  
 > Modern C++ integrates cleanly with long-lived, stable interfaces such as **gRPC**, **HTTP-based services**, and
 > **Cython bindings**, allowing it to coexist naturally in polyglot systems. In such architectures, it is preferable to
 > rely on **typed, structured interfaces** rather than raw C ABIs, which tend to erase semantics and weaken safety and
@@ -129,11 +149,12 @@ ambiguity, and support reliable system design**.
 > POSIX IPCs) can be wrapped into higher-level, intention-revealing abstractions with explicit guarantees—such as
 > `jh::ipc`, which provides a semantic, constrained interface over POSIX IPC mechanisms.  
 > From a performance standpoint, modern C++ is inherently fast—*significantly faster than all dynamic languages*,
-> including those using ahead-of-time compilation. This performance comes without requiring heavyweight runtimes or hidden
-> dynamic metadata.  
+> including those using ahead-of-time compilation. This performance comes without requiring heavyweight runtimes or
+> hidden dynamic metadata.  
 > Finally, modern C++ operates naturally in **no-RTTI environments**, does not require additional dynamic type data, and
-> avoids bloated runtime infrastructures. When combined with specialized, allocation-aware data structures (such as those
-> provided by JH Toolkit), it enables low fragmentation, compact memory layouts, and predictable resource usage—properties
+> avoids bloated runtime infrastructures. When combined with specialized, allocation-aware data structures (such as
+> those provided by JH Toolkit), it enables low fragmentation, compact memory layouts, and predictable resource
+> usage—properties
 > that are essential for long-running, production-grade software systems.
 
 ---
@@ -174,24 +195,147 @@ From there, you can **navigate downward** into each concrete submodule and its d
 
 ### User-Facing API Entry Points
 
-* [`<jh/async>` 🌀 API References](docs/asynchronous/overview.md)
-* [`<jh/concepts>` 🧩 API References](docs/conceptual/overview.md)
-* [`<jh/concurrency>` 🎍 API References](docs/concurrent/overview.md)
-* [`<jh/flat_multimap>` 🧱 API References](docs/core/flat_multimap.md)
-* [`<jh/generator>` 🌀API References](docs/asynchronous/generator.md)
-* [`<jh/immutable_str>` 🧱 API References](docs/core/immutable_str.md)
-* [`<jh/ipc>`(InterProcess Coordination) 🛰️ API References](docs/synchronous/ipc.md)
-* [`<jh/jindallae>` ⚗️ API References](docs/metax/overview.md#-aggregation-headers)
-* [`<jh/meta>` ⚗️ API References](docs/metax/overview.md)
-* [`<jh/ordered_map>` 🧱 API References](docs/core/ordered_map.md)
-* [`<jh/pod>` 🧊 API References](docs/pods/overview.md)
-* [`<jh/pool>` 🎍 API References](docs/concurrent/overview.md#-introduction)
-* [`<jh/ranges_ext>` 🌗 API References](docs/ranges/range_ext.md)
-* [`<jh/runtime_arr>` 🧱 API References](docs/core/runtime_arr.md)
-* [`<jh/serio>` 🍯 API References](docs/serialize_io/overview.md)
-* [`<jh/sync>` ⏱️ API References](docs/synchronous/overview.md)
-* [`<jh/typed>` 🧬 API References](docs/typing/overview.md)
-* [`<jh/views>` 🔭 API References](docs/ranges/views/overview.md)
+The list below is ordered **alphabetically by forwarding header name**.  
+This ordering is purely for readability and navigation convenience and **does not reflect internal structure,
+module hierarchy, or dependency relationships**.
+
+Each entry links to a corresponding documentation page under the `docs/` directory.  
+These pages are **built-in, quick-start–level Markdown documents** that introduce each module from a
+*usage-oriented and conceptual* perspective.
+They are intended to provide orientation, high-level guidance, and typical usage patterns.
+
+The documents under `docs/` are **not exhaustive semantic specifications**.
+They deliberately focus on *what to use* and *when to use it*, rather than enumerating every rule and constraint.
+
+For detailed and complete semantics—including:
+
+- precise class and function behavior
+- initialization requirements (copy, move, aggregate, and other forms)
+- template constraints and substitution rules
+- documented warnings, assumptions, and corner cases
+
+please refer to the **Doxygen documentation**, which is the authoritative source.
+
+The Doxygen documentation can be read either:
+
+- directly inside an IDE (with **classic CLion** as the reference environment), or
+- via the official [pre-rendered web pages](https://jeonghan-bae.github.io/JH-Toolkit/).
+
+Due to the **flat layout of the public headers** under `include/`, forwarding headers without file suffixes
+(for example, `<jh/async>`) and their implementation directories (for example, `jh/asynchronous/`)
+**must use different names**.  
+This is a constraint imposed by the file system: a directory and a suffix-free file cannot share the same name
+within a single directory.
+
+As a result:
+
+- **Suffix-free headers** (such as `<jh/async>`) are **aggregate or forwarding headers**
+  and do **not** have a one-to-one "file-matching" documentation page.  
+  Their documentation is provided explicitly in this table.
+- **Concrete APIs and implementations** follow a direct mapping:  
+  `include/jh/{path}/{name}.h` ↔ `docs/{path}/{name}.md`
+
+All documentation pages are cross-linked and intentionally guide readers between
+forwarding headers, concrete modules, and detailed API references.
+
+Please rely on the **actual documentation** when understanding the library.  
+Do **not** infer behavior or structure from file names alone, and avoid relying on
+AI-generated guesses that are not grounded in the documented contracts.
+
+<table>
+  <tbody>
+    <tr>
+      <td><code>&lt;jh/async&gt;</code></td>
+      <td align="center">🌀</td>
+      <td><a href="docs/asynchronous/overview.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/concepts&gt;</code></td>
+      <td align="center">🧩</td>
+      <td><a href="docs/conceptual/overview.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/concurrency&gt;</code></td>
+      <td align="center">🎍</td>
+      <td><a href="docs/concurrent/overview.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/flat_multimap&gt;</code></td>
+      <td align="center">🧱</td>
+      <td><a href="docs/core/flat_multimap.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/generator&gt;</code></td>
+      <td align="center">🌀</td>
+      <td><a href="docs/asynchronous/generator.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/immutable_str&gt;</code></td>
+      <td align="center">🧱</td>
+      <td><a href="docs/core/immutable_str.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/ipc&gt;</code> (InterProcess Coordination)</td>
+      <td align="center">🛰️</td>
+      <td><a href="docs/synchronous/ipc.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/jindallae&gt;</code> (Easter Egg Alias)</td>
+      <td align="center">⚗️</td>
+      <td><a href="docs/metax/overview.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/meta&gt;</code></td>
+      <td align="center">⚗️</td>
+      <td><a href="docs/metax/overview.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/ordered_map&gt;</code></td>
+      <td align="center">🧱</td>
+      <td><a href="docs/core/ordered_map.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/pod&gt;</code></td>
+      <td align="center">🧊</td>
+      <td><a href="docs/pods/overview.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/pool&gt;</code></td>
+      <td align="center">🎍</td>
+      <td><a href="docs/concurrent/overview.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/ranges_ext&gt;</code></td>
+      <td align="center">🌗</td>
+      <td><a href="docs/ranges/range_ext.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/runtime_arr&gt;</code></td>
+      <td align="center">🧱</td>
+      <td><a href="docs/core/runtime_arr.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/serio&gt;</code></td>
+      <td align="center">🍯</td>
+      <td><a href="docs/serialize_io/overview.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/sync&gt;</code></td>
+      <td align="center">⏱️</td>
+      <td><a href="docs/synchronous/overview.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/typed&gt;</code></td>
+      <td align="center">🧬</td>
+      <td><a href="docs/typing/overview.md">API References</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/views&gt;</code></td>
+      <td align="center">🔭</td>
+      <td><a href="docs/ranges/views/overview.md">API References</a></td>
+    </tr>
+  </tbody>
+</table>
 
 ---
 
@@ -213,50 +357,83 @@ quickly locate relevant functionality and then explore it at the desired depth.
 
 ## How to Read the JH-Toolkit Project
 
-All **API documentation for every code file** can be found under the `docs/` directory. These documents are the
-**primary entry point** for understanding the library.
+The **primary source of truth** for understanding JH Toolkit is its **Doxygen documentation**.
 
-It is important to note that the files under `src/` are **not the actual source of truth**. They exist mainly as
-**precompiled instantiation translation units (TUs)** to support static builds and faster compilation.
-**All real definitions, semantics, and guarantees live in `include/`.**
+All semantic guarantees, design intent, usage constraints, and documented limitations are expressed through
+Doxygen comments embedded directly in the public headers under `include/`.
+These comments define the authoritative API contract.
+Implementations exist to realize that contract and may change over time.
 
-Under **modern C++ semantics**, directly inspecting implementations is **generally discouraged**.
-The **interface already defines the behavior**. Reading the implementation alone does not necessarily reveal the correct
-semantics, constraints, or design intent.
+### IDE-First Documentation Design
 
-Therefore, the recommended approach is:
+The documentation is **authored with IDE-based reading as the primary target**.
 
-* Read **Doxygen comments** embedded in headers
-* Read the **API documentation in `docs/`**
-* Treat implementations as **replaceable details**, not specifications
+In particular, **classic CLion** is used as the reference environment during documentation design.
+When viewed in classic CLion, standard Doxygen (HTML-style) comments are rendered inline with the source code,
+providing:
 
-When using **classic CLion**, Doxygen comments written in standard HTML style are rendered **inline**, directly inside
-the source code view.
-This creates a reading experience where **documentation and code interleave naturally**, similar to reading a Jupyter
-Notebook in PyCharm or Google Colab—an analogy many users may already be familiar with.
+- Inline, fully rendered documentation while reading headers
+- Rich hover tooltips with complete semantic descriptions
+- Seamless navigation between types, functions, and their documentation
 
-If classic CLion cannot be used, you may alternatively generate **Doxygen HTML pages** using a custom `Doxyfile` (not
-provided yet).
-We are considering offering this officially in the future via a dedicated **GitHub Pages site hosting rendered Doxygen
-documentation**.
+This creates a reading experience where **code and documentation interleave naturally**,
+similar to notebook-style workflows in other ecosystems.
 
-Based on the author's testing, **as of early 2026**, classic CLion can be installed and used normally on all supported
-platforms:
-**macOS, Ubuntu, and Windows**.
+### Official Web Documentation Support
 
-When reading the project, focus on **what the Doxygen documentation states**, not on how the code happens to be
-implemented today.
+While the documentation is IDE-first by design, the **web-based Doxygen documentation is fully and officially
+supported**.
 
-* Implementations may change
-* Reading implementation alone can lead to **incorrect semantic assumptions**
-* This is especially risky when relying on AI to infer behavior purely from code
+The complete API reference is available as pre-rendered Doxygen HTML pages at:
 
-Doxygen is where **semantic guarantees, design philosophy, and intentional limitations** are documented.
-Implementation details are mentioned only when necessary, while the API documentation focuses on **how to use the
-library correctly and safely**.
+👉 **[GitHub Pages](https://jeonghan-bae.github.io/JH-Toolkit/)**
+
+The web documentation is generated from the same Doxygen sources as the IDE views and reflects the same
+authoritative API contracts, semantics, and design intent.
+It is intended for reference, review, external access, and situations where an IDE-based workflow is not available.
+
+If you encounter any visual or rendering issues in the web documentation, please report them via the issue tracker.
+
+### Source Layout and Reading Strategy
+
+When reading the project, keep the following structure in mind:
+
+- `include/`  
+  Contains all real definitions, public APIs, and documented semantics.
+  This is the authoritative source of truth.
+
+- `src/`  
+  Contains precompiled instantiation translation units (TUs) used to support static builds and improve compile times.
+  These files are **not** the semantic specification of the library.
+
+Under modern C++ semantics, directly inspecting implementations is often misleading.
+The interface and its documentation already define the behavior.
+Reading implementation details without the documented context can lead to incorrect assumptions.
+
+The recommended reading approach is therefore:
+
+1. Read **Doxygen comments** embedded in public headers
+2. Use the **IDE-integrated documentation view** (preferred) or the **official web documentation**
+3. Treat implementations as **replaceable details**, not specifications
+
+### Documentation over Implementation
+
+Doxygen documentation is where:
+
+- Semantic guarantees are stated
+- Design philosophy is explained
+- Intended usage patterns are defined
+- Assumptions and limitations are made explicit
+
+Implementation details are documented only when necessary.
+The focus is on **how the library is intended to be used correctly and safely**, not on how it happens to be implemented
+at a particular point in time.
 
 In short:
+
 **Doxygen explains the design and intent; implementations merely realize it.**
+
+---
 
 ## Recommended IDE for Best Source Code + Doxygen Experience
 
@@ -305,8 +482,8 @@ To disable the Nova engine, follow these steps:
 1. Open **Settings**
 2. Go to **Advanced Settings**
 3. Navigate to **CLion**
-4. Locate the option:  
-   - [ ] Use ReSharper C++ language engine (CLion Nova)  
+4. Locate the option:
+    - [ ] Use ReSharper C++ language engine (CLion Nova)
 5. **Uncheck** this option
 6. **Restart the IDE**
 

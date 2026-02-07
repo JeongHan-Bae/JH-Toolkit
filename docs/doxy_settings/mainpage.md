@@ -88,32 +88,30 @@ and should not be treated as specifications.
 
 ## IDE-Centered Documentation Design
 
-The Doxygen documentation in this project is **primarily written for IDE-based reading**.
+The Doxygen documentation in this project is **primarily authored for IDE-based reading**.
 
-We strongly recommend **classic CLion** for the best experience.
+We strongly recommend **classic CLion** for the best documentation experience.
 
 ### Why classic CLion is recommended
 
-- Fully renders **standard Doxygen HTML-style comments**
+- Fully renders **standard Doxygen comments**
 - Displays documentation inline with source code
 - Provides rich hover tooltips and navigable semantic views
 
 This creates a reading experience similar to **Jupyter Notebooks**,
 where documentation and code interleave naturally.
 
-### Notes on Embedded Rendering
+### Notes on Rendering and Platform Support
 
-The documentation is intentionally authored to support embedded IDE views:
+The documentation is designed with **embedded IDE rendering** as the primary target,
+with **classic CLion** serving as the reference environment.
 
+The web-based Doxygen output is also fully supported and expected to render correctly.  
+If you encounter any visual inconsistencies, layout issues, or rendering problems in the
+web documentation, please report them as issues:
 
-We primarily support embedded documentation views in IDEs (classic CLion).
-To ensure compatibility with embedded rendering, some example code in this
-documentation intentionally contains HTML entities.
-In certain cases, Doxygen does not unescape these entities correctly.
-This is a known limitation and currently has no workaround.
+[![Report an Issue](https://img.shields.io/badge/Report%20an%20Issue-black?style=for-the-badge&logo=github)](https://github.com/JeongHan-Bae/JH-Toolkit/issues)
 
-
-This limitation affects **HTML generation only** and does not impact IDE rendering.
 
 ---
 
