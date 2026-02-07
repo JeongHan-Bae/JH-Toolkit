@@ -50,14 +50,49 @@ div#projectlogo img.logo {
     background: inherit;
 }
 
-#main-nav {
+#main-nav,
+#main-nav * {
     position: sticky;
+}
+
+#main-nav {
     top: var(--top-height);
     z-index: 90;
     background: inherit !important;
     background-image: none !important;
     box-shadow: none !important;
     border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+
+.sm.sm-dox,
+.sm.sm-dox * {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.sm.sm-dox {
+    border: 0 !important;
+}
+
+.sm.sm-dox .main-menu-btn {
+    background: inherit !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+.sm.sm-dox *:hover,
+.sm.sm-dox *:active,
+.sm.sm-dox *:focus {
+    box-shadow: none !important;
+    background-image: none !important;
+}
+
+.sm.sm-dox .main-menu-btn-icon,
+.sm.sm-dox .main-menu-btn-icon::before,
+.sm.sm-dox .main-menu-btn-icon::after {
+    box-shadow: none !important;
 }
 
 :root {

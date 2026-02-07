@@ -65,8 +65,17 @@ jobs:
             -e "s|__DESCRIPTION__|$ESCAPED_DESC|g" \
             docs/doxy_settings/Doxyfile > Doxyfile.tmp
 
-      - name: Install Doxygen
-        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@v1
+
+      - name: Install Doxygen (brew)
+        run: |
+          brew update
+          brew install doxygen graphviz
+          doxygen --version
+
+      - name: Unescape HTML entities for Doxygen
+        run: python .github/workflows/unescape.py
 
       - name: Run Doxygen
         run: doxygen Doxyfile.tmp
