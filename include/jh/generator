@@ -32,13 +32,71 @@
 #include "jh/asynchronous/generator.h"
 
 namespace jh{
+    /**
+     * @brief Alias of <code>jh::async::generator</code> in the root namespace.
+     *
+     * This is a forwarding alias that exposes
+     * <code>jh::async::generator&lt;T, U&gt;</code> as
+     * <code>jh::generator&lt;T, U&gt;</code> for convenience.
+     *
+     * @see jh::async::generator
+     */
     template<typename T, typename U = typed::monostate>
     using generator = async::generator<T, U>;
 
+    /**
+     * @brief Alias of <code>jh::async::generator_range</code> in the root namespace.
+     *
+     * This alias forwards <code>jh::async::generator_range&lt;T&gt;</code>
+     * into the root namespace as <code>jh::generator_range&lt;T&gt;</code>.
+     * It represents a range-compatible view over a generator.
+     *
+     * @see <code>jh::async::generator_range</code>
+     */
     template<typename T>
     using generator_range [[maybe_unused]] = async::generator_range<T>;
 
+    /**
+     * @brief Alias of <code>jh::async::make_generator</code>.
+     *
+     * This function is re-exported from <code>jh::async</code> into the
+     * root namespace to allow construction of generators without
+     * qualifying the <code>async</code> namespace.
+     *
+     * @see <code>jh::async::make_generator</code>
+     */
     using async::make_generator;
+
+    /**
+     * @brief Alias of <code>jh::async::to_vector</code> for generator-based conversion.
+     *
+     * This function forwards <code>jh::async::to_vector</code> into the
+     * root namespace. In its current form, it operates on
+     * <code>jh::async::generator</code>-based sources and materializes
+     * their yielded values into a <code>std::vector</code>.
+     *
+     * Additional overloads may be introduced in the future to support
+     * other asynchronous or range-like sources. Such overloads will be
+     * distinguished by their parameter types and will not conflict
+     * with the generator-based form.
+     *
+     * @see <code>jh::async::to_vector</code>
+     */
     using async::to_vector;
+
+    /**
+     * @brief Alias of <code>jh::async::to_deque</code> for generator-based conversion.
+     *
+     * This function forwards <code>jh::async::to_deque</code> into the
+     * root namespace. In its current form, it operates on
+     * <code>jh::async::generator</code>-based sources and collects
+     * their yielded values into a <code>std::deque</code>.
+     *
+     * Future overloads may extend this facility to additional source
+     * types. Overload resolution will rely on distinct parameter
+     * signatures, ensuring no ambiguity with the generator-based usage.
+     *
+     * @see <code>jh::async::to_deque</code>
+     */
     using async::to_deque;
 }

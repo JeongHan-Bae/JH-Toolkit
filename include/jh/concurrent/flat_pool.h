@@ -221,6 +221,9 @@ namespace jh::conc {
                 >;
     }
 
+    /**
+     * @brief Public customization and extension points for <code>jh::conc</code> containers.
+    */
     namespace extension {
         /**
          * @brief Default value construction policy for flat_pool.

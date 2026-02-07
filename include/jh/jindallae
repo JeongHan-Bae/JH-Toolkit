@@ -37,6 +37,15 @@
 
 #include "jh/meta"
 
+/**
+ * @brief Symbolic alias namespace for <code>jh::meta</code>.
+ *
+ * <code>jh::jindallae</code> is a poetic alias of <code>jh::meta</code>,
+ * exposing the same compile-time meta-programming facilities under
+ * an alternative symbolic name.
+ *
+ * @see jh::meta
+ */
 namespace jh::jindallae {
     using namespace jh::meta;
 }

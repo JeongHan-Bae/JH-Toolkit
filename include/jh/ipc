@@ -44,6 +44,18 @@
 
 #include "jh/synchronous/ipc.h"
 
+/**
+ * @brief Convenience alias for <code>jh::sync::ipc</code>.
+ *
+ * The <code>jh::ipc</code> namespace is a flattened, user-facing alias
+ * that re-exports all symbols from <code>jh::sync::ipc</code> directly
+ * under <code>jh::ipc</code>.
+ * <br>
+ * This namespace introduces no new semantics and exists solely to
+ * reduce include depth and namespace verbosity.
+ *
+ * @see <code>jh::sync::ipc</code>
+ */
 namespace jh::ipc {
     using namespace jh::sync::ipc;
 }

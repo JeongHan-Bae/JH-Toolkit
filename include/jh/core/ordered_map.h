@@ -237,6 +237,18 @@
 #include "jh/typing/monostate.h"
 #include "jh/conceptual/tuple_like.h"
 
+/**
+ * @brief Internal AVL-tree implementation namespace for
+ * <code>jh::ordered_set</code> and <code>jh::ordered_map</code>.
+ *
+ * This namespace contains the low-level, index-based AVL tree
+ * machinery used to implement the contiguous ordered containers.
+ * It is an internal implementation detail and is not intended
+ * for direct use.
+ *
+ * @see jh::ordered_set
+ * @see jh::ordered_map
+ */
 namespace jh::avl {
 
     /**

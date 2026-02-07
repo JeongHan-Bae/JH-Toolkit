@@ -50,3 +50,27 @@
 #include "jh/ranges/adapt.h"
 #include "jh/ranges/to.h"
 #include "jh/ranges/collect.h"
+
+/**
+ * @brief Semantic pipeline namespace for JH range operations.
+ *
+ * <code>jh::ranges</code> contains the <b>pipeline closure objects</b> used in
+ * range expressions (e.g. <code>adapt</code>, <code>collect</code>, <code>to</code>),
+ * as well as internal helper utilities that support those closures.
+ *
+ * <p>
+ * Only the pipeline closures are intended for direct use.
+ * Helper types inside this namespace are implementation details and are
+ * typically accessed indirectly through the exported closures.
+ * </p>
+ *
+ * <p>
+ * To use view adaptors, include <code>&lt;jh/views&gt;</code> and use
+ * <code>jh::views</code>.<br>
+ * To use pipeline / materialization closures, include
+ * <code>&lt;jh/ranges_ext&gt;</code> and use <code>jh::ranges</code>.
+ * </p>
+ *
+ * @see jh::views
+ */
+namespace jh::ranges {}

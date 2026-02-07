@@ -124,11 +124,50 @@
 
 namespace jh::pod {
 
+    /**
+     * @brief Checks whether a type can be streamed to <code>std::ostream</code>.
+     *
+     * Evaluates whether <code>os << value</code> is a valid expression producing
+     * <code>std::ostream&</code>.
+     *
+     * @note
+     * This concept relies on ADL. Users may override or extend streamability
+     * by providing their own <code>operator&lt;&lt;</code>.
+     *
+     * @warning
+     * Intended for debugging and inspection only.
+     * Not a guarantee of production-grade output.
+     */
     template<typename T>
     concept streamable = requires(std::ostream &os, const T &value) {
         { os << value } -> std::same_as<std::ostream &>;
     };
 
+    /**
+     * @brief Debug-only constraint for POD-like types printable to <code>std::ostream</code>.
+     *
+     * Combines <code>jh::pod::pod_like</code> with <code>streamable</code>, while
+     * explicitly excluding fundamental types, enums, and raw pointers.
+     *
+     * <p>
+     * This concept exists solely to enable the printers in the
+     * <code>jh::pod</code>'s stringify submodule.
+     * </p>
+     *
+     * @note
+     * <b>Important:</b> This constraint is intentionally weak and <b>easily affected</b>
+     * by ADL and <code>using</code>-introduced <code>operator&lt;&lt;</code> overloads.
+     * The exact set of printable types may change depending on the surrounding
+     * namespace context.
+     * <br>
+     * Because of this, <b>it is not suitable as a production or contractual constraint</b>.
+     * Its purpose is <b>debugging, inspection, and logging only</b>, where
+     * observability is preferred over strict interface guarantees.
+     *
+     * @warning
+     * Do not rely on this concept for serialization, persistence, ABI logic,
+     * or cross-module interface enforcement.
+     */
     template<typename T>
     concept streamable_pod =
     jh::pod::pod_like<T> &&

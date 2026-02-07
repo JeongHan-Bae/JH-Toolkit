@@ -41,3 +41,21 @@
 #include "jh/metax/lookup_map.h"
 #include "jh/metax/t_str.h"
 #include "jh/metax/variant_adt.h"
+
+/**
+ * @brief Aggregated entry point for compile-time metaprogramming utilities.
+ *
+ * The <code>&lt;jh/meta&gt;</code> forwarding header provides a unified,
+ * engineering-oriented interface over the compile-time utilities
+ * implemented under <code>jh/metax/</code>.
+ * <br>
+ * This module defines the <b>compile-time infrastructure layer</b> of the
+ * JH Toolkit, supplying constexpr / consteval–safe building blocks for
+ * structural type manipulation, NTTP-based string identity, deterministic
+ * hashing, and static data modeling.
+ * <br>
+ * Rather than offering ad-hoc template helpers, <code>jh::meta</code>
+ * establishes a cohesive foundation for closed-world, heap-free,
+ * and runtime-independent computation during template instantiation.
+ */
+namespace jh::meta {}

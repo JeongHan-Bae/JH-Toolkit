@@ -30,3 +30,25 @@
 #include "jh/concurrent/observe_pool.h"
 #include "jh/concurrent/flat_pool.h"
 #include "jh/concurrent/resource_pool.h"
+
+/**
+ * @brief Aggregated namespace for concurrency-aware resource containers.
+ *
+ * The <code>&lt;jh/concurrency&gt;</code> forwarding header provides a unified,
+ * engineering-oriented interface over the concurrency primitives implemented
+ * under <code>jh/concurrent/</code>.
+ * <br>
+ * Rather than exposing raw locking primitives or requiring users to reason
+ * about mutex choreography, <code>jh::conc</code> offers resource-centric
+ * containers that encapsulate synchronization internally. APIs are shaped
+ * around managed objects, keys, and handles, not explicit lock ownership.
+ * <br>
+ * This namespace aggregates facilities such as optimistic-concurrency boxes
+ * and pool-based containers with well-defined ownership, observation, and
+ * lifetime semantics.
+ * <br>
+ * The aggregated header <code>&lt;jh/concurrency&gt;</code> is the recommended
+ * entry point for accessing these components. Individual headers under
+ * <code>jh/concurrent/</code> remain fully supported.
+ */
+namespace jh::conc {}

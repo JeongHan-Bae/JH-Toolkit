@@ -53,7 +53,25 @@ namespace jh::pod {
     /// @brief Maximum allowed size of a POD bitflags structure: 4KB (4096 bytes).
     inline constexpr std::uint16_t max_pod_bitflags_bytes = 4 * 1024;
 
-    // --- internal utilities (not documented for Doxygen) ---
+    /**
+     * @brief Internal constraint for native unsigned integer types.
+     *
+     * This concept matches exactly the unsigned integer types that can
+     * directly back a <code>bitflags&lt;N&gt;</code> specialization:
+     * <code>uint8_t</code>, <code>uint16_t</code>, <code>uint32_t</code>,
+     * and <code>uint64_t</code>.
+     *
+     * <p>
+     * It exists solely to enable optimized implementations where the entire
+     * bitset can be represented and manipulated as a single native integer,
+     * allowing constant-time bitwise operations and efficient popcount.
+     * </p>
+     *
+     * <p>
+     * <b>Internal use only.</b> This concept is not part of the public API and
+     * must not be relied upon by user code.
+     * </p>
+     */
     template<typename T>
     concept std_uint = std::is_same_v<T, std::uint8_t> ||
                        std::is_same_v<T, std::uint16_t> ||

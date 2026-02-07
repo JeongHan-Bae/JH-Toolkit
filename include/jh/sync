@@ -28,3 +28,20 @@
 #include "jh/synchronous/ipc.h"
 #include "jh/synchronous/const_lock.h"
 #include "jh/synchronous/control_buf.h"
+
+/**
+ * @brief Aggregated entry point for synchronization and coordination facilities.
+ *
+ * The <code>&lt;jh/sync&gt;</code> forwarding header provides a unified,
+ * engineering-oriented interface over the synchronization components
+ * implemented under <code>jh/synchronous/</code>.
+ * <br>
+ * This module focuses on <b>deterministic, low-level synchronization primitives</b>
+ * with explicit lifetime, ownership, and memory semantics.
+ * <br>
+ * Rather than introducing policy-heavy frameworks, <code>jh::sync</code>
+ * exposes composable building blocks such as const-correct lock guards,
+ * stable-address control containers, and OS-backed inter-process
+ * synchronization facilities.
+ */
+namespace jh::sync {}

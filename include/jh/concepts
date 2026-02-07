@@ -60,3 +60,37 @@
 #include "jh/conceptual/range_traits.h"
 #include "jh/conceptual/sequence.h"
 #include "jh/conceptual/tuple_like.h"
+
+/**
+ * @brief Behavioral concept namespace of the JH Toolkit.
+ *
+ * <p>
+ * <code>jh::concepts</code> defines the <strong>behavioral foundation layer</strong>
+ * of the JH Toolkit. It contains C++20 concepts and associated traits used to
+ * recognize types by <em>observable behavior</em> rather than inheritance,
+ * nominal typing, or explicit base classes.
+ * </p>
+ *
+ * <p>
+ * This namespace serves as the canonical semantic base for higher-level modules,
+ * including asynchronous facilities, range adaptation, container construction,
+ * synchronization primitives, and POD modeling.
+ * </p>
+ *
+ * <p>
+ * All concepts exposed here are intended to be:
+ * </p>
+ * <ul>
+ *   <li>Purely compile-time and constexpr-friendly</li>
+ *   <li>Duck-typed and expression-based</li>
+ *   <li>Free of RTTI and runtime inspection</li>
+ *   <li>Stable within a given <code>Major.Minor.x</code> version series</li>
+ * </ul>
+ *
+ * <p>
+ * Higher-level APIs should depend on <code>jh::concepts</code> to express
+ * <em>semantic intent</em> and enforce constraints, rather than encoding
+ * ad-hoc SFINAE logic or implementation-specific checks.
+ * </p>
+ */
+namespace jh::concepts {}

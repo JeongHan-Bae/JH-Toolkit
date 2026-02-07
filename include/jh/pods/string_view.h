@@ -400,6 +400,19 @@ namespace jh::pod {
 
 static_assert(jh::pod::pod_like<jh::pod::string_view>);
 
+/**
+ * @brief Official literal helpers for <code>jh::pod</code> types.
+ *
+ * This namespace contains the officially provided literal utilities
+ * associated with <code>jh::pod</code>, offering concise and POD-safe
+ * construction of view types such as <code>jh::pod::string_view</code>.
+ * <br>
+ * These literals are part of the public interface and are intended to be
+ * used via:
+ * @code
+ * using namespace jh::pod::literals;
+ * @endcode
+ */
 namespace jh::pod::literals {
 
     /**

@@ -35,3 +35,23 @@
 
 #include "jh/typing/monostate.h"
 #include "jh/typing/null_mutex.h"
+
+/**
+ * @brief Aggregated entry point for lightweight typing and semantic placeholder utilities.
+ *
+ * The <code>&lt;jh/typed&gt;</code> forwarding header provides a unified,
+ * minimal interface over the type-oriented helpers implemented under
+ * <code>jh/typing/</code>.
+ * <br>
+ * This subsystem defines small, zero-overhead building blocks used to
+ * express type intent, structural absence, or disabled behavior in
+ * generic and synchronization-aware code.
+ * <br>
+ * Components in <code>jh::typed</code> are designed to work in tandem
+ * with the <code>jh::concepts</code> layer, supplying concrete types
+ * that satisfy or neutralize conceptual requirements without introducing
+ * runtime cost.
+ *
+ * @see jh::concepts
+ */
+namespace jh::typed {}
