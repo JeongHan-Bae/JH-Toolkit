@@ -15,6 +15,10 @@ rather than as a language-exploration or system-engineering exercise.
 Its goal is to provide **strong semantics, predictable behavior, and production-oriented constraints**
 while retaining the performance and control C++ is known for.
 
+[![Home](https://img.shields.io/badge/Home%20Page-1f2937?style=for-the-badge&logo=github)](https://github.com/JeongHan-Bae/JH-Toolkit#readme)
+[![Wiki](https://img.shields.io/badge/Wiki-374151?style=for-the-badge&logo=github)](https://github.com/JeongHan-Bae/JH-Toolkit/wiki)
+[![Issues](https://img.shields.io/badge/Issues-312e81?style=for-the-badge&logo=github)](https://github.com/JeongHan-Bae/JH-Toolkit/issues)
+
 ---
 
 ## What This Documentation Is
@@ -29,6 +33,32 @@ You can start reading the documentation in two primary ways:
 \note **Recommended approach:**  
 \note Start from the forwarding header overviews (for example `<jh/async>`, `<jh/concepts>`, `<jh/ipc>`),  
 \note then drill down into specific components as needed.
+
+---
+
+## Documentation Authority Model
+
+This documentation follows a **strict authority hierarchy**.
+
+- **Doxygen documentation** is the **authoritative specification**  
+  It defines:
+  - semantic guarantees
+  - behavioral constraints
+  - valid usage patterns
+  - documented limitations and corner cases
+
+- **Markdown documents under `docs/`** are **orientation and guidance material**  
+  They explain:
+  - what a module is for
+  - when it should be used
+  - typical usage patterns
+
+- **Implementations are not specifications**  
+  They exist to realize the documented contract and may change
+  without semantic impact.
+
+Reading implementation details without the documented context
+is discouraged and may lead to incorrect assumptions.
 
 ---
 
