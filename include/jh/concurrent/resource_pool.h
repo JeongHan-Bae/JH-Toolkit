@@ -111,14 +111,13 @@ namespace jh {
      * the underlying <code>flat_pool</code> value representation.
      *
      * @note
-     * <h5>Design intent:</h5>
-     * <p>
+     * <strong>Design intent:</strong>
+     * <br>
      * <code>jh::resource_pool</code> exists solely to reduce the cognitive and syntactic
      * cost of using <code>flat_pool</code> in the common case.
-     * </p><p>
+     * <br>
      * When a nonstandard hashing strategy is required, users should instantiate
      * <code>jh::conc::flat_pool</code> directly with an explicit hash functor.
-     * </p>
      */
     template<typename Key,
             typename Value = jh::typed::monostate,

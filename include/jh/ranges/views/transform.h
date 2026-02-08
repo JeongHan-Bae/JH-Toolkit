@@ -52,14 +52,12 @@
  * </ul>
  *
  * @note
- * <p>
  * Dispatch occurs <em>inside</em> the call operator, because determining
  * whether <code>vis_transform</code> semantics apply requires both
  * the range and the callable type.
  * This ensures that only non-consuming, pure-observation combinations
  * are elevated to <code>vis_transform</code>, while all others fall back
  * to the standard <code>std::views::transform</code>.
- * </p>
  *
  * @see jh::concepts::vis_function_for
  * @see jh::ranges::views::vis_transform
@@ -178,12 +176,10 @@ namespace jh::ranges::views {
      * </ul>
      *
      * @note
-     * <p>
      * The dispatch is performed per combination of range and callable.
      * Non-consuming ranges with purely observational projections automatically
      * gain <code>vis_transform</code> semantics and remain reentrant.
      * All others use <code>std::views::transform</code> to preserve correct consumption semantics.
-     * </p>
      */
     inline constexpr detail::transform_fn transform{};
 

@@ -581,7 +581,7 @@ namespace jh::async {
          * The returned value is a <strong>copy</strong> of the last yielded element.
          * This ensures that each access is memory-safe and independent of
          * coroutine resumption, avoiding dangling references.
-         *
+         * <br>
          * If your generator needs to yield pointer-like data,
          * use a <strong>copyable smart pointer</strong> such as
          * <code>std::shared_ptr&lt;T&gt;</code> or any equivalent

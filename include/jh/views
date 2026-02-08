@@ -33,6 +33,39 @@
 #include "jh/ranges/views/vis_transform.h"
 #include "jh/ranges/views/zip.h"
 
+/**
+ * @brief Range view adaptor implementations with explicit semantic control.
+ *
+ * The <code>jh::ranges::views</code> namespace contains the complete
+ * implementation of JH Toolkit's range view adaptors.
+ * <br>
+ * This layer extends the standard C++ ranges/view model with
+ * explicit, engineering-oriented semantics for traversal,
+ * projection, and composition. In particular, it distinguishes
+ * between consuming and non-consuming behaviors, preserves
+ * reentrancy where applicable, and enables structure-aware
+ * pipeline construction.
+ * <br>
+ * All view adaptors provided by the toolkit are defined here.
+ * Any flattened or convenience entry points (such as
+ * <code>jh::views</code>) forward directly to this namespace
+ * without introducing additional abstraction or behavior.
+ */
+namespace jh::ranges::views {}
+
+/**
+ * @brief Convenience alias for <code>jh::ranges::views</code>.
+ *
+ * The <code>jh::views</code> namespace is a flattened, user-facing
+ * entry point that re-exports all view adaptors from
+ * <code>jh::ranges::views</code> directly under <code>jh::views</code>.
+ * <br>
+ * This namespace exists solely to reduce include depth and
+ * namespace verbosity. It introduces no new semantics and does
+ * not alter the behavior of any view adaptor.
+ *
+ * @see <code>jh::ranges::views</code>
+ */
 namespace jh::views {
     using namespace jh::ranges::views;
 }

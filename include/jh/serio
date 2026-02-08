@@ -33,3 +33,19 @@
 
 #include "jh/serialize_io/base64.h"
 #include "jh/serialize_io/huffman.h"
+
+/**
+ * @brief Aggregated entry point for serialization and codec utilities.
+ *
+ * The <code>&lt;jh/serio&gt;</code> forwarding header provides a unified,
+ * engineering-oriented interface over the serialization and codec components
+ * implemented under <code>jh/serialize_io/</code>.
+ * <br>
+ * This module focuses on <b>explicit, deterministic data transformation</b>
+ * between binary and textual or compressed representations.
+ * <br>
+ * Rather than offering object-serialization frameworks or schema-driven formats,
+ * <code>jh::serio</code> exposes standalone, low-level codecs such as Base64 and
+ * Huffman encoding, with clearly defined validation and recoverability semantics.
+ */
+namespace jh::serio {}

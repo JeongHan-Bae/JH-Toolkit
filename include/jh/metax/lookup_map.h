@@ -56,6 +56,10 @@
 
 namespace jh::meta {
 
+    /**
+     * @brief Public customization points for compile-time key transformation and heterogeneous
+     *        lookup in <code>jh::meta</code>.
+     */
     namespace extension {
 
         /**

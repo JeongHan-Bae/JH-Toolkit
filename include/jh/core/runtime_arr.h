@@ -1065,6 +1065,15 @@ namespace jh {
         }
     };
 
+    /**
+     * @brief Helper utilities and auxiliary types for <code>jh::runtime_arr</code>.
+     *
+     * This namespace contains internal and opt-in helper components
+     * that extend or modify the behavior of <code>jh::runtime_arr</code>,
+     * such as alternative allocators and testing-oriented variants.
+     *
+     * @see jh::runtime_arr
+     */
     namespace runtime_arr_helper {
         /**
          * @brief Flat allocator for <code>bool</code> &mdash; disables bit-packing in <code>jh::runtime_arr&lt;bool&gt;</code>.

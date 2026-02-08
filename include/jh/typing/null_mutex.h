@@ -146,16 +146,15 @@ namespace jh::typed {
      * @endcode
      *
      * @note
-     * <b>Semantic intent:</b> Using <code>null_mutex</code> explicitly declares that
+     * <b>Semantic intent:</b>
+     * <br>Using <code>null_mutex</code> explicitly declares that
      * the protected resource is owned and accessed by a <b>single thread</b> only.
      * It serves as a formal statement of exclusive single-thread ownership rather
      * than an omission of synchronization.
-     *
-     * <p>
+     * <br>
      * This singleton should be used instead of creating local instances.
      * Declaring <code>null_mutex_t</code> variables is meaningless,
      * similar to instantiating <code>std::nullptr_t</code>.
-     * </p>
      */
     inline null_mutex_t null_mutex;
 

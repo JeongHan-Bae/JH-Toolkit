@@ -57,6 +57,21 @@
 #include <string_view>
 #include "jh/macros/platform.h"
 
+/**
+ * @brief Internal macro-based utilities.
+ *
+ * <code>jh::macro</code> contains low-level helpers implemented using
+ * compiler- or platform-specific macros.
+ *
+ * This namespace is intended for <b>internal infrastructure and diagnostics</b>
+ * within the JH Toolkit. Its facilities are not part of the stable public API
+ * and should not be relied upon directly by user code.
+ *
+ * @note
+ * Components in this namespace may depend on compiler extensions,
+ * preprocessor macros, or platform-specific behavior.
+ * They exist to support higher-level modules indirectly.
+ */
 namespace jh::macro {
     /**
      * @brief Extract the human-readable type name of <code>T</code> at compile time.

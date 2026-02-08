@@ -78,6 +78,16 @@
 #define JH_FORCE_SHORT_SEM_NAME 0
 #endif
 
+/**
+ * @brief Compile-time constraint and validation utilities for
+ * <code>jh::sync::ipc</code>.
+ *
+ * This namespace provides <code>consteval</code>-based helpers used to
+ * validate IPC object names and POSIX-style relative paths at compile time.
+ * It is an internal support layer and not intended for direct runtime use.
+ *
+ * @see jh::sync::ipc
+ */
 namespace jh::sync::ipc::limits {
 
     // BSD-derived systems have strict 31-byte limit (including '/')

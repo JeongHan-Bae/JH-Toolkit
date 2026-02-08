@@ -278,7 +278,8 @@ namespace jh::pod {
          * @param hash_method Algorithm to use for hashing (default: <code>fnv1a64</code>).
          * @return 64-bit hash of the view data, or <code>-1</code> if <code>data == nullptr</code>.
          *
-         * @note <ul>
+         * @note
+         * <ul>
          *   <li>This is <strong>not cryptographic</strong>; do not use it for security-sensitive logic.</li>
          *   <li>If <code>data</code> is null, the return value is <code>-1</code> (sentinel).</li>
          *   <li>Hashing is based only on contents and length, not on pointer identity.</li>
@@ -399,6 +400,19 @@ namespace jh::pod {
 
 static_assert(jh::pod::pod_like<jh::pod::string_view>);
 
+/**
+ * @brief Official literal helpers for <code>jh::pod</code> types.
+ *
+ * This namespace contains the officially provided literal utilities
+ * associated with <code>jh::pod</code>, offering concise and POD-safe
+ * construction of view types such as <code>jh::pod::string_view</code>.
+ * <br>
+ * These literals are part of the public interface and are intended to be
+ * used via:
+ * @code
+ * using namespace jh::pod::literals;
+ * @endcode
+ */
 namespace jh::pod::literals {
 
     /**

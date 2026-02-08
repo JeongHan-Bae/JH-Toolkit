@@ -172,8 +172,8 @@ namespace jh {
      * content-based <code>operator==</code>.
      *
      * @note
-     * <h5>Usage guidance:</h5>
-     * <p>
+     * <strong>Usage guidance:</strong>
+     * <br>
      * <code>jh::observe_pool</code> relies on <code>std::shared_ptr</code> /
      * <code>std::weak_ptr</code> for object tracking. This inevitably introduces
      * heap fragmentation and reference-counting overhead. It is therefore intended
@@ -181,13 +181,13 @@ namespace jh {
      * where the total number of live objects and concurrency level remain modest.
      * Excessive object counts or high parallel pressure may lead to allocation
      * jitter and degraded performance.
-     * </p><p>
+     * <br>
      * On Windows platforms using the Universal CRT (including MinGW variants),
      * <code>std::shared_ptr</code> is not reliably thread-safe under contention.
      * Practical limits are significantly lower than on other platforms; it is
      * recommended to keep concurrency within approximately <b>4 threads</b> and
      * the total number of live pooled objects within roughly <b>2k</b>.
-     * </p><p>
+     * <br>
      * If the managed type is at least copyable or movable, prefer
      * <code>jh::resource_pool&lt;T&gt;</code>. If a stable key can be used to identify
      * objects, prefer <code>jh::resource_pool&lt;K, V&gt;</code>. When a key is available

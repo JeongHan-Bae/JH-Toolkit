@@ -91,9 +91,9 @@ namespace jh::meta {
          * Variant itself is forced as the second template parameter of Check.
          * This allows Check to access the full variant type if needed without declaring it
          * again in the user-facing interface.<br>
-         * We would avoid redundant declaration like:
-         * <code>jh::meta::check_all&lt;some_check, V, V&gt;</code>
-         * and instead use:
+         * We would avoid redundant declaration like:<br>
+         * <code>jh::meta::check_all&lt;some_check, V, V&gt;</code><br>
+         * and instead use:<br>
          * <code>jh::meta::check_all&lt;some_check, V&gt;</code>.
          */
         template<

@@ -7,13 +7,19 @@ on:
       - '**/*dev'
       - 'dev*'
       - '**/dev*'
-    paths:
+    paths: &shared_paths
       - 'CMakeLists.txt'
       - 'src/**'
       - 'include/**'
       - 'examples/**'
       - 'tests/**'
       - '.github/workflows/ci.yml'
+
+  pull_request:
+    branches:
+      - main
+    paths: *shared_paths
+
   workflow_dispatch:
 
 jobs:
@@ -83,6 +89,7 @@ jobs:
   windows-ci:
     name: Windows (MSYS2 UCRT64 / MinGW-w64)
     runs-on: windows-latest
+    timeout-minutes: 20
     defaults:
       run:
         shell: msys2 {0}
@@ -100,13 +107,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Configure (Release)
-        run: >
-          cmake -B build-release
-          -DCMAKE_BUILD_TYPE=Release
-          -G Ninja
-          -DCMAKE_C_COMPILER=gcc
-          -DCMAKE_CXX_COMPILER=g++
+      - name: Configure (Release, clean)
+        run: |
+          rm -rf build-release
+          cmake -B build-release \
+            -DCMAKE_BUILD_TYPE=Release \
+            -G Ninja \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_CXX_COMPILER=g++
 
       - name: Build
         run: cmake --build build-release -v

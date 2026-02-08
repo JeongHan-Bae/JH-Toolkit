@@ -221,6 +221,9 @@ namespace jh::conc {
                 >;
     }
 
+    /**
+     * @brief Public customization and extension points for <code>jh::conc</code> containers.
+    */
     namespace extension {
         /**
          * @brief Default value construction policy for flat_pool.
@@ -375,11 +378,9 @@ namespace jh::conc {
      * @tparam Alloc Allocator type for contiguous storage.
      *
      * @note
-     * <p>
      * Unlike <code>pointer_pool</code> or its user-facing interface <code>observe_pool</code>,
      * <code>flat_pool</code>(<code>resource_pool</code>) does not permit moves.
-     * </p>
-     * <p>
+     * <br>
      * As indicated by their user-facing interface names, <code>pointer_pool</code>(<code>observe_pool</code>)
      * does not hold objects: it merely observes them.
      * The worst-case scenario after a move is deduplication failure, but the system remains operational.

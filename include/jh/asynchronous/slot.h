@@ -324,14 +324,12 @@ namespace jh::async {
      * </ul>
      *
      * @note
-     * <p>
      * <code>co_yield {}</code> returns an empty sentinel value (<code>jh::typed::monostate</code>).
      * This is not necessarily needed, but ensures consistency on non-main threads.
      * It can also be used as a jump point (similar to <code>return</code> in a regular function).
-     * </p><p>
+     * <br>
      * Otherwise, the actual execution body is equivalent to the interval between the input
      * <code>co_await listener</code> and the next declared <code>co_await another_listener</code>.
-     * </p>
      */
     class slot final {
     public:

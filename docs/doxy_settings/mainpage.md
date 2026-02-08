@@ -1,4 +1,4 @@
-@mainpage [JH-Toolkit](https://github.com/JeongHan-Bae/JH-Toolkit#readme)
+@mainpage JH-Toolkit
 
 # JH-Toolkit
 
@@ -15,6 +15,10 @@ rather than as a language-exploration or system-engineering exercise.
 Its goal is to provide **strong semantics, predictable behavior, and production-oriented constraints**
 while retaining the performance and control C++ is known for.
 
+[![Home](https://img.shields.io/badge/Home%20Page-1f2937?style=for-the-badge&logo=github)](https://github.com/JeongHan-Bae/JH-Toolkit#readme)
+[![Wiki](https://img.shields.io/badge/Wiki-374151?style=for-the-badge&logo=github)](https://github.com/JeongHan-Bae/JH-Toolkit/wiki)
+[![Issues](https://img.shields.io/badge/Issues-312e81?style=for-the-badge&logo=github)](https://github.com/JeongHan-Bae/JH-Toolkit/issues)
+
 ---
 
 ## What This Documentation Is
@@ -26,9 +30,35 @@ You can start reading the documentation in two primary ways:
 - **Top navigation bar** — for conceptual and high-level entry points  
 - **Left navigation tree** — for hierarchical exploration of namespaces, modules, and headers
 
-> **Recommended approach:**  
-> Start from the forwarding header overviews (for example `<jh/async>`, `<jh/concepts>`, `<jh/ipc>`),  
-> then drill down into specific components as needed.
+\note **Recommended approach:**  
+\note Start from the forwarding header overviews (for example `<jh/async>`, `<jh/concepts>`, `<jh/ipc>`),  
+\note then drill down into specific components as needed.
+
+---
+
+## Documentation Authority Model
+
+This documentation follows a **strict authority hierarchy**.
+
+- **Doxygen documentation** is the **authoritative specification**  
+  It defines:
+  - semantic guarantees
+  - behavioral constraints
+  - valid usage patterns
+  - documented limitations and corner cases
+
+- **Markdown documents under `docs/`** are **orientation and guidance material**  
+  They explain:
+  - what a module is for
+  - when it should be used
+  - typical usage patterns
+
+- **Implementations are not specifications**  
+  They exist to realize the documented contract and may change
+  without semantic impact.
+
+Reading implementation details without the documented context
+is discouraged and may lead to incorrect assumptions.
 
 ---
 
@@ -80,40 +110,38 @@ The **source of truth** for JH-Toolkit lives in:
 Files under `src/` exist mainly as **instantiation translation units** for static builds
 and should not be treated as specifications.
 
-> **Important:**  
-> Reading implementation alone is discouraged.  
-> The documented interface defines the behavior.
+\note **Important:**  
+\note Reading implementation alone is discouraged.  
+\note The documented interface defines the behavior.
 
 ---
 
 ## IDE-Centered Documentation Design
 
-The Doxygen documentation in this project is **primarily written for IDE-based reading**.
+The Doxygen documentation in this project is **primarily authored for IDE-based reading**.
 
-We strongly recommend **classic CLion** for the best experience.
+We strongly recommend **classic CLion** for the best documentation experience.
 
 ### Why classic CLion is recommended
 
-- Fully renders **standard Doxygen HTML-style comments**
+- Fully renders **standard Doxygen comments**
 - Displays documentation inline with source code
 - Provides rich hover tooltips and navigable semantic views
 
 This creates a reading experience similar to **Jupyter Notebooks**,
 where documentation and code interleave naturally.
 
-### Notes on Embedded Rendering
+### Notes on Rendering and Platform Support
 
-The documentation is intentionally authored to support embedded IDE views:
+The documentation is designed with **embedded IDE rendering** as the primary target,
+with **classic CLion** serving as the reference environment.
 
+The web-based Doxygen output is also fully supported and expected to render correctly.  
+If you encounter any visual inconsistencies, layout issues, or rendering problems in the
+web documentation, please report them as issues:
 
-We primarily support embedded documentation views in IDEs (classic CLion).
-To ensure compatibility with embedded rendering, some example code in this
-documentation intentionally contains HTML entities.
-In certain cases, Doxygen does not unescape these entities correctly.
-This is a known limitation and currently has no workaround.
+[![Report an Issue](https://img.shields.io/badge/Report%20an%20Issue-black?style=for-the-badge&logo=github)](https://github.com/JeongHan-Bae/JH-Toolkit/issues)
 
-
-This limitation affects **HTML generation only** and does not impact IDE rendering.
 
 ---
 

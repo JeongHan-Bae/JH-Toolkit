@@ -130,13 +130,11 @@
  * </p>
  *
  * @note
- * <p>
  * <code>collect</code> is a <b>materializer</b>, not an adaptor:
  * it normalizes and realizes data into value semantics, but never applies
  * construction arguments.
  * Configuration belongs exclusively to <code>to</code>, allowing
  * <code>collect + to</code> to form a clean, composable, two-stage pipeline.
- * </p>
  *
  * @see jh::ranges::collect
  * @see jh::ranges::to

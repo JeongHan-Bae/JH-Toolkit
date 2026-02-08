@@ -1,4 +1,22 @@
 /**
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
+ */
+/**
  * @file ipc.h
  * @brief Aggregated header for inter-process communication primitives under <code>jh::sync</code>.
  *
@@ -85,3 +103,21 @@
 #include "jh/synchronous/ipc/process_shm_obj.h"
 #include "jh/synchronous/ipc/shared_process_mutex.h"
 #include "jh/synchronous/ipc/process_launcher.h"
+
+/**
+ * @brief Synchronous inter-process coordination primitives.
+ *
+ * The <code>jh::sync::ipc</code> namespace defines the complete set of
+ * OS-backed, process-shared synchronization primitives provided by
+ * JH Toolkit.
+ * <br>
+ * All semantics, guarantees, constraints, and implementation details
+ * of the IPC model are defined here. Components in this namespace map
+ * directly to operating-system facilities such as named semaphores and
+ * shared memory objects, and are identified by compile-time names.
+ * <br>
+ * This namespace represents the authoritative IPC layer. Any aliases
+ * or flattened entry points (such as <code>jh::ipc</code>) forward to
+ * this namespace without introducing additional abstraction.
+ */
+namespace jh::sync::ipc {}

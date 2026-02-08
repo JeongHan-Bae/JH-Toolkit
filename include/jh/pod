@@ -45,3 +45,23 @@
 #include "jh/pods/optional.h"
 #include "jh/pods/stringify.h"
 #include "jh/pods/tuple.h"
+
+/**
+ * @brief Aggregated entry point for Plain-Old-Data and layout-stable value utilities.
+ *
+ * The <code>&lt;jh/pod&gt;</code> forwarding header provides a unified,
+ * low-level interface over the POD-oriented components implemented
+ * under <code>jh/pods/</code>.
+ * <br>
+ * This module defines a collection of <b>layout-deterministic, trivially
+ * copyable value types</b> designed for binary safety, predictable memory
+ * representation, and zero-overhead abstraction.
+ * <br>
+ * All types and utilities exposed through <code>jh::pod</code> are defined
+ * in terms of the <code>jh::pod::pod_like</code> contract, ensuring standard
+ * layout, trivial lifetime semantics, and safe use in serialization,
+ * memory mapping, and low-level data transport.
+ *
+ * @see jh::pod::pod_like
+ */
+namespace jh::pod {}
