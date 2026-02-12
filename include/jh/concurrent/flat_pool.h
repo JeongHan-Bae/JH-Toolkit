@@ -30,14 +30,6 @@
  * lightweight reference-counted handles (<code>flat_pool::ptr</code>) bound to stable indices.
  * </p>
  *
- * <p>
- * Unlike pointer-based interning containers, <code>flat_pool</code> does <b>not</b> rely on
- * <code>std::shared_ptr</code> for ownership, synchronization, or lifetime control. All concurrency
- * guarantees are enforced exclusively through the pool's internal locking strategy. As a result,
- * the behavior of the pool is independent of platform-specific <code>shared_ptr</code>
- * implementations (including Windows-specific locking behavior).
- * </p>
- *
  * <h3>Key-Based Identity Model</h3>
  * <p>
  * Object identity is defined entirely by an external <code>Key</code> type. The key must be:
@@ -144,7 +136,7 @@
  *     </ul>
  *   </li>
  *   <li>
- *     <b><code>pointer_pool</code></b>:
+ *     <b><code>pointer_pool</code> (<code>observe_pool</code>)</b>:
  *     <ul>
  *       <li>Pointer-driven identity (Generally, comparisons of internal objects are proxied using
  *           <code>jh::weak_ptr_hash</code> and <code>jh::weak_ptr_eq</code>.)
@@ -182,6 +174,23 @@
  * then a pointer-based pool should be used instead.
  * </p>
  *
+ * @note
+ * On Windows platforms (MinGW-w64 / MinGW-clang with UCRT or MSVCRT),
+ * <code>flat_pool</code> exhibits race anomalies far less frequently than
+ * <code>pointer_pool</code>, but such anomalies are not entirely eliminated.
+ * <br>
+ * Even with additional fences introduced for Windows builds, rare
+ * reordering effects may still occur under extreme concurrency,
+ * especially when high parallel pressure is combined with test
+ * frameworks or debug-mode allocators. In such scenarios, unexpected
+ * ordering behavior may break internal safety assumptions.
+ * <br>
+ * The <code>&lt;jh/pool&gt;</code> module is primarily designed and validated
+ * for POSIX systems. Windows is treated as a secondary platform.
+ * <br>
+ * On Windows, usage is recommended only for single-threaded or
+ * low-contention multi-threaded workloads.
+ *
  * @version <pre>1.4.x</pre>
  * @date <pre>2025</pre>
  */
@@ -206,6 +215,7 @@
 #include "jh/core/ordered_map.h"
 #include "jh/conceptual/hashable.h"
 #include "jh/synchronous/control_buf.h"
+#include "jh/synchronous/strong_mutex.h"
 
 namespace jh::conc {
     namespace detail {
@@ -527,13 +537,13 @@ namespace jh::conc {
         std::size_t emplace(KArg &&k) requires jh::typed::monostate_t<Value> {
             // shared lock the entries_ for lookup
             {
-                std::shared_lock lk(entry_mtx_);
+                jh::sync::posix_smtx_shared_lock lk(entry_mtx_);
                 auto attempt = find_idx_no_lock(k);
                 if (attempt != static_cast<std::size_t>(-1)) return attempt;
             }
             // not found -> acquire exclusive locks
-            std::unique_lock entry_lock(entry_mtx_);
-            std::unique_lock storage_lock(pool_mtx_);
+            jh::sync::posix_smtx_unique_lock entry_lock(entry_mtx_);
+            jh::sync::posix_smtx_unique_lock storage_lock(pool_mtx_);
 
             // revalidate under exclusive locks to avoid race
             auto attempt = find_idx_no_lock(k);
@@ -597,13 +607,13 @@ namespace jh::conc {
         std::size_t emplace(KArg &&k, std::tuple<Args...> args_tuple)requires (!jh::typed::monostate_t<Value>) {
             // shared lock the entries_ for lookup
             {
-                std::shared_lock lk(entry_mtx_);
+                jh::sync::posix_smtx_shared_lock lk(entry_mtx_);
                 auto attempt = find_idx_no_lock(k);
                 if (attempt != static_cast<std::size_t>(-1)) return attempt;
             }
             // not found -> acquire exclusive locks
-            std::unique_lock entry_lock(entry_mtx_);
-            std::unique_lock storage_lock(pool_mtx_);
+            jh::sync::posix_smtx_unique_lock entry_lock(entry_mtx_);
+            jh::sync::posix_smtx_unique_lock storage_lock(pool_mtx_);
 
             // revalidate under exclusive locks to avoid race
             auto attempt = find_idx_no_lock(k);
@@ -665,7 +675,7 @@ namespace jh::conc {
          *         is out of range or refers to an unoccupied slot.
          */
         bool add_ref(size_t index) {
-            std::shared_lock lk(pool_mtx_);
+            jh::sync::posix_smtx_shared_lock lk(pool_mtx_);
             if (index >= occupation_.size() || occupation_[index] == 0)
                 return false;
             refcounts_[index].fetch_add(1);
@@ -701,11 +711,11 @@ namespace jh::conc {
          */
         void release_ref(size_t index) {
             {
-                std::shared_lock lk(pool_mtx_);
+                jh::sync::posix_smtx_shared_lock lk(pool_mtx_);
                 if (refcounts_[index].fetch_sub(1) > 1)
                     return;
             }
-            std::unique_lock storage_lock(pool_mtx_);
+            jh::sync::posix_smtx_unique_lock storage_lock(pool_mtx_);
 
             if (refcounts_[index].load() != 0) return;
 
@@ -1227,7 +1237,7 @@ namespace jh::conc {
          * Unlike <code>acquire()</code>, this function never inserts new entries.
          */
         ptr find(const Key &key) {
-            std::shared_lock lk(entry_mtx_);
+            jh::sync::posix_smtx_shared_lock lk(entry_mtx_);
             auto idx = find_idx_no_lock(key);
             if (idx == static_cast<std::size_t>(-1)) return ptr{nullptr};
             return ptr(this, idx);
@@ -1361,7 +1371,7 @@ namespace jh::conc {
          *         </ol>
          */
         std::pair<std::size_t, std::size_t> occupancy_rate() {
-            std::shared_lock lk(pool_mtx_);
+            jh::sync::posix_smtx_shared_lock lk(pool_mtx_);
             return {storage_.capacity(), entries_.size()};
         }
 
@@ -1381,8 +1391,8 @@ namespace jh::conc {
          * </p>
          */
         void resize_pool() {
-            std::unique_lock entry_lock(entry_mtx_);
-            std::unique_lock pool_lock(pool_mtx_);
+            jh::sync::posix_smtx_unique_lock entry_lock(entry_mtx_);
+            jh::sync::posix_smtx_unique_lock pool_lock(pool_mtx_);
 
             // 1. Find last occupied slot
             auto rit = std::find_if(occupation_.rbegin(), occupation_.rend(),

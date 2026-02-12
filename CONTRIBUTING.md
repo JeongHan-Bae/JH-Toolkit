@@ -520,7 +520,7 @@ Please commit *ONLY in English* using the following format:
 ```
 <behavior>(<domain>): <short description>
 
-<detailed explanation: optional, multi-line, no-markdown-formatting, only `*` for bullet points>
+<detailed explanation: optional, multi-line, no-markdown-formatting, optional `*` for bullet points>
 ```
 
 ### Pull Request format

@@ -14,6 +14,85 @@
  * Internally, it includes the user facing pool interfaces from
  * <code>jh/concurrent/&#42;.h</code> and exposes them collectively.
  * </p>
+ *
+ * <hr>
+ *
+ * <b>Platform Semantics</b>
+ * <br>
+ * All pool implementations in <code>&lt;jh/pool&gt;</code> are designed to be
+ * <b>data-race-free at the algorithmic level</b>.
+ *
+ * <ul>
+ *   <li>All shared mutable state is protected by explicit locks.</li>
+ *   <li>Reference counters and liveness indicators use atomics.</li>
+ *   <li>No intentional lock-free data races exist.</li>
+ * </ul>
+ *
+ * The concurrency design assumes a strong acquire/release synchronization
+ * contract between:
+ *
+ * <ul>
+ *   <li>lock/unlock operations, and</li>
+ *   <li>C++ atomic operations.</li>
+ * </ul>
+ *
+ * On POSIX platforms (Linux / Darwin), this assumption is satisfied by
+ * mature implementations built upon:
+ *
+ * <ul>
+ *   <li><code>pthread_rwlock</code></li>
+ *   <li><code>futex</code>-based primitives</li>
+ *   <li>well-integrated compiler/runtime memory semantics (GCC / Clang)</li>
+ * </ul>
+ *
+ * Under these environments, the synchronization graph forms a complete
+ * happens-before closure in practice. The pools are considered
+ * <b>engineering-grade well-formed</b> and have demonstrated stable
+ * high-concurrency behavior.
+ * <br>
+ * The design intentionally leverages these stronger implementation
+ * semantics. It does not restrict itself to the minimal guarantees of the
+ * ISO C++ abstract machine, as doing so would significantly reduce
+ * expressiveness or introduce prohibitive synchronization overhead.
+ *
+ * <hr>
+ * <b>Windows Support</b>
+ * <br>
+ * Windows is treated as a secondary platform.
+ * <br>
+ * While the code remains data-race-free at the C++ level, certain
+ * combinations of:
+ *
+ * <ul>
+ *   <li>MinGW (libstdc++)</li>
+ *   <li>Windows runtime libraries (MSVCRT / UCRT)</li>
+ *   <li>SRWLock-based synchronization paths</li>
+ * </ul>
+ *
+ * have been observed under extreme concurrency to exhibit rare
+ * visibility gaps or ordering jitter.
+ *
+ * These effects appear to stem from subtle differences in how
+ * C++ atomic semantics interact with Windows runtime synchronization
+ * primitives. In particular, control blocks associated with
+ * <code>weak_ptr</code>, <code>shared_ptr</code>, or atomic reference
+ * counters may not always participate in a fully closed visibility
+ * chain under high parallel pressure.
+ * <br>
+ * Additional fences are introduced on Windows builds to strengthen
+ * ordering, but they cannot eliminate all anomalies when interacting
+ * with certain runtime configurations.
+ * <br>
+ * Therefore:
+ *
+ * <ul>
+ *   <li>Full concurrency robustness is guaranteed only on POSIX.</li>
+ *   <li>Windows usage is recommended for single-threaded or
+ *       low-contention workloads.</li>
+ * </ul>
+ *
+ * The primary validation and release target of this toolkit remains
+ * POSIX systems (Linux + GCC/Clang, Darwin + Clang).
  */
 
 #pragma once

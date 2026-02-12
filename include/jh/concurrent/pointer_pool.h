@@ -185,6 +185,8 @@
 #include <memory>
 #include <shared_mutex>
 
+#include "jh/synchronous/strong_mutex.h"
+
 
 namespace jh::conc {
 
@@ -211,7 +213,9 @@ namespace jh::conc {
      *       or explicit cleanup calls.</li>
      *   <li><b>Adaptive capacity:</b> The container may grow or shrink depending on occupancy thresholds
      *       evaluated during insertion.</li>
-     *   <li><b>Thread-safe:</b> Lookups and insertions coordinate through <code>std::shared_mutex</code>.</li>
+     *   <li>
+     *     <b>Thread-safe:</b> Lookups and insertions coordinate through <code>std::shared_mutex</code>.
+     *   </li>
      *   <li><b>Discard-friendly:</b> Temporary objects are cheap to abandon when a matching instance exists.</li>
      * </ul>
      *
@@ -237,17 +241,22 @@ namespace jh::conc {
      * <code>jh::observe_pool</code>, these are automatically derived from <code>std::hash&lt;T&gt;()</code> or
      * adl <code>hash(t)</code> or <code>t.hash()</code>, and <code>operator==()</code> to ensure consistent behavior.
      *
-     * @warning
-     * On Windows environments based on the Universal CRT (including MinGW variants),
-     * <code>std::shared_ptr</code> and <code>std::weak_ptr</code> may exhibit incorrect reference-count
-     * synchronization under high concurrency. As a result, <code>weak_ptr::lock()</code> may succeed
-     * against an object whose underlying <code>shared_ptr</code> has already been destroyed, leading to
-     * invalid access or crashes even under otherwise correct usage. Additionally, insertion of
-     * <code>std::weak_ptr</code> into <code>std::unordered_*</code> containers on these platforms incurs
-     * significant jitter.
+      * @warning
+     * On Windows (MinGW-w64 / MinGW-clang with UCRT or MSVCRT),
+     * high-concurrency behavior may exhibit rare ordering anomalies.
      * <br>
-     * Due to these platform-specific defects, high-pressure concurrent use of
-     * <code>pointer_pool</code> is not recommended on Windows UCRT-based toolchains.
+     * On certain Windows runtime combinations, the interaction between
+     * the Windows lock model and MinGW threading may cause rare reordering
+     * effects under extreme contention, even when using
+     * <code>std::memory_order_seq_cst</code>.
+     * <br>
+     * <code>pointer_pool</code> may expose these effects more visibly due
+     * to heavier synchronization paths, though the limitation applies to
+     * all concurrent pools in this module.
+     * <br>
+     * On Windows, use is recommended only for single-threaded or
+     * low-contention workloads. POSIX platforms remain the primary
+     * supported and validated targets.
      */
     template<typename T, typename Hash, typename Eq>
     requires(
@@ -334,7 +343,7 @@ namespace jh::conc {
          * in both the old and new pool, but this is acceptable for deduplication use.
          */
         pointer_pool(pointer_pool &&other) noexcept {
-            std::unique_lock write_lock(other.pool_mutex_);
+            jh::sync::posix_smtx_unique_lock write_lock(other.pool_mutex_);
             pool_ = std::move(other.pool_);
             capacity_.store(other.capacity_.load());
             other.pool_.clear();  // Ensure valid empty state after move.
@@ -502,7 +511,7 @@ namespace jh::conc {
          * @return The number of stored weak_ptrs (including expired ones).
          */
         [[nodiscard]] std::uint64_t size() const {
-            std::shared_lock read_lock(pool_mutex_);
+            jh::sync::posix_smtx_shared_lock read_lock(pool_mutex_);
             return pool_.size();
         }
 
@@ -546,7 +555,7 @@ namespace jh::conc {
          * </ul>
          */
         void clear() {
-            std::unique_lock write_lock(pool_mutex_);
+            jh::sync::posix_smtx_unique_lock write_lock(pool_mutex_);
             pool_.clear();
             capacity_.store(MIN_RESERVED_SIZE);
         }
@@ -576,7 +585,7 @@ namespace jh::conc {
             if (pool_.size() >= capacity_.load()) {
                 expand_and_cleanup(); // This function is already acquiring the lock.
             }
-            std::unique_lock write_lock(pool_mutex_); // Lock for pool access.
+            jh::sync::posix_smtx_unique_lock write_lock(pool_mutex_); // Lock for pool access.
 
             auto [it, inserted] = pool_.insert(obj);
             if (!inserted) return it->lock();
