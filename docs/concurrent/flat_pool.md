@@ -144,7 +144,19 @@ This enables **lookup-before-construction** and avoids provisional object creati
 | `ptr acquire(KArg&& key, std::tuple<Args...>)` | Map-like | Interns a key–value entry, constructing value once if absent.                           |
 | `ptr find(const Key&)`                         | Lookup   | Returns a handle to an existing entry; **returns `nullptr` if the key is not present**. |
 
-> Note: use `if (auto p = pool.find(...); p != nullptr)` as operator `bool` is currently not defined for `flat_pool::ptr`.
+> **Version note**
+>
+> - **1.4.0**: `flat_pool::ptr` does not define `operator bool()`.  
+>   Use:
+>
+>       if (auto p = pool.find(...); p != nullptr) { ... }
+>
+> - **Since 1.4.1**: `flat_pool::ptr` provides `explicit operator bool()`.  
+>   You may write:
+>
+>       if (auto p = pool.find(...)) { ... }
+>
+>   which is semantically equivalent to comparing against `nullptr`.
 
 **Deleted (by design):**
 
@@ -157,18 +169,19 @@ This enables **lookup-before-construction** and avoids provisional object creati
 
 ### 📎 `flat_pool::ptr` — Handle Type
 
-| Member            | Type        | Description                                                |
-|-------------------|-------------|------------------------------------------------------------|
-| `ptr()`           | Constructor | Constructs a null handle.                                  |
-| `ptr(nullptr_t)`  | Constructor | Explicit null handle.                                      |
-| `ptr(const ptr&)` | Copy        | Shares the reference and increments refcount.              |
-| `ptr(ptr&&)`      | Move        | Transfers ownership without refcount change.               |
-| `~ptr()`          | Destructor  | Releases reference (GC-like).                              |
-| `reset()`         | Modifier    | Releases the reference and becomes null.                   |
-| `operator*()`     | Access      | Returns reference to stored object (guard required in MT). |
-| `operator->()`    | Access      | Returns pointer to stored object (guard required in MT).   |
-| `operator==`      | Comparison  | Compares handle identity or against `nullptr`.             |
-| `guard()`         | Guard       | Prevents pool reallocation during dereference.             |
+| Member                     | Type        | Description                                                |
+|----------------------------|-------------|------------------------------------------------------------|
+| `ptr()`                    | Constructor | Constructs a null handle.                                  |
+| `ptr(nullptr_t)`           | Constructor | Explicit null handle.                                      |
+| `ptr(const ptr&)`          | Copy        | Shares the reference and increments refcount.              |
+| `ptr(ptr&&)`               | Move        | Transfers ownership without refcount change.               |
+| `~ptr()`                   | Destructor  | Releases reference (GC-like).                              |
+| `reset()`                  | Modifier    | Releases the reference and becomes null.                   |
+| `operator*()`              | Access      | Returns reference to stored object (guard required in MT). |
+| `operator->()`             | Access      | Returns pointer to stored object (guard required in MT).   |
+| `operator==`               | Comparison  | Compares handle identity or against `nullptr`.             |
+| `guard()`                  | Guard       | Prevents pool reallocation during dereference.             |
+| `explicit operator bool()` | Conversion  | Returns `true` if the handle is non-null. (1.4.1+)         |
 
 ---
 
@@ -658,15 +671,52 @@ jh::conc::flat_pool<Key, std::unique_ptr<V>>
 
 ### Windows-Specific Note
 
-`pointer_pool` / `observe_pool` rely on `shared_ptr` + `weak_ptr`.
+On POSIX platforms (macOS, Linux GCC ≥13), `std::shared_mutex` implementations are typically backed by
+`pthread_rwlock` or equivalent primitives that, in practice, exhibit strong global ordering behavior.
+Under these environments, `flat_pool` does **not** introduce additional fences.
 
-On **Windows (including UCRT)**:
+On Windows, the situation differs:
 
-* `shared_ptr` implementations are relatively slow
-* no Windows runtime guarantees high-concurrency performance for
-  `shared_ptr + weak_ptr`
+The ISO C++ standard does **not** require `std::shared_mutex` to establish a global total order.
+It only guarantees acquire–release semantics.
 
-`flat_pool` avoids this entirely by controlling synchronization internally.
+To approximate POSIX-style behavior, `flat_pool` introduces:
+
+```cpp
+std::atomic_thread_fence(std::memory_order_seq_cst);
+```
+
+around shared mutex boundaries (via <code>posix_smtx_&#42;_lock</code>).
+
+This is the strongest ordering primitive available within ISO C++.
+
+However:
+
+* It operates strictly within the C++ abstract machine.
+* It cannot strengthen ordering inside Windows runtime or kernel-level primitives.
+* It cannot eliminate hardware-level propagation delays.
+
+As a result:
+
+* The implementation is **algorithmically DRF**.
+* Undefined behavior (UB) risks have been eliminated at the ISO C++ level.
+* All inter-thread interactions respect the C++ memory model.
+
+Nevertheless, empirical behavior on certain Windows configurations
+(MinGW toolchains + MSVCRT/UCRT) may still exhibit rare instability
+under extreme contention.
+
+This does **not** indicate undefined behavior in `flat_pool`,
+but rather reflects environmental memory-model characteristics
+that do not provide POSIX-level closure.
+
+In summary:
+
+* POSIX platforms: strong practical ordering, no additional fences required.
+* Windows: language-level strengthening applied.
+* Full global ordering equivalence is not guaranteed in practice.
+* The design remains DRF and standards-compliant, but runtime behavior
+  may not fully match theoretical expectations under stress.
 
 ---
 

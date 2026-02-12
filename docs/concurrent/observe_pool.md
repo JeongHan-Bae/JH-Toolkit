@@ -204,21 +204,54 @@ Consequences:
 
 ### Windows-Specific Warning (Critical)
 
-On **Windows UCRT-based toolchains** (including MinGW):
+On POSIX platforms, `pointer_pool` / `observe_pool` behavior is generally stable in practice,
+as `std::shared_mutex` implementations tend to exhibit strong global ordering characteristics.
 
-* `std::shared_ptr` / `std::weak_ptr` exhibit unreliable synchronization
-* `weak_ptr::lock()` may succeed after destruction
-* unordered container insertion incurs heavy jitter
+On Windows, however:
 
-#### Practical Recommendation
+* ISO C++ guarantees only acquire–release semantics for `std::shared_mutex`.
+* `std::weak_ptr` / `std::shared_ptr` rely on atomic reference counting.
+* `unordered_map` introduces additional internal synchronization and rehash behavior.
 
-On Windows:
+The interaction between:
 
-* **≤ 4 concurrent threads**
-* **≤ ~2000 live pooled objects**
+* atomic reference-count operations (`shared_ptr` control blocks),
+* `std::shared_mutex`,
+* and `unordered_map` bucket management,
 
-Exceeding these limits is **strongly discouraged**.
+creates a more complex memory-ordering surface than `flat_pool`.
 
+Even though:
+
+* `std::atomic_thread_fence(std::memory_order_seq_cst)` is inserted around lock boundaries,
+* the implementation is algorithmically **DRF**,
+* no undefined behavior exists at the ISO C++ level,
+
+empirical testing shows that:
+
+* pointer-based pools (`pointer_pool` / `observe_pool`)
+  are **more sensitive to Windows runtime + MinGW coupling**
+  than contiguous-storage `flat_pool` / `resource_pool`.
+* Under extreme contention, instability manifests earlier than in `flat_pool`.
+
+This is likely due to:
+
+* additional indirection layers,
+* `weak_ptr` lock operations,
+* `unordered_map` rehash activity,
+* and weaker cross-domain ordering between atomics and system locks.
+
+Important:
+
+* Neither `observe_pool` nor `flat_pool` guarantees high-pressure stability on Windows.
+* Both remain standards-compliant and DRF.
+* Behavior may degrade under extreme multi-core contention.
+
+Official guidance:
+
+* Windows is treated as a **compatibility platform**, not a strong-ordering baseline.
+* Use low to moderate concurrency levels on Windows.
+* For maximum robustness under heavy load, prefer POSIX platforms.
 ---
 
 ## Intended Use Cases

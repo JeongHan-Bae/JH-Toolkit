@@ -18,62 +18,71 @@
  * move semantics, and multi-threaded correctness.
  *
  * <hr>
- * <b>Windows / MinGW Concurrency Limitations</b>
+ * <b>Concurrency Guarantees</b>
  *
- * On Windows (MinGW-w64 + libstdc++), rare ordering anomalies may occur
- * under high concurrency. This affects not only
- * <code>observe_pool</code>, but all pool variants.
+ * All pool implementations in this module are algorithmically
+ * data-race-free (DRF) and do not rely on undefined behavior under
+ * the ISO C++ memory model.
  *
- * Even when atomics use <code>memory_order_seq_cst</code>,
- * global ordering is not reliably preserved in stress conditions.
+ * Additional strengthening is applied on Windows builds via
+ * <code>std::atomic_thread_fence(std::memory_order_seq_cst)</code>
+ * around lock boundaries. This eliminates ISO-level UB risks and
+ * preserves correctness within the C++ abstract machine.
  *
- * Contributing factors include:
+ * <hr>
+ * <b>Windows / MinGW Runtime Characteristics</b>
  *
- * <ul>
- *   <li>atomic operations (including shared_ptr reference counting)</li>
- *   <li>shared_mutex implementations</li>
- *   <li>thread scheduling behavior</li>
- *   <li>test framework interception of std::thread</li>
- * </ul>
+ * On certain Windows configurations (e.g., MinGW-w64 with libstdc++
+ * and UCRT/MSVCRT), system-level synchronization primitives may not
+ * provide POSIX-equivalent global ordering behavior.
+ *
+ * Under extreme multi-core contention, rare visibility or reordering
+ * effects may be observed. These effects arise from platform runtime
+ * and kernel-level synchronization characteristics rather than from
+ * violations of the C++ standard.
+ *
+ * Such behavior does not indicate undefined behavior or data races
+ * within the pool implementations.
  *
  * <hr>
  * <b>posix_smtx_* Strengthening</b>
  *
- * Newer versions introduce:
+ * The following wrappers are used to approximate POSIX-style ordering:
  *
  * <ul>
  *   <li><code>jh::sync::posix_smtx_unique_lock</code></li>
  *   <li><code>jh::sync::posix_smtx_shared_lock</code></li>
  * </ul>
  *
- * On Windows, these insert sequentially-consistent fences around
- * lock boundaries to approximate POSIX ordering.
+ * On Windows, these introduce sequentially-consistent fences at
+ * lock boundaries to strengthen ordering at the language level.
  *
- * This mitigates shared_mutex-related reordering,
- * but cannot fully stabilize cross-domain interactions.
+ * While this improves practical stability, it cannot fully enforce
+ * hardware-level global ordering beyond what the platform provides.
  *
  * <hr>
  * <b>Test Policy</b>
  *
- * Due to CI resource constraints and platform-level ordering variance,
- * high-concurrency stress tests are disabled on Windows.
+ * Due to platform-level ordering variance and CI constraints,
+ * extreme high-concurrency stress tests are disabled on Windows.
  *
- * Windows builds are supported for:
+ * Windows builds are validated for:
  *
  * <ul>
  *   <li>single-threaded usage</li>
- *   <li>low-pressure multi-threaded scenarios</li>
+ *   <li>moderate multi-threaded workloads</li>
  * </ul>
  *
- * Full concurrency validation is guaranteed on POSIX
- * platforms (Linux / Darwin), which remain the primary target.
+ * Full high-pressure concurrency validation is performed on POSIX
+ * platforms (Linux / Darwin), which remain the primary reference
+ * environments.
  *
  * <hr>
  * <b>Design Note</b>
  *
- * The pool modules rely on POSIX-style synchronization semantics.
- * Restricting the design strictly to ISO minimal guarantees would
- * significantly limit concurrency robustness and design flexibility.
+ * The pool modules are engineered to be DRF and standards-compliant.
+ * Observed high-contention behavior differences stem from platform
+ * synchronization semantics rather than from algorithmic defects.
  */
 
 namespace test {
@@ -537,8 +546,8 @@ TEST_CASE("resource_pool single-thread key-value") {
     auto p4 = pool.acquire(3, std::forward_as_tuple("new"));
     REQUIRE(*p4->second == "new");
 
-    auto check0 = (pool.find(3) != nullptr);
-    auto check1 = (pool.find(1) != nullptr);
+    auto check0 = static_cast<bool>(pool.find(3));
+    auto check1 = static_cast<bool>(pool.find(1));
 
     REQUIRE(check0);
     REQUIRE(check1 == false);

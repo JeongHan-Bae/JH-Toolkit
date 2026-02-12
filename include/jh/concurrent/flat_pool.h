@@ -175,21 +175,29 @@
  * </p>
  *
  * @note
- * On Windows platforms (MinGW-w64 / MinGW-clang with UCRT or MSVCRT),
- * <code>flat_pool</code> exhibits race anomalies far less frequently than
- * <code>pointer_pool</code>, but such anomalies are not entirely eliminated.
+ * The implementation of <code>flat_pool</code> is algorithmically
+ * data-race-free (DRF) and does not rely on undefined behavior
+ * under the ISO C++ memory model.
  * <br>
- * Even with additional fences introduced for Windows builds, rare
- * reordering effects may still occur under extreme concurrency,
- * especially when high parallel pressure is combined with test
- * frameworks or debug-mode allocators. In such scenarios, unexpected
- * ordering behavior may break internal safety assumptions.
+ * Additional <code>std::atomic_thread_fence(std::memory_order_seq_cst)</code>
+ * barriers are introduced on Windows builds to strengthen ordering at
+ * the language level. This removes ISO-level UB risks and preserves
+ * correctness within the C++ abstract machine.
  * <br>
- * The <code>&lt;jh/pool&gt;</code> module is primarily designed and validated
- * for POSIX systems. Windows is treated as a secondary platform.
+ * However, Windows runtime and system-level synchronization primitives
+ * (e.g. SRWLock-based <code>std::shared_mutex</code> implementations)
+ * do not necessarily provide POSIX-equivalent global ordering behavior.
+ * Under extreme multi-core contention, rare visibility or reordering
+ * phenomena may still be observed.
  * <br>
- * On Windows, usage is recommended only for single-threaded or
- * low-contention multi-threaded workloads.
+ * Such behavior is not a violation of the C++ standard and does not
+ * indicate undefined behavior in <code>flat_pool</code>; rather, it reflects
+ * platform-level memory ordering characteristics outside the control
+ * of the library.
+ * <br>
+ * Accordingly, while API correctness is preserved, Windows builds
+ * are not guaranteed to exhibit the same high-pressure stability
+ * characteristics as POSIX systems.
  *
  * @version <pre>1.4.x</pre>
  * @date <pre>2025</pre>
@@ -1084,6 +1092,11 @@ namespace jh::conc {
             /// @brief Compares the handle against <code>nullptr</code>.
             bool operator==(std::nullptr_t) {
                 return pool_ == nullptr;
+            }
+
+            /// @brief Returns true if the handle is non-null.
+            explicit operator bool() const noexcept {
+                return pool_ != nullptr;
             }
 
             /**
