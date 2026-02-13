@@ -54,24 +54,24 @@ This model intentionally rejects STL-style relocation semantics.
 Memory is allocated in **fixed-size blocks**.
 
 ```cpp
-static constexpr std::size_t BLOCK_SIZE = JH_FIXED_VEC_BLOCK_SIZE;
+static constexpr std::size_t BLOCK_SIZE = JH_CTRL_BUFFER_BLOCK_SIZE;
 ```
 
 ### Block size configuration
 
-`JH_FIXED_VEC_BLOCK_SIZE` can be configured in two ways:
+`JH_CTRL_BUFFER_BLOCK_SIZE` can be configured in two ways:
 
 1. **Preprocessor definition**
 
    ```cpp
-   #define JH_FIXED_VEC_BLOCK_SIZE 128
+   #define JH_CTRL_BUFFER_BLOCK_SIZE 128
    #include <jh/sync>
    ```
 
 2. **Build system (recommended)**
 
    ```cmake
-   add_compile_definitions(JH_FIXED_VEC_BLOCK_SIZE=128)
+   add_compile_definitions(JH_CTRL_BUFFER_BLOCK_SIZE=128)
    ```
 
 If not defined, the default value is **64**.

@@ -60,7 +60,6 @@
  *       <code>jh::concepts::shared_lockable</code>.</li>
  * </ul>
  *
- *
  * <ul>
  *   <li>
  *     <code>strong_unique_lock</code> and <code>strong_shared_lock</code><br>
@@ -69,26 +68,23 @@
  *     immediately after acquisition and immediately before release.
  *   </li>
  *   <li>
- *     <code>posix_smtx_*_lock</code><br>
+ *     <code>posix_smtx_&#42;_lock</code><br>
  *     On Windows, aliases the strong variants to approximate POSIX-style
  *     behavior. On POSIX systems, aliases the standard library lock types.
  *   </li>
  * </ul>
  *
- *
- * <p>
- * Note: This facility does not address lifecycle inconsistencies
+ * @note
+ * This facility does not address lifecycle inconsistencies
  * introduced by test frameworks that intercept or wrap
  * <code>std::thread</code> handles.
  * Such issues originate from thread management semantics,
  * not from <code>std::shared_mutex</code> itself.
- * </p>
  *
- * <p>
+ * @note
  * The primary target platform remains POSIX.
  * The Windows strengthening path exists to provide a bounded,
  * practical approximation for cross-platform engineering scenarios.
- * </p>
  *
  * @version <pre>1.4.1</pre>
  * @date <pre>2026</pre>
@@ -197,6 +193,9 @@ namespace jh::sync {
      *
      * It should be regarded as a language-level strengthening adapter,
      * not a formal cross-platform equivalence guarantee.
+     *
+     * @note
+     * On POSIX systems, this alias uses std::unique_lock directly.
      */
     template<jh::concepts::basic_lockable Mtx>
     using posix_smtx_unique_lock = strong_unique_lock<Mtx>;
@@ -219,6 +218,9 @@ namespace jh::sync {
      *
      * This adapter provides a pragmatic mitigation strategy rather than
      * strict semantic equivalence.
+     *
+     * @note
+     * On POSIX systems, this alias uses std::shared_lock directly.
      */
     template<jh::concepts::shared_lockable Mtx>
     using posix_smtx_shared_lock = strong_shared_lock<Mtx>;
@@ -232,6 +234,10 @@ namespace jh::sync {
      * relying on the underlying pthread-based implementation.
      *
      * No additional language-level strengthening is applied.
+     *
+     * @note
+     * On Windows, this alias uses strong_unique_lock to approximate
+     * POSIX-style behavior.
      */
     template<jh::concepts::basic_lockable Mtx>
     using posix_smtx_unique_lock = std::unique_lock<Mtx>;
@@ -243,6 +249,10 @@ namespace jh::sync {
      * relying on the native pthread-backed shared mutex semantics.
      *
      * No additional language-level strengthening is applied.
+     *
+     * @note
+     * On Windows, this alias uses strong_shared_lock to approximate
+     * POSIX-style behavior.
      */
     template<jh::concepts::shared_lockable Mtx>
     using posix_smtx_shared_lock = std::shared_lock<Mtx>;

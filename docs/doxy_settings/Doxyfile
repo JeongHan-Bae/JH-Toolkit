@@ -129,13 +129,13 @@ EXCLUDE_PATTERNS       = */detail \
                          */detail/* \
                          *detail/ \
                          *detail/*
-EXCLUDE_SYMBOLS = *detail*          \
-                  detail*           \
-                  *detail           \
-                  *Detail*          \
-                  *DETAIL*          \
-                  *::detail*        \
-                  detail::*
+EXCLUDE_SYMBOLS        = *detail*          \
+                         detail*           \
+                         *detail           \
+                         *Detail*          \
+                         *DETAIL*          \
+                         *::detail*        \
+                         detail::*
 EXAMPLE_PATH           =
 EXAMPLE_PATTERNS       = *
 EXAMPLE_RECURSIVE      = NO
@@ -158,7 +158,7 @@ USE_HTAGS              = YES
 VERBATIM_HEADERS       = YES
 ALPHABETICAL_INDEX     = YES
 IGNORE_PREFIX          =
-GENERATE_HTML          = YES
+GENERATE_HTML          = __GENERATE_HTML__
 HTML_OUTPUT            = html
 HTML_FILE_EXTENSION    = .html
 HTML_HEADER            =
@@ -221,7 +221,7 @@ LATEX_MAKEINDEX_CMD    = makeindex
 COMPACT_LATEX          = NO
 GENERATE_RTF           = NO
 GENERATE_MAN           = NO
-GENERATE_XML           = NO
+GENERATE_XML           = __GENERATE_XML__
 GENERATE_DOCBOOK       = NO
 GENERATE_AUTOGEN_DEF   = NO
 GENERATE_SQLITE3       = NO

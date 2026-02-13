@@ -189,6 +189,63 @@
 
 #pragma once
 
+/**
+ * @brief Controls whether <code>jh::immutable_str</code> performs automatic
+ *        leading/trailing ASCII whitespace trimming.
+ *
+ * <p><b>Default:</b> <code>true</code></p>
+ *
+ * <p>If not defined manually, it defaults to:</p>
+ * <pre>
+ * #define JH_IMMUTABLE_STR_AUTO_TRIM true
+ * </pre>
+ *
+ * <p>
+ * If overriding manually, it <b>must be defined before any inclusion</b>
+ * of <code>&lt;jh/immutable_str&gt;</code> in the translation unit.
+ * </p>
+ *
+ * <p><b>Configuration methods:</b></p>
+ * <ul>
+ *   <li>
+ *     Source-level (before include):
+ *     <pre>
+ *     #define JH_IMMUTABLE_STR_AUTO_TRIM false
+ *     </pre>
+ *   </li>
+ *   <li>
+ *     CMake:
+ *     <pre>
+ *     target_compile_definitions(target PRIVATE JH_IMMUTABLE_STR_AUTO_TRIM=false)
+ *     </pre>
+ *   </li>
+ *   <li>
+ *     Compiler flag:
+ *     <pre>
+ *     -DJH_IMMUTABLE_STR_AUTO_TRIM=false
+ *     </pre>
+ *   </li>
+ * </ul>
+ *
+ * <p><b>Important:</b></p>
+ * <ul>
+ *   <li>Must be a boolean literal: <code>true</code> or <code>false</code>
+ *       (not <code>1</code>/<code>0</code>).</li>
+ *   <li>Acts as a type-level compile-time policy parameter via
+ *       <code>static constexpr bool immutable_str::auto_trim</code>.</li>
+ *   <li>Branch selection is performed using <code>if constexpr</code>,
+ *       not preprocessor elimination.</li>
+ *   <li>In the static library target (<code>jh-toolkit-static</code>),
+ *       both code paths are compiled; user compilation activates the
+ *       selected branch.</li>
+ * </ul>
+ *
+ * <p><b>Behavior:</b></p>
+ * <ul>
+ *   <li><code>true</code>: remove leading/trailing ASCII whitespace at construction.</li>
+ *   <li><code>false</code>: preserve input exactly.</li>
+ * </ul>
+ */
 #ifndef JH_IMMUTABLE_STR_AUTO_TRIM
 #define JH_IMMUTABLE_STR_AUTO_TRIM true
 #endif
@@ -638,7 +695,7 @@ namespace jh {
          *
          * @code
          * #define JH_IMMUTABLE_STR_AUTO_TRIM false
-         * #include &lt;... all other includes ...&gt;
+         * #include &lt;jh/immutable_str&gt;
          * @endcode
          *
          * <p>

@@ -185,7 +185,7 @@
 #include <memory>
 #include <shared_mutex>
 
-#include "jh/synchronous/strong_mutex.h"
+#include "jh/synchronous/strong_lock.h"
 
 
 namespace jh::conc {

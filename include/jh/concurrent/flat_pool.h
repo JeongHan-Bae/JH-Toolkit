@@ -223,7 +223,7 @@
 #include "jh/core/ordered_map.h"
 #include "jh/conceptual/hashable.h"
 #include "jh/synchronous/control_buf.h"
-#include "jh/synchronous/strong_mutex.h"
+#include "jh/synchronous/strong_lock.h"
 
 namespace jh::conc {
     namespace detail {

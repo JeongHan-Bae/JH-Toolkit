@@ -28,6 +28,8 @@ on:
       - 'include/jh/**'
       - 'docs/**'
       - '.github/workflows/docs-check.yml'
+      - '.github/workflows/docs_presence_check.py'
+      - '.github/workflows/docs_hygiene_check.py'
 
   pull_request:
     branches:
@@ -37,6 +39,8 @@ on:
       - 'include/jh/**'
       - 'docs/**'
       - '.github/workflows/docs-check.yml'
+      - '.github/workflows/docs_presence_check.py'
+      - '.github/workflows/docs_hygiene_check.py'
 
   workflow_dispatch:
 
@@ -68,8 +72,12 @@ jobs:
           BASE=HEAD^
           TARGET=HEAD
 
-          # Workflow file change → run both
-          if git diff --name-only "$BASE" "$TARGET" -- .github/workflows/docs-check.yml | grep -q .; then
+          # Workflow or check script change → run both
+          if git diff --name-only "$BASE" "$TARGET" -- \
+            .github/workflows/docs-check.yml \
+            .github/workflows/docs_presence_check.py \
+            .github/workflows/docs_hygiene_check.py \
+            | grep -q .; then
             RUN_PRESENCE=true
             RUN_HYGIENE=true
           fi

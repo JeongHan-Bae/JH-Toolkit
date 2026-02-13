@@ -70,10 +70,18 @@
 #include "jh/macros/platform.h"
 #include <cstdint>
 
+/**
+ * @brief Controls whether leading "../" segments are allowed in
+ * compile-time validated POSIX-style relative IPC paths.
+ */
 #ifndef JH_ALLOW_PARENT_PATH
 #define JH_ALLOW_PARENT_PATH 0
 #endif
 
+/**
+ * @brief Forces IPC object names to use the strict BSD length limit
+ * (30 characters) regardless of detected platform.
+ */
 #ifndef JH_FORCE_SHORT_SEM_NAME
 #define JH_FORCE_SHORT_SEM_NAME 0
 #endif
