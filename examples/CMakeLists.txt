@@ -17,7 +17,10 @@ foreach(src ${EXAMPLE_SOURCES})
     get_filename_component(fname ${src} NAME)
     get_filename_component(target ${fname} NAME_WE)
     add_executable(${target} ${src})
-    target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    target_link_libraries(${target}
+            PRIVATE
+            jh-toolkit
+    )
 endforeach()
 
 # Add process_lock subdirectory (defines writer/reader)
