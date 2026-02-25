@@ -112,7 +112,8 @@ def main(get_version_only=False):
         "project": {
             "name": "JH-Toolkit",
             "version": version,
-            "description": "A cross-platform C++20 toolkit library",
+            "description": "An engineering-oriented C++20 toolkit with duck-typed concepts, "
+                           "header-only, RTTI-free, and concurrency-friendly.",
             "platforms": ["Ubuntu", "macOS", "Windows"],
             "source": {
                 "repository": "https://github.com/JeongHan-Bae/JH-Toolkit",
@@ -124,8 +125,26 @@ def main(get_version_only=False):
                                 "name": "C++20 Standard Library",
                                 "platforms": ["Ubuntu", "macOS", "Windows"],
                                 "install": "Supports GCC 13+ and Clang 15+.\n"
-                                           "Recommended compilers: GCC 14.2+ (official Ubuntu builds only; PPA builds are not recommended), 14.3+, or Clang LLVM 20 (stable release).\n"
-                                           "Note that LLVM 17/18 provided via Homebrew may not be fully stable and should be avoided in production, similar to the unrecommended GCC PPA builds.",
+                                           "Recommended compilers: \n"
+                                           "GCC 14.2+ (official Ubuntu builds only; PPA builds are not recommended), 14.3+, or Clang LLVM 20 (stable release).",
+                                "note": "LLVM 17/18 provided via Homebrew may not be fully stable and should be avoided in production, \n"
+                                        "similar to the unrecommended GCC PPA builds.\n"
+                                        "GCC 13 has known issues with NTTP combined with constexpr, certain APIs are intentionally disabled via static_assert checks. \n"
+                                        "Attempting to call these APIs on GCC13 will result in a compilation failure.\n"
+                                        "GCC 14+ has some known compile-time frontend parser issues (where correct syntax causes dangling), \n"
+                                        "but these can be avoided by using our recommended syntax.\n"
+                                        "The MinGW series (MinGW-w64/MinGW-clang) occasionally exhibits visibility issues when mixed with Windows runtimes (msvcrt/ucrt) \n"
+                                        "(potentially stemming from SRWLock failing to produce total order even under seq_cst fences, \n"
+                                        "with atomic types not fully protected). Windows serves as a verification platform rather than a high-concurrency platform.\n"
+                                        "Some modules (refer to documentations) assumes POSIX semantics. The Windows implementation provides only the API, \n"
+                                        "serving as a verification platform rather than a primary platform.\n\n"
+                                        "Unsupported toolchains: \n"
+                                        "MSVC, whose behavior partially deviates from ISO expectations and whose mangling conventions are rather peculiar.\n\n"
+                                        "Highly recommended: \n"
+                                        "LLVM 20. \n"
+                                        "If no additional toolchain dependencies exist on Ubuntu, LLVM 20 can also be used as an alternative to GCC. \n"
+                                        "On Windows, MinGW (GCC) + MSYS2 (UCRT) is recommended for minimal jitter and visibility gaps.\n"
+                                        "(Generally, it will pull GCC 14.3+ or GCC 15).",
                                 "version": "C++20"
                             }
                         ] + deps
