@@ -61,12 +61,12 @@
 #pragma once
 
 #include <utility>
+#include <string>
 #include <string_view>
 #include <cstdint>
 #include "jh/pods/array.h"
 #include "jh/pods/string_view.h"
 #include "jh/metax/hash.h"
-#include "jh/detail/base64_common.h"
 
 namespace jh::meta {
     namespace detail {
@@ -75,6 +75,14 @@ namespace jh::meta {
 
         template<std::uint16_t N, std::uint16_t M>
         concept t_str_concat_legal = ((N - 1) + (M - 1) + 1 <= jh::pod::max_pod_array_bytes);
+
+        /// Check if a character is valid in a POSIX relative path.
+        consteval bool is_path_char(char c) noexcept {
+            return (c >= 'A' && c <= 'Z') ||
+                   (c >= 'a' && c <= 'z') ||
+                   (c >= '0' && c <= '9') ||
+                   c == '_' || c == '-' || c == '.' || c == '/';
+        }
     } // namespace detail
 
     /**
@@ -111,6 +119,7 @@ namespace jh::meta {
         /// @brief build from underlying buffer
         constexpr explicit t_str(const jh::pod::array<char, N> &arr) noexcept
                 : storage(arr) {}
+
     private:
 
         static constexpr jh::pod::array<char, N> make_array(const char(&src)[N]) {
@@ -138,8 +147,28 @@ namespace jh::meta {
          * It enables string literals to be passed directly
          * as non-type template parameters (NTTP) without requiring
          * additional wrappers.
+         *
+         * @note
+         * A user-defined literal such as <code>"..."_ts</code>
+         * cannot be supported due to a fundamental language limitation.
+         * <br>
+         * In C++, a user-defined literal operator receives
+         * <code>const char*</code> (and a length), but it cannot
+         * encode that length as a template argument <code>N</code>.
+         * <br>
+         * Since <code>t_str&lt;N&gt;</code> requires the string size
+         * (including the null terminator) to be part of the type,
+         * the size must be preserved at the type level.
+         * <br>
+         * Only a reference to a string literal
+         * <code>const char(&)[N]</code> retains the compile-time
+         * array bound required for correct template deduction.
+         * <br>
+         * Therefore, implicit construction from a string literal
+         * is the only fully standard and portable mechanism.
          */
-        constexpr t_str(const char(&lit)[N]) noexcept: storage(make_array(lit)) {} // NOLINT
+        constexpr t_str(const char(&lit)[N]) noexcept
+                : storage(make_array(lit)) {} // NOLINT
 
         /**
          * @brief Construct from a <code>char8_t</code>-based string literal (<code>u8""</code>).
@@ -177,6 +206,40 @@ namespace jh::meta {
          */
         [[nodiscard]] constexpr std::string_view view() const noexcept {
             return {storage.data, size()};
+        }
+
+        /**
+         * @brief Get a <code>jh::pod::string_view</code> over the stored string.
+         * @return A <code>pod::string_view</code> referencing the characters (excluding null terminator).
+         */
+        [[nodiscard]] constexpr jh::pod::string_view pod_view() const noexcept {
+            return {storage.data, size()};
+        }
+
+        /**
+         * @brief Get a <code>std::string</code> as a copy of the stored string.
+         * @return A <code>std::string</code> copying the template string.
+         *
+         * @note
+         * This function exists primarily for ergonomic reasons.
+         * When interoperating with runtime APIs that require
+         * <code>std::string</code> (e.g. concatenation or formatting),
+         * it avoids forcing users to repeatedly write:
+         *
+         * @code
+         * std::string{S.val()}
+         * std::string{S.view()}
+         * @endcode
+         *
+         * Instead, <code>S.str()</code> provides a concise and explicit
+         * conversion entry point.
+         *
+         * The function intentionally performs a copy and is meant
+         * only for runtime interop &mdash; it does not affect the
+         * compile-time nature of <code>t_str</code>.
+         */
+        [[nodiscard]] std::string str() const {
+            return std::string{view()};
         }
 
         /**
@@ -257,9 +320,7 @@ namespace jh::meta {
          * @return true if all characters are digits, false otherwise.
          */
         [[nodiscard]] constexpr bool is_digit() const noexcept {
-            for (std::uint64_t i = 0; i < size(); i++)
-                if (!jh::meta::is_digit(storage[i])) return false;
-            return true;
+            return pod_view().is_digit();
         }
 
         /**
@@ -288,47 +349,7 @@ namespace jh::meta {
          * </ul>
          */
         [[nodiscard]] constexpr bool is_number() const noexcept {
-            const std::uint64_t n = size();
-            if (n == 0) return false;
-
-            std::uint64_t i = 0;
-            if (storage[i] == '+' || storage[i] == '-') {
-                ++i;
-            }
-
-            bool has_digit = false;
-            bool seen_dot = false;
-            bool seen_exp = false;
-
-            for (; i < n; ++i) {
-                const char c = storage[i];
-
-                /// do NOT apply [[likely]] as this is constexpr
-                if (jh::meta::is_digit(c)) {
-                    has_digit = true;
-                    continue;
-                }
-
-                if (c == '.') {
-                    if (!has_digit || seen_dot || seen_exp) return false; // must have digit before '.'
-                    seen_dot = true;
-                    has_digit = false; // must see digit after '.'
-                    continue;
-                }
-
-                if (c == 'e' || c == 'E') {
-                    if (!has_digit || seen_exp) return false; // must have digit before 'e'
-                    seen_exp = true;
-                    has_digit = false; // must see digit after 'e'
-                    if (i + 1 < n && (storage[i + 1] == '+' || storage[i + 1] == '-')) {
-                        ++i; // skip optional sign after e/E
-                        // no leak risk, worst case reach '\0'
-                    }
-                    continue;
-                }
-                return false; // invalid character
-            }
-            return has_digit;
+            return pod_view().is_number();
         }
 
         /**
@@ -336,9 +357,7 @@ namespace jh::meta {
          * @return true if all characters are alphabetic, false otherwise.
          */
         [[nodiscard]] constexpr bool is_alpha() const noexcept {
-            for (std::uint64_t i = 0; i < size(); i++)
-                if (!jh::meta::is_alpha(storage[i])) return false;
-            return true;
+            return pod_view().is_alpha();
         }
 
         /**
@@ -346,9 +365,7 @@ namespace jh::meta {
          * @return true if all characters are alphanumeric, false otherwise.
          */
         [[nodiscard]] constexpr bool is_alnum() const noexcept {
-            for (std::uint64_t i = 0; i < size(); i++)
-                if (!jh::meta::is_alnum(storage[i])) return false;
-            return true;
+            return pod_view().is_alnum();
         }
 
         /**
@@ -356,19 +373,39 @@ namespace jh::meta {
          * @return true if all characters are in range 0-127, false otherwise.
          */
         [[nodiscard]] constexpr bool is_ascii() const noexcept {
-            for (std::uint64_t i = 0; i < size(); i++)
-                if (!jh::meta::is_ascii(storage[i])) return false;
-            return true;
+            return pod_view().is_ascii();
         }
 
         /**
          * @brief Check if all characters are printable 7-bit ASCII.
          * @return true if all characters are in range 32-126, false otherwise.
+         *
+         * @details
+         * Verifies that every character lies within the printable
+         * 7-bit ASCII range (decimal 32-126).
+         *
+         * @note
+         * Printable ASCII is a strict subset of 7-bit ASCII.
+         * Therefore: <code>is_printable_ascii()</code> implies <code>is_ascii()</code>
+         * <br>
+         * If this function returns true, calling @c is_ascii()
+         * again is redundant. When used inside a @c requires clause,
+         * do not combine the two checks.
+         * <br>
+         * This function only permits ASCII characters.
+         * If the intention is to validate fully printable text
+         * including multi-byte UTF-8 sequences, use @c is_legal()
+         * instead.
+         * @note
+         * @c is_legal() performs:
+         * <ul>
+         *  <li>UTF-8 structural validation</li>
+         *  <li>rejection of invalid UTF-8 byte combinations</li>
+         *  <li>rejection of illegal ASCII control characters</li>
+         * </ul>
          */
         [[nodiscard]] constexpr bool is_printable_ascii() const noexcept {
-            for (std::uint64_t i = 0; i < size(); i++)
-                if (!jh::meta::is_printable_ascii(storage[i])) return false;
-            return true;
+            return pod_view().is_printable_ascii();
         }
 
         /**
@@ -376,52 +413,7 @@ namespace jh::meta {
          * @return true if all characters are valid, false otherwise.
          */
         [[nodiscard]] constexpr bool is_legal() const noexcept {
-            std::uint64_t i = 0;
-            int remaining = 0;       // how many continuation bytes still expected
-            unsigned char lead = 0;  // last leading byte
-
-            while (i < size()) {
-                auto c = static_cast<unsigned char>(storage[i]);
-                // filter out disallowed ASCII control characters
-                if (!jh::meta::is_valid_char(static_cast<char>(c))) return false;
-                ///< constexpr, avoid using [[likely/unlikely]]
-                if (remaining == 0) {
-                    // --- leading byte ---
-                    if (c <= 0x7F) {
-                        // single-byte ASCII
-                        i++;
-                        continue;
-                    } else if (c >= 0xC2 && c <= 0xDF) {
-                        // 2-byte sequence
-                        remaining = 1;
-                        lead = c;
-                    } else if (c >= 0xE0 && c <= 0xEF) {
-                        // 3-byte sequence
-                        remaining = 2;
-                        lead = c;
-                    } else if (c >= 0xF0 && c <= 0xF4) {
-                        // 4-byte sequence
-                        remaining = 3;
-                        lead = c;
-                    } else {
-                        return false; // invalid leading byte
-                    }
-                } else {
-                    // --- continuation byte ---
-                    if ((c & 0xC0) != 0x80) return false;
-                    // special restrictions for the first continuation
-                    if (remaining == ((lead >= 0xE0 && lead <= 0xEF) ? 2 :
-                                      (lead >= 0xF0 && lead <= 0xF4) ? 3 : 1)) {
-                        if (lead == 0xE0 && (c < 0xA0 || c > 0xBF)) return false;
-                        if (lead == 0xED && (c < 0x80 || c > 0x9F)) return false;
-                        if (lead == 0xF0 && (c < 0x90 || c > 0xBF)) return false;
-                        if (lead == 0xF4 && (c < 0x80 || c > 0x8F)) return false;
-                    }
-                    remaining--;
-                }
-                i++;
-            }
-            return remaining == 0;
+            return pod_view().is_legal();
         }
 
         /**
@@ -430,10 +422,7 @@ namespace jh::meta {
          * @return true if valid hex string, false otherwise.
          */
         [[nodiscard]] constexpr bool is_hex() const noexcept {
-            if (size() % 2 != 0) return false;
-            for (std::uint64_t i = 0; i < size(); i++)
-                if (!jh::meta::is_hex_char(storage[i])) return false;
-            return true;
+            return pod_view().is_hex();
         }
 
         /**
@@ -442,7 +431,7 @@ namespace jh::meta {
          * @return true if valid Base64, false otherwise.
          */
         [[nodiscard]] constexpr bool is_base64() const noexcept {
-            return jh::detail::base64_common::is_base64(val(), size());
+            return pod_view().is_base64();
         }
 
         /**
@@ -451,7 +440,116 @@ namespace jh::meta {
          * @return true if valid Base64URL, false otherwise.
          */
         [[nodiscard]] constexpr bool is_base64url() const noexcept {
-            return jh::detail::base64_common::is_base64url(val(), size());
+            return pod_view().is_base64url();
+        }
+
+        /**
+         * @brief Validate a POSIX-style relative path at compile time.
+         *
+         * This function performs strict validation of a POSIX-style relative path.
+         * It is intended for project-internal path specifications and is designed
+         * to be evaluated at compile time.
+         *
+         * <h4>Core Constraints</h4>
+         * <ul>
+         *   <li>Length must be in range <code>[1, 128]</code>.</li>
+         *   <li>Must be a relative path (no leading <code>'/'</code>).</li>
+         *   <li>Only POSIX-style separators (<code>'/'</code>) are allowed.</li>
+         *   <li>No <code>"./"</code> segments.</li>
+         *   <li>
+         *     <code>".."</code> handling:
+         *     <ul>
+         *       <li>If <code>AllowParent == false</code> &rarr; any <code>".."</code> segment is rejected.</li>
+         *       <li>If <code>AllowParent == true</code> &rarr; leading <code>"../"</code> segments are allowed,
+         *           but:
+         *           <ul>
+         *             <li>The entire path cannot consist only of <code>"../"</code>.</li>
+         *             <li>No <code>".."</code> is permitted once normal path content begins.</li>
+         *           </ul>
+         *       </li>
+         *     </ul>
+         *   </li>
+         *   <li>Allowed characters: <code>[A-Za-z0-9_.-/]</code>.</li>
+         *   <li>Spaces and non-ASCII characters are forbidden.</li>
+         * </ul>
+         *
+         * <h4>Compile-Time Enforcement</h4>
+         * This function is intended to be used in constant evaluation contexts.
+         * It is typically combined with C++20 constraints:
+         *
+         * <p><b>Explicit form (disallow parent paths):</b></p>
+         * @code
+         * template&lt;jh::meta::TStr Path&gt;
+         *     requires(Path.template is_valid_relative_path&lt;false&gt;())
+         * struct Resource {};
+         * @endcode
+         *
+         * <p><b>Default form (equivalent to <code>&lt;false&gt;</code>):</b></p>
+         * @code
+         * template&lt;jh::meta::TStr Path&gt;
+         *     requires(Path.is_valid_relative_path())
+         * struct Resource {};
+         * @endcode
+         *
+         * Since <code>AllowParent</code> defaults to <code>false</code>,
+         * both forms are strictly equivalent.
+         *
+         * <h4>Design Rationale</h4>
+         * <ul>
+         *   <li>Only strict POSIX-style relative paths are accepted to ensure
+         *       deterministic, platform-neutral behavior.</li>
+         *   <li>Whitespace and non-ASCII characters are intentionally disallowed.
+         *       Project-internal relative paths must be explicitly and cleanly
+         *       designed, avoiding ambiguity and encoding issues.</li>
+         *   <li>This validator does not perform normalization or filesystem access.</li>
+         * </ul>
+         *
+         * <h4>Cross-Platform Note</h4>
+         * On Windows or other platforms, path composition should be performed
+         * using <code>std::filesystem</code> rather than embedding platform-specific
+         * separators:
+         *
+         * @code
+         * std::filesystem::path path =
+         *     std::filesystem::path(".") / Path.val();
+         * @endcode
+         *
+         * The validated string is treated purely as a logical POSIX-style
+         * relative path and may be combined with platform-native paths
+         * via <code>std::filesystem</code>.
+         *
+         * @tparam AllowParent Whether leading "../" segments are permitted.
+         * @return true if the path satisfies all constraints; otherwise false.
+         */
+        template<bool AllowParent = false>
+        [[nodiscard]] constexpr bool is_valid_relative_path() const noexcept {
+            if (size() < 1) return false;
+            if (size() > 128) return false;
+            if (val()[0] == '/') return false;   // absolute path forbidden
+
+            std::uint64_t i = 0;
+
+            if constexpr (AllowParent) {
+                // Allow leading "../" segments
+                while (i + 2 < size() &&
+                       val()[i] == '.' &&
+                       val()[i + 1] == '.' &&
+                       val()[i + 2] == '/') {
+                    i += 3;
+                }
+                if (i == size()) return false; // path cannot be only ../
+            }
+
+            for (; i < size(); ++i) {
+                if (!detail::is_path_char(val()[i]))
+                    return false;
+
+                // reject ".." appearing mid-path
+                if (val()[i] == '.' && i + 1 < size() && val()[i + 1] == '.')
+                    return false;
+            }
+
+            return true;
         }
 
     private:
@@ -507,8 +605,8 @@ namespace jh::meta {
          *       if <code>N != M</code>, the comparison does not even check characters.
          */
         template<std::uint16_t M>
-        constexpr bool operator==(const t_str<M> &) const noexcept
-        requires (M != N) { return false; }
+        constexpr bool operator==(const t_str<M> &) const
+        noexcept requires (M != N) { return false; }
 
         /**
          * @brief Equality comparison with another <code>t_str</code> of the same size.
@@ -555,7 +653,7 @@ namespace jh::meta {
             }
             return bytes;
         }
-        
+
         /**
          * @brief Convert to an immutable byte buffer.
          *
@@ -596,8 +694,13 @@ namespace jh::meta {
          *     <em>bytes</em> if converted back using <code>to_bytes()</code>.
          *   </li>
          * </ul>
+         * <b>Example Usage</b>:
+         * @code
+         * jh::meta::t_str&lt;bytes.size() + 1&gt;::from_bytes(bytes);
+         * // Use this form instead of an explicit size, especially when the byte array is deduced with auto.
+         * @endcode
          */
-        [[nodiscard]] static constexpr t_str from_bytes(const jh::pod::array<std::uint8_t, N - 1>& bytes) noexcept {
+        [[nodiscard]] static constexpr t_str from_bytes(const jh::pod::array<std::uint8_t, N - 1> &bytes) noexcept {
             jh::pod::array<char, N> arr{};
             if (std::is_constant_evaluated()) {
                 for (std::uint64_t i = 0; i < N - 1; ++i)

@@ -338,7 +338,7 @@ namespace jh::sync::ipc {
 #else
             if (::shm_unlink(shm_name_.val()) == -1 && errno != ENOENT)
                 throw std::runtime_error(
-                        "shm_unlink failed for " + std::string{shm_name_.val()} +
+                        "shm_unlink failed for " + shm_name_.str() +
                         " (errno=" + std::to_string(errno) + ")");
             process_mutex<S, HighPriv>::unlink();
             lock_t::unlink();

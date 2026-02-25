@@ -74,8 +74,8 @@
  * @brief Controls whether leading "../" segments are allowed in
  * compile-time validated POSIX-style relative IPC paths.
  */
-#ifndef JH_ALLOW_PARENT_PATH
-#define JH_ALLOW_PARENT_PATH 0
+#ifndef JH_INTERPROCESS_ALLOW_PARENT_PATH
+#define JH_INTERPROCESS_ALLOW_PARENT_PATH 0
 #endif
 
 /**
@@ -114,13 +114,7 @@ namespace jh::sync::ipc::limits {
                    (c >= '0' && c <= '9') ||
                    c == '_' || c == '-' || c == '.';
         }
-        /// Check if a character is valid in a POSIX relative path.
-        consteval bool is_path_char(char c) noexcept {
-            return (c >= 'A' && c <= 'Z') ||
-                   (c >= 'a' && c <= 'z') ||
-                   (c >= '0' && c <= '9') ||
-                   c == '_' || c == '-' || c == '.' || c == '/';
-        }
+
     } // namespace detail
 
     /**
@@ -161,8 +155,8 @@ namespace jh::sync::ipc::limits {
      *   <li>No <code>"./"</code> segments.</li>
      *   <li><code>".."</code> segments:
      *     <ul>
-     *       <li>When <code>JH_ALLOW_PARENT_PATH == 0</code> &rarr; forbidden.</li>
-     *       <li>When <code>JH_ALLOW_PARENT_PATH == 1</code> &rarr; leading <code>"../"</code>
+     *       <li>When <code>JH_INTERPROCESS_ALLOW_PARENT_PATH == 0</code> &rarr; forbidden.</li>
+     *       <li>When <code>JH_INTERPROCESS_ALLOW_PARENT_PATH == 1</code> &rarr; leading <code>"../"</code>
      *       allowed but cannot occupy entire path, and no <code>".."</code> after content begins.</li>
      *     </ul>
      *   </li>
@@ -170,35 +164,12 @@ namespace jh::sync::ipc::limits {
      * </ul>
      */
     template<jh::meta::TStr S>
-    consteval bool valid_relative_path() {
-        if (S.size() < 1) return false;
-        if (S.size() > 128) return false;
-        if (S.val()[0] == '/') return false;   // absolute path forbidden
-
-        std::uint64_t i = 0;
-
-#if JH_ALLOW_PARENT_PATH
-        // Allow leading "../" segments
-        while (i + 2 < S.size() &&
-               S.val()[i] == '.' &&
-               S.val()[i + 1] == '.' &&
-               S.val()[i + 2] == '/')
-        {
-            i += 3;
-        }
-        if (i == S.size()) return false; // path cannot be only ../
+    consteval bool valid_relative_path() noexcept {
+#if JH_INTERPROCESS_ALLOW_PARENT_PATH
+        return S.template is_valid_relative_path<true>();
+#else
+        return S.template is_valid_relative_path<false>();
 #endif
-
-        for (; i < S.size(); ++i) {
-            if (!detail::is_path_char(S.val()[i]))
-                return false;
-
-            // reject ".." appearing mid-path
-            if (S.val()[i] == '.' && i + 1 < S.size() && S.val()[i + 1] == '.')
-                return false;
-        }
-
-        return true;
     }
 
 } // namespace jh::sync::ipc::limits

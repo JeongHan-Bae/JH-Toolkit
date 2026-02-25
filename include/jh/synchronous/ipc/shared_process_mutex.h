@@ -460,7 +460,7 @@ namespace jh::sync::ipc {
 
             if (!got_excl) {
                 if (!prior_.try_lock()) {
-                    std::cerr << "[FATAL] concurrent upgrade detected in shared_process_mutex<" << S.val() << ">\n";
+                    std::cerr << "[FATAL] concurrent upgrade detected in shared_process_mutex<" + S.str() + ">\n";
                     try { unlink(); } catch (...) {}
                     std::terminate();
                 }

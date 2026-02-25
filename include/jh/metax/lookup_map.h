@@ -37,6 +37,152 @@
  *   <li>binary search on sorted hashes</li>
  *   <li>POD optimization into read-only memory</li>
  * </ul>
+ *
+ * <h4>Eliminating hash-switch boilerplate</h4>
+ * <p>
+ * A common pattern in large systems is manual hash-dispatch:
+ * </p>
+ *
+ * @code
+ * auto h = hash(input);
+ * switch (h) {
+ * case HASH_A:
+ *     if (input == A) { ... }
+ *     break;
+ * case HASH_B:
+ *     if (input == B) { ... }
+ *     break;
+ * }
+ * @endcode
+ *
+ * <p>
+ * This pattern duplicates hashing logic, requires manual collision guards,
+ * scatters string or object comparisons across branches, and grows linearly
+ * in maintenance cost as the number of cases increases.
+ * </p>
+ *
+ * <p>
+ * lookup_map removes this entire category of boilerplate. The table stores
+ * precomputed hashes and performs structured binary search followed by
+ * equality verification. The user never writes manual hash constants or
+ * collision checks.
+ * </p>
+ *
+ * <h4>Recommended architectural pattern</h4>
+ * <p>
+ * The container is intended to enforce a disciplined flow:
+ * </p>
+ *
+ * <ol>
+ *   <li>Normalize external input into a lightweight View type.</li>
+ *   <li>Use <code>lookup_map</code> with<code>&lt;TypeView, CommandEnum&gt;</code> for mapping.</li>
+ *   <li>Dispatch using CommandEnum in a centralized switch.</li>
+ * </ol>
+ *
+ * <p>
+ * For complex input types, define a corresponding TypeView. The View should:
+ * </p>
+ *
+ * <ul>
+ *   <li>Be lightweight and non-owning.</li>
+ *   <li>Represent only the identifying portion of the object.</li>
+ *   <li>Be hashable via <code>jh::hash&lt;TypeView&gt;</code>.
+ *   <br>
+ *   (The deduction is <code>std::hash&lt;T&gt;{}(t)</code> > ADL <code>hash(t)</code> >
+ *   no-param <code>t.hash()</code>, at least one should be provided for the View type.)
+ *   </li>
+ * </ul>
+ *
+ * <p>
+ * Then provide normalization through the extension layer:
+ * </p>
+ *
+ * @code
+ * struct TypeView { ... };
+ * // operator== and hash support for TypeView
+ *
+ * template&lt;&gt;
+ * struct key_traits&lt;TypeView&gt; {
+ *     using canonical_type = TypeView;
+ *     using apparent_type  = const Type &;
+ *
+ *     static constexpr TypeView
+ *     to_canonical(const Type & obj) noexcept {
+ *         return make_view(obj);
+ *     }
+ * };
+ * @endcode
+ *
+ * <p>
+ * After normalization, the mapping becomes purely structural:
+ * </p>
+ *
+ * @code
+ * constexpr auto table =
+ *     make_lookup_map&lt;HashMethod&gt;(
+ *     std:array{
+ *         std::pair{TypeView{...}, CommandEnum::A},
+ *         std::pair{TypeView{...}, CommandEnum::B},
+ *         ...
+ *         },
+ *         CommandEnum::UNKNOWN // Default
+ *     );
+ * @endcode
+ *
+ * If <code>jh::hash&lt;TypeView&gt;</code> can be deduced and is constexpr-safe,
+ * omit the HashMethod template argument:
+ *
+ * @code
+ * constexpr auto table =
+ *     make_lookup_map(
+ *     std:array{
+ *         std::pair{TypeView{...}, CommandEnum::A},
+ *         std::pair{TypeView{...}, CommandEnum::B},
+ *         ...
+ *         },
+ *         CommandEnum::UNKNOWN // Default
+ *     );
+ * @endcode
+ *
+ * Finally,
+ *
+ * @code
+ * CommandEnum cmd = table[input_object];
+ *
+ * switch (cmd) {
+ *     case CommandEnum::A:
+ *         handle_A(...);
+ *         break;
+ *     case CommandEnum::B:
+ *         handle_B(...);
+ *         break;
+ *     ...
+ *     case CommandEnum::UNKNOWN:
+ *     default:
+ *         handle_unknown(...);
+ *         break;
+ * }
+ * @endcode
+ *
+ * <h4>Philosophy</h4>
+ * <p>
+ * The goal is not to provide a generic container, but to formalize a
+ * deterministic dispatch pipeline:
+ * </p>
+ *
+ * <pre>External input
+ *     ->
+ * View normalization
+ *     ->
+ * Static mapping to CommandEnum
+ *     ->
+ * Centralized switch dispatch</pre>
+ *
+ * <p>
+ * This separates parsing from behavior, removes repetitive hash-switch
+ * patterns, reduces maintenance overhead, and encourages strongly typed
+ * dispatch instead of string-driven branching.
+ * </p>
  */
 
 #pragma once
@@ -49,8 +195,10 @@
 #include <string>
 #include <string_view>
 #include <cstddef>
+#include <cstdint>
 #include "jh/pods/array.h"
 #include "jh/pods/string_view.h"
+#include "jh/core/immutable_str.h"
 #include "jh/conceptual/hashable.h"
 #include "jh/metax/t_str.h"
 
@@ -107,7 +255,7 @@ namespace jh::meta {
              * @tparam N Literal length.
              * @param lit Null-terminated literal.
              */
-            template<size_t N>
+            template<std::size_t N>
             static constexpr canonical_type to_canonical(const char (&lit)[N]) noexcept {
                 return jh::pod::string_view::from_literal(lit);
             }
@@ -130,13 +278,21 @@ namespace jh::meta {
             }
 
             /**
+             * @brief Convert jh::immutable_str.
+             * @param s Source immutable string.
+             */
+            [[maybe_unused]] static constexpr canonical_type to_canonical(const jh::immutable_str &s) noexcept {
+                return s.pod_view();
+            }
+
+            /**
              * @brief Convert compile-time t_str literal.
              * @tparam N Size of t_str literal.
              * @param v Source t_str.
              */
-            template<uint16_t N>
+            template<std::uint16_t N>
             [[maybe_unused]] static constexpr canonical_type to_canonical(const jh::meta::t_str<N> &v) noexcept {
-                return {v.val(), v.size()};
+                return v.pod_view();
             }
 
             /**
@@ -233,15 +389,15 @@ namespace jh::meta {
      * @tparam K Canonical key type stored in the map.
      * @tparam V Value type associated with each key.
      * @tparam N Number of stored entries.
-     * @tparam Hash Hash functor producing <code>size_t</code>.
+     * @tparam Hash Hash functor producing <code>std::size_t</code>.
      *
      * @note Prefer compile-time construction with lightweight POD keys or full-lifetime
      *       string-view literals (e.g. <code>"..."_psv</code>) to ensure zero-overhead
      *       canonical conversions through <code>key_traits</code>.
      * </ul>
      */
-    template<typename K, typename V, size_t N, typename Hash> requires requires(K k) {
-        { Hash{}(k) } -> std::convertible_to<size_t>;
+    template<typename K, typename V, std::size_t N, typename Hash> requires requires(K k) {
+        { Hash{}(k) } -> std::convertible_to<std::size_t>;
     }
     struct lookup_map final {
 
@@ -252,7 +408,7 @@ namespace jh::meta {
          * Contains precomputed hash, the canonical key, and its associated value.
          */
         struct entry final {
-            size_t hash; ///< Precomputed hash.
+            std::size_t hash; ///< Precomputed hash.
             K key;       ///< Canonical key.
             V value;     ///< Stored value.
 
@@ -260,13 +416,13 @@ namespace jh::meta {
 
             constexpr bool operator==(const entry &rhs) const noexcept { return hash == rhs.hash; }
 
-            friend constexpr bool operator<(const entry &lhs, size_t rhs_hash) noexcept { return lhs.hash < rhs_hash; }
+            friend constexpr bool operator<(const entry &lhs, std::size_t rhs_hash) noexcept { return lhs.hash < rhs_hash; }
 
-            friend constexpr bool operator<(size_t lhs_hash, const entry &rhs) noexcept { return lhs_hash < rhs.hash; }
+            friend constexpr bool operator<(std::size_t lhs_hash, const entry &rhs) noexcept { return lhs_hash < rhs.hash; }
         };
 
-        static constexpr size_t entry_size = sizeof(entry);
-        static constexpr size_t total_size = entry_size * N;
+        static constexpr std::size_t entry_size = sizeof(entry);
+        static constexpr std::size_t total_size = entry_size * N;
 
         /**
          * @brief Storage type selected based on POD suitability.
@@ -305,13 +461,13 @@ namespace jh::meta {
                                       Hash hasher = {})
                 : entries({}), default_value(default_val) {
             if (std::is_constant_evaluated()) {
-                for (size_t i = 0; i < N; ++i)
+                for (std::size_t i = 0; i < N; ++i)
                     entries[i] = entry{hasher(init[i].first),
                                        (init[i].first),
                                        (init[i].second)};
 
-                for (size_t i = 0; i < N; ++i)
-                    for (size_t j = i + 1; j < N; ++j)
+                for (std::size_t i = 0; i < N; ++i)
+                    for (std::size_t j = i + 1; j < N; ++j)
                         if (entries[j].hash < entries[i].hash)
                             std::swap(entries[i], entries[j]);
             } else {
@@ -335,11 +491,11 @@ namespace jh::meta {
          * <code>std::lower_bound</code>.
          * </p>
          */
-        [[nodiscard]] constexpr size_t lower_bound_hash(size_t h) const noexcept {
+        [[nodiscard]] constexpr std::size_t lower_bound_hash(std::size_t h) const noexcept {
             if (std::is_constant_evaluated()) {
-                size_t l = 0, r = N;
+                std::size_t l = 0, r = N;
                 while (l < r) {
-                    size_t mid = (l + r) / 2;
+                    std::size_t mid = (l + r) / 2;
                     if (entries[mid].hash < h)
                         l = mid + 1;
                     else
@@ -349,10 +505,10 @@ namespace jh::meta {
             } else {
                 auto it = std::lower_bound(
                         entries.begin(), entries.end(), h,
-                        [](auto const &e, size_t hash_val) {
+                        [](auto const &e, std::size_t hash_val) {
                             return e.hash < hash_val;
                         });
-                return static_cast<size_t>(it - entries.begin());
+                return static_cast<std::size_t>(it - entries.begin());
             }
         }
 
@@ -371,10 +527,10 @@ namespace jh::meta {
             using traits = jh::meta::extension::key_traits<K>;
             Hash hasher{};
             auto key = traits::to_canonical(std::forward<KeyIn>(key_in));
-            size_t h = hasher(key);
+            std::size_t h = hasher(key);
 
-            size_t pos = lower_bound_hash(h);
-            for (size_t i = pos; i < N && entries[i].hash == h; ++i)
+            std::size_t pos = lower_bound_hash(h);
+            for (std::size_t i = pos; i < N && entries[i].hash == h; ++i)
                 if (entries[i].key == key)
                     return entries[i].value;
 
@@ -441,7 +597,7 @@ namespace jh::meta {
      * @tparam N Entry count.
      */
     template<typename Hash, typename K, typename V, std::size_t N> requires requires(K k) {
-        { Hash{}(k) } -> std::convertible_to<size_t>;
+        { Hash{}(k) } -> std::convertible_to<std::size_t>;
     }
     lookup_map(std::array<std::pair<K, V>, N> &&, V, Hash)
     -> lookup_map<K, V, N, Hash>;
@@ -467,7 +623,7 @@ namespace jh::meta {
      * <h4>Usage example</h4>
      * @code
      * struct MyHash {
-     *     constexpr size_t operator()(KeyType k) const noexcept {
+     *     constexpr std::size_t operator()(KeyType k) const noexcept {
      *         return ...; // constexpr-capable hashing
      *     }
      * };
@@ -495,7 +651,7 @@ namespace jh::meta {
      */
     template<typename Hash, typename K, typename V, std::size_t N>
     requires requires(K k) {
-        { Hash{}(k) } -> std::convertible_to<size_t>;
+        { Hash{}(k) } -> std::convertible_to<std::size_t>;
     }
     consteval auto make_lookup_map(
             const std::array<std::pair<K, V>, N> &init,

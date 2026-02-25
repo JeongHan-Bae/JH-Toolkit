@@ -75,8 +75,8 @@
  *       <li><code>"./"</code> segments are meaningless and rejected.</li>
  *       <li><code>".."</code> handling:
  *         <ul>
- *           <li>By default (<code>JH_ALLOW_PARENT_PATH == 0</code>): any <code>".."</code> is forbidden.</li>
- *           <li>If <code>JH_ALLOW_PARENT_PATH == 1</code>: leading <code>"../"</code> prefixes are permitted
+ *           <li>By default (<code>JH_INTERPROCESS_ALLOW_PARENT_PATH == 0</code>): any <code>".."</code> is forbidden.</li>
+ *           <li>If <code>JH_INTERPROCESS_ALLOW_PARENT_PATH == 1</code>: leading <code>"../"</code> prefixes are permitted
  *               (one or more), but:
  *             <ul>
  *               <li>The entire path cannot consist only of <code>"../"</code> segments.</li>
@@ -102,7 +102,7 @@
  *       <li>Absolute paths (<code>"/foo/bar"</code>) are forbidden by design.</li>
  *     </ul>
  *   </li>
- *   <li><strong>Parent path relaxation</strong> (<code>JH_ALLOW_PARENT_PATH</code>):
+ *   <li><strong>Parent path relaxation</strong> (<code>JH_INTERPROCESS_ALLOW_PARENT_PATH</code>):
  *     <ul>
  *       <li>Disabled (default = 0): any <code>".."</code> usage is an error.</li>
  *       <li>Enabled (= 1): only leading <code>"../"</code> prefixes are permitted;
@@ -181,8 +181,8 @@
 
 #pragma once
 
-#ifndef JH_ALLOW_PARENT_PATH
-#define JH_ALLOW_PARENT_PATH 0
+#ifndef JH_INTERPROCESS_ALLOW_PARENT_PATH
+#define JH_INTERPROCESS_ALLOW_PARENT_PATH 0
 #endif
 
 #include "jh/macros/platform.h"
@@ -214,8 +214,8 @@ namespace jh::sync::ipc {
      *             <li><code>"./"</code> segments are disallowed.</li>
      *             <li><code>".."</code> handling:
      *               <ul>
-     *                 <li>Default (<code>JH_ALLOW_PARENT_PATH == 0</code>): any <code>".."</code> is rejected.</li>
-     *                 <li>Relaxed (<code>JH_ALLOW_PARENT_PATH == 1</code>): only leading <code>"../"</code>
+     *                 <li>Default (<code>JH_INTERPROCESS_ALLOW_PARENT_PATH == 0</code>): any <code>".."</code> is rejected.</li>
+     *                 <li>Relaxed (<code>JH_INTERPROCESS_ALLOW_PARENT_PATH == 1</code>): only leading <code>"../"</code>
      *                     prefixes are allowed, and the path must contain additional content afterwards.</li>
      *                 <li>Once non-empty content has been appended, <code>".."</code> is forbidden.</li>
      *               </ul>
@@ -242,7 +242,7 @@ namespace jh::sync::ipc {
      *       <li>Absolute paths (<code>"/foo/bar"</code>) are forbidden.</li>
      *     </ul>
      *   </li>
-     *   <li><strong>Parent path relaxation</strong> (<code>JH_ALLOW_PARENT_PATH</code>):
+     *   <li><strong>Parent path relaxation</strong> (<code>JH_INTERPROCESS_ALLOW_PARENT_PATH</code>):
      *     <ul>
      *       <li>Disabled (default = 0): any <code>".."</code> usage is invalid.</li>
      *       <li>Enabled (= 1): leading <code>"../"</code> prefixes are allowed,
@@ -452,10 +452,10 @@ namespace jh::sync::ipc {
             }
             return handle{pi};
 #elif IS_POSIX
-            std::string exe = "./" + std::string(Path.val());
+            auto exe = jh::meta::TStr{"./"} + Path;
             pid_t pid = fork();
             if (pid == 0) {
-                execl(exe.c_str(), exe.c_str(), nullptr);
+                execl(exe.val(), exe.val(), nullptr);
                 // exec failed: safely terminate only the child process (avoid atexit/DTOR)
                 _exit(1);
             }
