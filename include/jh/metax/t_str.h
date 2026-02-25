@@ -541,11 +541,11 @@ namespace jh::meta {
             }
 
             for (; i < size(); ++i) {
-                if (!detail::is_path_char(val()[i]))
+                if (!detail::is_path_char(storage[i]))
                     return false;
 
                 // reject ".." appearing mid-path
-                if (val()[i] == '.' && i + 1 < size() && val()[i + 1] == '.')
+                if (storage[i] == '.' && i + 1 < size() && storage[i + 1] == '.')
                     return false;
             }
 

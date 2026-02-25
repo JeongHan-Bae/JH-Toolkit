@@ -281,7 +281,7 @@ namespace jh::meta {
              * @brief Convert jh::immutable_str.
              * @param s Source immutable string.
              */
-            [[maybe_unused]] static constexpr canonical_type to_canonical(const jh::immutable_str &s) noexcept {
+            [[maybe_unused]] static canonical_type to_canonical(const jh::immutable_str &s) noexcept {
                 return s.pod_view();
             }
 

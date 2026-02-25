@@ -41,6 +41,7 @@ TEST_CASE("Compile-Time Construction with All make_lookup_map Versions") {
         STATIC_REQUIRE(m["red"_psv] == 1);
         STATIC_REQUIRE(m[jh::meta::TStr{"green"}] == 2);
         STATIC_REQUIRE(m["blue"sv] == 3);
+        REQUIRE(m[jh::immutable_str("blue")] == 3);
         STATIC_REQUIRE(m[std::string("purple")] == -1);
         STATIC_REQUIRE(m[string_view::from_literal("yellow")] == -1);
     }
