@@ -165,11 +165,44 @@ namespace jh::sync::ipc::limits {
      */
     template<jh::meta::TStr S>
     consteval bool valid_relative_path() noexcept {
+#if JH_GCC_LE_13
+        // GCC13 is so flawed that it fails to properly
+        // derive certain constexpr functions related to the NTTP template.
+        // Occasionally, "this" fails to resolve, forcing us to implement workarounds.
+        if (S.size() < 1) return false;
+        if (S.size() > 128) return false;
+        if (S.val()[0] == '/') return false;   // absolute path forbidden
+
+        std::uint64_t i = 0;
+
+#if JH_INTERPROCESS_ALLOW_PARENT_PATH     // Allow leading "../" segments
+        while (i + 2 < S.size() &&
+               S.val()[i] == '.' &&
+               S.val()[i + 1] == '.' &&
+               S.val()[i + 2] == '/')
+        {
+            i += 3;
+        }
+        if (i == S.size()) return false; // path cannot be only ../
+#endif // JH_INTERPROCESS_ALLOW_PARENT_PATH
+
+        for (; i < S.size(); ++i) {
+            if (!jh::meta::detail::is_path_char(S.val()[i]))
+                return false;
+
+            // reject ".." appearing mid-path
+            if (S.val()[i] == '.' && i + 1 < S.size() && S.val()[i + 1] == '.')
+                return false;
+        }
+
+        return true;
+#else // JH_GCC_LE_13 == 0, normal implementation works
 #if JH_INTERPROCESS_ALLOW_PARENT_PATH
         return S.template is_valid_relative_path<true>();
-#else
+#else // JH_INTERPROCESS_ALLOW_PARENT_PATH == 0
         return S.template is_valid_relative_path<false>();
-#endif
+#endif // JH_INTERPROCESS_ALLOW_PARENT_PATH
+#endif // JH_GCC_LE_13
     }
 
 } // namespace jh::sync::ipc::limits

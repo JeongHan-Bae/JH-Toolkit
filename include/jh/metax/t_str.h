@@ -67,6 +67,7 @@
 #include "jh/pods/array.h"
 #include "jh/pods/string_view.h"
 #include "jh/metax/hash.h"
+#include "jh/macros/platform.h"
 
 namespace jh::meta {
     namespace detail {
@@ -446,6 +447,14 @@ namespace jh::meta {
         /**
          * @brief Validate a POSIX-style relative path at compile time.
          *
+         * @warning
+         * This implementation relies on correct C++20 constant evaluation
+         * behavior for NTTP-based string types. GCC 13 and earlier versions
+         * contain known constexpr/NTTP evaluation defects that may cause
+         * incorrect compilation failures.
+         * <br>
+         * GCC 14 or later is required. Clang is unaffected.
+         *
          * This function performs strict validation of a POSIX-style relative path.
          * It is intended for project-internal path specifications and is designed
          * to be evaluated at compile time.
@@ -523,6 +532,9 @@ namespace jh::meta {
          */
         template<bool AllowParent = false>
         [[nodiscard]] constexpr bool is_valid_relative_path() const noexcept {
+            static_assert(!JH_GCC_LE_13,
+                          "GCC 13 and earlier have known constexpr evaluation defects that may "
+                          "cause incorrect compilation failures. GCC 14 or later is required.");
             if (size() < 1) return false;
             if (size() > 128) return false;
             if (val()[0] == '/') return false;   // absolute path forbidden
