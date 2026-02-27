@@ -27,13 +27,8 @@
 
 struct EnsureOutput {
     EnsureOutput() {
-        // On MinGW/Clang/GCC toolchains, fileno() is correct
-        _setmode(fileno(stdout), _O_U16TEXT);
-
-        // Ensure narrow-output (printf, cout) uses UTF-8
         SetConsoleOutputCP(CP_UTF8);
 
-        // Enable ANSI escape sequences (color, emoji, etc.)
         HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
         if (hOut != INVALID_HANDLE_VALUE) {
             DWORD dwMode = 0;
