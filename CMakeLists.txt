@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 project(jh-toolkit LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -8,6 +8,74 @@ include(GNUInstallDirs)  # Ensure standardized installation directories
 
 set(PROJECT_VERSION 1.4.0)
 
+# ------------------------------------------------------------------------------
+# Compilation Model and Integration Philosophy
+#
+# 1. Precompiled Components
+#    A small portion of the library provides precompiled implementations.
+#    When linking against `jh-toolkit-static`, those compiled units are built
+#    with Release-level optimizations by design.
+#
+#    IMPORTANT:
+#    Template code remains governed by the consumer project's compilation
+#    settings. Only the explicitly compiled translation units are subject
+#    to the enforced optimization policy.
+#
+# 2. Fully Templated Usage
+#    All functionality is available in header-only form via `jh-toolkit`.
+#    When consumed through `find_package`, the user retains full control
+#    over compilation flags and optimization strategy.
+#
+# 3. FetchContent / add_subdirectory Integration
+#    When integrated via FetchContent or add_subdirectory, this project
+#    intentionally overrides and enforces its global compilation strategy.
+#
+#    This behavior is deliberate:
+#    Using FetchContent/add_subdirectory implies adoption of the project's
+#    architectural philosophy and compilation discipline.
+#
+#    Consumers are expected to audit their codebase under this philosophy,
+#    including constraints such as RTTI prohibition and enforced optimization
+#    strategy.
+#
+#    If such constraints are not desired, the library should be consumed
+#    via find_package instead.
+# ------------------------------------------------------------------------------
+
+# Options
+
+option(JH_ENABLE_TESTING
+        "Build jh-toolkit tests"
+        ${PROJECT_IS_TOP_LEVEL})
+
+option(JH_ENABLE_EXAMPLES
+        "Build jh-toolkit examples"
+        ${PROJECT_IS_TOP_LEVEL})
+
+# Auto-enable development features (only top-level)
+
+if (PROJECT_IS_TOP_LEVEL)
+
+    if (WIN32 AND
+    (CMAKE_BUILD_TYPE STREQUAL "Release" OR
+            CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+        set(JH_ENABLE_TESTING ON CACHE BOOL "" FORCE)
+        set(JH_ENABLE_EXAMPLES ON CACHE BOOL "" FORCE)
+    endif ()
+
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR
+            CMAKE_BUILD_TYPE STREQUAL "FastDebug")
+        set(JH_ENABLE_TESTING ON CACHE BOOL "" FORCE)
+        set(JH_ENABLE_EXAMPLES ON CACHE BOOL "" FORCE)
+    endif ()
+
+endif ()
+
+if (JH_ENABLE_TESTING AND NOT JH_ENABLE_EXAMPLES)
+    message(STATUS "Enabling examples because testing requires them.")
+    set(JH_ENABLE_EXAMPLES ON CACHE BOOL "" FORCE)
+endif ()
+
 # Register custom build type
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel;FastDebug" CACHE STRING "" FORCE)
 set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING "Choose the type of build." FORCE)
@@ -16,17 +84,24 @@ if (NOT CMAKE_BUILD_TYPE MATCHES "^(Debug|Release|RelWithDebInfo|MinSizeRel|Fast
     message(FATAL_ERROR "Unknown build type: ${CMAKE_BUILD_TYPE}")
 endif ()
 
-# Optional: Define optimization flags globally for FastDebug
-if (CMAKE_BUILD_TYPE STREQUAL "FastDebug")
-    message(STATUS ">>> FastDebug mode enabled")
+if (PROJECT_IS_TOP_LEVEL)
 
-    # defined for logging
-    set(CMAKE_CXX_FLAGS_FASTDEBUG "-O2 -g" CACHE STRING "" FORCE)
-    set(CMAKE_C_FLAGS_FASTDEBUG "-O2 -g" CACHE STRING "" FORCE)
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR
+            CMAKE_BUILD_TYPE STREQUAL "FastDebug")
 
-    # Actually apply the flags (target-based or global)
-    add_compile_options(-O2 -g)
+        message(WARNING
+                "Install is disabled in Debug/FastDebug mode. "
+                "Use Release or RelWithDebInfo for installation.")
+
+        # Do not generate install rules
+        set(CMAKE_SKIP_INSTALL_RULES TRUE)
+
+    endif ()
+
 endif ()
+
+set(CMAKE_CXX_FLAGS_FASTDEBUG "-O2 -g1 -Wall -Wextra -Wpedantic")
+set(CMAKE_C_FLAGS_FASTDEBUG  "-O2 -g1 -Wall -Wextra -Wpedantic")
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
     message(STATUS "Applying extra CPU optimizations for Release build.")
@@ -68,7 +143,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
             message(STATUS "Release build: enabled aggressive optimization")
         elseif (CMAKE_BUILD_TYPE STREQUAL "Debug")
             add_compile_options(
-                    -O2
+                    -O0 -g
                     -Wall -Wextra -Wpedantic
             )
             message(STATUS "Debug build: light optimization with warnings")
@@ -241,24 +316,14 @@ install(FILES
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/jh-toolkit
 )
 
-if (WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
-    message(STATUS "Windows Release/RelWithDebInfo: enabling tests")
+if (JH_ENABLE_TESTING)
     enable_testing()
-    add_subdirectory(tests)
+endif ()
+
+if (JH_ENABLE_EXAMPLES)
     add_subdirectory(examples)
 endif ()
 
-# Enable tests and examples only in Debug mode
-if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "FastDebug")
-    enable_testing()
+if (JH_ENABLE_TESTING)
     add_subdirectory(tests)
-    add_subdirectory(examples)
-
-    message(WARNING "Install is disabled in Debug or FastDebug mode. Use Release or RelWithDebInfo instead.")
-    add_custom_target(disable-install ALL
-            COMMENT "Install disabled in Debug mode"
-    )
-    function(install)
-        message(FATAL_ERROR "Install is explicitly disabled in Debug mode.")
-    endfunction()
 endif ()
