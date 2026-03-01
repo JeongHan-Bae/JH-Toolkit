@@ -448,6 +448,12 @@ TEST_CASE("runtime_arr (bit-packed) vs (byte-based)") {
     std::vector<unsigned char> ref(N);
     for (auto &b: ref) { b = static_cast<unsigned char>(dist(gen) & 1); }
 
+#if IS_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-lambda-capture"
+#endif
+// Capture &N is necessary for GCC to allow usage inside the lambda, even though it's not modified.
+
     BENCHMARK_ADVANCED("bit-packed set() loop (1M bits)")() {
             runtime_arr<bool> bits(N); // Prepare phase
             return [bits = std::move(bits), &ref, &N]() mutable {
@@ -489,6 +495,10 @@ TEST_CASE("runtime_arr (bit-packed) vs (byte-based)") {
                 (void) sum;
             };
         };
+
+#if IS_CLANG
+#pragma clang diagnostic pop
+#endif
 
     BENCHMARK_ADVANCED("bit-packed reset_all()")() {
             runtime_arr<bool> bits(N);

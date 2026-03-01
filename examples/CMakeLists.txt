@@ -10,6 +10,7 @@ set(EXAMPLE_SOURCES
         example_process_lock.cpp
         example_occ_box.cpp
         example_process_shm.cpp
+        example_runtime_arr.cpp
         hello.cpp
 )
 
