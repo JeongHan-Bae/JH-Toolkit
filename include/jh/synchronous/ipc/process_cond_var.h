@@ -111,6 +111,7 @@
 #if IS_WINDOWS
 #include <windows.h>
 #else
+
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -118,6 +119,7 @@
 #include <cerrno>
 #include <cstring>
 #include <pthread.h>
+
 #endif
 
 namespace jh::sync::ipc {
@@ -196,8 +198,7 @@ namespace jh::sync::ipc {
      *   <li>Windows implementation provides approximate equivalence, not strict parity.</li>
      * </ul>
      */
-    template <jh::meta::TStr S, bool HighPriv = false>
-    requires (limits::valid_object_name<S, limits::max_name_length>())
+    template<jh::meta::TStr S, bool HighPriv = false> requires (limits::valid_object_name<S, limits::max_name_length>())
     class process_cond_var final {
     private:
 #if IS_WINDOWS
@@ -214,7 +215,7 @@ namespace jh::sync::ipc {
         };
 
         int fd_ = -1;
-        cond_data* data_ = nullptr;
+        cond_data *data_ = nullptr;
 #endif
 
         process_cond_var() {
@@ -234,22 +235,23 @@ namespace jh::sync::ipc {
                 throw std::runtime_error("process_cond_var: shm_open failed (errno=" + std::to_string(errno) + ")");
 
             // 2. global init guard
-            auto& init_guard = process_mutex<S>::instance();
+            auto &init_guard = process_mutex<S>::instance();
             std::lock_guard lock(init_guard);
 
             // 3. ensure size
             struct stat st{};
             if (::fstat(fd_, &st) == -1)
                 throw std::runtime_error("process_cond_var: fstat failed (errno=" + std::to_string(errno) + ")");
-            if (st.st_size < sizeof(cond_data))
+            if (st.st_size < 0 || (static_cast<std::size_t>(st.st_size) < sizeof(cond_data)))
                 if (::ftruncate(fd_, sizeof(cond_data)) == -1)
-                    throw std::runtime_error("process_cond_var: ftruncate failed (errno=" + std::to_string(errno) + ")");
+                    throw std::runtime_error(
+                            "process_cond_var: ftruncate failed (errno=" + std::to_string(errno) + ")");
 
             // 4. mmap
-            void* ptr = ::mmap(nullptr, sizeof(cond_data), PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
+            void *ptr = ::mmap(nullptr, sizeof(cond_data), PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
             if (ptr == MAP_FAILED)
                 throw std::runtime_error("process_cond_var: mmap failed (errno=" + std::to_string(errno) + ")");
-            data_ = static_cast<cond_data*>(ptr);
+            data_ = static_cast<cond_data *>(ptr);
             ::close(fd_);
 
             // 5. initialize once
@@ -282,13 +284,14 @@ namespace jh::sync::ipc {
         }
 
     public:
-        static process_cond_var& instance() {
+        static process_cond_var &instance() {
             static process_cond_var inst;
             return inst;
         }
 
-        process_cond_var(const process_cond_var&) = delete;
-        process_cond_var& operator=(const process_cond_var&) = delete;
+        process_cond_var(const process_cond_var &) = delete;
+
+        process_cond_var &operator=(const process_cond_var &) = delete;
 
         /**
          * @brief Wait until a signal or broadcast occurs.
@@ -323,8 +326,8 @@ namespace jh::sync::ipc {
          *
          * @return <code>true</code> if signaled before timeout, otherwise <code>false</code>.
          */
-        template <typename Clock, typename Duration>
-        bool wait_until(const std::chrono::time_point<Clock, Duration>& tp) noexcept {
+        template<typename Clock, typename Duration>
+        bool wait_until(const std::chrono::time_point<Clock, Duration> &tp) noexcept {
 #if IS_WINDOWS
             auto rel = std::chrono::duration_cast<std::chrono::milliseconds>(tp - Clock::now());
             DWORD timeout = (rel.count() > 0) ? static_cast<DWORD>(rel.count()) : 0;
@@ -336,7 +339,7 @@ namespace jh::sync::ipc {
             auto secs = std::chrono::time_point_cast<std::chrono::seconds>(tp);
             auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(tp - secs);
             timespec ts{};
-            ts.tv_sec  = static_cast<time_t>(secs.time_since_epoch().count());
+            ts.tv_sec = static_cast<time_t>(secs.time_since_epoch().count());
             ts.tv_nsec = static_cast<long>(nsec.count());
 
             pthread_mutex_lock(&data_->mutex);
@@ -388,6 +391,7 @@ namespace jh::sync::ipc {
             notify_all(32);
         }
 #else
+
         /**
          * @brief Wake multiple waiting processes (POSIX implementation).
          *
@@ -404,6 +408,7 @@ namespace jh::sync::ipc {
                 pthread_cond_signal(&data_->cond);
             pthread_mutex_unlock(&data_->mutex);
         }
+
 #endif
 
         /**

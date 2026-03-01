@@ -140,12 +140,15 @@
 #if IS_WINDOWS
 #include <windows.h>
 #else
+
 #include <semaphore.h>
 #include <fcntl.h>
 #include <cerrno>
+
 #endif
 
 #if !IS_WINDOWS
+
 #include <sys/stat.h>
 
 namespace jh::sync::ipc::detail {

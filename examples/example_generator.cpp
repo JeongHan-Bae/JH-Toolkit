@@ -1060,9 +1060,16 @@ namespace example {
     gen_person() {
         while (true) {
 
+#if IS_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+            // NOLINTNEXTLINE(readability-static-accessed-through-instance)
             auto [age, service, name] =
                     co_await std::tuple<unsigned int, unsigned int, std::string>{};
-
+#if IS_GCC
+#pragma GCC diagnostic pop
+#endif
             auto person = std::make_shared<simulated::Employee>();
 
             if (age < 18) {
@@ -1752,7 +1759,7 @@ namespace example {
     jh::generator<long> finite_long_sequence(long end = std::numeric_limits<long>::max()) {
         // This generator yields an infinite sequence of integers starting from 0.
         // It should never be used with range-for without an external guard, as it is infinite.
-        for (std::weakly_incrementable auto i: std::views::iota(static_cast<long>(0))){
+        for (std::weakly_incrementable auto i: std::views::iota(static_cast<long>(0))) {
             if (i >= end)
                 break;
             co_yield static_cast<long>(i);
@@ -1797,7 +1804,7 @@ namespace example {
                 std::pmr::polymorphic_allocator<std::pair<const int, std::string>>(&pool));
         std::cout << "Resulting pmr::unordered_map contents:\n";
 
-        for (auto & it : pmr_map) {
+        for (auto &it: pmr_map) {
             std::cout << "  key = " << it.first
                       << ", value = " << it.second << "\n";
         }

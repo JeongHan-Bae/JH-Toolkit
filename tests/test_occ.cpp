@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 
 #include "jh/concurrency"
+#include "jh/macros/platform.h"
 #include <thread>
 #include <chrono>    // NOLINT force include for std::chrono_literals
 #include <vector>
@@ -122,6 +123,12 @@ TEST_CASE("occ_box concurrent writes", "[occ_box][thread]") {
     std::vector<std::thread> threads;
     threads.reserve(N);
 
+#if IS_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-lambda-capture"
+#endif
+// Capture &N is necessary for GCC to allow usage inside the lambda, even though it's not modified.
+
     for (int i = 0; i < N; i++) {
         threads.emplace_back([&ITER, &box]() { // NOLINT for gcc
             for (int j = 0; j < ITER; j++) {
@@ -129,6 +136,11 @@ TEST_CASE("occ_box concurrent writes", "[occ_box][thread]") {
             }
         });
     }
+
+#if IS_CLANG
+#pragma clang diagnostic pop
+#endif
+
     for (auto &t: threads) t.join();
 
     int final = box.read([](const test::Counter &c) { return c.value; });
@@ -145,6 +157,12 @@ TEST_CASE("occ_box try_read retry statistics", "[occ_box][thread]") {
 
     int success_count = 0;
     int fail_count = 0;
+
+#if IS_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-lambda-capture"
+#endif
+// Capture &N is necessary for GCC to allow usage inside the lambda, even though it's not modified.
 
     // Writer thread
     std::thread writer([&box, &stop, &WRITER_ITER]() { // NOLINT for gcc
@@ -168,6 +186,10 @@ TEST_CASE("occ_box try_read retry statistics", "[occ_box][thread]") {
             }
         }
     });
+
+#if IS_CLANG
+#pragma clang diagnostic pop
+#endif
 
     writer.join();
     reader.join();

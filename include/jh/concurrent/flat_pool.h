@@ -1120,7 +1120,7 @@ namespace jh::conc {
             }
         };
 
-        friend class flat_pool::ptr;
+        friend struct flat_pool::ptr;
 
         /**
          * @brief Retrieves or creates a pooled object associated with a key (set-like).

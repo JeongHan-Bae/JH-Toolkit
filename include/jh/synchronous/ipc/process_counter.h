@@ -96,10 +96,12 @@
 #if IS_WINDOWS
 #include <windows.h>
 #else
+
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+
 #endif
 
 namespace jh::sync::ipc {
@@ -183,15 +185,15 @@ namespace jh::sync::ipc {
      *       subsequent accesses reuse the same shared mapping.</li>
      * </ul>
      */
-    template <jh::meta::TStr S, bool HighPriv = false>
-    requires (limits::valid_object_name<S, limits::max_name_length - 4>())
+    template<jh::meta::TStr S, bool HighPriv = false> requires (limits::valid_object_name<S,
+            limits::max_name_length - 4>())
     class process_counter final {
     private:
 
 #if IS_WINDOWS
         static constexpr auto shm_name_  = jh::meta::TStr{"Global\\"} + S;
 #else
-        static constexpr auto shm_name_  = jh::meta::TStr{"/"} + S;
+        static constexpr auto shm_name_ = jh::meta::TStr{"/"} + S;
         static constexpr mode_t shm_mode = JH_PROCESS_MUTEX_SHARED ? 0666 : 0644;
 #endif
 
@@ -207,8 +209,8 @@ namespace jh::sync::ipc {
 #else
         int fd_ = -1;
 #endif
-        counter_data* data_ = nullptr;
-        lock_t& lock_;
+        counter_data *data_ = nullptr;
+        lock_t &lock_;
 
         process_counter() : lock_(lock_t::instance()) {
 #if IS_WINDOWS
@@ -229,17 +231,17 @@ namespace jh::sync::ipc {
             struct stat st{};
             if (::fstat(fd_, &st) == -1)
                 throw std::runtime_error("process_counter: fstat failed (errno=" + std::to_string(errno) + ")");
-            if (st.st_size < sizeof(counter_data))
+            if (st.st_size < 0 || (static_cast<std::size_t>(st.st_size) < sizeof(counter_data)))
                 if (::ftruncate(fd_, sizeof(counter_data)) == -1)
                     throw std::runtime_error("process_counter: ftruncate failed (errno=" + std::to_string(errno) + ")");
-            void* ptr = ::mmap(nullptr, sizeof(counter_data), PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
+            void *ptr = ::mmap(nullptr, sizeof(counter_data), PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
             if (ptr == MAP_FAILED)
                 throw std::runtime_error("process_counter: mmap failed (errno=" + std::to_string(errno) + ")");
-            data_ = static_cast<counter_data*>(ptr);
+            data_ = static_cast<counter_data *>(ptr);
             ::close(fd_);
 #endif
             // initialization guard
-            auto& init_guard = process_mutex<S>::instance();
+            auto &init_guard = process_mutex<S>::instance();
             std::lock_guard global_lock(init_guard);
             std::lock_guard counter_lock(lock_);
             if (!data_->initialized) {
@@ -259,11 +261,12 @@ namespace jh::sync::ipc {
 
     public:
         // Disable copy
-        process_counter(const process_counter&) = delete;
-        process_counter& operator=(const process_counter&) = delete;
+        process_counter(const process_counter &) = delete;
+
+        process_counter &operator=(const process_counter &) = delete;
 
         /// @brief Singleton instance.
-        static process_counter& instance() {
+        static process_counter &instance() {
             static process_counter inst;
             return inst;
         }
@@ -386,10 +389,10 @@ namespace jh::sync::ipc {
          * @param func Transformation function.
          * @return The previous counter value before transformation.
          */
-        template <typename F>
+        template<typename F>
         requires std::invocable<F, std::uint64_t> &&
                  std::same_as<std::invoke_result_t<F, std::uint64_t>, std::uint64_t>
-        std::uint64_t fetch_apply(F&& func) noexcept(noexcept(std::invoke(std::forward<F>(func), std::uint64_t{}))) {
+        std::uint64_t fetch_apply(F &&func) noexcept(noexcept(std::invoke(std::forward<F>(func), std::uint64_t{}))) {
             std::lock_guard guard(lock_);
             auto old = data_->value;
             auto new_v = std::invoke(std::forward<F>(func), old);
@@ -435,6 +438,7 @@ namespace jh::sync::ipc {
             lock_t::unlink();
 #endif
         }
+
         /// Disabled if HighPriv == false. Non-privileged variants cannot call unlink().
         static void unlink() requires(!HighPriv) = delete;
     };

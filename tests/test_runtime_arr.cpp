@@ -3,6 +3,7 @@
 #include <memory_resource>
 #include <ranges>
 #include "jh/runtime_arr"
+#include "jh/macros/platform.h"
 #include <tuple>
 #include <memory>
 #include <vector>
@@ -368,6 +369,12 @@ TEST_CASE("Advanced Benchmark: runtime_arr vs std::vector<MyPod> (1024x)") {
         int_vals.emplace_back(id_dist(gen));
     }
 
+#if IS_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-lambda-capture"
+#endif
+// Capture &N is necessary for GCC to allow usage inside the lambda, even though it's not modified.
+
     BENCHMARK_ADVANCED("std::vector<MyPod> by construction (1024x)")() {
             std::vector<MyPod> buffer(N);
             return [buffer = std::move(buffer), &inputs, &N]() mutable {
@@ -426,6 +433,11 @@ TEST_CASE("Advanced Benchmark: runtime_arr vs std::vector<MyPod> (1024x)") {
                 }
             };
         };
+
+#if IS_CLANG
+#pragma clang diagnostic pop
+#endif
+
 }
 
 TEST_CASE("runtime_arr (bit-packed) vs (byte-based)") {
@@ -531,7 +543,8 @@ TEST_CASE("runtime_arr initializer_list construction", "[initlist]") {
 
     SECTION("flat bool version (byte-based allocator)") {
         using jh::runtime_arr_helper::bool_flat_alloc;
-        runtime_arr<bool, bool_flat_alloc> arr{{true, false, false, true}, {}};
+        runtime_arr<bool, bool_flat_alloc> arr{{true, false, false, true},
+                                               {}};
         REQUIRE(arr.size() == 4);
         REQUIRE(arr[0]);
         REQUIRE_FALSE(arr[1]);

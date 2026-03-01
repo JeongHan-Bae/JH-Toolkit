@@ -196,8 +196,10 @@
 #if IS_WINDOWS
 #include <windows.h>  // STARTUPINFO, PROCESS_INFORMATION, CreateProcess, WaitForSingleObject, CloseHandle
 #elif IS_POSIX
+
 #include <unistd.h>   // fork, execl, _exit
 #include <sys/wait.h> // waitpid
+
 #endif
 
 
@@ -264,8 +266,7 @@ namespace jh::sync::ipc {
      * and parameter combination.
      * </p>
      */
-    template<jh::meta::TStr Path, bool IsBinary = true>
-    requires (limits::valid_relative_path<Path>())
+    template<jh::meta::TStr Path, bool IsBinary = true> requires (limits::valid_relative_path<Path>())
     class process_launcher final {
     public:
         process_launcher() = delete;                                    ///< Not constructible.
