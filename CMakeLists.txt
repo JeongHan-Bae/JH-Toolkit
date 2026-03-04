@@ -46,14 +46,13 @@ set(PROJECT_VERSION 1.4.0)
 
 option(JH_ENABLE_TESTING
         "Build jh-toolkit tests"
-        ${PROJECT_IS_TOP_LEVEL})
+        OFF)
 
 option(JH_ENABLE_EXAMPLES
         "Build jh-toolkit examples"
-        ${PROJECT_IS_TOP_LEVEL})
+        OFF)
 
 # Auto-enable development features (only top-level)
-
 if (PROJECT_IS_TOP_LEVEL)
 
     if (WIN32 AND
@@ -243,8 +242,7 @@ if (ENABLE_ALL)
         message(STATUS ">>> Building main implementation (ALL)")
     endif ()
     # Define the INTERFACE library for header-only components
-    add_library(jh-toolkit INTERFACE
-            include/jh/)
+    add_library(jh-toolkit INTERFACE)
     target_include_directories(jh-toolkit INTERFACE
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
