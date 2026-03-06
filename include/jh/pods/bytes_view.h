@@ -29,7 +29,7 @@
  *   <li>Fully POD (<code>const std::byte*</code> + <code>uint64_t</code>)</li>
  *   <li>No ownership, no destructor, no STL containers</li>
  *   <li>Support for reinterpretation (<code>at</code>, <code>fetch</code>)</li>
- *   <li>Stack-safe and heap-safe cloning (<code>clone</code>, <code>clone_new</code>)</li>
+ *   <li>Stack-safe and heap-safe cloning (<code>clone</code>)</li>
  *   <li>Works seamlessly with <code>pod_like</code> and <code>trivial_bytes</code> types</li>
  * </ul>
  *

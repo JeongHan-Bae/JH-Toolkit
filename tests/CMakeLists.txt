@@ -37,6 +37,7 @@ set(TESTS
         test_slot.cpp           jh-toolkit
         test_adt.cpp            jh-toolkit
         test_flat_multimap.cpp  jh-toolkit
+        test_uri.cpp            jh-toolkit
 )
 
 # Get total number of entries

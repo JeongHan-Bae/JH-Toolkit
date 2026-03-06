@@ -19,8 +19,7 @@
 /**
  * @file lookup_map.h
  * @brief constexpr and runtime fixed-size hash lookup table.
- * @author
- *   JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <h3>Overview</h3>
  * <p>

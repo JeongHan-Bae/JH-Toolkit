@@ -20,8 +20,7 @@
  * @file adl_apply.h
  * @brief ADL-enabled universal tuple application utility &mdash; extends <code>std::apply</code>
  *        to arbitrary tuple-like structures, including user-defined proxies and view elements.
- * @author
- *   JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <p>
  * The <code>jh::meta::adl_apply</code> function is a generalized alternative to

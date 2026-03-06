@@ -20,8 +20,7 @@
  * @file char.h
  * @brief Character-semantics concept and utilities &mdash; constexpr-safe character classification
  *        and transformation for 1-byte fundamental types.
- * @author
- *   JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <p>
  * This header defines <code>jh::meta::any_char</code>, a C++20 concept identifying
@@ -175,7 +174,7 @@ namespace jh::meta {
 
     /// @brief Check if character is ASCII.
     template<any_char Char>
-    [[nodiscard]] static constexpr bool is_ascii(Char c) noexcept {
+    [[nodiscard]] constexpr bool is_ascii(Char c) noexcept {
         auto uc = static_cast<unsigned char>(c);
         return uc < 128;
     }
@@ -187,9 +186,16 @@ namespace jh::meta {
         return true;
     }
 
+    /// @brief Check if character is a valid URI character (unencoded).
+    template<any_char Char>
+    [[nodiscard]] constexpr bool is_uri_char(Char c) noexcept {
+        return is_alpha(c) || is_digit(c) ||
+               c == '-' || c == '.' || c == '_' || c == '~';
+    }
+
     /// @brief Validate ASCII: reject control chars and DEL, leave non-ASCII untouched.
     template<any_char Char>
-    [[nodiscard]] static constexpr bool is_valid_char(Char c) noexcept {
+    [[nodiscard]] constexpr bool is_valid_char(Char c) noexcept {
         auto uc = static_cast<unsigned char>(c);
         return !(uc < 32 || uc == 127);
     }
