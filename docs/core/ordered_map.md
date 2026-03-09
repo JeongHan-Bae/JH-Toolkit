@@ -265,6 +265,39 @@ auto m = jh::ordered_map<K,V>::from_sorted(v);
 
 This is often **faster than random insertion**, even including sort cost.
 
+### Additional Considerations: Refreshing the Table
+
+In long-running systems, an `ordered_*` container may gradually lose some of its traversal locality.
+Although it never fragments (because storage is contiguous), repeated insertions and erasures can cause the internal node ordering to drift away from the optimal layout, which reduces hardware prefetch efficiency.
+
+If memory is sufficient, it can be beneficial to occasionally rebuild the table using:
+
+```cpp
+m = jh::ordered_map<K,V>::from_sorted(std::move(m));
+```
+
+This restores a perfectly shaped AVL layout and recovers optimal iteration locality.
+After rebuilding, the container can be used for a relatively stable period. Eventually the table can be discarded or cleared, which is allocator-friendly and fits well with PMR or arena allocation workflows where structures are periodically rebuilt rather than mutated indefinitely.
+
+```
++----------------------------+
+|  Step 1: Run for a period  |
+|  and add entries           |
++----------------------------+
+              |
+              |  (optional rebuild via from_sorted)
+              v
++----------------------------+
+|  Step 2: Fixed usage       |
++----------------------------+
+              |
+              v
++----------------------------+
+|  Step 3: Discard and       |
+|  allocator-friendly reset  |
++----------------------------+
+```
+
 ---
 
 ## Range / Iterator Construction
@@ -398,11 +431,11 @@ For performance-critical bulk builds, `from_sorted()` remains the preferred path
 
 ---
 
-## Engineering Philosophy: Why Vector Beats Pointers in Practice
+## Engineering Philosophy: Why Pair Beats Pointers in Practice
 
 This container is designed from an **engineering-first** perspective rather than a purely abstract data-structure view.
 
-### Vector-based trees are more predictable than pointer-based trees
+### Pair-based trees are more predictable than pointer-based trees
 
 From a systems standpoint, a container built on top of `std::vector` has several structural advantages over
 pointer-linked trees:
@@ -525,7 +558,7 @@ The STL provides maximal generality.
 
 In short:
 
-> **Vector-based structures behave better over time.
+> **Pair-based structures behave better over time.
 > Pointer-based structures behave better in isolation.**
 
 This library is written for the former.
