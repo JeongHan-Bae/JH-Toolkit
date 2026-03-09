@@ -1424,7 +1424,7 @@ namespace jh::conc {
             storage_.shrink_to_fit();
             occupation_.resize(new_cap);
             occupation_.shrink_to_fit();
-            entries_.shrink_to_fit();
+            entries_ = jh::ordered_set<entry_key>::from_sorted(std::move(entries_));
             refcounts_.resize(new_cap);
             refcounts_.shrink_to_fit();
         }

@@ -180,23 +180,41 @@ namespace jh::pod {
             }
         }
 
+        /// @brief Sentinel value representing "no position" or "until the end".
+        static constexpr auto npos = static_cast<std::uint64_t>(-1);
+
         /**
          * @brief Returns a substring starting at <code>offset</code>, for <code>length</code> bytes.
          *
          * <ul>
-         *   <li>If <code>length == 0</code>, the view extends to the end.</li>
+         *   <li>If <code>length == jh::pod::string_view::npos</code>, the view extends to the end.</li>
+         *   <li>If <code>length == 0</code>, the result is an empty view.</li>
          *   <li>If <code>offset > len</code>, returns an empty view.</li>
          * </ul>
          *
          * @param offset Starting byte index (0-based).
-         * @param length Number of bytes (<code>0</code> = sentinel = to end).
+         * @param @param length Number of bytes. Use <code>jh::pod::string_view::npos</code>
+              to read until the end of the view.
          * @return A new <code>string_view</code> into the specified subrange.
+         *
+         * @note
+         * This behavior intentionally mirrors the semantics of
+         * <code>std::string_view::substr</code>, where
+         * <code>npos</code> represents "read until the end".
          */
-        [[nodiscard]] constexpr string_view sub(const std::uint64_t offset,
-                                                const std::uint64_t length = 0) const noexcept {
-            if (offset > len) return {nullptr, 0}; // out-of-range -> empty
+        [[nodiscard]] constexpr string_view
+        sub(std::uint64_t offset, std::uint64_t length = npos) const noexcept {
+
+            if (offset >= len)
+                return {nullptr, 0};
+
             const std::uint64_t remaining = len - offset;
-            const std::uint64_t real_len = length == 0 || length > remaining ? remaining : length;
+
+            const std::uint64_t real_len =
+                    (length == npos || length > remaining)
+                    ? remaining
+                    : length;
+
             return {data + offset, real_len};
         }
 

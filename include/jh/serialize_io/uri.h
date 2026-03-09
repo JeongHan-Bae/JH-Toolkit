@@ -50,6 +50,20 @@
  * semantically UTF-8 strings, which should only be utilized within the runtime
  * serialization module <code>jh::serio</code>.
  *
+ * @note
+ * This header participates in the <b>Dual-Mode Header</b> system of the
+ * JH Toolkit.
+ * <ul>
+ *   <li>Linked through <b>jh::jh-toolkit</b> &mdash; the module behaves
+ *       as a <b>header-only</b> implementation compiled in user
+ *       translation units.</li>
+ *   <li>Linked through <b>jh::jh-toolkit-static</b> &mdash; the module
+ *       uses a <b>precompiled implementation</b> built with aggressive
+ *       optimization (typically <code>-O3</code>).</li>
+ * </ul>
+ * This design allows fast incremental builds while preserving the
+ * option of using a fully optimized static implementation.
+ *
  * @version <pre>1.4.1</pre>
  * @date <pre>2025</pre>
  */
@@ -59,10 +73,6 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
-
-#include "jh/pods/string_view.h"
-#include "jh/detail/uri_common.h"
-#include "jh/metax/char.h"
 
 
 /**
@@ -126,22 +136,7 @@ namespace jh::serio::uri {
      *   <li>Use <code>encode_safe()</code> when input validation is required.</li>
      * </ul>
      */
-    [[nodiscard]] inline std::string encode(const std::string_view &input) {
-
-        std::uint64_t encoded_len =
-                jh::detail::uri_common::calculate_encoded_length(input.data(), input.size());
-
-        std::vector<std::uint8_t> buffer(encoded_len);
-
-        jh::detail::uri_common::uri_encode_unchecked(
-                input.data(),
-                input.size(),
-                buffer.data(),
-                encoded_len
-        );
-
-        return {buffer.begin(), buffer.end()};
-    }
+    [[nodiscard]] std::string encode(const std::string_view &input);
 
     /**
      * @brief Decode a percent-encoded URI string.
@@ -162,27 +157,7 @@ namespace jh::serio::uri {
      * @throw std::runtime_error
      * Thrown if the input contains malformed percent-encoding.
      */
-    [[nodiscard]] inline std::string decode(const std::string_view &input) {
-
-        std::uint64_t decoded_len =
-                jh::detail::uri_common::calculate_decoded_length(input.data(), input.size());
-
-        if (decoded_len == static_cast<std::uint64_t>(-1))
-            throw std::runtime_error(
-                    "Invalid URI: contains invalid percent-encoding."
-            );
-
-        std::vector<std::uint8_t> buffer(decoded_len);
-
-        jh::detail::uri_common::uri_decode_unchecked(
-                input.data(),
-                input.size(),
-                buffer.data(),
-                decoded_len
-        );
-
-        return {buffer.begin(), buffer.end()};
-    }
+    [[nodiscard]] std::string decode(const std::string_view &input);
 
     /**
      * @brief Encode a string into URI percent-encoded form with legality validation.
@@ -211,15 +186,7 @@ namespace jh::serio::uri {
      *   <li>Recommended for external or untrusted input.</li>
      * </ul>
      */
-    [[nodiscard]] inline std::string encode_safe(const std::string_view &input) {
-
-        if (!jh::pod::string_view{input.data(), input.size()}.is_legal())
-            throw std::runtime_error(
-                    "Invalid input: non-UTF-8 or contains control characters."
-            );
-
-        return encode(input);
-    }
+    [[nodiscard]] std::string encode_safe(const std::string_view &input);
 
     /**
      * @brief Decode a percent-encoded URI string with output validation.
@@ -247,7 +214,71 @@ namespace jh::serio::uri {
      * untrusted sources such as URLs, HTTP parameters, or
      * user input.
      */
-    [[nodiscard]] inline std::string decode_safe(const std::string_view &input) {
+    [[nodiscard]] std::string decode_safe(const std::string_view &input);
+
+} // namespace jh::serio::uri
+
+#include "jh/macros/header_begin.h"
+
+#if JH_INTERNAL_SHOULD_DEFINE
+
+#include "jh/pods/string_view.h"
+#include "jh/detail/uri_common.h"
+#include "jh/metax/char.h"
+
+namespace jh::serio::uri {
+
+
+    [[nodiscard]] JH_INLINE std::string encode(const std::string_view &input) {
+
+        std::uint64_t encoded_len =
+                jh::detail::uri_common::calculate_encoded_length(input.data(), input.size());
+
+        std::vector<std::uint8_t> buffer(encoded_len);
+
+        jh::detail::uri_common::uri_encode_unchecked(
+                input.data(),
+                input.size(),
+                buffer.data(),
+                encoded_len
+        );
+
+        return {buffer.begin(), buffer.end()};
+    }
+
+    [[nodiscard]] JH_INLINE std::string decode(const std::string_view &input) {
+
+        std::uint64_t decoded_len =
+                jh::detail::uri_common::calculate_decoded_length(input.data(), input.size());
+
+        if (decoded_len == static_cast<std::uint64_t>(-1))
+            throw std::runtime_error(
+                    "Invalid URI: contains invalid percent-encoding."
+            );
+
+        std::vector<std::uint8_t> buffer(decoded_len);
+
+        jh::detail::uri_common::uri_decode_unchecked(
+                input.data(),
+                input.size(),
+                buffer.data(),
+                decoded_len
+        );
+
+        return {buffer.begin(), buffer.end()};
+    }
+
+    [[nodiscard]] JH_INLINE std::string encode_safe(const std::string_view &input) {
+
+        if (!jh::pod::string_view{input.data(), input.size()}.is_legal())
+            throw std::runtime_error(
+                    "Invalid input: non-UTF-8 or contains control characters."
+            );
+
+        return encode(input);
+    }
+
+    [[nodiscard]] JH_INLINE std::string decode_safe(const std::string_view &input) {
 
         auto output = decode(input);
 
@@ -260,3 +291,7 @@ namespace jh::serio::uri {
     }
 
 } // namespace jh::serio::uri
+
+#endif // JH_INTERNAL_SHOULD_DEFINE
+
+#include "jh/macros/header_end.h"

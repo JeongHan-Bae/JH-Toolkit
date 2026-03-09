@@ -1,5 +1,5 @@
 /**
- * @file immutable_str.cpp
+ * @file immutable_str_tu.cpp
  * @brief Compilation unit for <code>jh::immutable_str</code>.
  *
  * <p>
@@ -10,5 +10,7 @@
  *
  * @see jh::immutable_str
  */
+
 #define JH_HEADER_IMPL_BUILD
+
 #include "jh/core/immutable_str.h"

@@ -32,8 +32,6 @@
  *       contiguous memory. It does not support iterator ranges, polymorphic
  *       containers, or allocator-aware semantics.
  * @note Lifetime of underlying memory must be managed externally.
- * @note Functions rely on <code>reinterpret_cast</code> and therefore cannot
- *       be used in <code>consteval</code> contexts.
  */
 
 #pragma once

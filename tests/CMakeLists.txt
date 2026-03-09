@@ -23,7 +23,7 @@ set(TESTS
         test_runtime_arr.cpp    jh-toolkit-static
         test_ranges.cpp         jh-toolkit
         test_pod_sys.cpp        jh-toolkit
-        test_base64.cpp         jh-toolkit
+        test_base64.cpp         jh-toolkit-static
         test_t_str.cpp          jh-toolkit
         test_process_lock.cpp   jh-toolkit
         test_occ.cpp            jh-toolkit
@@ -37,7 +37,7 @@ set(TESTS
         test_slot.cpp           jh-toolkit
         test_adt.cpp            jh-toolkit
         test_flat_multimap.cpp  jh-toolkit
-        test_uri.cpp            jh-toolkit
+        test_uri.cpp            jh-toolkit-static
 )
 
 # Get total number of entries

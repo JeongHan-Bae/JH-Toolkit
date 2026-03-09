@@ -84,6 +84,14 @@ namespace jh::meta {
                    (c >= '0' && c <= '9') ||
                    c == '_' || c == '-' || c == '.' || c == '/';
         }
+
+        template<std::uint16_t N, std::uint16_t Pos, std::uint16_t Count>
+        concept t_str_sub_legal =
+        (Pos <= N - 1) &&
+        (
+                Count == static_cast<std::uint16_t>(-1) ||
+                Count <= (N - 1 - Pos)
+        );
     } // namespace detail
 
     /**
@@ -271,6 +279,9 @@ namespace jh::meta {
             }.hash(hash_method);
         }
 
+        /// @brief Sentinel value representing "no position" or "until the end".
+        static constexpr auto npos = static_cast<std::uint16_t>(-1);
+
     private:
         /**
          * @brief Internal helper for string concatenation.
@@ -284,6 +295,56 @@ namespace jh::meta {
                     std::index_sequence<I...>, std::index_sequence<J...>) const noexcept {
             constexpr std::uint16_t NewSize = (N - 1) + (M - 1) + 1;
             jh::pod::array<char, NewSize> arr{{storage[I]..., other.storage[J]...}};
+            return t_str<NewSize>(arr);
+        }
+
+        /**
+         * @brief Internal helper for compile-time substring extraction.
+         *
+         * @tparam Pos         Starting position of the substring.
+         * @tparam ActualCount Number of characters to extract.
+         * @tparam I           Index sequence used to expand characters at compile time.
+         *
+         * @param Unused A compile-time index sequence used to unroll character access.
+         *
+         * @return A new <code>t_str&lt;ActualCount + 1&gt;</code> containing the selected
+         *         characters followed by a null terminator.
+         *
+         * @details
+         * This function performs substring construction entirely at compile time.
+         * It is invoked by <code>sub()</code>, which is responsible for validating
+         * bounds and computing the effective substring length (<code>ActualCount</code>).
+         *
+         * The implementation mirrors the design of <code>concat_impl()</code> and
+         * uses <code>std::index_sequence</code> to expand characters directly from
+         * the source storage:
+         *
+         * @code
+         * { storage[Pos + I]..., '\0' }
+         * @endcode
+         *
+         * This parameter-pack expansion generates a new null-terminated character
+         * array during compilation without loops or runtime operations.
+         *
+         * As a result, the returned <code>t_str</code> is fully constexpr and incurs
+         * zero runtime overhead.
+         *
+         * @note
+         * Bounds checking and the handling of the special substring sentinel
+         * (<code>Count == static_cast&lt;std::uint16_t&gt;(-1)</code>) are performed by
+         * the public <code>sub()</code> interface before calling this helper.
+         */
+        template<std::uint16_t Pos, std::uint16_t ActualCount, std::size_t... I>
+        [[nodiscard]] constexpr auto
+        sub_impl(std::index_sequence<I...>) const noexcept {
+
+            constexpr auto NewSize =
+                    static_cast<std::uint16_t>(ActualCount + 1);
+
+            jh::pod::array<char, NewSize> arr{
+                    {storage[Pos + I]..., '\0'}
+            };
+
             return t_str<NewSize>(arr);
         }
 
@@ -310,6 +371,133 @@ namespace jh::meta {
             return concat_impl(other,
                                std::make_index_sequence<N - 1>{},
                                std::make_index_sequence<M>{});
+        }
+
+        /**
+         * @brief Extract a substring at compile time.
+         *
+         * @tparam Pos   Starting position of the substring.
+         * @tparam Count Number of characters to extract.
+         *               If set to <code>jh::meta::t_str&lt;N&gt;::npos</code>,
+         *               the substring extends from <code>Pos</code> to the end of the string.
+         *
+         * @return A new <code>t_str</code> containing the selected characters followed
+         *         by a null terminator.
+         *
+         * @details
+         * <ul>
+         *   <li>Performs substring extraction entirely at compile time.</li>
+         *   <li>The resulting string size becomes <code>ActualCount + 1</code>
+         *       (including the null terminator).</li>
+         *   <li>The special value <code>Count = npos</code> acts as a sentinel
+         *       meaning "until the end of the string".</li>
+         *   <li>Bounds are validated using <code>t_str_sub_legal</code>.</li>
+         *   <li>No runtime allocation or loops are involved.</li>
+         * </ul>
+         *
+         * @note
+         * The returned object owns its storage, so any views obtained from it
+         * remain valid as long as the returned <code>t_str</code> object exists.
+         * <br>
+         * Use:
+         * @code
+         * constexpr auto sub_str = s.sub&lt;Pos, Count&gt;();
+         * auto v2 = sub_str.pod_view(); // same for std version .view()
+         * @endcode
+         * to ensure the substring's storage is preserved for the view.
+         * or use:
+         * @code
+         * auto v1 = s.sub_pod_view&lt;Pos, Count&gt;();
+         * // same for std version .sub_view&lt;Pos, Count&gt;();
+         * @endcode
+         * to get a view directly without creating a new <code>t_str</code> object.
+         * <br>
+         * Anything like:
+         * <br>
+         * <code>s.sub&lt;Pos, Count&gt;().pod_view()</code> is valid but creates a temporary
+         * <code>t_str</code> that may lead to dangling views if not used carefully.
+         */
+        template<std::uint16_t Pos, std::uint16_t Count = npos>
+        requires detail::t_str_sub_legal<N, Pos, Count>
+        [[nodiscard]] constexpr auto sub() const noexcept {
+
+            constexpr std::uint16_t ActualCount =
+                    Count == npos
+                    ? static_cast<std::uint16_t>((N - 1) - Pos)
+                    : Count;
+
+            return sub_impl<Pos, ActualCount>(
+                    std::make_index_sequence<ActualCount>{}
+            );
+        }
+
+        /**
+         * @brief Obtain a <code>std::string_view</code> over a substring.
+         *
+         * @tparam Pos   Starting position of the substring.
+         * @tparam Count Number of characters to expose.
+         *               If set to <code>jh::meta::t_str&lt;N&gt;::npos</code>,
+         *               the view extends from <code>Pos</code> to the end of the string.
+         *
+         * @return A <code>std::string_view</code> referencing the selected range.
+         *
+         * @details
+         * <ul>
+         *   <li>This function does not allocate or copy memory.</li>
+         *   <li>The returned view references the internal storage of this <code>t_str</code>.</li>
+         *   <li>The substring length is computed at compile time.</li>
+         *   <li>The special value <code>Count = npos</code> means "until end".</li>
+         * </ul>
+         *
+         * @warning
+         * The returned view is non-owning and becomes invalid if the source
+         * <code>t_str</code> object goes out of scope.
+         */
+        template<std::uint16_t Pos, std::uint16_t Count = npos>
+        requires detail::t_str_sub_legal<N, Pos, Count>
+        [[nodiscard]] constexpr std::string_view sub_view() const noexcept {
+
+            constexpr std::uint16_t ActualCount =
+                    Count == npos
+                    ? static_cast<std::uint16_t>((N - 1) - Pos)
+                    : Count;
+
+            return {storage.data + Pos, ActualCount};
+        }
+
+        /**
+         * @brief Obtain a <code>jh::pod::string_view</code> over a substring.
+         *
+         * @tparam Pos   Starting position of the substring.
+         * @tparam Count Number of characters to expose.
+         *               If set to <code>jh::meta::t_str&lt;N&gt;::npos</code>,
+         *               the view extends from <code>Pos</code> to the end of the string.
+         *
+         * @return A <code>jh::pod::string_view</code> referencing the selected range.
+         *
+         * @details
+         * <ul>
+         *   <li>Provides the same behavior as <code>sub_view()</code>, but returns a
+         *       POD-compatible view type.</li>
+         *   <li>No memory allocation or copying occurs.</li>
+         *   <li>The substring length is computed at compile time.</li>
+         *   <li>The special value <code>Count = npos</code> means "until end".</li>
+         * </ul>
+         *
+         * @note
+         * This function is primarily intended for interoperability with
+         * APIs expecting <code>jh::pod::string_view</code>.
+         */
+        template<std::uint16_t Pos, std::uint16_t Count = npos>
+        requires detail::t_str_sub_legal<N, Pos, Count>
+        [[nodiscard]] constexpr jh::pod::string_view sub_pod_view() const noexcept {
+
+            constexpr std::uint16_t ActualCount =
+                    Count == npos
+                    ? static_cast<std::uint16_t>((N - 1) - Pos)
+                    : Count;
+
+            return {storage.data + Pos, ActualCount};
         }
 
         /**
@@ -629,11 +817,12 @@ namespace jh::meta {
          * @details
          * This operator is <code>= default</code>, meaning comparison is delegated
          * to the underlying member <code>const jh::pod::array&lt;char, N&gt; storage</code>.
-         *
+         * <ul>
          *  <li>Semantically: it is equivalent to comparing all characters in the string one by one.</li>
          *  <li>Implementation-wise: since <code>storage</code> is a POD type,
          *   the compiler can optimize this into a direct <code>memcmp</code>-style comparison
          *   at compile time or runtime.</li>
+         * </ul>
          */
         constexpr bool operator==(const t_str &) const noexcept = default;
 
@@ -739,7 +928,7 @@ namespace jh::meta {
      * </ul>
      */
     template<std::uint16_t N>
-    using TStr [[maybe_unused]] = t_str<N>;
+    using TStr = t_str<N>;
 
     /**
      * @brief Stream output operator for <code>t_str&lt;N&gt;</code>.
