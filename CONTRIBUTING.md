@@ -523,6 +523,59 @@ Please commit *ONLY in English* using the following format:
 <detailed explanation: optional, multi-line, no-markdown-formatting, optional `*` for bullet points>
 ```
 
+Example:
+
+```
+refactor(module1_name, module2_name, tests): do something and something else
+
+This commit refactors module1 and module2 to improve performance and maintainability.
+
+Module1:
+* do something
+* do something else
+
+Module2:
+* do something
+* do something else
+
+Tests:
+* update some tests to reflect some semantic changes
+```
+
+```
+docs(module_name): update documentation for some behavior
+This commit updates the documentation for module_name to clarify the expected behavior of some function.
+
+module_name::submodule_name:
+* some_function: documented to reflect some behavior
+* some_sub_class: documented to reflect some behavior
+
+another_module_name:
+* some_function: documented to reflect some behavior
+```
+
+Anti-patterns:
+
+```
+fix: fix some bug in some module
+```
+> Explain: should use `fix(module_name):` instead of a generic `fix:`.
+
+```
+* Module2:
+  * do something
+```
+> Explain: no `*` for paragraphs, only for bullet points.
+> no nested bullet points.
+
+```
+**Module2**:
+ - do something
+```
+> Explain: use `*` for bullet points, not `-`.
+> Markdown formatting is not allowed in the commit message body.
+> Markdown `**` is not allowed in the commit message body.
+
 ### Pull Request format
 
 Please create PRs *ONLY in English*, including the following sections:
