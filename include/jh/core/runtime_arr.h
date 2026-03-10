@@ -208,7 +208,7 @@
  * @see jh::pod::pod_like
  * @see jh::typed::monostate
  *
- * @version <pre>1.3.x</pre>
+ * @version <pre>1.4.1</pre>
  * @date <pre>2025</pre>
  */
 
@@ -242,7 +242,8 @@ namespace jh {
         template<typename A, typename T>
         concept rebind_alloc_for =
         (!jh::typed::monostate_t<A>) && requires(std::uint64_t n) {
-            requires requires(typename std::allocator_traits<A>::template rebind_alloc<T> rebind){
+            requires requires
+                    (typename std::allocator_traits<A>::template rebind_alloc<T> rebind){
                 rebind.allocate(n);
                 rebind.deallocate(std::declval<T *>(), n);
             };
@@ -361,7 +362,8 @@ namespace jh {
      *   <li>Copy operations are deleted; moves are noexcept.</li>
      * </ul>
      */
-    template<typename T, typename Alloc = typed::monostate> requires detail::valid_rt_arr_allocator<T, Alloc>
+    template<typename T, typename Alloc = typed::monostate> requires
+    detail::valid_rt_arr_allocator<T, Alloc>
     class runtime_arr final {
         std::uint64_t size_{0};
 
@@ -446,8 +448,8 @@ namespace jh {
          * <p><strong>Note:</strong> The content of the allocated memory is indeterminate until written to.
          * Accessing any element before explicit initialization results in undefined behavior.</p>
          */
-        explicit runtime_arr(const std::uint64_t size, uninitialized_t) requires jh::pod::pod_like<T> &&
-                                                                                 typed::monostate_t<Alloc> {
+        explicit runtime_arr(const std::uint64_t size, uninitialized_t) requires
+        jh::pod::pod_like<T> && typed::monostate_t<Alloc> {
             size_ = size;
             T *ptr = static_cast<T *>(operator new[](sizeof(T) * size_));
             data_.reset(ptr);
@@ -561,7 +563,8 @@ namespace jh {
          *
          * @throws std::bad_alloc If allocator fails to provide storage.
          */
-        runtime_arr(std::initializer_list<T> init, const Alloc &alloc) requires (!jh::typed::monostate_t<Alloc>)
+        runtime_arr(std::initializer_list<T> init, const Alloc &alloc) requires
+        (!jh::typed::monostate_t<Alloc>)
                 : size_(init.size()) {
             allocator_type rebound = make_allocator_from(alloc);
             T *ptr = rebound.allocate(size_);
@@ -592,7 +595,8 @@ namespace jh {
          *   <li>Ensures allocator lifetime and destruction safety via lambda capture semantics.</li>
          * </ul>
          */
-        explicit runtime_arr(std::uint64_t size, const Alloc &alloc) requires (!typed::monostate_t<Alloc>)
+        explicit runtime_arr(std::uint64_t size, const Alloc &alloc) requires
+        (!typed::monostate_t<Alloc>)
                 : size_(size) {
             allocator_type rebound = make_allocator_from(alloc);
             T *ptr = rebound.allocate(size_);
@@ -652,15 +656,112 @@ namespace jh {
          */
         explicit runtime_arr(std::vector<T> &&vec) requires (typed::monostate_t<Alloc>)
                 : size_(vec.size()), data_(nullptr, default_deleter) {
-            if (!vec.empty()) {
-                T *ptr = new T[size_];
-                std::move(vec.begin(), vec.end(), ptr);
-                data_.reset(ptr);
-            }
+            if (size_ == 0)
+                return;
+
+            T *ptr = new T[size_];
+
+            std::uninitialized_move(vec.begin(), vec.end(), ptr);
+            // vec will NEVER be bool, so no need for specialization here
+
+            data_.reset(ptr);
         }
 
         /**
+         * @brief Constructs a runtime array by moving elements from a std::vector using a custom allocator.
+         *
+         * @param vec   Source vector whose elements will be moved.
+         * @param alloc Allocator instance used for allocation and deallocation.
+         *
+         * <ul>
+         *   <li>Enabled only when <code>Alloc != typed::monostate</code>.</li>
+         *   <li>Allocates storage using the provided allocator.</li>
+         *   <li>Elements are move-constructed from <code>vec</code>.</li>
+         *   <li>The allocator is captured by value in the deleter.</li>
+         * </ul>
+         */
+        template<class VecAlloc>
+        runtime_arr(std::vector<T, VecAlloc> &&vec, const Alloc &alloc) requires
+        (!typed::monostate_t<Alloc>)
+                : size_(vec.size()) {
+            allocator_type rebound = make_allocator_from(alloc);
+
+            if (size_ == 0) {
+                data_ = std::unique_ptr<T[], deleter_t>(nullptr, [](T *) {});
+                return;
+            }
+
+            T *ptr = rebound.allocate(size_);
+
+            try {
+
+                if constexpr (std::same_as<T, bool>) {
+                    // vector<bool> proxy -> bool
+                    for (std::uint64_t i = 0; i < size_; ++i)
+                        ptr[i] = static_cast<bool>(vec[i]);
+                } else {
+                    std::uninitialized_move(vec.begin(), vec.end(), ptr);
+                }
+
+            } catch (...) {
+                rebound.deallocate(ptr, size_);
+                throw;
+            }
+
+            data_ = std::unique_ptr<T[], deleter_t>(
+                    ptr,
+                    [rebound, size = size_](T *p) mutable {
+                        rebound.deallocate(p, size);
+                    }
+            );
+        }
+
+        /**
+         * @brief Constructs a runtime array by moving elements from a std::vector using its own allocator.
+         *
+         * @param vec Source vector whose elements will be moved.
+         *
+         * <ul>
+         *   <li>Enabled only when <code>Alloc != typed::monostate</code>.</li>
+         *   <li>The allocator is obtained from <code>vec.get_allocator()</code>.</li>
+         *   <li>Delegates to the constructor taking <code>(std::vector&lt;T, Alloc&gt;&amp;&amp;, const Alloc&amp;)</code>.</li>
+         *   <li>Elements are move-constructed from <code>vec</code>.</li>
+         *   <li>The allocator is captured by value in the deleter.</li>
+         * </ul>
+         *
+         * @note
+         * This overload forwards the allocator obtained from
+         * <code>vec.get_allocator()</code> to the constructor
+         * <code>runtime_arr(std::vector&lt;T, VecAlloc&gt;&amp;&amp;, const Alloc&amp;)</code>.
+         * <br>
+         * The overload is intentionally constrained with
+         * <code>std::same_as&lt;typename Alloc::value_type, T&gt;</code>.
+         * <br>
+         * Unlike <code>std::vector</code>, <code>jh::runtime_arr</code> accepts any
+         * allocator that can be rebound to <code>T</code>
+         * (via <code>std::allocator_traits::rebind_alloc</code>).<br>
+         * In contrast, most standard containers require the allocator's
+         * <code>value_type</code> to exactly match the stored element type.
+         * <br>
+         * Without this restriction the compiler could attempt to instantiate
+         * an invalid standard container such as:<br>
+         * <code>jh::runtime_arr&lt;int, std::allocator&lt;double&gt;&gt;</code> (valid)
+         * <br>
+         * <code>std::vector&lt;int, std::allocator&lt;double&gt;&gt;</code> (ill-formed).
+         * <br>
+         * The constraint therefore ensures that this convenience overload is only
+         * enabled when the allocator used by the source vector is itself valid for
+         * <code>std::vector&lt;T&gt;</code>.
+         */
+        runtime_arr(std::vector<T, Alloc> &&vec) requires
+        (!typed::monostate_t<Alloc> &&
+         !std::is_same_v<T, bool> &&
+         std::same_as<typename Alloc::value_type, T>)
+                : runtime_arr(std::move(vec), vec.get_allocator()) {}
+
+        /**
          * @brief Constructs a <code>runtime_arr&lt;T&gt;</code> from any valid forward iterator range.
+         *
          * @tparam ForwardIt Iterator type satisfying <code>jh::concepts::forward_iterator</code>.
          * @param first Beginning of the input range.
          * @param last End of the input range.
@@ -668,23 +769,60 @@ namespace jh {
          * <ul>
          *   <li>Enabled only when <code>Alloc == typed::monostate</code> and
          *       <code>T</code> is copy-constructible.</li>
-         *   <li>Allocates a contiguous buffer large enough to hold
-         *       <code>std::distance(first, last)</code> elements.</li>
-         *   <li>Copies (or moves, if wrapped with <code>std::make_move_iterator</code>)
-         *       elements from the source range into internal storage.</li>
-         *   <li>Ownership is managed via RAII (<code>std::unique_ptr</code> with custom deleter).</li>
+         *   <li>Elements in the range <code>[first, last)</code> are first materialized
+         *       into a temporary <code>std::vector&lt;T&gt;</code>.</li>
+         *   <li>The resulting vector is then moved into the resulting
+         *       <code>runtime_arr</code>.</li>
+         *   <li>Ownership of the final storage is managed via RAII
+         *       (<code>std::unique_ptr</code> with custom deleter).</li>
          * </ul>
          *
          * <strong>Behavior</strong>
          * <ul>
-         *   <li>If the range is empty, the resulting array is empty (<code>size() == 0</code>).</li>
-         *   <li>If <code>std::distance(first, last) &lt; 0</code>, an
-         *       <code>std::invalid_argument</code> exception is thrown.</li>
-         *   <li>Otherwise, <code>new[]</code> is used to allocate storage and
-         *       <code>std::copy()</code> (or <code>std::move()</code>) to fill it.</li>
+         *   <li>If the range is empty, the resulting array is empty
+         *       (<code>size() == 0</code>).</li>
+         *   <li>Element transfer follows the semantics of
+         *       <code>std::vector(first, last)</code>.</li>
+         *   <li>If iterators are wrapped with <code>std::make_move_iterator</code>,
+         *       elements are moved rather than copied.</li>
          * </ul>
          *
+         * @note
+         * This constructor requires <code>jh::concepts::forward_iterator</code>,
+         * which is intentionally slightly more permissive than
+         * <code>std::forward_iterator</code>. The requirement guarantees that the
+         * iterator range can be traversed multiple times without consuming the
+         * sequence.
+         * <br>
+         * Internally, a temporary <code>std::vector&lt;T&gt;</code> is used as a
+         * <em>semantic container</em> to delegate iterator handling, allocation,
+         * and exception safety to the standard library implementation.
+         * <br>
+         * In practice this temporary object is typically constructed directly in
+         * the caller's stack frame due to copy elision / NRVO, so no additional
+         * materialization step is introduced beyond what the vector constructor
+         * already performs.
+         *
+         * @warning
+         * The validity rules for the iterator range are identical to those of
+         * <code>std::vector(ForwardIt, ForwardIt)</code>.
+         * <br>
+         * If the range <code>[first, last)</code> is invalid (for example,
+         * <code>first</code> logically appears after <code>last</code>), the behavior
+         * is <b>undefined</b>.
+         * <br>
+         * No explicit <code>std::distance()</code> check is performed in order to
+         * avoid introducing an additional traversal of the range. Whether the
+         * distance is evaluated, validated, or inferred depends entirely on the
+         * internal strategy chosen by the standard library implementation for the
+         * detected iterator category.
+         * <br>
+         * This mirrors the behavior of <code>std::vector</code>, where some iterator
+         * categories may trigger a distance computation while others are processed
+         * in a single-pass insertion loop.
+         *
          * <strong>Examples</strong>
+         *
          * <p><strong>From STL containers:</strong></p>
          * @code
          * std::vector&lt;int&gt; v = {1, 2, 3};
@@ -693,58 +831,77 @@ namespace jh {
          * std::deque&lt;int&gt; d = {4, 5, 6};
          * jh::runtime_arr&lt;int&gt; b(d.begin(), d.end());   // copy
          *
-         * std::string s = "Hello, world!";
+         * std::string s = "Hello";
          * jh::runtime_arr&lt;char&gt; chars(
          *     std::make_move_iterator(s.begin()),
-         *     std::make_move_iterator(s.end()));        // moves underlying characters
+         *     std::make_move_iterator(s.end()));        // moves characters
          * @endcode
          *
          * <p><strong>From other iterator sources:</strong></p>
          * @code
-         * // Construct from raw array range
          * int raw[] = {10, 20, 30, 40};
          * jh::runtime_arr&lt;int&gt; arr(std::begin(raw), std::end(raw));
          *
-         * // Construct from std::span
          * std::span&lt;int&gt; sp(raw);
          * jh::runtime_arr&lt;int&gt; arr2(sp.begin(), sp.end());
          * @endcode
          *
          * <p>
-         * Applicable to any iterator pair that defines a finite, measurable range &mdash;
-         * e.g., pointers, container iterators, or spans.
-         * <strong>Single-pass input iterators</strong> (like <code>std::istream_iterator</code>)
-         * are <b>not supported</b>, since <code>std::distance()</code> requires
-         * multiple passes to compute the range size.
+         * Applicable to any iterator pair that defines a finite range, including
+         * pointers, container iterators, and spans.
+         * <strong>Single-pass input iterators</strong> (such as
+         * <code>std::istream_iterator</code>) are not supported, since this
+         * constructor requires forward-iterable ranges.
          * </p>
          *
          * <strong>Design rationale</strong>
          * <ul>
-         *   <li>This constructor acts as a <b>universal range importer</b>,
-         *       supporting all standard forward-iterable containers and algorithms.</li>
-         *   <li>It mirrors <code>std::vector(ForwardIt, ForwardIt)</code> semantics,
-         *       but without reallocation or capacity growth.</li>
-         *   <li>Using <code>jh::concepts::forward_iterator</code> ensures that
-         *       <code>std::distance()</code> is non-destructive and efficient.</li>
-         *   <li>When used with <code>std::make_move_iterator</code>,
-         *       move-constructible elements are efficiently transferred without extra copies.</li>
+         *   <li>This constructor acts as a <b>universal range importer</b> for
+         *       forward-iterable sources.</li>
+         *   <li>Using <code>std::vector</code> as an intermediate layer delegates
+         *       iterator handling, move semantics, and exception safety to the
+         *       standard library.</li>
+         *   <li>The final <code>runtime_arr</code> is constructed by moving the
+         *       temporary vector, avoiding manual range-copy logic.</li>
          * </ul>
          */
         template<typename ForwardIt>
-        runtime_arr(ForwardIt first, ForwardIt last) requires (typed::monostate_t<Alloc> &&
-                                                               jh::concepts::forward_iterator<ForwardIt> &&
-                                                               std::convertible_to<typename ForwardIt::value_type, value_type> &&
-                                                               std::is_copy_constructible_v<T>)
-                : data_(nullptr, default_deleter) {
-            const auto dist = std::distance(first, last);
+        runtime_arr(ForwardIt first, ForwardIt last) requires
+        (jh::concepts::forward_iterator<ForwardIt> &&
+         (typed::monostate_t<Alloc> || std::default_initializable<Alloc>)
+        ) {
+            std::vector<T> tmp(first, last);
 
-            if (dist < 0)
-                throw std::invalid_argument("Invalid iterator range");
-            size_ = static_cast<std::uint64_t>(dist);
+            if constexpr (typed::monostate_t<Alloc>) {
+                *this = runtime_arr(std::move(tmp));
+            } else {
+                *this = runtime_arr(std::move(tmp), Alloc{});
+            }
+        }
 
-            T *ptr = new T[size_];
-            std::copy(first, last, ptr);
-            data_.reset(ptr);
+        /**
+         * @brief Constructs a runtime array from a forward iterator range using a custom allocator.
+         *
+         * @tparam ForwardIt Forward iterator type.
+         * @param first Beginning of range.
+         * @param last  End of range.
+         * @param alloc Allocator instance used for allocation.
+         *
+         * <ul>
+         *   <li>Enabled only when <code>Alloc != typed::monostate</code>.</li>
+         *   <li>Allocates using the provided allocator.</li>
+         *   <li>Copies elements from the iterator range.</li>
+         * </ul>
+         */
+        template<typename ForwardIt>
+        runtime_arr(ForwardIt first, ForwardIt last, const Alloc &alloc) requires
+        (!typed::monostate_t<Alloc> &&
+         jh::concepts::forward_iterator<ForwardIt> && requires
+                 (ForwardIt f, ForwardIt l) {
+            std::vector<T>(f, l);
+        }) {
+            std::vector<T> tmp(first, last);
+            *this = runtime_arr(std::move(tmp), alloc);
         }
 
         /// @brief Returns iterator to the beginning.
@@ -1126,12 +1283,28 @@ namespace jh {
          * </ul>
          */
         struct bool_flat_alloc final {
-            /// @brief Allocate <code>n</code> bytes for a <code>bool</code> array (non-packed form).
-            static bool *allocate(std::uint64_t n) { return new bool[n]; }
 
-            /// @brief Deallocate a previously allocated <code>bool</code> array.
-            /// @note Parameter <code>p</code> must not be <code>const</code> &mdash; <code>delete[] const bool*</code> is undefined behavior.
-            static void deallocate(bool *p, std::uint64_t) { delete[] p; } // NOLINT
+            using value_type = bool;
+
+            bool_flat_alloc() = default;
+
+            template<class U> requires (std::same_as<U, bool>)
+            struct rebind {
+                using other = bool_flat_alloc;
+            };
+
+            [[nodiscard]] bool *allocate(std::size_t n) // NOLINT
+            {
+                return new bool[n];
+            }
+
+            void deallocate(bool *p, std::size_t) noexcept // NOLINT
+            {
+                delete[] p;
+            }
+
+            // allocator equality (stateless allocator)
+            bool operator==(const bool_flat_alloc &) const noexcept = default;
         };
 
     } // namespace runtime_arr_helper
@@ -1617,8 +1790,9 @@ namespace jh {
          * </ul>
          */
         template<typename ForwardIt>
-        runtime_arr(ForwardIt first, ForwardIt last) requires (jh::concepts::forward_iterator<ForwardIt> &&
-                                                               std::convertible_to<typename ForwardIt::value_type, value_type>) {
+        runtime_arr(ForwardIt first, ForwardIt last) requires
+        (jh::concepts::forward_iterator<ForwardIt> &&
+         std::convertible_to<typename ForwardIt::value_type, value_type>) {
             const auto dist = std::distance(first, last);
             if (dist < 0) throw std::invalid_argument("Invalid iterator range");
             size_ = static_cast<std::uint64_t>(dist);

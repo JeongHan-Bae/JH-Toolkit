@@ -630,3 +630,83 @@ TEST_CASE("runtime_arr<int, std::allocator<double>> rebind behavior", "[alloc][r
         REQUIRE(vec[3] == 8);
     }
 }
+
+TEST_CASE("runtime_arr allocator-aware constructors from vector and iterators", "[alloc][vector][iterator]") {
+
+    SECTION("vector with different allocator -> runtime_arr with custom allocator") {
+
+        using VecAlloc = std::allocator<int>;
+        using ArrAlloc = test_allocator<int>;
+
+        std::vector<int, VecAlloc> vec{1,2,3,4,5};
+
+        runtime_arr<int, ArrAlloc> arr(std::move(vec), ArrAlloc{});
+
+        REQUIRE(arr.size() == 5);
+        for (int i = 0; i < 5; ++i)
+            REQUIRE(arr[i] == i + 1);
+    }
+
+    SECTION("vector with pmr allocator -> runtime_arr with std::allocator") {
+
+        std::pmr::monotonic_buffer_resource res;
+
+        std::vector<int, std::pmr::polymorphic_allocator<int>> vec(
+                {10,20,30,40},
+                std::pmr::polymorphic_allocator<int>(&res)
+        );
+
+        runtime_arr<int, std::allocator<int>> arr(std::move(vec), std::allocator<int>{});
+
+        REQUIRE(arr.size() == 4);
+        REQUIRE(arr[0] == 10);
+        REQUIRE(arr[3] == 40);
+    }
+
+    SECTION("vector<T, Alloc> constructor using vec.get_allocator()") {
+
+        std::pmr::monotonic_buffer_resource res;
+
+        std::vector<int, std::pmr::polymorphic_allocator<int>> vec(
+                {7,8,9},
+                std::pmr::polymorphic_allocator<int>(&res)
+        );
+
+        runtime_arr<int, std::pmr::polymorphic_allocator<int>> arr(std::move(vec));
+
+        REQUIRE(arr.size() == 3);
+        REQUIRE(arr[0] == 7);
+        REQUIRE(arr[2] == 9);
+    }
+
+    SECTION("iterator + allocator constructor") {
+
+        std::vector<int> src{11,22,33,44};
+
+        runtime_arr<int, test_allocator<int>> arr(
+                src.begin(),
+                src.end(),
+                test_allocator<int>{}
+        );
+
+        REQUIRE(arr.size() == 4);
+        REQUIRE(arr[0] == 11);
+        REQUIRE(arr[3] == 44);
+    }
+
+    SECTION("iterator + allocator reset_all behavior") {
+
+        std::vector<int> src{5,6,7};
+
+        runtime_arr<int, test_allocator<int>> arr(
+                src.begin(),
+                src.end(),
+                test_allocator<int>{}
+        );
+
+        arr.reset_all();
+
+        for (int i : arr)
+            REQUIRE(i == 0);
+    }
+}
