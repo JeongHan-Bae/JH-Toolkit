@@ -1,6 +1,6 @@
 [project]
 name = "JH-Toolkit"
-version = "1.4.0"
+version = "1.4.1"
 description = "An engineering-oriented C++20 toolkit with duck-typed concepts, header-only, RTTI-free, and concurrency-friendly."
 platforms = ["Ubuntu", "macOS", "Windows"]
 
