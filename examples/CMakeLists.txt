@@ -11,6 +11,7 @@ set(EXAMPLE_SOURCES
         example_occ_box.cpp
         example_process_shm.cpp
         example_runtime_arr.cpp
+        example_ordered_map.cpp
         hello.cpp
 )
 
