@@ -1,24 +1,25 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file control_buf.h (synchronous)
+ * @file control_buf.h
  * @brief Fixed-capacity control block container for non-copyable, non-movable types.
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <h3>Overview</h3>
  * <p>
@@ -35,7 +36,7 @@
  * <p>
  * Unlike STL containers, this type <b>intentionally disables element-wise relocation</b> such as
  * move or copy during reallocation. This is critical for storing control-type objects whose
- * addresses must remain stable during their lifetime — for instance, synchronization primitives
+ * addresses must remain stable during their lifetime &mdash; for instance, synchronization primitives
  * like <code>std::mutex</code>, <code>std::atomic</code>, or file descriptors.
  * </p>
  *
@@ -54,7 +55,7 @@
  * <h3>Core Features</h3>
  * <ul>
  *   <li>Block-based allocation: memory grows by allocating fixed-sized blocks on demand.</li>
- *   <li><b>Block size:</b> each block contains <code>JH_FIXED_VEC_BLOCK_SIZE</code> elements
+ *   <li><b>Block size:</b> each block contains <code>JH_CTRL_BUFFER_BLOCK_SIZE</code> elements
  *       (default: 64). This can be configured via a preprocessor macro.</li>
  *   <li>Each element is <b>default-constructed in-place</b>; no relocation, no reordering.</li>
  *   <li><b>Strict type constraints</b>: relocation-disabled types only (e.g. <code>std::mutex</code>).</li>
@@ -87,8 +88,16 @@
 #include <type_traits>
 #include "jh/conceptual/container_traits.h"
 
-#ifndef JH_FIXED_VEC_BLOCK_SIZE
-#define JH_FIXED_VEC_BLOCK_SIZE 64
+/**
+ * @brief Specifies the number of elements allocated per block in
+ * jh::sync::control_buf (default: 64).
+ *
+ * This macro controls the fixed block size used for internal
+ * block-based allocation. Larger values reduce allocation frequency
+ * but increase per-block memory usage.
+ */
+#ifndef JH_CTRL_BUFFER_BLOCK_SIZE
+#define JH_CTRL_BUFFER_BLOCK_SIZE 64
 #endif
 
 
@@ -111,7 +120,7 @@ namespace jh::sync {
     class control_buf final {
     public:
         /// @brief Number of elements per allocation block.
-        static constexpr std::size_t BLOCK_SIZE = JH_FIXED_VEC_BLOCK_SIZE;
+        static constexpr std::size_t BLOCK_SIZE = JH_CTRL_BUFFER_BLOCK_SIZE;
 
         /// @brief Type of allocator used for element construction.
         using allocator_type = typename std::allocator_traits<Alloc>::template rebind_alloc<T>;
@@ -530,7 +539,7 @@ namespace jh::sync {
          *
          * These remaining elements are not destroyed and retain their previous state.
          * They are considered <em>logically uninitialized</em>, and the next call to <code>emplace_back()</code>
-         * will continue from where <code>resize()</code> left off — it does not reinitialize the tail.
+         * will continue from where <code>resize()</code> left off &mdash; it does not reinitialize the tail.
          *
          * @note This behavior is safe and expected for most control types (e.g., <code>std::atomic</code>),
          *       where default-construction does not guarantee value initialization.

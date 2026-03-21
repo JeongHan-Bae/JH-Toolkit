@@ -129,11 +129,18 @@ template argument.
 constexpr jh::meta::t_str s{"Hello"};
 ```
 
-| API      | Description                                   |
-|----------|-----------------------------------------------|
-| `val()`  | Returns `const char*` (null-terminated)       |
-| `size()` | Length excluding the null terminator          |
-| `view()` | `std::string_view` over the stored characters |
+| API          | Description                                       |
+|--------------|---------------------------------------------------|
+| `val()`      | Returns `const char*` (null-terminated)           |
+| `size()`     | Length excluding the null terminator              |
+| `view()`     | `std::string_view` over the stored characters     |
+| `pod_view()` | `jh::pod::string_view` over the stored characters |
+| `str()`      | Converts to `std::string`                         |
+
+
+`pod_view()` provides a POD-compatible view type used across JH Toolkit POD
+containers and lookup structures.
+> Note: Introduced in version 1.4.1+
 
 ---
 
@@ -165,6 +172,40 @@ s.is_hex();
 s.is_base64();
 s.is_base64url();
 ```
+
+### UTF-8 / printable legality
+
+```cpp
+s.is_legal();
+```
+
+> Note: Introduced in version 1.4.1+
+
+This function validates that the string is composed of printable ASCII or valid
+UTF-8 byte sequences.
+
+### POSIX relative path validation
+
+```cpp
+s.is_valid_relative_path();
+s.is_valid_relative_path<true>();
+```
+
+> Note: Introduced in version 1.4.1+
+
+Validates a strict POSIX-style relative path.
+
+Compiler requirement:
+
+* **Clang**
+* **GCC 14+**
+
+GCC 13 contains a known `constexpr` evaluation defect affecting NTTP string
+instances where the compiler may incorrectly report that `this` does not exist
+during evaluation.
+Because this behavior is nondeterministic (sometimes compiling, sometimes failing),
+the API is intentionally disabled under GCC 13 to prevent unstable development
+behavior.
 
 Invalid literals can be rejected **at compile time**, before they propagate into
 other templates.
@@ -200,6 +241,45 @@ Rules:
 * A new null terminator is appended
 * Total size must not exceed **16 KB**
 * Violations cause **compile-time failure**
+
+---
+
+## 🔎 Compile-time Substrings
+
+```cpp
+constexpr auto s = t_str{"HelloWorld"};
+
+constexpr auto a = s.sub<0,5>();        // "Hello"
+constexpr auto b = s.sub<5>();          // "World"
+
+auto v1 = s.sub_view<0,5>();
+auto v2 = s.sub_pod_view<5>();
+```
+
+> Note: Introduced in version 1.4.1+
+
+The substring APIs allow extracting compile-time substrings either as a new
+`t_str` object or as lightweight views.
+
+**Important lifetime rule**
+
+Never obtain a view directly from a temporary result such as:
+
+```cpp
+s.sub<0,5>().view(); // illegal: dangling view
+s.sub<0,5>().pod_view(); // illegal: dangling view
+(x + y).view(); // illegal: dangling view
+```
+
+Doing so creates a temporary `t_str` whose storage immediately expires,
+resulting in a **dangling view**.
+
+Recommended pattern:
+
+```cpp
+constexpr auto result_str = s.sub<0,5>();
+auto view = result_str.pod_view();
+```
 
 ---
 
@@ -316,6 +396,7 @@ any feature that requires **string identity at compile time**.
 
 * `t_str / TStr` enables string literals as first-class NTTPs
 * Template identity is derived from **content**, not pointer identity
-* Compile-time validation, transformation, concatenation, and hashing are built in
+* Compile-time validation, transformation, concatenation, substring extraction,
+  and hashing are built in
 * Explicit `bytes.size() + 1` sizing ensures correctness when reconstructing strings
 * Introduced in **JH Toolkit 1.4.0+** as a cornerstone for compile-time string-based design

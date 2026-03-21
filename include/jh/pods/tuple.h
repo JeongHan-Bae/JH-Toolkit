@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file tuple.h (pods)
+ * @file tuple.h
  * @brief Implementation of POD-compatible tuple, pair and array bindings.
  *
  * @details
@@ -40,7 +41,7 @@
  * <h3>Design Philosophy & Principles</h3>
  * The <code>jh::pod::tuple</code> in version <b>1.3.4</b> and later is a
  * <b>true POD-based tuple</b>, replacing the transitional implementation used
- * between 1.3.0–1.3.3.
+ * between 1.3.0-1.3.3.
  *
  * <p>
  * It achieves <b>std::tuple-like behavior</b> &mdash; supporting <code>make_tuple</code>,
@@ -100,7 +101,7 @@
  * aggregate inheritance.
  *
  * @warning
- * For GCC (especially ≤ 13), prefer one of the following forms:
+ * For GCC (especially &le; 13), prefer one of the following forms:
  * @code
  * // Explicit nested braces
  * jh::pod::tuple&lt;int, float&gt; t{{ {7}, {{3.14f}, {}} }};
@@ -187,7 +188,7 @@ namespace jh::pod {
      *            <code>cv_free_pod_like</code>.
      *
      * @note
-     * When targeting GCC ≤ 13, direct brace initialization may fail;
+     * When targeting GCC &le; 13, direct brace initialization may fail;
      * prefer using <code>jh::pod::make_tuple</code> for portable creation.
      *
      * @see jh::pod::make_tuple

@@ -1,23 +1,24 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file observe_pool.h
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @file resource_pool.h
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  * @brief User-facing aliases for <code>jh::conc::flat_pool</code> with deduced hashing.
  *
  * <p>
@@ -110,14 +111,13 @@ namespace jh {
      * the underlying <code>flat_pool</code> value representation.
      *
      * @note
-     * <h5>Design intent:</h5>
-     * <p>
+     * <strong>Design intent:</strong>
+     * <br>
      * <code>jh::resource_pool</code> exists solely to reduce the cognitive and syntactic
      * cost of using <code>flat_pool</code> in the common case.
-     * </p><p>
+     * <br>
      * When a nonstandard hashing strategy is required, users should instantiate
      * <code>jh::conc::flat_pool</code> directly with an explicit hash functor.
-     * </p>
      */
     template<typename Key,
             typename Value = jh::typed::monostate,

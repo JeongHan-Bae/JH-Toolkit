@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file process_shm_obj.h (synchronous/ipc)
+ * @file process_shm_obj.h
  * @brief Cross-process shared-memory container for POD-like objects.
  *
  * <h3>Overview</h3>
@@ -122,10 +123,12 @@
 #if IS_WINDOWS
 #include <windows.h>
 #else
+
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+
 #endif
 
 namespace jh::sync::ipc {
@@ -141,15 +144,15 @@ namespace jh::sync::ipc {
      * @tparam T POD-like type satisfying <code>cv_free_pod_like</code>.
      * @tparam HighPriv Enables privileged operations (e.g. <code>unlink()</code>).
      */
-    template <jh::meta::TStr S, jh::pod::cv_free_pod_like T, bool HighPriv = false>
-    requires (limits::valid_object_name<S, limits::max_name_length - 4>())
+    template<jh::meta::TStr S, jh::pod::cv_free_pod_like T, bool HighPriv = false> requires (limits::valid_object_name<S,
+            limits::max_name_length - 4>())
     class process_shm_obj final {
     private:
 
 #if IS_WINDOWS
         static constexpr auto shm_name_  = jh::meta::TStr{"Global\\"} + S;
 #else
-        static constexpr auto shm_name_  = jh::meta::TStr{"/"} + S;
+        static constexpr auto shm_name_ = jh::meta::TStr{"/"} + S;
         static constexpr mode_t shm_mode = JH_PROCESS_MUTEX_SHARED ? 0666 : 0644;
 #endif
 
@@ -165,8 +168,8 @@ namespace jh::sync::ipc {
 #else
         int fd_ = -1;
 #endif
-        shm_data* data_ = nullptr;
-        lock_t& lock_;
+        shm_data *data_ = nullptr;
+        lock_t &lock_;
 
         process_shm_obj() : lock_(lock_t::instance()) {
 #if IS_WINDOWS
@@ -187,17 +190,17 @@ namespace jh::sync::ipc {
             struct stat st{};
             if (::fstat(fd_, &st) == -1)
                 throw std::runtime_error("process_shm_obj: fstat failed (errno=" + std::to_string(errno) + ")");
-            if (st.st_size < sizeof(shm_data))
+            if (st.st_size < 0 || (static_cast<std::size_t>(st.st_size) < sizeof(shm_data)))
                 if (::ftruncate(fd_, sizeof(shm_data)) == -1)
                     throw std::runtime_error("process_shm_obj: ftruncate failed (errno=" + std::to_string(errno) + ")");
-            void* ptr = ::mmap(nullptr, sizeof(shm_data), PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
+            void *ptr = ::mmap(nullptr, sizeof(shm_data), PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
             if (ptr == MAP_FAILED)
                 throw std::runtime_error("process_shm_obj: mmap failed (errno=" + std::to_string(errno) + ")");
-            data_ = static_cast<shm_data*>(ptr);
+            data_ = static_cast<shm_data *>(ptr);
             ::close(fd_);
 #endif
             // initialization guard
-            auto& init_guard = process_mutex<S>::instance();
+            auto &init_guard = process_mutex<S>::instance();
             std::lock_guard global_lock(init_guard);
             std::lock_guard counter_lock(lock_);
             if (!data_->initialized) {
@@ -217,11 +220,12 @@ namespace jh::sync::ipc {
 
     public:
         // Disable copy
-        process_shm_obj(const process_shm_obj&) = delete;
-        process_shm_obj& operator=(const process_shm_obj&) = delete;
+        process_shm_obj(const process_shm_obj &) = delete;
+
+        process_shm_obj &operator=(const process_shm_obj &) = delete;
 
         /// @brief Singleton accessor.
-        static process_shm_obj& instance() {
+        static process_shm_obj &instance() {
             static process_shm_obj inst;
             return inst;
         }
@@ -230,55 +234,55 @@ namespace jh::sync::ipc {
          * @brief Obtain non-const pointer to the shared object.
          * @return Pointer to the mapped shared instance of <code>T</code>.
          */
-        [[nodiscard]] T* ptr() noexcept { return std::launder(&data_->obj); }
+        [[nodiscard]] T *ptr() noexcept { return std::launder(&data_->obj); }
 
         /**
          * @brief Obtain const pointer to the shared object.
          * @return Const pointer to the mapped shared instance.
          */
-        [[nodiscard]] const T* ptr() const noexcept { return std::launder(&data_->obj); }
+        [[nodiscard]] const T *ptr() const noexcept { return std::launder(&data_->obj); }
 
         /**
          * @brief Obtain non-const reference to the shared object.
          * @return Reference to the shared instance.
          */
-        [[nodiscard]] T& ref() noexcept { return *std::launder(&data_->obj); }
+        [[nodiscard]] T &ref() noexcept { return *std::launder(&data_->obj); }
 
         /**
          * @brief Obtain const reference to the shared object.
          * @return Const reference to the shared instance.
          */
-        [[nodiscard]] const T& ref() const noexcept { return *std::launder(&data_->obj); }
+        [[nodiscard]] const T &ref() const noexcept { return *std::launder(&data_->obj); }
 
         /**
          * @brief Operator-> convenience accessor.
          * @return Pointer to the shared object.
          */
-        [[nodiscard]] T* operator->() noexcept { return ptr(); }
+        [[nodiscard]] T *operator->() noexcept { return ptr(); }
 
         /**
          * @brief Const Operator-> convenience accessor.
          * @return Const pointer to the shared object.
          */
-        [[nodiscard]] const T* operator->() const noexcept { return ptr(); }
+        [[nodiscard]] const T *operator->() const noexcept { return ptr(); }
 
         /**
          * @brief Operator* convenience accessor.
          * @return Reference to the shared object.
          */
-        [[nodiscard]] T& operator*() noexcept { return ref(); }
+        [[nodiscard]] T &operator*() noexcept { return ref(); }
 
         /**
          * @brief Const Operator* convenience accessor.
          * @return Const reference to the shared object.
          */
-        [[nodiscard]] const T& operator*() const noexcept { return ref(); }
+        [[nodiscard]] const T &operator*() const noexcept { return ref(); }
 
         /**
          * @brief Accessor for the inter-process mutex protecting this shared object.
          * @return Reference to the internal <code>process_mutex&lt;S + ".loc"&gt;</code>.
          */
-        [[nodiscard]] lock_t& lock() noexcept { return lock_; }
+        [[nodiscard]] lock_t &lock() noexcept { return lock_; }
 
         /**
          * @brief Acquire fence ensuring visibility of preceding writes by other processes.
@@ -337,12 +341,13 @@ namespace jh::sync::ipc {
 #else
             if (::shm_unlink(shm_name_.val()) == -1 && errno != ENOENT)
                 throw std::runtime_error(
-                        "shm_unlink failed for " + std::string{shm_name_.val()} +
+                        "shm_unlink failed for " + shm_name_.str() +
                         " (errno=" + std::to_string(errno) + ")");
             process_mutex<S, HighPriv>::unlink();
             lock_t::unlink();
 #endif
         }
+
         /// Disabled if HighPriv == false. Non-privileged variants cannot call unlink().
         static void unlink() requires(!HighPriv) = delete;
     };

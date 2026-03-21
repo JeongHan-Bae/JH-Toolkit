@@ -1,23 +1,24 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
  * @file observe_pool.h
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  * @brief Top-level user-facing pool for content-based interning of immutable objects.
  *
  * <p>
@@ -171,31 +172,20 @@ namespace jh {
      * content-based <code>operator==</code>.
      *
      * @note
-     * <h5>Usage guidance:</h5>
-     * <p>
-     * <code>jh::observe_pool</code> relies on <code>std::shared_ptr</code> /
-     * <code>std::weak_ptr</code> for object tracking. This inevitably introduces
-     * heap fragmentation and reference-counting overhead. It is therefore intended
-     * only for types that are <b>neither copyable nor movable</b>, and for workloads
-     * where the total number of live objects and concurrency level remain modest.
-     * Excessive object counts or high parallel pressure may lead to allocation
-     * jitter and degraded performance.
-     * </p><p>
-     * On Windows platforms using the Universal CRT (including MinGW variants),
-     * <code>std::shared_ptr</code> is not reliably thread-safe under contention.
-     * Practical limits are significantly lower than on other platforms; it is
-     * recommended to keep concurrency within approximately <b>4 threads</b> and
-     * the total number of live pooled objects within roughly <b>2k</b>.
-     * </p><p>
-     * If the managed type is at least copyable or movable, prefer
-     * <code>jh::resource_pool&lt;T&gt;</code>. If a stable key can be used to identify
-     * objects, prefer <code>jh::resource_pool&lt;K, V&gt;</code>. When a key is available
-     * but the value type is neither copyable nor movable, using
-     * <code>jh::resource_pool&lt;K, std::shared_ptr&lt;V&gt;&gt;</code> is often a better
-     * alternative: hashing and equality are applied only to the key, avoiding
-     * expensive object-level comparisons and large-scale rehash jitter during
-     * resizing.
-     * </p>
+     * <strong>Platform guidance:</strong>
+     * <br>
+     * All concurrent pools under <code>&lt;jh/pool&gt;</code> are designed
+     * primarily for POSIX platforms and rely on POSIX-style ordering
+     * semantics for their performance characteristics.
+     * <br>
+     * Windows (MinGW-w64 / MinGW-clang with UCRT or MSVCRT) is treated
+     * as a secondary platform. API compatibility is provided, but
+     * concurrency guarantees are not equivalent to POSIX builds.
+     * High-contention workloads are not recommended on Windows.
+     * <br>
+     * If your final deployment target is a POSIX system (Linux / Darwin),
+     * the pool implementations may be used as intended under full
+     * concurrency.
      */
     template<typename T>
     using observe_pool =

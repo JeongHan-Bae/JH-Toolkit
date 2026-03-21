@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file process_launcher.h (synchronous/ipc)
+ * @file process_launcher.h
  * @brief Cross-platform process launcher aligned with std::thread semantics.
  *
  * <h3>Rationale</h3>
@@ -74,8 +75,8 @@
  *       <li><code>"./"</code> segments are meaningless and rejected.</li>
  *       <li><code>".."</code> handling:
  *         <ul>
- *           <li>By default (<code>JH_ALLOW_PARENT_PATH == 0</code>): any <code>".."</code> is forbidden.</li>
- *           <li>If <code>JH_ALLOW_PARENT_PATH == 1</code>: leading <code>"../"</code> prefixes are permitted
+ *           <li>By default (<code>JH_INTERPROCESS_ALLOW_PARENT_PATH == 0</code>): any <code>".."</code> is forbidden.</li>
+ *           <li>If <code>JH_INTERPROCESS_ALLOW_PARENT_PATH == 1</code>: leading <code>"../"</code> prefixes are permitted
  *               (one or more), but:
  *             <ul>
  *               <li>The entire path cannot consist only of <code>"../"</code> segments.</li>
@@ -101,7 +102,7 @@
  *       <li>Absolute paths (<code>"/foo/bar"</code>) are forbidden by design.</li>
  *     </ul>
  *   </li>
- *   <li><strong>Parent path relaxation</strong> (<code>JH_ALLOW_PARENT_PATH</code>):
+ *   <li><strong>Parent path relaxation</strong> (<code>JH_INTERPROCESS_ALLOW_PARENT_PATH</code>):
  *     <ul>
  *       <li>Disabled (default = 0): any <code>".."</code> usage is an error.</li>
  *       <li>Enabled (= 1): only leading <code>"../"</code> prefixes are permitted;
@@ -180,8 +181,8 @@
 
 #pragma once
 
-#ifndef JH_ALLOW_PARENT_PATH
-#define JH_ALLOW_PARENT_PATH 0
+#ifndef JH_INTERPROCESS_ALLOW_PARENT_PATH
+#define JH_INTERPROCESS_ALLOW_PARENT_PATH 0
 #endif
 
 #include "jh/macros/platform.h"
@@ -195,8 +196,10 @@
 #if IS_WINDOWS
 #include <windows.h>  // STARTUPINFO, PROCESS_INFORMATION, CreateProcess, WaitForSingleObject, CloseHandle
 #elif IS_POSIX
+
 #include <unistd.h>   // fork, execl, _exit
 #include <sys/wait.h> // waitpid
+
 #endif
 
 
@@ -213,8 +216,8 @@ namespace jh::sync::ipc {
      *             <li><code>"./"</code> segments are disallowed.</li>
      *             <li><code>".."</code> handling:
      *               <ul>
-     *                 <li>Default (<code>JH_ALLOW_PARENT_PATH == 0</code>): any <code>".."</code> is rejected.</li>
-     *                 <li>Relaxed (<code>JH_ALLOW_PARENT_PATH == 1</code>): only leading <code>"../"</code>
+     *                 <li>Default (<code>JH_INTERPROCESS_ALLOW_PARENT_PATH == 0</code>): any <code>".."</code> is rejected.</li>
+     *                 <li>Relaxed (<code>JH_INTERPROCESS_ALLOW_PARENT_PATH == 1</code>): only leading <code>"../"</code>
      *                     prefixes are allowed, and the path must contain additional content afterwards.</li>
      *                 <li>Once non-empty content has been appended, <code>".."</code> is forbidden.</li>
      *               </ul>
@@ -241,7 +244,7 @@ namespace jh::sync::ipc {
      *       <li>Absolute paths (<code>"/foo/bar"</code>) are forbidden.</li>
      *     </ul>
      *   </li>
-     *   <li><strong>Parent path relaxation</strong> (<code>JH_ALLOW_PARENT_PATH</code>):
+     *   <li><strong>Parent path relaxation</strong> (<code>JH_INTERPROCESS_ALLOW_PARENT_PATH</code>):
      *     <ul>
      *       <li>Disabled (default = 0): any <code>".."</code> usage is invalid.</li>
      *       <li>Enabled (= 1): leading <code>"../"</code> prefixes are allowed,
@@ -263,8 +266,7 @@ namespace jh::sync::ipc {
      * and parameter combination.
      * </p>
      */
-    template<jh::meta::TStr Path, bool IsBinary = true>
-    requires (limits::valid_relative_path<Path>())
+    template<jh::meta::TStr Path, bool IsBinary = true> requires (limits::valid_relative_path<Path>())
     class process_launcher final {
     public:
         process_launcher() = delete;                                    ///< Not constructible.
@@ -451,10 +453,10 @@ namespace jh::sync::ipc {
             }
             return handle{pi};
 #elif IS_POSIX
-            std::string exe = "./" + std::string(Path.val());
+            auto exe = jh::meta::TStr{"./"} + Path;
             pid_t pid = fork();
             if (pid == 0) {
-                execl(exe.c_str(), exe.c_str(), nullptr);
+                execl(exe.val(), exe.val(), nullptr);
                 // exec failed: safely terminate only the child process (avoid atexit/DTOR)
                 _exit(1);
             }

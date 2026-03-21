@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file adapt.h (ranges)
+ * @file adapt.h
  * @brief Range adaptor promoting <code>jh::concepts::sequence</code> to <code>std::ranges::range</code>.
  * @author
  *   JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
@@ -150,14 +151,14 @@ namespace jh::ranges {
      * <b>non-copyable</b> or <b>non-movable</b>. Such ranges cannot satisfy
      * <code>std::ranges::viewable_range</code>, and thus cannot be used
      * directly with <code>std::views::*</code> adaptors.
-     *
+     * <br>
      * Passing <b>non-copyable</b> or <b>non-movable</b> <tt>ranges</tt>
      * or any <b>non-standard</b> <tt>sequences</tt> through <code>adapt</code> (or equivalently
      * <code>jh::to_range()</code>) constructs a safe proxy &mdash;
      * typically a <code>std::ranges::subrange</code> or
      * <code>jh::ranges::range_adaptor</code> &mdash; that <b>restores
      * viewable_range compatibility</b>.
-     *
+     * <br>
      * Once adapted, these ranges can participate freely in
      * <code>std::views</code> pipelines or <code>jh::ranges::views</code>
      * adaptors.

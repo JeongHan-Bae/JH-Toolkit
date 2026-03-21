@@ -1,24 +1,25 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file null_mutex.h (typing)
+ * @file null_mutex.h
  * @brief Zero-cost semantic placeholder for <code>mutex_like</code> synchronization.
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <p>
  * Defines <code>jh::typed::null_mutex_t</code> &mdash; a fully concept-compatible,
@@ -145,16 +146,15 @@ namespace jh::typed {
      * @endcode
      *
      * @note
-     * <b>Semantic intent:</b> Using <code>null_mutex</code> explicitly declares that
+     * <b>Semantic intent:</b>
+     * <br>Using <code>null_mutex</code> explicitly declares that
      * the protected resource is owned and accessed by a <b>single thread</b> only.
      * It serves as a formal statement of exclusive single-thread ownership rather
      * than an omission of synchronization.
-     *
-     * <p>
+     * <br>
      * This singleton should be used instead of creating local instances.
      * Declaring <code>null_mutex_t</code> variables is meaningless,
      * similar to instantiating <code>std::nullptr_t</code>.
-     * </p>
      */
     inline null_mutex_t null_mutex;
 

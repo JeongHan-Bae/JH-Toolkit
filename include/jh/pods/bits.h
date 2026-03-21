@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
  /**
- * @file bits.h (pods)
+ * @file bits.h
  * @brief POD-compatible fixed-size bitflag storage (<code>jh::pod::bitflags&lt;N&gt;</code>).
  *
  * <h3>Design Goals</h3>
@@ -52,7 +53,25 @@ namespace jh::pod {
     /// @brief Maximum allowed size of a POD bitflags structure: 4KB (4096 bytes).
     inline constexpr std::uint16_t max_pod_bitflags_bytes = 4 * 1024;
 
-    // --- internal utilities (not documented for Doxygen) ---
+    /**
+     * @brief Internal constraint for native unsigned integer types.
+     *
+     * This concept matches exactly the unsigned integer types that can
+     * directly back a <code>bitflags&lt;N&gt;</code> specialization:
+     * <code>uint8_t</code>, <code>uint16_t</code>, <code>uint32_t</code>,
+     * and <code>uint64_t</code>.
+     *
+     * <p>
+     * It exists solely to enable optimized implementations where the entire
+     * bitset can be represented and manipulated as a single native integer,
+     * allowing constant-time bitwise operations and efficient popcount.
+     * </p>
+     *
+     * <p>
+     * <b>Internal use only.</b> This concept is not part of the public API and
+     * must not be relied upon by user code.
+     * </p>
+     */
     template<typename T>
     concept std_uint = std::is_same_v<T, std::uint8_t> ||
                        std::is_same_v<T, std::uint16_t> ||
@@ -341,7 +360,7 @@ namespace jh::pod {
     /**
      * @brief POD-compatible fixed-size bitflags structure.
      *
-     * @tparam N Number of bits. Must be divisible by 8 and ≤ 32'768.
+     * @tparam N Number of bits. Must be divisible by 8 and &le; 32'768.
      *
      * <b>Storage strategy:</b>
      * <ul>

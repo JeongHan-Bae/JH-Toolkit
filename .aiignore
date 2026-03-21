@@ -1,0 +1,98 @@
+# .aiignore, similar to .gitignore, specifies files and directories that should be ignored by AI indexing tools.
+# This helps to exclude irrelevant or sensitive information from being processed.
+
+# ------------------------------------
+# git ignoring rules
+# -------------------------------------
+
+# Build artifacts
+*build*/
+*Build*/
+*BUILD*/
+Debug*/
+Release*/
+out/
+Out*/
+bin/
+lib/
+obj/
+dist/
+CMakeFiles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+compile_commands.json
+
+# C++ compiler generated files
+*.o
+*.obj
+*.so
+*.a
+*.lib
+*.dll
+*.exe
+*.exp
+*.pdb
+*.tar.gz
+*.tgz
+
+# Editor-specific files
+.idea/
+.vscode/
+*.suo
+*.ncb
+*.user
+*.sdf
+*.cbp
+*.layout
+*.clangd
+*.ccls-cache/
+*.vscode/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Debugging & Logs
+*.log
+*.swp
+*.swo
+*.bak
+
+# Doxygen generated files
+html/
+latex/
+doxy/
+man/
+rtf/
+xml/
+*.tag
+Doxyfile.tmp
+
+# ------------------------------------
+# ai specific files
+# ------------------------------------
+
+# Version control and workflow files
+.github/
+.git/
+
+# Non-semantic parts
+docs/img/
+docs/doxy_settings/
+
+# precompilation helpers, no actual semantics
+src/
+
+# The test includes boundary tests; these syntaxes may cause erroneous heuristics in the AI.
+tests/
+
+# Conan related files
+tools/
+
+# Git, Linguist, and Shield files
+.gitignore
+.gitattributes
+version_badge.json
+
+# C++ engineering-grade library, no secrets or sensitive data

@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file array.h (pods)
+ * @file array.h
  * @brief Implementation of <code>jh::pod::array&lt;T, N&gt;</code>.
  */
 
@@ -67,13 +68,13 @@ namespace jh::pod {
     struct alignas(alignof(T)) array final {
         T data[N];                             ///< Inline contiguous storage for N elements of type T.
 
-        using value_type = T;                                     ///< Value type alias.
-        using size_type = std::uint16_t;                          ///< Size type alias (16-bit).
-        using difference_type [[maybe_unused]] = std::ptrdiff_t;  ///< Difference type alias.
-        using reference = value_type &;                           ///< Reference type.
-        using const_reference = const value_type &;               ///< Const reference type.
-        using pointer = value_type *;                             ///< Pointer type.
-        using const_pointer = const value_type *;                 ///< Const pointer type.
+        using value_type = T;                           ///< Value type alias.
+        using size_type = std::uint16_t;                ///< Size type alias (16-bit).
+        using difference_type = std::ptrdiff_t;         ///< Difference type alias.
+        using reference = value_type &;                 ///< Reference type.
+        using const_reference = const value_type &;     ///< Const reference type.
+        using pointer = value_type *;                   ///< Pointer type.
+        using const_pointer = const value_type *;       ///< Const pointer type.
 
         /// @brief Access element by index (no bounds checking).
         constexpr reference operator[](std::size_t i) noexcept { return data[i]; }

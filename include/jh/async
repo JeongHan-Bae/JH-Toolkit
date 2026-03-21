@@ -28,3 +28,19 @@
 #include "jh/asynchronous/fiber.h"
 #include "jh/asynchronous/generator.h"
 #include "jh/asynchronous/slot.h"
+
+/**
+ * @brief Aggregated entry point for coroutine-based asynchronous facilities.
+ *
+ * The <code>&lt;jh/async&gt;</code> forwarding header provides a unified,
+ * engineering-oriented interface over the coroutine-based asynchronous
+ * components implemented under <code>jh/asynchronous/</code>.
+ * <br>
+ * Rather than exposing raw coroutine primitives, this module presents
+ * constrained and semantically well-defined abstractions such as
+ * generators, fibers, and coroutine-backed signal slots.
+ * <br>
+ * This header is the recommended user-facing entry point as of v1.4.0.
+ * Individual component headers remain fully supported.
+ */
+namespace jh::async {}

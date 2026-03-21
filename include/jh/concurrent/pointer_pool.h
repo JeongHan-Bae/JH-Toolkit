@@ -1,25 +1,26 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
  * @file pointer_pool.h
  *
  * @brief Pointer-based interning for non-copyable, non-movable, structurally immutable objects.
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <h3>Overview</h3>
  * <p>
@@ -184,11 +185,13 @@
 #include <memory>
 #include <shared_mutex>
 
+#include "jh/synchronous/strong_lock.h"
+
 
 namespace jh::conc {
 
     /**
-     * @brief Weak pointer–observed pool for immutable or structurally immutable objects.
+     * @brief Weak pointer-observed pool for immutable or structurally immutable objects.
      *
      * <h4>Core Behavior</h4>
      * <ol>
@@ -210,7 +213,9 @@ namespace jh::conc {
      *       or explicit cleanup calls.</li>
      *   <li><b>Adaptive capacity:</b> The container may grow or shrink depending on occupancy thresholds
      *       evaluated during insertion.</li>
-     *   <li><b>Thread-safe:</b> Lookups and insertions coordinate through <code>std::shared_mutex</code>.</li>
+     *   <li>
+     *     <b>Thread-safe:</b> Lookups and insertions coordinate through <code>std::shared_mutex</code>.
+     *   </li>
      *   <li><b>Discard-friendly:</b> Temporary objects are cheap to abandon when a matching instance exists.</li>
      * </ul>
      *
@@ -232,24 +237,33 @@ namespace jh::conc {
      * </ul>
      *
      * @note
-     * <p>
      * Hash and equality functors need only reflect object-level identity. When using
      * <code>jh::observe_pool</code>, these are automatically derived from <code>std::hash&lt;T&gt;()</code> or
      * adl <code>hash(t)</code> or <code>t.hash()</code>, and <code>operator==()</code> to ensure consistent behavior.
-     * </p>
      *
      * @warning
-     * <p>
-     * On Windows environments based on the Universal CRT (including MinGW variants),
-     * <code>std::shared_ptr</code> and <code>std::weak_ptr</code> may exhibit incorrect reference-count
-     * synchronization under high concurrency. As a result, <code>weak_ptr::lock()</code> may succeed
-     * against an object whose underlying <code>shared_ptr</code> has already been destroyed, leading to
-     * invalid access or crashes even under otherwise correct usage. Additionally, insertion of
-     * <code>std::weak_ptr</code> into <code>std::unordered_*</code> containers on these platforms incurs
-     * significant jitter.</p>
-     * <p>
-     * Due to these platform-specific defects, high-pressure concurrent use of
-     * <code>pointer_pool</code> is not recommended on Windows UCRT-based toolchains.</p>
+     * On Windows platforms (MinGW-w64 / MinGW-clang with UCRT or MSVCRT),
+     * additional <code>std::atomic_thread_fence(std::memory_order_seq_cst)</code>
+     * barriers are inserted to strengthen ordering at the language level.
+     * This eliminates ISO-level UB risks and preserves correctness within
+     * the C++ abstract machine.
+     * <br>
+     * However, certain Windows runtime and system-level synchronization
+     * implementations (e.g. SRWLock-backed <code>std::shared_mutex</code>)
+     * do not necessarily provide POSIX-equivalent global ordering behavior.
+     * Under extreme multi-core contention, rare visibility or reordering
+     * phenomena may still be observed.
+     * <br>
+     * These effects are platform characteristics rather than violations of
+     * the C++ standard and do not indicate undefined behavior in the pool
+     * implementations. <code>pointer_pool</code> may expose such behavior
+     * more readily due to heavier synchronization and hash-table interaction,
+     * but the underlying limitation applies to all concurrent pools in
+     * this module.
+     * <br>
+     * Windows builds are therefore considered compatible but not validated
+     * for extreme high-contention workloads. POSIX platforms remain the
+     * primary supported and reference environments.
      */
     template<typename T, typename Hash, typename Eq>
     requires(
@@ -336,7 +350,7 @@ namespace jh::conc {
          * in both the old and new pool, but this is acceptable for deduplication use.
          */
         pointer_pool(pointer_pool &&other) noexcept {
-            std::unique_lock write_lock(other.pool_mutex_);
+            jh::sync::posix_smtx_unique_lock write_lock(other.pool_mutex_);
             pool_ = std::move(other.pool_);
             capacity_.store(other.capacity_.load());
             other.pool_.clear();  // Ensure valid empty state after move.
@@ -354,7 +368,7 @@ namespace jh::conc {
          * This only removes the pool's <em>observation</em> of those objects &mdash;
          * their actual lifetimes remain intact because ownership is held by
          * external <code>std::shared_ptr</code> instances.
-         *
+         * <br>
          * Moving represents transfer of observation scope. Since deduplication
          * is tolerant to transient duplicates, the existence of similar entries
          * in both pools after move is not a correctness issue.
@@ -504,7 +518,7 @@ namespace jh::conc {
          * @return The number of stored weak_ptrs (including expired ones).
          */
         [[nodiscard]] std::uint64_t size() const {
-            std::shared_lock read_lock(pool_mutex_);
+            jh::sync::posix_smtx_shared_lock read_lock(pool_mutex_);
             return pool_.size();
         }
 
@@ -548,7 +562,7 @@ namespace jh::conc {
          * </ul>
          */
         void clear() {
-            std::unique_lock write_lock(pool_mutex_);
+            jh::sync::posix_smtx_unique_lock write_lock(pool_mutex_);
             pool_.clear();
             capacity_.store(MIN_RESERVED_SIZE);
         }
@@ -578,7 +592,7 @@ namespace jh::conc {
             if (pool_.size() >= capacity_.load()) {
                 expand_and_cleanup(); // This function is already acquiring the lock.
             }
-            std::unique_lock write_lock(pool_mutex_); // Lock for pool access.
+            jh::sync::posix_smtx_unique_lock write_lock(pool_mutex_); // Lock for pool access.
 
             auto [it, inserted] = pool_.insert(obj);
             if (!inserted) return it->lock();

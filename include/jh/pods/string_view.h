@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file string_view.h (pods)
+ * @file string_view.h
  * @brief POD-safe <code>string_view</code> with full <code>constexpr</code> semantics and consteval/runtime dual-path optimization.
  *
  * This header defines a lightweight, read-only, non-owning string view
@@ -49,6 +50,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <compare>
 #include <cstdint>
 #include <cstring>      // for memcmp, memcpy
@@ -56,7 +58,9 @@
 #include <type_traits>
 #include <cstddef>
 
+#include "jh/metax/char.h"
 #include "jh/pods/pod_like.h"
+#include "jh/detail/base64_common.h"
 #include "jh/metax/hash.h"
 
 namespace jh::pod {
@@ -102,7 +106,7 @@ namespace jh::pod {
 
         using value_type = char;                                 ///< Character type.
         using size_type = std::uint64_t;                         ///< Size type (64-bit).
-        using difference_type [[maybe_unused]] = std::ptrdiff_t; ///< Difference type.
+        using difference_type = std::ptrdiff_t;                  ///< Difference type.
         using reference = value_type &;                          ///< Reference to character.
         using const_reference = const value_type &;              ///< Const reference to character.
         using pointer = value_type *;                            ///< Pointer to character.
@@ -176,23 +180,41 @@ namespace jh::pod {
             }
         }
 
+        /// @brief Sentinel value representing "no position" or "until the end".
+        static constexpr auto npos = static_cast<std::uint64_t>(-1);
+
         /**
          * @brief Returns a substring starting at <code>offset</code>, for <code>length</code> bytes.
          *
          * <ul>
-         *   <li>If <code>length == 0</code>, the view extends to the end.</li>
+         *   <li>If <code>length == jh::pod::string_view::npos</code>, the view extends to the end.</li>
+         *   <li>If <code>length == 0</code>, the result is an empty view.</li>
          *   <li>If <code>offset > len</code>, returns an empty view.</li>
          * </ul>
          *
          * @param offset Starting byte index (0-based).
-         * @param length Number of bytes (<code>0</code> = sentinel = to end).
+         * @param @param length Number of bytes. Use <code>jh::pod::string_view::npos</code>
+              to read until the end of the view.
          * @return A new <code>string_view</code> into the specified subrange.
+         *
+         * @note
+         * This behavior intentionally mirrors the semantics of
+         * <code>std::string_view::substr</code>, where
+         * <code>npos</code> represents "read until the end".
          */
-        [[nodiscard]] constexpr string_view sub(const std::uint64_t offset,
-                                                const std::uint64_t length = 0) const noexcept {
-            if (offset > len) return {nullptr, 0}; // out-of-range -> empty
+        [[nodiscard]] constexpr string_view
+        sub(std::uint64_t offset, std::uint64_t length = npos) const noexcept {
+
+            if (offset >= len)
+                return {nullptr, 0};
+
             const std::uint64_t remaining = len - offset;
-            const std::uint64_t real_len = length == 0 || length > remaining ? remaining : length;
+
+            const std::uint64_t real_len =
+                    (length == npos || length > remaining)
+                    ? remaining
+                    : length;
+
             return {data + offset, real_len};
         }
 
@@ -277,7 +299,8 @@ namespace jh::pod {
          * @param hash_method Algorithm to use for hashing (default: <code>fnv1a64</code>).
          * @return 64-bit hash of the view data, or <code>-1</code> if <code>data == nullptr</code>.
          *
-         * @note <ul>
+         * @note
+         * <ul>
          *   <li>This is <strong>not cryptographic</strong>; do not use it for security-sensitive logic.</li>
          *   <li>If <code>data</code> is null, the return value is <code>-1</code> (sentinel).</li>
          *   <li>Hashing is based only on contents and length, not on pointer identity.</li>
@@ -298,6 +321,306 @@ namespace jh::pod {
         }
 
         /**
+         * @brief Check if all characters are decimal digits (0-9).
+         * @note This only checks that each character is a digit.
+         *       To validate if the whole string represents a number
+         *       (with optional sign, decimal point, or exponent),
+         *       use @c is_number() instead.
+         * @return true if all characters are digits, false otherwise.
+         */
+        [[nodiscard]] constexpr bool is_digit() const noexcept {
+            if (std::is_constant_evaluated()) {
+                for (std::uint64_t i = 0; i < size(); ++i) {
+                    if (!jh::meta::is_digit(data[i]))
+                        return false;
+                }
+                return true;
+            } else {
+                return std::all_of(
+                        begin(),
+                        end(),
+                        [](char c) {
+                            return jh::meta::is_digit(c);
+                        }
+                );
+            }
+        }
+
+        /**
+         * @brief Check if the string represents a valid decimal number.
+         *
+         * @return <code>true</code> if the string is a valid number, otherwise <code>false</code>.
+         *
+         * @details
+         * Grammar (simplified BNF):
+         * <pre>
+         *   [ '+' | '-' ] DIGIT+ [ '.' DIGIT+ ] [ ( 'e' | 'E' ) [ '+' | '-' ] DIGIT+ ]
+         * </pre>
+         *
+         * Equivalent regular expression:
+         * <pre>
+         *   ^[+-]?[0-9]+(&bsol;.[0-9]+)?([eE][+-]?[0-9]+)?$
+         * </pre>
+         *
+         * Rules:
+         * <ul>
+         *   <li>The first character may be <code>'+'</code> or <code>'-'</code>.</li>
+         *   <li>At least one digit must appear before optional '.' or 'e/E'.</li>
+         *   <li>If '.' appears, at least one digit must follow (either before or after '.').</li>
+         *   <li>If 'e' or 'E' appears, it must be followed by an optional sign and at least one digit.</li>
+         *   <li>Only decimal notation is supported (no hex, octal, binary, or locale-specific formats).</li>
+         * </ul>
+         */
+        [[nodiscard]] constexpr bool is_number() const noexcept {
+            const std::uint64_t n = size();
+            if (n == 0) return false;
+
+            std::uint64_t i = 0;
+            if (data[i] == '+' || data[i] == '-') {
+                ++i;
+            }
+
+            bool has_digit = false;
+            bool seen_dot = false;
+            bool seen_exp = false;
+
+            for (; i < n; ++i) {
+                const char c = data[i];
+
+                /// do NOT apply [[likely]] as this is constexpr
+                if (jh::meta::is_digit(c)) {
+                    has_digit = true;
+                    continue;
+                }
+
+                if (c == '.') {
+                    if (!has_digit || seen_dot || seen_exp) return false; // must have digit before '.'
+                    seen_dot = true;
+                    has_digit = false; // must see digit after '.'
+                    continue;
+                }
+
+                if (c == 'e' || c == 'E') {
+                    if (!has_digit || seen_exp) return false; // must have digit before 'e'
+                    seen_exp = true;
+                    has_digit = false; // must see digit after 'e'
+                    if (i + 1 < n && (data[i + 1] == '+' || data[i + 1] == '-')) {
+                        ++i; // skip optional sign after e/E
+                        // no leak risk, worst case reach '\0'
+                    }
+                    continue;
+                }
+                return false; // invalid character
+            }
+            return has_digit;
+        }
+
+        /**
+         * @brief Check if all characters are alphabetic (A-Z, a-z).
+         * @return true if all characters are alphabetic, false otherwise.
+         */
+        [[nodiscard]] constexpr bool is_alpha() const noexcept {
+            if (std::is_constant_evaluated()) {
+                for (std::uint64_t i = 0; i < size(); ++i) {
+                    if (!jh::meta::is_alpha(data[i]))
+                        return false;
+                }
+                return true;
+            } else {
+                return std::all_of(
+                        begin(),
+                        end(),
+                        [](char c) {
+                            return jh::meta::is_alpha(c);
+                        }
+                );
+            }
+        }
+
+        /**
+         * @brief Check if all characters are alphanumeric (letters or digits).
+         * @return true if all characters are alphanumeric, false otherwise.
+         */
+        [[nodiscard]] constexpr bool is_alnum() const noexcept {
+            if (std::is_constant_evaluated()) {
+                for (std::uint64_t i = 0; i < size(); ++i)
+                    if (!jh::meta::is_alnum(data[i]))
+                        return false;
+                return true;
+            } else {
+                return std::all_of(
+                        begin(),
+                        end(),
+                        [](char c) {
+                            return jh::meta::is_alnum(c);
+                        }
+                );
+            }
+        }
+
+        /**
+         * @brief Check if all characters are 7-bit ASCII.
+         * @return true if all characters are in range 0-127, false otherwise.
+         */
+        [[nodiscard]] constexpr bool is_ascii() const noexcept {
+            if (std::is_constant_evaluated()) {
+                for (std::uint64_t i = 0; i < size(); ++i)
+                    if (!jh::meta::is_ascii(data[i]))
+                        return false;
+                return true;
+            } else {
+                return std::all_of(
+                        begin(),
+                        end(),
+                        [](char c) {
+                            return jh::meta::is_ascii(c);
+                        }
+                );
+            }
+        }
+
+        /**
+         * @brief Check if all characters are printable 7-bit ASCII.
+         * @return true if all characters are in range 32-126, false otherwise.
+         *
+         * @details
+         * Verifies that every character lies within the printable
+         * 7-bit ASCII range (decimal 32-126).
+         *
+         * @note
+         * Printable ASCII is a strict subset of 7-bit ASCII.
+         * Therefore: <code>is_printable_ascii()</code> implies <code>is_ascii()</code>
+         * <br>
+         * If this function returns true, calling @c is_ascii()
+         * again is redundant. When used inside a @c requires clause,
+         * do not combine the two checks.
+         * <br>
+         * This function only permits ASCII characters.
+         * If the intention is to validate fully printable text
+         * including multi-byte UTF-8 sequences, use @c is_legal()
+         * instead.
+         * @note
+         * @c is_legal() performs:
+         * <ul>
+         *  <li>UTF-8 structural validation</li>
+         *  <li>rejection of invalid UTF-8 byte combinations</li>
+         *  <li>rejection of illegal ASCII control characters</li>
+         * </ul>
+         */
+        [[nodiscard]] constexpr bool is_printable_ascii() const noexcept {
+            if (std::is_constant_evaluated()) {
+                for (std::uint64_t i = 0; i < size(); ++i)
+                    if (!jh::meta::is_printable_ascii(data[i]))
+                        return false;
+                return true;
+            } else {
+                return std::all_of(
+                        begin(),
+                        end(),
+                        [](char c) {
+                            return jh::meta::is_printable_ascii(c);
+                        }
+                );
+            }
+        }
+
+        /**
+         * @brief Check if all characters are valid (printable ASCII or UTF-8).
+         * @return true if all characters are valid, false otherwise.
+         */
+        [[nodiscard]] constexpr bool is_legal() const noexcept {
+            std::uint64_t i = 0;
+            int remaining = 0;       // how many continuation bytes still expected
+            unsigned char lead = 0;  // last leading byte
+
+            while (i < size()) {
+                auto c = static_cast<unsigned char>(data[i]);
+                // filter out disallowed ASCII control characters
+                if (!jh::meta::is_valid_char(static_cast<char>(c))) return false;
+                ///< constexpr, avoid using [[likely/unlikely]]
+                if (remaining == 0) {
+                    // --- leading byte ---
+                    if (c <= 0x7F) {
+                        // single-byte ASCII
+                        i++;
+                        continue;
+                    } else if (c >= 0xC2 && c <= 0xDF) {
+                        // 2-byte sequence
+                        remaining = 1;
+                        lead = c;
+                    } else if (c >= 0xE0 && c <= 0xEF) {
+                        // 3-byte sequence
+                        remaining = 2;
+                        lead = c;
+                    } else if (c >= 0xF0 && c <= 0xF4) {
+                        // 4-byte sequence
+                        remaining = 3;
+                        lead = c;
+                    } else {
+                        return false; // invalid leading byte
+                    }
+                } else {
+                    // --- continuation byte ---
+                    if ((c & 0xC0) != 0x80) return false;
+                    // special restrictions for the first continuation
+                    if (remaining == ((lead >= 0xE0 && lead <= 0xEF) ? 2 :
+                                      (lead >= 0xF0 && lead <= 0xF4) ? 3 : 1)) {
+                        if (lead == 0xE0 && (c < 0xA0 || c > 0xBF)) return false;
+                        if (lead == 0xED && (c < 0x80 || c > 0x9F)) return false;
+                        if (lead == 0xF0 && (c < 0x90 || c > 0xBF)) return false;
+                        if (lead == 0xF4 && (c < 0x80 || c > 0x8F)) return false;
+                    }
+                    remaining--;
+                }
+                i++;
+            }
+            return remaining == 0;
+        }
+
+        /**
+         * @brief Check if the string is a valid hexadecimal sequence.
+         * @details Length must be even, and all characters must be hex digits.
+         * @return true if valid hex string, false otherwise.
+         */
+        [[nodiscard]] constexpr bool is_hex() const noexcept {
+            if (size() % 2 != 0)
+                return false;
+
+            if (std::is_constant_evaluated()) {
+                for (std::uint64_t i = 0; i < size(); ++i)
+                    if (!jh::meta::is_hex_char(data[i]))
+                        return false;
+                return true;
+            } else {
+                return std::all_of(
+                        begin(),
+                        end(),
+                        [](char c) {
+                            return jh::meta::is_hex_char(c);
+                        }
+                );
+            }
+        }
+
+        /**
+         * @brief Check if the string is valid Base64.
+         * @details Length must be a multiple of 4, padding ('=') allowed at the end.
+         * @return true if valid Base64, false otherwise.
+         */
+        [[nodiscard]] constexpr bool is_base64() const noexcept {
+            return jh::detail::base64_common::is_base64(data, size());
+        }
+
+        /**
+         * @brief Check if the string is valid Base64URL.
+         * @details '=' padding is optional. If present, length must be a multiple of 4.
+         * @return true if valid Base64URL, false otherwise.
+         */
+        [[nodiscard]] constexpr bool is_base64url() const noexcept {
+            return jh::detail::base64_common::is_base64url(data, size());
+        }
+
+        /**
          * @brief Copy the view into a C-style null-terminated buffer.
          *
          * @warning This is not POD-safe. Intended for debugging or interop only.
@@ -309,6 +632,71 @@ namespace jh::pod {
             const std::uint64_t n = len < max_len - 1 ? len : max_len - 1;
             std::memcpy(buffer, data, n);
             buffer[n] = '\0';
+        }
+
+        /**
+         * @brief Returns the semantic length of the UTF-8 string.
+         *
+         * Counts the number of Unicode code points represented in this view,
+         * rather than the number of raw bytes. This function assumes that the
+         * underlying data is valid UTF-8.
+         *
+         * <h4>Definition:</h4>
+         * <ul>
+         *   <li>A new code point is identified by a byte that is <b>not</b>
+         *       a UTF-8 continuation byte (<code>10xxxxxx</code>).</li>
+         *   <li>Continuation bytes are excluded from the count.</li>
+         * </ul>
+         *
+         * <h4>Evaluation Model:</h4>
+         * <ul>
+         *   <li>In constant-evaluated contexts, a fully <code>constexpr</code>
+         *       UTF-8 scan is performed.</li>
+         *   <li>At runtime, the implementation may delegate to optimized
+         *       standard library algorithms.</li>
+         * </ul>
+         *
+         * <h4>Important Notes:</h4>
+         * <ul>
+         *   <li>This function counts <b>Unicode code points</b>, not grapheme clusters.</li>
+         *   <li>Multi-code-point sequences (e.g. emoji ZWJ sequences or
+         *       combining characters) are counted individually.</li>
+         *   <li>No UTF-8 validation is performed.</li>
+         * </ul>
+         *
+         * @return Number of Unicode code points in the view,
+         *         or <code>0</code> if the view is empty.
+         *
+         * @note The computation of grapheme clusters will never be provided,
+         *       as it is evident that in software development, this is a front-end requirement
+         *       rather than a back-end one, and the systems upon which grapheme clusters depend
+         *       are excessively cumbersome.
+         */
+        [[nodiscard]] constexpr std::uint64_t semantic_len() const noexcept {
+            if (!data || len == 0)
+                return 0;
+
+            if (std::is_constant_evaluated()) {
+                // constexpr path: count non-continuation bytes
+                std::uint64_t count = 0;
+                for (std::uint64_t i = 0; i < len; ++i) {
+                    const auto c = static_cast<unsigned char>(data[i]);
+                    if ((c & 0b11000000) != 0b10000000)
+                        ++count;
+                }
+                return count;
+            } else {
+                // runtime path: use std::count_if for efficiency
+                return static_cast<std::uint64_t>(
+                        std::count_if(
+                                data,
+                                data + len,
+                                [](unsigned char c) {
+                                    return (c & 0b11000000) != 0b10000000;
+                                }
+                        )
+                );
+            }
         }
 
         /**
@@ -398,6 +786,19 @@ namespace jh::pod {
 
 static_assert(jh::pod::pod_like<jh::pod::string_view>);
 
+/**
+ * @brief Official literal helpers for <code>jh::pod</code> types.
+ *
+ * This namespace contains the officially provided literal utilities
+ * associated with <code>jh::pod</code>, offering concise and POD-safe
+ * construction of view types such as <code>jh::pod::string_view</code>.
+ * <br>
+ * These literals are part of the public interface and are intended to be
+ * used via:
+ * @code
+ * using namespace jh::pod::literals;
+ * @endcode
+ */
 namespace jh::pod::literals {
 
     /**

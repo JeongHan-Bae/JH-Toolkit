@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file transform.h (ranges/views)
+ * @file transform.h
  * @brief Unified transform adaptor that dispatches between <code>std::views::transform</code>
  *        and <code>jh::ranges::views::vis_transform</code>.
  * @author
@@ -51,14 +52,12 @@
  * </ul>
  *
  * @note
- * <p>
  * Dispatch occurs <em>inside</em> the call operator, because determining
  * whether <code>vis_transform</code> semantics apply requires both
  * the range and the callable type.
  * This ensures that only non-consuming, pure-observation combinations
  * are elevated to <code>vis_transform</code>, while all others fall back
  * to the standard <code>std::views::transform</code>.
- * </p>
  *
  * @see jh::concepts::vis_function_for
  * @see jh::ranges::views::vis_transform
@@ -177,12 +176,10 @@ namespace jh::ranges::views {
      * </ul>
      *
      * @note
-     * <p>
      * The dispatch is performed per combination of range and callable.
      * Non-consuming ranges with purely observational projections automatically
      * gain <code>vis_transform</code> semantics and remain reentrant.
      * All others use <code>std::views::transform</code> to preserve correct consumption semantics.
-     * </p>
      */
     inline constexpr detail::transform_fn transform{};
 

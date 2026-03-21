@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file ipc_limits.h (synchronous/ipc)
+ * @file ipc_limits.h
  * @brief Compile-time validation utilities for IPC object naming and POSIX-style path safety.
  *
  * <h3>Overview</h3>
@@ -69,14 +70,32 @@
 #include "jh/macros/platform.h"
 #include <cstdint>
 
-#ifndef JH_ALLOW_PARENT_PATH
-#define JH_ALLOW_PARENT_PATH 0
+/**
+ * @brief Controls whether leading "../" segments are allowed in
+ * compile-time validated POSIX-style relative IPC paths.
+ */
+#ifndef JH_INTERPROCESS_ALLOW_PARENT_PATH
+#define JH_INTERPROCESS_ALLOW_PARENT_PATH 0
 #endif
 
+/**
+ * @brief Forces IPC object names to use the strict BSD length limit
+ * (30 characters) regardless of detected platform.
+ */
 #ifndef JH_FORCE_SHORT_SEM_NAME
 #define JH_FORCE_SHORT_SEM_NAME 0
 #endif
 
+/**
+ * @brief Compile-time constraint and validation utilities for
+ * <code>jh::sync::ipc</code>.
+ *
+ * This namespace provides <code>consteval</code>-based helpers used to
+ * validate IPC object names and POSIX-style relative paths at compile time.
+ * It is an internal support layer and not intended for direct runtime use.
+ *
+ * @see jh::sync::ipc
+ */
 namespace jh::sync::ipc::limits {
 
     // BSD-derived systems have strict 31-byte limit (including '/')
@@ -95,13 +114,7 @@ namespace jh::sync::ipc::limits {
                    (c >= '0' && c <= '9') ||
                    c == '_' || c == '-' || c == '.';
         }
-        /// Check if a character is valid in a POSIX relative path.
-        consteval bool is_path_char(char c) noexcept {
-            return (c >= 'A' && c <= 'Z') ||
-                   (c >= 'a' && c <= 'z') ||
-                   (c >= '0' && c <= '9') ||
-                   c == '_' || c == '-' || c == '.' || c == '/';
-        }
+
     } // namespace detail
 
     /**
@@ -142,8 +155,8 @@ namespace jh::sync::ipc::limits {
      *   <li>No <code>"./"</code> segments.</li>
      *   <li><code>".."</code> segments:
      *     <ul>
-     *       <li>When <code>JH_ALLOW_PARENT_PATH == 0</code> &rarr; forbidden.</li>
-     *       <li>When <code>JH_ALLOW_PARENT_PATH == 1</code> &rarr; leading <code>"../"</code>
+     *       <li>When <code>JH_INTERPROCESS_ALLOW_PARENT_PATH == 0</code> &rarr; forbidden.</li>
+     *       <li>When <code>JH_INTERPROCESS_ALLOW_PARENT_PATH == 1</code> &rarr; leading <code>"../"</code>
      *       allowed but cannot occupy entire path, and no <code>".."</code> after content begins.</li>
      *     </ul>
      *   </li>
@@ -151,15 +164,18 @@ namespace jh::sync::ipc::limits {
      * </ul>
      */
     template<jh::meta::TStr S>
-    consteval bool valid_relative_path() {
+    consteval bool valid_relative_path() noexcept {
+#if JH_GCC_LE_13
+        // GCC13 is so flawed that it fails to properly
+        // derive certain constexpr functions related to the NTTP template.
+        // Occasionally, "this" fails to resolve, forcing us to implement workarounds.
         if (S.size() < 1) return false;
         if (S.size() > 128) return false;
         if (S.val()[0] == '/') return false;   // absolute path forbidden
 
         std::uint64_t i = 0;
 
-#if JH_ALLOW_PARENT_PATH
-        // Allow leading "../" segments
+#if JH_INTERPROCESS_ALLOW_PARENT_PATH     // Allow leading "../" segments
         while (i + 2 < S.size() &&
                S.val()[i] == '.' &&
                S.val()[i + 1] == '.' &&
@@ -168,10 +184,10 @@ namespace jh::sync::ipc::limits {
             i += 3;
         }
         if (i == S.size()) return false; // path cannot be only ../
-#endif
+#endif // JH_INTERPROCESS_ALLOW_PARENT_PATH
 
         for (; i < S.size(); ++i) {
-            if (!detail::is_path_char(S.val()[i]))
+            if (!jh::meta::detail::is_path_char(S.val()[i]))
                 return false;
 
             // reject ".." appearing mid-path
@@ -180,6 +196,13 @@ namespace jh::sync::ipc::limits {
         }
 
         return true;
+#else // JH_GCC_LE_13 == 0, normal implementation works
+#if JH_INTERPROCESS_ALLOW_PARENT_PATH
+        return S.template is_valid_relative_path<true>();
+#else // JH_INTERPROCESS_ALLOW_PARENT_PATH == 0
+        return S.template is_valid_relative_path<false>();
+#endif // JH_INTERPROCESS_ALLOW_PARENT_PATH
+#endif // JH_GCC_LE_13
     }
 
 } // namespace jh::sync::ipc::limits

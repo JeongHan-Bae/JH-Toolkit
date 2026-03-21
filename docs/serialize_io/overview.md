@@ -35,6 +35,7 @@ It does **not** provide object serialization frameworks or schema-based formats.
 | Submodule               | Header                        |  Status  | Description                                                                                                                                                                 |
 |-------------------------|-------------------------------|:--------:|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`base64`](base64.md)   | `<jh/serialize_io/base64.h>`  | ✅ Stable | Binary-to-text encoding using Base64 / Base64URL (RFC 4648). Output is ASCII-safe and **universally decodable** by any compliant Base64 implementation.                     |
+| [`uri`](uri.md)         | `<jh/serialize_io/uri.h>`     | ✅ Stable | URI percent-encoding and decoding utilities (RFC 3986). Provides **basic APIs** and **UTF-8 validated APIs** for safely encoding textual data within URI components.        |
 | [`huffman`](huffman.md) | `<jh/serialize_io/huffman.h>` | ✅ Stable | Binary compression codec implementing standard and canonical Huffman algorithms. Streams are **signature-bound** and must be decoded using the same `Signature` definition. |
 
 ---
@@ -49,6 +50,13 @@ The codecs in `jh::serio` differ intentionally in **who can recover the data**.
 * Can be decoded by **any Base64 / Base64URL implementation**
 * No library- or project-specific metadata is required
 * Designed for interoperability and transport
+
+### `uri`
+
+* Output is standard URI percent-encoded text
+* Can be decoded by **any RFC 3986-compliant percent-decoder**
+* No library-specific metadata is required
+* Designed for URI/URL text escaping and transport safety
 
 ### `huffman`
 
@@ -76,6 +84,7 @@ A mismatched or missing signature causes decompression to fail explicitly.
 |------------------------|:----------------------------------------------------------------------------------------------------------------------------:|
 | 🏠 **Back to README**  |         [![Back to README](https://img.shields.io/badge/Back%20to%20README-blue?style=flat-square)](../../README.md)         |
 | 📗 **Go to `base64`**  |  [![Go to Base64 Reference](https://img.shields.io/badge/Go%20to%20Base64%20Reference-green?style=flat-square)](base64.md)   |
+| 📙 **Go to `uri`**     |       [![Go to URI Reference](https://img.shields.io/badge/Go%20to%20URI%20Reference-green?style=flat-square)](uri.md)       |
 | 📘 **Go to `huffman`** | [![Go to Huffman Reference](https://img.shields.io/badge/Go%20to%20Huffman%20Reference-green?style=flat-square)](huffman.md) |
 
 ---

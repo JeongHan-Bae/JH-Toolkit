@@ -86,6 +86,135 @@ Manual duplication of version numbers is prohibited.
 
 ---
 
+Below is a **simple English section** you can paste directly into the document.
+
+---
+
+## 🔗 GitHub Actions and CI Integration
+
+JH Toolkit uses **GitHub Actions** as its CI and automation system.
+All workflows and helper scripts are located in:
+
+```
+.github/workflows/
+```
+
+### 📁 Directory Layout
+
+The project uses a **flat structure**.
+
+Rules:
+
+* No subdirectories
+* All `.yml` and `.py` files are placed directly in this directory
+
+---
+
+### 📄 File Naming Rules
+
+* **Workflow YAML files**
+
+    * Use **kebab-case**
+    * Example:
+
+      ```
+      ci.yml
+      docs-check.yml
+      update-dependencies.yml
+      ```
+
+* **Python helper scripts**
+
+    * Use **snake_case**
+    * Example:
+
+      ```
+      docs_hygiene_check.py
+      generate_dependencies.py
+      ```
+
+---
+
+### 🏷️ Workflow `name` Rules
+
+Each workflow must define a `name` with the following rules:
+
+* **Title Case**
+* Words separated by **spaces**
+* **Hyphenated words are kept**
+* Each part of a hyphenated word is capitalized
+
+Examples:
+
+```yaml
+name: "Cross-Platform CI"
+name: "Documentation Integrity Check"
+name: "Release Conan Packages"
+```
+
+`cross-platform` is treated as a single hyphenated word, so both parts are capitalized.
+
+---
+
+### 🐍 Using Python Scripts in Workflows
+
+Python scripts in `.github/workflows/` are executed directly.
+
+Required syntax:
+
+```yaml
+- name: Some Name
+  run: python .github/workflows/script_name.py
+```
+
+Rules:
+
+* Always use `python`, not `python3`
+* Scripts must be referenced with the full path
+* No inline downloads or generated scripts
+
+---
+
+### 🧪 Python Setup Requirement
+
+Python must be installed using **GitHub’s official action**:
+
+* `actions/setup-python@v4`
+* or `actions/setup-python@v5`
+
+Direct downloads or custom installers are **not allowed**.
+
+---
+
+### ⚠️ Cross-Platform CI (ci.yml)
+
+`ci.yml` runs the **Cross-Platform CI** workflow.
+
+Known limitation:
+
+* The **Windows runner (MinGW GCC)** is unstable
+* Even without stress tests or Debug builds, it may **freeze occasionally**
+
+Reason:
+
+* Insufficient runner resources
+* Interaction with UCRT runtime behavior
+
+Current policy:
+
+* This is **accepted**
+* If the Windows job freezes, use **“Re-run jobs”** in GitHub Actions
+* The second run usually succeeds
+
+There is currently no better solution without increasing complexity.
+
+---
+
+All new or modified workflows **must follow these rules**.
+
+
+---
+
 ## ⚙️ Platform and Toolchain Requirements (1.4.0+)
 
 All new contributions **must satisfy the following guarantees**:
@@ -252,9 +381,9 @@ When a **large-scale refactor** occurs within a version series
 
     * `1.3.0`
     * `1.3.1`
-    * `1.3.2`  
-  
-    **must continue to compile and function correctly on `1.3.3`**
+    * `1.3.2`
+
+  **must continue to compile and function correctly on `1.3.3`**
 
 This guarantee applies even if:
 
@@ -387,11 +516,65 @@ continuity**.
 ### Commit message format
 
 Please commit *ONLY in English* using the following format:
+
 ```
 <behavior>(<domain>): <short description>
 
-<detailed explanation: optional, multi-line, no-markdown-formatting, only `*` for bullet points>
+<detailed explanation: optional, multi-line, no-markdown-formatting, optional `*` for bullet points>
 ```
+
+Example:
+
+```
+refactor(module1_name, module2_name, tests): do something and something else
+
+This commit refactors module1 and module2 to improve performance and maintainability.
+
+Module1:
+* do something
+* do something else
+
+Module2:
+* do something
+* do something else
+
+Tests:
+* update some tests to reflect some semantic changes
+```
+
+```
+docs(module_name): update documentation for some behavior
+This commit updates the documentation for module_name to clarify the expected behavior of some function.
+
+module_name::submodule_name:
+* some_function: documented to reflect some behavior
+* some_sub_class: documented to reflect some behavior
+
+another_module_name:
+* some_function: documented to reflect some behavior
+```
+
+Anti-patterns:
+
+```
+fix: fix some bug in some module
+```
+> Explain: should use `fix(module_name):` instead of a generic `fix:`.
+
+```
+* Module2:
+  * do something
+```
+> Explain: no `*` for paragraphs, only for bullet points.
+> no nested bullet points.
+
+```
+**Module2**:
+ - do something
+```
+> Explain: use `*` for bullet points, not `-`.
+> Markdown formatting is not allowed in the commit message body.
+> Markdown `**` is not allowed in the commit message body.
 
 ### Pull Request format
 

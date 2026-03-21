@@ -1,13 +1,17 @@
 # Ignore auxiliary directories from GitHub Linguist stats
 .github/** linguist-vendored
 tools/** linguist-vendored
+docs/** linguist-vendored
 
 # Explicitly ignore experimental/ which is not ignored by default
-experimental/* linguist-vendored
 experimental/** linguist-vendored
 
 # Force all headers in include/jh/ to be treated as C++
 include/jh/**/*.h linguist-language=C++
+
+# Force all aggregation headers in include/jh/ to be treated as C++
+include/jh/* linguist-language=C++
+include/jh/*.* -linguist-language
 
 # Explicitly force all examples and tests too
 examples/**/*.h linguist-language=C++

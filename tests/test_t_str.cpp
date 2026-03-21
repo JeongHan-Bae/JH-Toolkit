@@ -6,7 +6,8 @@ using namespace jh::meta;
 
 namespace test {
     template<TStr S>
-    struct tag {};
+    struct tag {
+    };
 }
 
 /**
@@ -141,7 +142,7 @@ TEST_CASE("t_str hex/base64/base64url checks") {
 TEST_CASE("t_str NTTP type identity") {
     using Foo1 = test::tag<"foo">;
     using Foo2 = test::tag<"foo">;
-    using Bar  = test::tag<"bar">;
+    using Bar = test::tag<"bar">;
 
     STATIC_REQUIRE(std::is_same_v<Foo1, Foo2>);
     STATIC_REQUIRE_FALSE(std::is_same_v<Foo1, Bar>);
@@ -258,5 +259,211 @@ TEST_CASE("t_str to_bytes/from_bytes conversion") {
         auto modified = t_str<6>::from_bytes(bytes);
         REQUIRE(modified.view() == "Abcde");
         REQUIRE(modified != s);
+    }
+}
+/**
+ * @test Substring operations: sub / sub_view / sub_pod_view.
+ *
+ * <ul>
+ *   <li>Compile-time substring extraction using <code>sub</code>.</li>
+ *   <li>Default Count (-1) meaning "to end".</li>
+ *   <li>Verify <code>sub_view()</code> and <code>sub_pod_view().to_std()</code> equivalence.</li>
+ *   <li>Ensure <code>sub()</code> is usable in NTTP contexts.</li>
+ * </ul>
+ */
+TEST_CASE("t_str substring operations") {
+
+    constexpr t_str s("hello_world");
+
+    /**
+     * Compile-time substring checks using sub()
+     */
+    {
+        constexpr auto sub = s.sub<0, 5>();
+        STATIC_REQUIRE(sub == "hello");
+        STATIC_REQUIRE(sub.size() == 5);
+    }
+
+    {
+        constexpr auto sub = s.sub<6, 5>();
+        STATIC_REQUIRE(sub == "world");
+        STATIC_REQUIRE(sub.size() == 5);
+    }
+
+    /**
+     * Default Count = -1 (substring until end)
+     */
+    {
+        constexpr auto sub = s.sub<6>();
+        STATIC_REQUIRE(sub == "world");
+    }
+
+    {
+        constexpr auto sub = s.sub<0>();
+        STATIC_REQUIRE(sub == "hello_world");
+    }
+
+    /**
+     * Runtime view validation
+     */
+    {
+        auto v = s.sub_view<0, 5>();
+        REQUIRE(v == "hello");
+    }
+
+    {
+        auto v = s.sub_view<6>();
+        REQUIRE(v == "world");
+    }
+
+    /**
+     * sub_view vs sub_pod_view equivalence
+     */
+    {
+        auto v1 = s.sub_view<0, 5>();
+        auto v2 = s.sub_pod_view<0, 5>().to_std();
+
+        REQUIRE(v1 == v2);
+        REQUIRE(v1 == "hello");
+    }
+
+    {
+        auto v1 = s.sub_view<6>();
+        auto v2 = s.sub_pod_view<6>().to_std();
+
+        REQUIRE(v1 == v2);
+        REQUIRE(v1 == "world");
+    }
+
+    /**
+     * NTTP usage of sub()
+     */
+    {
+        using HelloTag = test::tag<s.sub<0, 5>()>;
+        using HelloTag2 = test::tag<"hello">;
+
+        STATIC_REQUIRE(std::is_same_v<HelloTag, HelloTag2>);
+    }
+
+    /**
+     * Runtime substring check
+     */
+    {
+        t_str runtime("run_time");
+
+        auto sub = runtime.sub<4, 4>();
+        REQUIRE(sub.view() == "time");
+
+        auto v1 = runtime.sub_view<4, 4>();
+        auto v2 = runtime.sub_pod_view<4, 4>().to_std();
+
+        REQUIRE(v1 == "time");
+        REQUIRE(v1 == v2);
+    }
+}
+
+/**
+ * @test Boundary conditions for substring extraction.
+ *
+ * <ul>
+ *   <li>Zero-length substring.</li>
+ *   <li>Substring at last character.</li>
+ *   <li>Full-string extraction.</li>
+ * </ul>
+ */
+TEST_CASE("t_str substring boundary cases") {
+
+    constexpr t_str s("hello_world");
+
+    /**
+     * sub<0,0>() → empty string
+     */
+    {
+        constexpr auto sub = s.sub<0, 0>();
+        STATIC_REQUIRE(sub.size() == 0);
+        STATIC_REQUIRE(sub == "");
+    }
+
+    /**
+     * sub<N-1,0>() → empty at end
+     */
+    {
+        constexpr auto sub = s.sub<11, 0>();
+        STATIC_REQUIRE(sub.size() == 0);
+        STATIC_REQUIRE(sub == "");
+    }
+
+    /**
+     * last character
+     */
+    {
+        constexpr auto sub = s.sub<10, 1>();
+        STATIC_REQUIRE(sub == "d");
+    }
+
+    /**
+     * full string extraction
+     */
+    {
+        constexpr auto sub = s.sub<0, 11>();
+        STATIC_REQUIRE(sub == "hello_world");
+    }
+
+    /**
+     * view consistency
+     */
+    {
+        auto v1 = s.sub_view<0, 11>();
+        constexpr auto substring = s.sub<0, 11>();
+        auto v2 = substring.view();
+
+        REQUIRE(v1 == v2);
+    }
+}
+
+/**
+ * @test Verify that Count=-1 and default Count behave identically.
+ */
+TEST_CASE("t_str substring default count equals -1") {
+
+    constexpr t_str s("hello_world");
+
+    {
+        constexpr auto a = s.sub<0>();
+        constexpr auto b = s.sub<0, static_cast<std::uint16_t>(-1)>();
+
+        STATIC_REQUIRE(a == b);
+        STATIC_REQUIRE(a == "hello_world");
+    }
+
+    {
+        constexpr auto a = s.sub<6>();
+        constexpr auto b = s.sub<6, static_cast<std::uint16_t>(-1)>();
+
+        STATIC_REQUIRE(a == b);
+        STATIC_REQUIRE(a == "world");
+    }
+
+    /**
+     * runtime view check
+     */
+    {
+        auto v1 = s.sub_view<6>();
+        auto v2 = s.sub_view<6, static_cast<std::uint16_t>(-1)>();
+
+        REQUIRE(v1 == v2);
+        REQUIRE(v1 == "world");
+    }
+
+    /**
+     * pod_view equivalence
+     */
+    {
+        using namespace jh::pod::literals;
+        auto p1 = s.sub_pod_view<6>();
+        auto p2 = s.sub_pod_view<6, static_cast<std::uint16_t>(-1)>();
+
+        REQUIRE(p1 == p2);
+        REQUIRE(p1 == "world"_psv);
     }
 }

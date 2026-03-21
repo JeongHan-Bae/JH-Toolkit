@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file shared_process_mutex.h (synchronous/ipc)
+ * @file shared_process_mutex.h
  * @brief Cross-process shared (read/write) timed mutex built from process primitives.
  *
  * <h3>Overview</h3>
@@ -144,8 +145,8 @@
 
 namespace jh::sync::ipc {
 
-    template <jh::meta::TStr S, bool HighPriv = false>
-    requires (limits::valid_object_name<S, limits::max_name_length - 8>())
+    template<jh::meta::TStr S, bool HighPriv = false> requires (limits::valid_object_name<S,
+            limits::max_name_length - 8>())
     class shared_process_mutex;
 
     /**
@@ -215,35 +216,31 @@ namespace jh::sync::ipc {
      *   <li>Unlink removes all associated IPC objects: <code>.exc</code>, <code>.cond</code>, <code>.cnt</code>, and <code>.pri</code>.</li>
      * </ul>
      */
-    template <jh::meta::TStr S, bool HighPriv>
-    requires (limits::valid_object_name<S, limits::max_name_length - 8>())
+    template<jh::meta::TStr S, bool HighPriv> requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     class shared_process_mutex final {
     private:
-        using exc_t  = process_mutex<S + jh::meta::TStr{".exc"}, HighPriv>;
+        using exc_t = process_mutex<S + jh::meta::TStr{".exc"}, HighPriv>;
         using cond_t = process_cond_var<S + jh::meta::TStr{".cond"}, HighPriv>;
-        using cnt_t  = process_counter<S + jh::meta::TStr{".cnt"}, HighPriv>;
+        using cnt_t = process_counter<S + jh::meta::TStr{".cnt"}, HighPriv>;
         using pri_t = process_mutex<S + jh::meta::TStr{".pri"}, HighPriv>;
         thread_local static bool has_shared_lock_;
         thread_local static bool has_exclusive_lock_;
         thread_local static bool has_prior_lock_;
 
-        exc_t&  excl_;    ///< exclusive writer lock
-        cond_t& cond_;    ///< condition variable
-        cnt_t&  readers_; ///< reader counter
-        pri_t&  prior_;   ///< priority mutex to preempt writers during upgrade
+        exc_t &excl_;    ///< exclusive writer lock
+        cond_t &cond_;    ///< condition variable
+        cnt_t &readers_; ///< reader counter
+        pri_t &prior_;   ///< priority mutex to preempt writers during upgrade
 
     private:
         shared_process_mutex()
-                : excl_(exc_t::instance())
-                , cond_(cond_t::instance())
-                , readers_(cnt_t::instance())
-                , prior_(pri_t::instance())
-        {}
+                : excl_(exc_t::instance()), cond_(cond_t::instance()), readers_(cnt_t::instance()),
+                  prior_(pri_t::instance()) {}
 
         [[nodiscard]] inline bool is_writer() const noexcept {
             return has_exclusive_lock_ || has_prior_lock_;
         }
-        
+
     public:
 
         /**
@@ -253,14 +250,15 @@ namespace jh::sync::ipc {
 
         ~shared_process_mutex() = default;
 
-        shared_process_mutex(const shared_process_mutex&) = delete;
-        shared_process_mutex& operator=(const shared_process_mutex&) = delete;
+        shared_process_mutex(const shared_process_mutex &) = delete;
+
+        shared_process_mutex &operator=(const shared_process_mutex &) = delete;
 
         /**
          * @brief Access the process-wide singleton instance of this mutex.
          * @return A reference to the global synchronization object.
          */
-        static shared_process_mutex& instance() {
+        static shared_process_mutex &instance() {
             static shared_process_mutex inst;
             return inst;
         }
@@ -314,16 +312,16 @@ namespace jh::sync::ipc {
         /**
          * @brief Attempt to acquire exclusive access for a limited duration.
          */
-        template <typename Rep, typename Period>
-        bool try_lock_for(const std::chrono::duration<Rep, Period>& d) {
+        template<typename Rep, typename Period>
+        bool try_lock_for(const std::chrono::duration<Rep, Period> &d) {
             return try_lock_until(std::chrono::steady_clock::now() + d);
         }
 
         /**
          * @brief Attempt to acquire exclusive access until a specific time point.
          */
-        template <typename Clock, typename Duration>
-        bool try_lock_until(const std::chrono::time_point<Clock, Duration>& tp) {
+        template<typename Clock, typename Duration>
+        bool try_lock_until(const std::chrono::time_point<Clock, Duration> &tp) {
             if (is_writer())
                 return true; // already have exclusive lock
             if (!excl_.try_lock_until(tp))
@@ -398,16 +396,16 @@ namespace jh::sync::ipc {
         /**
          * @brief Attempt to acquire shared access for a limited duration.
          */
-        template <typename Rep, typename Period>
-        bool try_lock_shared_for(const std::chrono::duration<Rep, Period>& d) {
+        template<typename Rep, typename Period>
+        bool try_lock_shared_for(const std::chrono::duration<Rep, Period> &d) {
             return try_lock_shared_until(std::chrono::steady_clock::now() + d);
         }
 
         /**
          * @brief Attempt to acquire shared access until a time point.
          */
-        template <typename Clock, typename Duration>
-        bool try_lock_shared_until(const std::chrono::time_point<Clock, Duration>& tp) {
+        template<typename Clock, typename Duration>
+        bool try_lock_shared_until(const std::chrono::time_point<Clock, Duration> &tp) {
             if (has_shared_lock_) return true;
             if (!excl_.try_lock_until(tp))
                 return false;
@@ -448,7 +446,7 @@ namespace jh::sync::ipc {
          * This operation preserves global upgrade atomicity and ensures consistency across processes.
          * </p>
          */
-        void upgrade_lock() requires (HighPriv) {
+        void upgrade_lock() requires(HighPriv) {
             if (!has_shared_lock_)
                 throw std::logic_error("Cannot upgrade without shared lock");
             if (is_writer())
@@ -459,7 +457,7 @@ namespace jh::sync::ipc {
 
             if (!got_excl) {
                 if (!prior_.try_lock()) {
-                    std::cerr << "[FATAL] concurrent upgrade detected in shared_process_mutex<" << S.val() << ">\n";
+                    std::cerr << "[FATAL] concurrent upgrade detected in shared_process_mutex<" + S.str() + ">\n";
                     try { unlink(); } catch (...) {}
                     std::terminate();
                 }
@@ -500,7 +498,7 @@ namespace jh::sync::ipc {
          * </ul>
          * </p>
          */
-        static void unlink() requires (HighPriv) {
+        static void unlink() requires(HighPriv) {
             exc_t::unlink();
             cond_t::unlink();
             cnt_t::unlink();
@@ -512,16 +510,13 @@ namespace jh::sync::ipc {
         static void unlink() requires (!HighPriv) = delete;
     };
 
-    template <jh::meta::TStr S, bool HighPriv>
-    requires (limits::valid_object_name<S, limits::max_name_length - 8>())
+    template<jh::meta::TStr S, bool HighPriv> requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     thread_local bool shared_process_mutex<S, HighPriv>::has_shared_lock_ = false;
 
-    template <jh::meta::TStr S, bool HighPriv>
-    requires (limits::valid_object_name<S, limits::max_name_length - 8>())
+    template<jh::meta::TStr S, bool HighPriv> requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     thread_local bool shared_process_mutex<S, HighPriv>::has_exclusive_lock_ = false;
 
-    template <jh::meta::TStr S, bool HighPriv>
-    requires (limits::valid_object_name<S, limits::max_name_length - 8>())
+    template<jh::meta::TStr S, bool HighPriv> requires (limits::valid_object_name<S, limits::max_name_length - 8>())
     thread_local bool shared_process_mutex<S, HighPriv>::has_prior_lock_ = false;
 
 } // namespace jh::sync::ipc

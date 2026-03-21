@@ -1,0 +1,60 @@
+name: Generate and Deploy Doxygen
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  doxygen:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Generate Doxyfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python .github/workflows/generate_doxyfile.py
+
+      - name: Set up Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@main
+
+      - name: Install Doxygen (brew)
+        run: |
+          brew update
+          brew install doxygen graphviz
+          doxygen --version
+
+      - name: Unescape HTML entities for Doxygen
+        run: python .github/workflows/unescape.py
+
+      - name: Run Doxygen
+        run: doxygen Doxyfile.tmp
+
+      - name: Deploy to doxy_pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: doxy_pages
+          publish_dir: ./doxy/html
+          force_orphan: true
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: "docs: update doxygen for ${{ env.PROJECT_VERSION }}"

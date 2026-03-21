@@ -34,11 +34,12 @@ larger systems without hidden coordination logic.
 
 ## 🔹 Core Components (Stable)
 
-| Component           | Header                                |  Status  | Description                                                                                                                                                     |
-|---------------------|---------------------------------------|:--------:|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `const_lock<Mutex>` | `<jh/synchronous/const_lock.h>`       | ✅ Stable | RAII-based **const-oriented lock guard** enforcing immutability barriers for mutex-like synchronization objects.                                                |
-| `control_buf<T>`    | `<jh/synchronous/control_buf.h>`      | ✅ Stable | **Block-allocated control container** for non-copyable, non-movable synchronization primitives with strict address stability guarantees.                        |
-| `ipc` (submodule)   | `<jh/synchronous/ipc.h>` / `<jh/ipc>` | ✅ Stable | **Inter-process synchronization primitives** built on OS semaphores and shared memory (mutexes, condition variables, counters, POD storage, process launchers). |
+| Component           | Header                                |  Status  | Description                                                                                                                                                                                                             |
+|---------------------|---------------------------------------|:--------:|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `const_lock<Mutex>` | `<jh/synchronous/const_lock.h>`       | ✅ Stable | RAII-based **const-oriented lock guard** enforcing immutability barriers for mutex-like synchronization objects.                                                                                                        |
+| `control_buf<T>`    | `<jh/synchronous/control_buf.h>`      | ✅ Stable | **Block-allocated control container** for non-copyable, non-movable synchronization primitives with strict address stability guarantees.                                                                                |
+| `strong_lock`       | `<jh/synchronous/strong_lock.h>`      | ✅ Stable | **Ordering-strengthened RAII lock adapters** (`strong_unique_lock`, `strong_shared_lock`) that insert `seq_cst` fences at lock boundaries to reduce cross-domain ordering anomalies when mixing locks and atomic types. |
+| `ipc` (submodule)   | `<jh/synchronous/ipc.h>` / `<jh/ipc>` | ✅ Stable | **Inter-process synchronization primitives** built on OS semaphores and shared memory (mutexes, condition variables, counters, POD storage, process launchers).                                                         |
 
 ---
 
@@ -48,16 +49,8 @@ larger systems without hidden coordination logic.
 
 * **const-correct synchronization semantics** (`const_lock`)
 * **stable-address control-object storage** (`control_buf`)
+* **ordering-strengthened lock adapters** (`strong_lock`)
 * **process-level coordination via shared memory** (`ipc`)
-
-All components are:
-
-* allocator-aware where applicable
-* free of hidden global state
-* explicit about ownership and lifetime
-* usable independently
-
-There is no implicit coupling between components.
 
 ---
 

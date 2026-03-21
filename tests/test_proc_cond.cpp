@@ -1,6 +1,6 @@
 #include <catch2/catch_all.hpp>
 
-#define JH_ALLOW_PARENT_PATH 1
+#define JH_INTERPROCESS_ALLOW_PARENT_PATH 1
 
 #include "jh/synchronous/ipc/process_cond_var.h"
 #include "jh/synchronous/ipc/process_launcher.h"

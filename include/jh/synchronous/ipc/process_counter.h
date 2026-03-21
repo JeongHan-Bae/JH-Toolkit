@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file process_counter.h (synchronous/ipc)
+ * @file process_counter.h
  * @brief Cross-process shared integer counter implemented via named shared memory.
  *
  * <h3>Overview</h3>
@@ -24,7 +25,7 @@
  * <code>jh::sync::ipc::process_counter</code> provides a process-visible 64-bit integer
  * stored in OS-level shared memory and synchronized by a per-instance
  * <code>process_mutex&lt;S + ".loc"&gt;</code>.
- * It behaves as a globally accessible atomic counter with read–modify–write semantics
+ * It behaves as a globally accessible atomic counter with read-modify-write semantics
  * enforced through inter-process locking.
  * </p>
  *
@@ -95,10 +96,12 @@
 #if IS_WINDOWS
 #include <windows.h>
 #else
+
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+
 #endif
 
 namespace jh::sync::ipc {
@@ -114,7 +117,7 @@ namespace jh::sync::ipc {
      * <ul>
      *   <li>Safe across processes and threads.</li>
      *   <li>Consistent behavior between POSIX (<code>shm_open</code>) and Windows (<code>CreateFileMapping</code>).</li>
-     *   <li>Lock-protected read–modify–write semantics.</li>
+     *   <li>Lock-protected read-modify-write semantics.</li>
      * </ul>
      *
      * <h4>Read semantics</h4>
@@ -151,13 +154,13 @@ namespace jh::sync::ipc {
      * From a design standpoint, <code>process_counter</code> remains a
      * <strong>primitive</strong> rather than a composite abstraction &mdash;
      * it encapsulates synchronization internally and exposes a simple
-     * read–modify–write interface suitable for inter-process coordination.
+     * read-modify-write interface suitable for inter-process coordination.
      * </p>
      *
      * <h4>Internal synchronization objects</h4>
      * <ul>
      *   <li><b>Main mutex</b>: <code>process_mutex&lt;S + ".loc"&gt;</code> &mdash; protects all
-     *       read–modify–write operations on the counter value.</li>
+     *       read-modify-write operations on the counter value.</li>
      *   <li><b>Initialization mutex</b>: <code>process_mutex&lt;S&gt;</code> &mdash; guards the
      *       one-time initialization of the shared memory region (ensures that
      *       <code>initialized</code> flag and <code>value</code> are safely set
@@ -182,15 +185,15 @@ namespace jh::sync::ipc {
      *       subsequent accesses reuse the same shared mapping.</li>
      * </ul>
      */
-    template <jh::meta::TStr S, bool HighPriv = false>
-    requires (limits::valid_object_name<S, limits::max_name_length - 4>())
+    template<jh::meta::TStr S, bool HighPriv = false> requires (limits::valid_object_name<S,
+            limits::max_name_length - 4>())
     class process_counter final {
     private:
 
 #if IS_WINDOWS
         static constexpr auto shm_name_  = jh::meta::TStr{"Global\\"} + S;
 #else
-        static constexpr auto shm_name_  = jh::meta::TStr{"/"} + S;
+        static constexpr auto shm_name_ = jh::meta::TStr{"/"} + S;
         static constexpr mode_t shm_mode = JH_PROCESS_MUTEX_SHARED ? 0666 : 0644;
 #endif
 
@@ -206,8 +209,8 @@ namespace jh::sync::ipc {
 #else
         int fd_ = -1;
 #endif
-        counter_data* data_ = nullptr;
-        lock_t& lock_;
+        counter_data *data_ = nullptr;
+        lock_t &lock_;
 
         process_counter() : lock_(lock_t::instance()) {
 #if IS_WINDOWS
@@ -228,17 +231,17 @@ namespace jh::sync::ipc {
             struct stat st{};
             if (::fstat(fd_, &st) == -1)
                 throw std::runtime_error("process_counter: fstat failed (errno=" + std::to_string(errno) + ")");
-            if (st.st_size < sizeof(counter_data))
+            if (st.st_size < 0 || (static_cast<std::size_t>(st.st_size) < sizeof(counter_data)))
                 if (::ftruncate(fd_, sizeof(counter_data)) == -1)
                     throw std::runtime_error("process_counter: ftruncate failed (errno=" + std::to_string(errno) + ")");
-            void* ptr = ::mmap(nullptr, sizeof(counter_data), PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
+            void *ptr = ::mmap(nullptr, sizeof(counter_data), PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
             if (ptr == MAP_FAILED)
                 throw std::runtime_error("process_counter: mmap failed (errno=" + std::to_string(errno) + ")");
-            data_ = static_cast<counter_data*>(ptr);
+            data_ = static_cast<counter_data *>(ptr);
             ::close(fd_);
 #endif
             // initialization guard
-            auto& init_guard = process_mutex<S>::instance();
+            auto &init_guard = process_mutex<S>::instance();
             std::lock_guard global_lock(init_guard);
             std::lock_guard counter_lock(lock_);
             if (!data_->initialized) {
@@ -258,11 +261,12 @@ namespace jh::sync::ipc {
 
     public:
         // Disable copy
-        process_counter(const process_counter&) = delete;
-        process_counter& operator=(const process_counter&) = delete;
+        process_counter(const process_counter &) = delete;
+
+        process_counter &operator=(const process_counter &) = delete;
 
         /// @brief Singleton instance.
-        static process_counter& instance() {
+        static process_counter &instance() {
             static process_counter inst;
             return inst;
         }
@@ -385,10 +389,10 @@ namespace jh::sync::ipc {
          * @param func Transformation function.
          * @return The previous counter value before transformation.
          */
-        template <typename F>
+        template<typename F>
         requires std::invocable<F, std::uint64_t> &&
                  std::same_as<std::invoke_result_t<F, std::uint64_t>, std::uint64_t>
-        std::uint64_t fetch_apply(F&& func) noexcept(noexcept(std::invoke(std::forward<F>(func), std::uint64_t{}))) {
+        std::uint64_t fetch_apply(F &&func) noexcept(noexcept(std::invoke(std::forward<F>(func), std::uint64_t{}))) {
             std::lock_guard guard(lock_);
             auto old = data_->value;
             auto new_v = std::invoke(std::forward<F>(func), old);
@@ -434,6 +438,7 @@ namespace jh::sync::ipc {
             lock_t::unlink();
 #endif
         }
+
         /// Disabled if HighPriv == false. Non-privileged variants cannot call unlink().
         static void unlink() requires(!HighPriv) = delete;
     };

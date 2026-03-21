@@ -3,6 +3,7 @@
 #include <memory_resource>
 #include <ranges>
 #include "jh/runtime_arr"
+#include "jh/macros/platform.h"
 #include <tuple>
 #include <memory>
 #include <vector>
@@ -368,6 +369,12 @@ TEST_CASE("Advanced Benchmark: runtime_arr vs std::vector<MyPod> (1024x)") {
         int_vals.emplace_back(id_dist(gen));
     }
 
+#if IS_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-lambda-capture"
+#endif
+// Capture &N is necessary for GCC to allow usage inside the lambda, even though it's not modified.
+
     BENCHMARK_ADVANCED("std::vector<MyPod> by construction (1024x)")() {
             std::vector<MyPod> buffer(N);
             return [buffer = std::move(buffer), &inputs, &N]() mutable {
@@ -426,6 +433,11 @@ TEST_CASE("Advanced Benchmark: runtime_arr vs std::vector<MyPod> (1024x)") {
                 }
             };
         };
+
+#if IS_CLANG
+#pragma clang diagnostic pop
+#endif
+
 }
 
 TEST_CASE("runtime_arr (bit-packed) vs (byte-based)") {
@@ -435,6 +447,12 @@ TEST_CASE("runtime_arr (bit-packed) vs (byte-based)") {
 
     std::vector<unsigned char> ref(N);
     for (auto &b: ref) { b = static_cast<unsigned char>(dist(gen) & 1); }
+
+#if IS_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-lambda-capture"
+#endif
+// Capture &N is necessary for GCC to allow usage inside the lambda, even though it's not modified.
 
     BENCHMARK_ADVANCED("bit-packed set() loop (1M bits)")() {
             runtime_arr<bool> bits(N); // Prepare phase
@@ -477,6 +495,10 @@ TEST_CASE("runtime_arr (bit-packed) vs (byte-based)") {
                 (void) sum;
             };
         };
+
+#if IS_CLANG
+#pragma clang diagnostic pop
+#endif
 
     BENCHMARK_ADVANCED("bit-packed reset_all()")() {
             runtime_arr<bool> bits(N);
@@ -531,7 +553,8 @@ TEST_CASE("runtime_arr initializer_list construction", "[initlist]") {
 
     SECTION("flat bool version (byte-based allocator)") {
         using jh::runtime_arr_helper::bool_flat_alloc;
-        runtime_arr<bool, bool_flat_alloc> arr{{true, false, false, true}, {}};
+        runtime_arr<bool, bool_flat_alloc> arr{{true, false, false, true},
+                                               {}};
         REQUIRE(arr.size() == 4);
         REQUIRE(arr[0]);
         REQUIRE_FALSE(arr[1]);
@@ -605,5 +628,85 @@ TEST_CASE("runtime_arr<int, std::allocator<double>> rebind behavior", "[alloc][r
         REQUIRE(vec[1] == 6);
         REQUIRE(vec[2] == 7);
         REQUIRE(vec[3] == 8);
+    }
+}
+
+TEST_CASE("runtime_arr allocator-aware constructors from vector and iterators", "[alloc][vector][iterator]") {
+
+    SECTION("vector with different allocator -> runtime_arr with custom allocator") {
+
+        using VecAlloc = std::allocator<int>;
+        using ArrAlloc = test_allocator<int>;
+
+        std::vector<int, VecAlloc> vec{1,2,3,4,5};
+
+        runtime_arr<int, ArrAlloc> arr(std::move(vec), ArrAlloc{});
+
+        REQUIRE(arr.size() == 5);
+        for (int i = 0; i < 5; ++i)
+            REQUIRE(arr[i] == i + 1);
+    }
+
+    SECTION("vector with pmr allocator -> runtime_arr with std::allocator") {
+
+        std::pmr::monotonic_buffer_resource res;
+
+        std::vector<int, std::pmr::polymorphic_allocator<int>> vec(
+                {10,20,30,40},
+                std::pmr::polymorphic_allocator<int>(&res)
+        );
+
+        runtime_arr<int, std::allocator<int>> arr(std::move(vec), std::allocator<int>{});
+
+        REQUIRE(arr.size() == 4);
+        REQUIRE(arr[0] == 10);
+        REQUIRE(arr[3] == 40);
+    }
+
+    SECTION("vector<T, Alloc> constructor using vec.get_allocator()") {
+
+        std::pmr::monotonic_buffer_resource res;
+
+        std::vector<int, std::pmr::polymorphic_allocator<int>> vec(
+                {7,8,9},
+                std::pmr::polymorphic_allocator<int>(&res)
+        );
+
+        runtime_arr<int, std::pmr::polymorphic_allocator<int>> arr(std::move(vec));
+
+        REQUIRE(arr.size() == 3);
+        REQUIRE(arr[0] == 7);
+        REQUIRE(arr[2] == 9);
+    }
+
+    SECTION("iterator + allocator constructor") {
+
+        std::vector<int> src{11,22,33,44};
+
+        runtime_arr<int, test_allocator<int>> arr(
+                src.begin(),
+                src.end(),
+                test_allocator<int>{}
+        );
+
+        REQUIRE(arr.size() == 4);
+        REQUIRE(arr[0] == 11);
+        REQUIRE(arr[3] == 44);
+    }
+
+    SECTION("iterator + allocator reset_all behavior") {
+
+        std::vector<int> src{5,6,7};
+
+        runtime_arr<int, test_allocator<int>> arr(
+                src.begin(),
+                src.end(),
+                test_allocator<int>{}
+        );
+
+        arr.reset_all();
+
+        for (int i : arr)
+            REQUIRE(i == 0);
     }
 }

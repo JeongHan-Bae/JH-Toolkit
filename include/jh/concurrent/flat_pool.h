@@ -1,25 +1,26 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
  * @file flat_pool.h
  *
  * @brief Key-based, contiguous, GC-like interning pool for copyable or movable objects.
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <h3>Overview</h3>
  * <p>
@@ -27,14 +28,6 @@
  * objects using an explicit external <b>key</b> and stores them inside a contiguous memory pool.
  * Each unique key corresponds to at most one active slot at any time, and acquisitions return
  * lightweight reference-counted handles (<code>flat_pool::ptr</code>) bound to stable indices.
- * </p>
- *
- * <p>
- * Unlike pointer-based interning containers, <code>flat_pool</code> does <b>not</b> rely on
- * <code>std::shared_ptr</code> for ownership, synchronization, or lifetime control. All concurrency
- * guarantees are enforced exclusively through the pool's internal locking strategy. As a result,
- * the behavior of the pool is independent of platform-specific <code>shared_ptr</code>
- * implementations (including Windows-specific locking behavior).
  * </p>
  *
  * <h3>Key-Based Identity Model</h3>
@@ -143,7 +136,7 @@
  *     </ul>
  *   </li>
  *   <li>
- *     <b><code>pointer_pool</code></b>:
+ *     <b><code>pointer_pool</code> (<code>observe_pool</code>)</b>:
  *     <ul>
  *       <li>Pointer-driven identity (Generally, comparisons of internal objects are proxied using
  *           <code>jh::weak_ptr_hash</code> and <code>jh::weak_ptr_eq</code>.)
@@ -181,6 +174,31 @@
  * then a pointer-based pool should be used instead.
  * </p>
  *
+ * @note
+ * The implementation of <code>flat_pool</code> is algorithmically
+ * data-race-free (DRF) and does not rely on undefined behavior
+ * under the ISO C++ memory model.
+ * <br>
+ * Additional <code>std::atomic_thread_fence(std::memory_order_seq_cst)</code>
+ * barriers are introduced on Windows builds to strengthen ordering at
+ * the language level. This removes ISO-level UB risks and preserves
+ * correctness within the C++ abstract machine.
+ * <br>
+ * However, Windows runtime and system-level synchronization primitives
+ * (e.g. SRWLock-based <code>std::shared_mutex</code> implementations)
+ * do not necessarily provide POSIX-equivalent global ordering behavior.
+ * Under extreme multi-core contention, rare visibility or reordering
+ * phenomena may still be observed.
+ * <br>
+ * Such behavior is not a violation of the C++ standard and does not
+ * indicate undefined behavior in <code>flat_pool</code>; rather, it reflects
+ * platform-level memory ordering characteristics outside the control
+ * of the library.
+ * <br>
+ * Accordingly, while API correctness is preserved, Windows builds
+ * are not guaranteed to exhibit the same high-pressure stability
+ * characteristics as POSIX systems.
+ *
  * @version <pre>1.4.x</pre>
  * @date <pre>2025</pre>
  */
@@ -205,6 +223,7 @@
 #include "jh/core/ordered_map.h"
 #include "jh/conceptual/hashable.h"
 #include "jh/synchronous/control_buf.h"
+#include "jh/synchronous/strong_lock.h"
 
 namespace jh::conc {
     namespace detail {
@@ -220,6 +239,9 @@ namespace jh::conc {
                 >;
     }
 
+    /**
+     * @brief Public customization and extension points for <code>jh::conc</code> containers.
+    */
     namespace extension {
         /**
          * @brief Default value construction policy for flat_pool.
@@ -315,7 +337,7 @@ namespace jh::conc {
      * aliasing.
      * </p>
      *
-     * <h4>Key–Value Semantics</h4>
+     * <h4>Key-Value Semantics</h4>
      * <p>
      * The pool may operate in two modes:
      * </p>
@@ -374,11 +396,9 @@ namespace jh::conc {
      * @tparam Alloc Allocator type for contiguous storage.
      *
      * @note
-     * <p>
      * Unlike <code>pointer_pool</code> or its user-facing interface <code>observe_pool</code>,
      * <code>flat_pool</code>(<code>resource_pool</code>) does not permit moves.
-     * </p>
-     * <p>
+     * <br>
      * As indicated by their user-facing interface names, <code>pointer_pool</code>(<code>observe_pool</code>)
      * does not hold objects: it merely observes them.
      * The worst-case scenario after a move is deduplication failure, but the system remains operational.
@@ -525,13 +545,13 @@ namespace jh::conc {
         std::size_t emplace(KArg &&k) requires jh::typed::monostate_t<Value> {
             // shared lock the entries_ for lookup
             {
-                std::shared_lock lk(entry_mtx_);
+                jh::sync::posix_smtx_shared_lock lk(entry_mtx_);
                 auto attempt = find_idx_no_lock(k);
                 if (attempt != static_cast<std::size_t>(-1)) return attempt;
             }
             // not found -> acquire exclusive locks
-            std::unique_lock entry_lock(entry_mtx_);
-            std::unique_lock storage_lock(pool_mtx_);
+            jh::sync::posix_smtx_unique_lock entry_lock(entry_mtx_);
+            jh::sync::posix_smtx_unique_lock storage_lock(pool_mtx_);
 
             // revalidate under exclusive locks to avoid race
             auto attempt = find_idx_no_lock(k);
@@ -560,7 +580,7 @@ namespace jh::conc {
         }
 
         /**
-         * @brief Inserts or finds a key–value entry in map-like mode without modifying reference counts.
+         * @brief Inserts or finds a key-value entry in map-like mode without modifying reference counts.
          *
          * @details
          * <p>
@@ -579,7 +599,7 @@ namespace jh::conc {
          *
          * <p>
          * This guarantees that slot reuse cannot cause a logically distinct
-         * key–value entry to be observed as an existing one, and that value
+         * key-value entry to be observed as an existing one, and that value
          * construction occurs exactly once per unique key.
          * </p>
          *
@@ -595,13 +615,13 @@ namespace jh::conc {
         std::size_t emplace(KArg &&k, std::tuple<Args...> args_tuple)requires (!jh::typed::monostate_t<Value>) {
             // shared lock the entries_ for lookup
             {
-                std::shared_lock lk(entry_mtx_);
+                jh::sync::posix_smtx_shared_lock lk(entry_mtx_);
                 auto attempt = find_idx_no_lock(k);
                 if (attempt != static_cast<std::size_t>(-1)) return attempt;
             }
             // not found -> acquire exclusive locks
-            std::unique_lock entry_lock(entry_mtx_);
-            std::unique_lock storage_lock(pool_mtx_);
+            jh::sync::posix_smtx_unique_lock entry_lock(entry_mtx_);
+            jh::sync::posix_smtx_unique_lock storage_lock(pool_mtx_);
 
             // revalidate under exclusive locks to avoid race
             auto attempt = find_idx_no_lock(k);
@@ -663,7 +683,7 @@ namespace jh::conc {
          *         is out of range or refers to an unoccupied slot.
          */
         bool add_ref(size_t index) {
-            std::shared_lock lk(pool_mtx_);
+            jh::sync::posix_smtx_shared_lock lk(pool_mtx_);
             if (index >= occupation_.size() || occupation_[index] == 0)
                 return false;
             refcounts_[index].fetch_add(1);
@@ -699,11 +719,11 @@ namespace jh::conc {
          */
         void release_ref(size_t index) {
             {
-                std::shared_lock lk(pool_mtx_);
+                jh::sync::posix_smtx_shared_lock lk(pool_mtx_);
                 if (refcounts_[index].fetch_sub(1) > 1)
                     return;
             }
-            std::unique_lock storage_lock(pool_mtx_);
+            jh::sync::posix_smtx_unique_lock storage_lock(pool_mtx_);
 
             if (refcounts_[index].load() != 0) return;
 
@@ -1074,6 +1094,11 @@ namespace jh::conc {
                 return pool_ == nullptr;
             }
 
+            /// @brief Returns true if the handle is non-null.
+            explicit operator bool() const noexcept {
+                return pool_ != nullptr;
+            }
+
             /**
              * @brief Acquires a guard that prevents pool reallocation during dereference.
              *
@@ -1095,7 +1120,7 @@ namespace jh::conc {
             }
         };
 
-        friend class flat_pool::ptr;
+        friend struct flat_pool::ptr;
 
         /**
          * @brief Retrieves or creates a pooled object associated with a key (set-like).
@@ -1128,7 +1153,7 @@ namespace jh::conc {
         ptr acquire(KArg &&key) requires(!jh::typed::monostate_t<Value>) = delete;
 
         /**
-         * @brief Retrieves or creates a pooled key–value entry (map-like).
+         * @brief Retrieves or creates a pooled key-value entry (map-like).
          *
          * @details
          * This overload is available only when the pool operates in <b>map-like</b>
@@ -1225,7 +1250,7 @@ namespace jh::conc {
          * Unlike <code>acquire()</code>, this function never inserts new entries.
          */
         ptr find(const Key &key) {
-            std::shared_lock lk(entry_mtx_);
+            jh::sync::posix_smtx_shared_lock lk(entry_mtx_);
             auto idx = find_idx_no_lock(key);
             if (idx == static_cast<std::size_t>(-1)) return ptr{nullptr};
             return ptr(this, idx);
@@ -1359,7 +1384,7 @@ namespace jh::conc {
          *         </ol>
          */
         std::pair<std::size_t, std::size_t> occupancy_rate() {
-            std::shared_lock lk(pool_mtx_);
+            jh::sync::posix_smtx_shared_lock lk(pool_mtx_);
             return {storage_.capacity(), entries_.size()};
         }
 
@@ -1379,8 +1404,8 @@ namespace jh::conc {
          * </p>
          */
         void resize_pool() {
-            std::unique_lock entry_lock(entry_mtx_);
-            std::unique_lock pool_lock(pool_mtx_);
+            jh::sync::posix_smtx_unique_lock entry_lock(entry_mtx_);
+            jh::sync::posix_smtx_unique_lock pool_lock(pool_mtx_);
 
             // 1. Find last occupied slot
             auto rit = std::find_if(occupation_.rbegin(), occupation_.rend(),
@@ -1399,7 +1424,7 @@ namespace jh::conc {
             storage_.shrink_to_fit();
             occupation_.resize(new_cap);
             occupation_.shrink_to_fit();
-            entries_.shrink_to_fit();
+            entries_ = jh::ordered_set<entry_key>::from_sorted(std::move(entries_));
             refcounts_.resize(new_cap);
             refcounts_.shrink_to_fit();
         }

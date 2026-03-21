@@ -1,22 +1,23 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
- * @file stringify.h (pods)
+ * @file stringify.h
  * @brief Stream output adapters (<code>operator<<</code>) for POD containers and utilities.
  *
  * This header provides inline <code>operator<<</code> overloads for types in <code>jh::pod</code>,
@@ -43,14 +44,14 @@
  * Provides a minimal and consistent interface for encoding and decoding binary data.
  *
  * <ul>
- *   <li><code>std::string encode(const uint8_t *data, std::size_t len) noexcept;</code><br/>
+ *   <li><code>std::string encode(const std::uint8_t *data, std::size_t len) noexcept;</code><br/>
  *       Encode raw bytes into a Base64 string.</li>
  *
- *   <li><code>std::vector&lt;uint8_t&gt; decode(const std::string &input);</code><br/>
+ *   <li><code>std::vector&lt;std::uint8_t&gt; decode(const std::string &input);</code><br/>
  *       Decode a Base64 string into a new byte buffer.</li>
  *
- *   <li><code>jh::pod::bytes_view decode(const std::string &input, std::vector&lt;uint8_t&gt;& buffer);</code><br/>
- *       Decode into a provided <code>std::vector&lt;uint8_t&gt;</code> and return a
+ *   <li><code>jh::pod::bytes_view decode(const std::string &input, std::vector&lt;std::uint8_t&gt;& buffer);</code><br/>
+ *       Decode into a provided <code>std::vector&lt;std::uint8_t&gt;</code> and return a
  *       <code>bytes_view</code> pointing into it (useful for flat binary operations).</li>
  *
  *   <li><code>jh::pod::string_view decode(const std::string &input, std::string& buffer);</code><br/>
@@ -123,11 +124,50 @@
 
 namespace jh::pod {
 
+    /**
+     * @brief Checks whether a type can be streamed to <code>std::ostream</code>.
+     *
+     * Evaluates whether <code>os << value</code> is a valid expression producing
+     * <code>std::ostream&</code>.
+     *
+     * @note
+     * This concept relies on ADL. Users may override or extend streamability
+     * by providing their own <code>operator&lt;&lt;</code>.
+     *
+     * @warning
+     * Intended for debugging and inspection only.
+     * Not a guarantee of production-grade output.
+     */
     template<typename T>
     concept streamable = requires(std::ostream &os, const T &value) {
         { os << value } -> std::same_as<std::ostream &>;
     };
 
+    /**
+     * @brief Debug-only constraint for POD-like types printable to <code>std::ostream</code>.
+     *
+     * Combines <code>jh::pod::pod_like</code> with <code>streamable</code>, while
+     * explicitly excluding fundamental types, enums, and raw pointers.
+     *
+     * <p>
+     * This concept exists solely to enable the printers in the
+     * <code>jh::pod</code>'s stringify submodule.
+     * </p>
+     *
+     * @note
+     * <b>Important:</b> This constraint is intentionally weak and <b>easily affected</b>
+     * by ADL and <code>using</code>-introduced <code>operator&lt;&lt;</code> overloads.
+     * The exact set of printable types may change depending on the surrounding
+     * namespace context.
+     * <br>
+     * Because of this, <b>it is not suitable as a production or contractual constraint</b>.
+     * Its purpose is <b>debugging, inspection, and logging only</b>, where
+     * observability is preferred over strict interface guarantees.
+     *
+     * @warning
+     * Do not rely on this concept for serialization, persistence, ABI logic,
+     * or cross-module interface enforcement.
+     */
     template<typename T>
     concept streamable_pod =
     jh::pod::pod_like<T> &&
@@ -136,14 +176,14 @@ namespace jh::pod {
     !std::is_enum_v<T> &&
     !std::is_pointer_v<T>;
 
-    template<streamable T, uint16_t N>
+    template<streamable T, std::uint16_t N>
     requires(!std::is_same_v<T, char> && // forbid printing char arrays
              requires(std::ostream &os, T v) {
                  { os << v }; // T should be printable
              })
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::array<T, N> &arr) {
         os << "[";
-        for (uint16_t i = 0; i < N; ++i) {
+        for (std::uint16_t i = 0; i < N; ++i) {
             if (i != 0)
                 os << ", ";
             os << arr[i];
@@ -152,10 +192,10 @@ namespace jh::pod {
         return os;
     }
 
-    template<uint16_t N>
+    template<std::uint16_t N>
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::array<char, N> &str) {
         os << '"';  // start escaped JSON string
-        for (uint16_t i = 0; i < N && str[i] != '\0'; ++i) {
+        for (std::uint16_t i = 0; i < N && str[i] != '\0'; ++i) {
             char c = str[i];
             switch (c) {
                 case '\"':
@@ -242,9 +282,12 @@ namespace jh::pod {
     }
 
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::bytes_view bv) {
+        // empty view should print as base64''
+        const auto *data = bv.fetch<std::uint8_t>(0);
         os << "base64'";
-        const auto encoded = jh::serio::base64::encode(reinterpret_cast<const uint8_t *>(bv.data), bv.len);
-        os << encoded;
+        if (data != nullptr) {
+            os << jh::serio::base64::encode(data, bv.len);
+        }
         os << "'";
         return os;
     }
@@ -269,7 +312,7 @@ namespace jh::pod {
     }
 
     template<streamable_pod Pod>
-    std::string to_string(const Pod& p) {
+    std::string to_string(const Pod &p) {
         std::ostringstream oss;
         oss << p;
         return oss.str();
@@ -298,7 +341,7 @@ namespace jh::pod {
     }
 } // namespace jh::pod
 
-namespace jh::typed{
+namespace jh::typed {
     inline std::ostream &operator<<(std::ostream &os, const jh::typed::monostate &) {
         os << "null";
         return os;

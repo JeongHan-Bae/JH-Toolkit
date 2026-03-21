@@ -1,24 +1,25 @@
 /**
- * \verbatim
- * Copyright 2025 JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * \endverbatim
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,<br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
  */
 /**
  * @file immutable_str.h
  * @brief Immutable, thread-safe string with optional auto-trimming and dual-mode build support.
- * @author JeongHan-Bae &lt;mastropseudo&#64;gmail.com&gt;
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <h3>Overview</h3>
  * <p>
@@ -169,11 +170,11 @@
  *   <li>Constant-time string comparison and hash access after first computation.</li>
  *   <li>Optimized for concurrent, read-dominant workloads.</li>
  *   <li>Minimal memory footprint: pointer + cached hash + length field.</li>
- *   <li><b>Benchmark:</b> In controlled micro-benchmarks (LLVM&#64;20, Catch2, 1024× iterations), <br>
+ *   <li><b>Benchmark:</b> In controlled micro-benchmarks (LLVM&#64;20, Catch2, 1024&times; iterations), <br>
  *       <code>jh::immutable_str</code> shows performance essentially identical to
  *       <code>std::string</code> &mdash; sometimes slower by about <b>1%</b>,
  *       sometimes faster by up to <b>2%</b>, typically fluctuating within
- *       <b>±2%</b>. This variation is within normal measurement noise.</li>
+ *       <b>&plusmn;2%</b>. This variation is within normal measurement noise.</li>
  * </ul>
  *
  * <h3>See Also</h3>
@@ -188,6 +189,63 @@
 
 #pragma once
 
+/**
+ * @brief Controls whether <code>jh::immutable_str</code> performs automatic
+ *        leading/trailing ASCII whitespace trimming.
+ *
+ * <p><b>Default:</b> <code>true</code></p>
+ *
+ * <p>If not defined manually, it defaults to:</p>
+ * <pre>
+ * #define JH_IMMUTABLE_STR_AUTO_TRIM true
+ * </pre>
+ *
+ * <p>
+ * If overriding manually, it <b>must be defined before any inclusion</b>
+ * of <code>&lt;jh/immutable_str&gt;</code> in the translation unit.
+ * </p>
+ *
+ * <p><b>Configuration methods:</b></p>
+ * <ul>
+ *   <li>
+ *     Source-level (before include):
+ *     <pre>
+ *     #define JH_IMMUTABLE_STR_AUTO_TRIM false
+ *     </pre>
+ *   </li>
+ *   <li>
+ *     CMake:
+ *     <pre>
+ *     target_compile_definitions(target PRIVATE JH_IMMUTABLE_STR_AUTO_TRIM=false)
+ *     </pre>
+ *   </li>
+ *   <li>
+ *     Compiler flag:
+ *     <pre>
+ *     -DJH_IMMUTABLE_STR_AUTO_TRIM=false
+ *     </pre>
+ *   </li>
+ * </ul>
+ *
+ * <p><b>Important:</b></p>
+ * <ul>
+ *   <li>Must be a boolean literal: <code>true</code> or <code>false</code>
+ *       (not <code>1</code>/<code>0</code>).</li>
+ *   <li>Acts as a type-level compile-time policy parameter via
+ *       <code>static constexpr bool immutable_str::auto_trim</code>.</li>
+ *   <li>Branch selection is performed using <code>if constexpr</code>,
+ *       not preprocessor elimination.</li>
+ *   <li>In the static library target (<code>jh-toolkit-static</code>),
+ *       both code paths are compiled; user compilation activates the
+ *       selected branch.</li>
+ * </ul>
+ *
+ * <p><b>Behavior:</b></p>
+ * <ul>
+ *   <li><code>true</code>: remove leading/trailing ASCII whitespace at construction.</li>
+ *   <li><code>false</code>: preserve input exactly.</li>
+ * </ul>
+ */
 #ifndef JH_IMMUTABLE_STR_AUTO_TRIM
 #define JH_IMMUTABLE_STR_AUTO_TRIM true
 #endif
@@ -637,7 +695,7 @@ namespace jh {
          *
          * @code
          * #define JH_IMMUTABLE_STR_AUTO_TRIM false
-         * #include &lt;... all other includes ...&gt;
+         * #include &lt;jh/immutable_str&gt;
          * @endcode
          *
          * <p>
