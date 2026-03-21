@@ -39,12 +39,26 @@
  *
  * <h3>Usage</h3>
  * @code
- * std::vector&lt;uint8_t&gt; raw = {0x01, 0x02, 0x03};
+ * std::vector&lt;std::uint8_t&gt; raw = {0x01, 0x02, 0x03};
  * std::string encoded = jh::serio::base64::encode(raw.data(), raw.size());
  * auto decoded = jh::serio::base64::decode(encoded);
  * @endcode
  *
- * @version <pre>1.3.x</pre>
+ * @note
+ * This header participates in the <b>Dual-Mode Header</b> system of the
+ * JH Toolkit.
+ * <ul>
+ *   <li>Linked through <b>jh::jh-toolkit</b> &mdash; the module behaves
+ *       as a <b>header-only</b> implementation compiled in user
+ *       translation units.</li>
+ *   <li>Linked through <b>jh::jh-toolkit-static</b> &mdash; the module
+ *       uses a <b>precompiled implementation</b> built with aggressive
+ *       optimization (typically <code>-O3</code>).</li>
+ * </ul>
+ * This design allows fast incremental builds while preserving the
+ * option of using a fully optimized static implementation.
+ *
+ * @version <pre>1.4.1</pre>
  * @date <pre>2025</pre>
  */
 
@@ -58,7 +72,6 @@
 
 #include "jh/pods/string_view.h"
 #include "jh/pods/bytes_view.h"
-#include "jh/detail/base64_common.h"
 
 namespace jh::serio {
 
@@ -78,8 +91,6 @@ namespace jh::serio {
      */
     namespace base64 {
 
-        using namespace jh::detail::base64_common;
-
         /**
          * @brief Encode raw binary data into a Base64 string.
          *
@@ -91,20 +102,7 @@ namespace jh::serio {
          *
          * @note This function always produces a padded Base64 output.
          */
-        [[nodiscard]] inline std::string encode(const uint8_t *data, std::size_t len) {
-            if (data == nullptr && len > 0)
-                throw std::invalid_argument("encode(): null pointer with non-zero length");
-
-            const auto encoded_len = encoded_len_base64(len);
-            std::vector<char> buffer(encoded_len);
-
-            base64_encode_unchecked<false>(data, len, buffer.data(), true);
-
-            return {
-                    std::make_move_iterator(buffer.begin()),
-                    std::make_move_iterator(buffer.end())
-            };
-        }
+        [[nodiscard]] std::string encode(const std::uint8_t *data, std::size_t len);
 
         /**
          * @brief Decode a Base64 string into a byte vector.
@@ -114,21 +112,7 @@ namespace jh::serio {
          *
          * @throw std::runtime_error if input is not a valid Base64 string.
          */
-        [[nodiscard]] inline std::vector<uint8_t> decode(const std::string &input) {
-            const auto n = input.size();
-            if (n == 0)
-                return {};
-
-            const int pad = base64_check(input.data(), n);
-            if (pad == -1)
-                throw std::runtime_error("Invalid Base64: bad length, illegal characters, or bad padding");
-
-            const auto decoded_len = decoded_len_base64(n, static_cast<uint8_t>(pad));
-
-            std::vector<uint8_t> output(decoded_len);
-            base64_decode_unchecked(input.data(), n, output.data(), decoded_len);
-            return output;
-        }
+        [[nodiscard]] std::vector<std::uint8_t> decode(const std::string &input);
 
         /**
          * @brief Decode a Base64-encoded string into raw bytes.
@@ -154,13 +138,10 @@ namespace jh::serio {
          *   <li>These operations ensure POD-safe reinterpretation and provide zero-overhead access to binary data.</li>
          * </ul>
          */
-        inline jh::pod::bytes_view decode(
+        jh::pod::bytes_view decode(
                 const std::string &input,
-                std::vector<uint8_t> &output_buffer
-        ) {
-            output_buffer = decode(input);
-            return jh::pod::bytes_view::from(output_buffer.data(), output_buffer.size());
-        }
+                std::vector<std::uint8_t> &output_buffer
+        );
 
         /**
          * @brief Decode a Base64-encoded string into textual data.
@@ -191,17 +172,10 @@ namespace jh::serio {
          *       with the standard library and compile-time evaluation where applicable.</li>
          * </ul>
          */
-        inline jh::pod::string_view decode(
+        jh::pod::string_view decode(
                 const std::string &input,
                 std::string &output_buffer
-        ) {
-            auto temp = decode(input);
-            output_buffer = std::string(
-                    std::make_move_iterator(temp.begin()),
-                    std::make_move_iterator(temp.end())
-            );
-            return {output_buffer.data(), output_buffer.size()};
-        }
+        );
     } // namespace base64
 
 
@@ -221,8 +195,6 @@ namespace jh::serio {
      */
     namespace base64url {
 
-        using namespace jh::detail::base64_common;
-
         /**
          * @brief Encode raw binary data into a Base64URL string.
          *
@@ -235,23 +207,7 @@ namespace jh::serio {
          *
          * @note When @p pad = false, the output omits trailing '=' characters.
          */
-        [[nodiscard]] inline std::string encode(const uint8_t *data, std::size_t len, bool pad = false) {
-            if (data == nullptr && len > 0)
-                throw std::invalid_argument("encode(): null pointer with non-zero length");
-
-            const auto encoded_len = pad
-                                     ? encoded_len_base64(len)
-                                     : encoded_len_base64url_no_pad(len);
-
-            std::vector<char> buffer(encoded_len);
-
-            base64_encode_unchecked<true>(data, len, buffer.data(), pad);
-
-            return {
-                    std::make_move_iterator(buffer.begin()),
-                    std::make_move_iterator(buffer.end())
-            };
-        }
+        [[nodiscard]] std::string encode(const std::uint8_t *data, std::size_t len, bool pad = false);
 
         /**
          * @brief Decode a Base64URL string into a byte vector.
@@ -261,23 +217,7 @@ namespace jh::serio {
          *
          * @throw std::runtime_error if input is not valid Base64URL.
          */
-        [[nodiscard]] inline std::vector<uint8_t> decode(const std::string &input) {
-            const auto n = input.size();
-            if (n == 0)
-                return {};
-
-            const int pad = base64url_check(input.data(), n);
-            if (pad == -1)
-                throw std::runtime_error("Invalid Base64URL: bad length or illegal characters");
-
-            const auto decoded_len = (pad > 0)
-                                     ? decoded_len_base64(n, static_cast<uint8_t>(pad))
-                                     : decoded_len_base64url_no_pad(n);
-
-            std::vector<uint8_t> output(decoded_len);
-            base64_decode_unchecked(input.data(), n, output.data(), decoded_len);
-            return output;
-        }
+        [[nodiscard]] std::vector<std::uint8_t> decode(const std::string &input);
 
         /**
          * @brief Decode a Base64URL-encoded string into raw bytes.
@@ -303,13 +243,10 @@ namespace jh::serio {
          *   <li>These operations ensure POD-safe reinterpretation and provide zero-overhead access to binary data.</li>
          * </ul>
          */
-        inline jh::pod::bytes_view decode(
+        jh::pod::bytes_view decode(
                 const std::string &input,
-                std::vector<uint8_t> &output_buffer
-        ) {
-            output_buffer = decode(input);
-            return jh::pod::bytes_view::from(output_buffer.data(), output_buffer.size());
-        }
+                std::vector<std::uint8_t> &output_buffer
+        );
 
         /**
          * @brief Decode a Base64URL-encoded string into textual data.
@@ -340,7 +277,124 @@ namespace jh::serio {
          *       with the standard library and compile-time evaluation where applicable.</li>
          * </ul>
          */
-        inline jh::pod::string_view decode(
+        jh::pod::string_view decode(
+                const std::string &input,
+                std::string &output_buffer
+        );
+    } // namespace base64url
+
+} // namespace jh::serio
+
+
+#include "jh/macros/header_begin.h"
+
+#if JH_INTERNAL_SHOULD_DEFINE
+
+#include "jh/detail/base64_common.h"
+
+namespace jh::serio {
+
+    namespace base64 {
+
+        [[nodiscard]] JH_INLINE std::string encode(const std::uint8_t *data, std::size_t len) {
+            if (data == nullptr && len > 0)
+                throw std::invalid_argument("encode(): null pointer with non-zero length");
+
+            const auto encoded_len = jh::detail::base64_common::encoded_len_base64(len);
+            std::vector<char> buffer(encoded_len);
+
+            jh::detail::base64_common::base64_encode_unchecked<false>(data, len, buffer.data(), true);
+
+            return {
+                    std::make_move_iterator(buffer.begin()),
+                    std::make_move_iterator(buffer.end())
+            };
+        }
+
+        [[nodiscard]] JH_INLINE std::vector<std::uint8_t> decode(const std::string &input) {
+            const auto n = input.size();
+            if (n == 0)
+                return {};
+
+            const int pad = jh::detail::base64_common::base64_check(input.data(), n);
+            if (pad == -1)
+                throw std::runtime_error("Invalid Base64: bad length, illegal characters, or bad padding");
+
+            const auto decoded_len = jh::detail::base64_common::decoded_len_base64(n, static_cast<std::uint8_t>(pad));
+
+            std::vector<std::uint8_t> output(decoded_len);
+            jh::detail::base64_common::base64_decode_unchecked(input.data(), n, output.data(), decoded_len);
+            return output;
+        }
+
+        JH_INLINE jh::pod::bytes_view decode(
+                const std::string &input,
+                std::vector<std::uint8_t> &output_buffer
+        ) {
+            output_buffer = decode(input);
+            return jh::pod::bytes_view::from(output_buffer.data(), output_buffer.size());
+        }
+
+        JH_INLINE jh::pod::string_view decode(
+                const std::string &input,
+                std::string &output_buffer
+        ) {
+            auto temp = decode(input);
+            output_buffer = std::string(
+                    std::make_move_iterator(temp.begin()),
+                    std::make_move_iterator(temp.end())
+            );
+            return {output_buffer.data(), output_buffer.size()};
+        }
+    } // namespace base64
+
+    namespace base64url {
+
+        [[nodiscard]] JH_INLINE std::string encode(const std::uint8_t *data, std::size_t len, bool pad) {
+            if (data == nullptr && len > 0)
+                throw std::invalid_argument("encode(): null pointer with non-zero length");
+
+            const auto encoded_len = pad
+                                     ? jh::detail::base64_common::encoded_len_base64(len)
+                                     : jh::detail::base64_common::encoded_len_base64url_no_pad(len);
+
+            std::vector<char> buffer(encoded_len);
+
+            jh::detail::base64_common::base64_encode_unchecked<true>(data, len, buffer.data(), pad);
+
+            return {
+                    std::make_move_iterator(buffer.begin()),
+                    std::make_move_iterator(buffer.end())
+            };
+        }
+
+        [[nodiscard]] JH_INLINE std::vector<std::uint8_t> decode(const std::string &input) {
+            const auto n = input.size();
+            if (n == 0)
+                return {};
+
+            const int pad = jh::detail::base64_common::base64url_check(input.data(), n);
+            if (pad == -1)
+                throw std::runtime_error("Invalid Base64URL: bad length or illegal characters");
+
+            const auto decoded_len = (pad > 0)
+                                     ? jh::detail::base64_common::decoded_len_base64(n, static_cast<std::uint8_t>(pad))
+                                     : jh::detail::base64_common::decoded_len_base64url_no_pad(n);
+
+            std::vector<std::uint8_t> output(decoded_len);
+            jh::detail::base64_common::base64_decode_unchecked(input.data(), n, output.data(), decoded_len);
+            return output;
+        }
+
+        JH_INLINE jh::pod::bytes_view decode(
+                const std::string &input,
+                std::vector<std::uint8_t> &output_buffer
+        ) {
+            output_buffer = decode(input);
+            return jh::pod::bytes_view::from(output_buffer.data(), output_buffer.size());
+        }
+
+        JH_INLINE jh::pod::string_view decode(
                 const std::string &input,
                 std::string &output_buffer
         ) {
@@ -352,5 +406,8 @@ namespace jh::serio {
             return {output_buffer.data(), output_buffer.size()};
         }
     } // namespace base64url
-
 } // namespace jh::serio
+
+#endif // JH_INTERNAL_SHOULD_DEFINE
+
+#include "jh/macros/header_end.h"

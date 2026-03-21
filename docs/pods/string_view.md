@@ -2,7 +2,7 @@
 
 📁 **Header:** `<jh/pods/string_view.h>`  
 📦 **Namespace:** `jh::pod`  
-📅 **Version:** 1.3.5+  
+📅 **Version:** **1.4.1+**  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -14,9 +14,9 @@
 
 ---
 
-## 🏷️ Overview
+# 🏷️ Overview
 
-`jh::pod::string_view` is a **POD-safe, deep-comparison string view** —
+`jh::pod::string_view` is a **POD-safe, deep-comparison string view** —  
 a minimal, read-only representation of immutable character data.
 
 It preserves the semantics of `std::string_view` but constrains usage
@@ -25,7 +25,7 @@ and **binary transparency**.
 
 ---
 
-## 🔹 Definition
+# 🔹 Definition
 
 ```cpp
 struct string_view final {
@@ -36,311 +36,575 @@ struct string_view final {
 
 ### Key Properties
 
-| Aspect     | Description                                                 |
-|------------|-------------------------------------------------------------|
-| Layout     | Flat POD layout — `const char* + uint64_t`                  |
-| Ownership  | Non-owning                                                  |
-| Comparison | Deep bytewise (`memcmp`) equality                           |
-| Hashing    | `constexpr` and `consteval`-safe                            |
-| Lifetime   | Must not outlive underlying memory (no dangling references) |
-| ABI        | Stable and deterministic                                    |
+| Aspect     | Description                                |
+|------------|--------------------------------------------|
+| Layout     | Flat POD layout — `const char* + uint64_t` |
+| Ownership  | Non-owning                                 |
+| Comparison | Deep bytewise (`memcmp`) equality          |
+| Hashing    | `constexpr` and `consteval`-safe           |
+| Lifetime   | Must not outlive underlying memory         |
+| ABI        | Stable and deterministic                   |
 
 ---
 
-## 🔬 API Breakdown
+# 🔬 API Breakdown
 
-### 🔹 `from_literal(const char(&lit)[N])`
+---
 
-Creates a `string_view` from a string literal, excluding the trailing null terminator.
+# 🔹 Construction
+
+### `from_literal(const char(&lit)[N])`
+
+Creates a `string_view` from a string literal.
 
 ```cpp
 auto sv = jh::pod::string_view::from_literal("hello");
 ```
 
-| Aspect   | Description                                                 |
-|----------|-------------------------------------------------------------|
-| Behavior | Returns `{lit, N - 1}` excluding the final `'\0'`.          |
-| Safety   | Always valid at compile time (`constexpr` and `consteval`). |
+| Aspect   | Description                                            |
+|----------|--------------------------------------------------------|
+| Behavior | Returns `{lit, N - 1}` excluding the final `'\0'`.     |
+| Safety   | Always compile-time valid (`constexpr` / `consteval`). |
 
 ---
 
-### 🔹 `sub(offset, length = 0)`
+# 🔹 Basic Access
+
+### `operator[](uint64_t index)`
+
+Returns the character at `index`.
+
+```cpp
+char c = sv[0];
+```
+
+| Property   | Description        |
+|------------|--------------------|
+| Bounds     | No bounds checking |
+| Complexity | O(1)               |
+
+---
+
+### `begin()` / `end()`
+
+Returns raw iterators to the view.
+
+```cpp
+for (char c : sv) { ... }
+```
+
+| Function  | Description             |
+|-----------|-------------------------|
+| `begin()` | Pointer to first byte   |
+| `end()`   | Pointer to `data + len` |
+
+---
+
+### `size()`
+
+Returns the number of bytes in the view.
+
+```cpp
+std::uint64_t n = sv.size();
+```
+
+---
+
+### `empty()`
+
+Returns whether the view is empty.
+
+```cpp
+if (sv.empty()) { ... }
+```
+
+---
+
+# 🔹 Substring
+
+### `sub(offset, length = 0)`
 
 Returns a substring view.
 
-| Aspect   | Description                                           |
-|----------|-------------------------------------------------------|
-| Bounds   | If `offset > len`, returns empty.                     |
-| Sentinel | If `length == 0`, extends to end.                     |
-| Behavior | Truncates rather than overflows — never out of range. |
+| Aspect   | Description                        |
+|----------|------------------------------------|
+| Bounds   | If `offset > len`, returns empty   |
+| Sentinel | `length == 0` extends to end       |
+| Safety   | Never produces out-of-range memory |
 
 ```cpp
-auto hello = sv.sub(0, 5);
+auto hello = sv.sub(0,5);
 auto tail  = sv.sub(6);
 ```
 
 ---
 
-### 🔹 `operator==(const string_view&)`
+# 🔹 Comparison
+
+### `operator==(const string_view&)`
 
 Performs **deep bytewise comparison**.
 
-| Aspect         | Description                                          |
-|----------------|------------------------------------------------------|
-| Equality rule  | Returns `true` if lengths are equal and bytes match. |
-| Implementation | Uses `memcmp(data, rhs.data, len)`.                  |
-| Meaning        | Independent of pointer identity.                     |
+| Rule           | Description                    |
+|----------------|--------------------------------|
+| Equality       | `len` equal AND contents equal |
+| Implementation | `memcmp(data, rhs.data, len)`  |
 
 ---
 
-### 🔹 `compare(const string_view&)`
+### `compare(const string_view&)`
 
-Lexical comparison, similar to `strcmp()`.
+Lexical comparison similar to `strcmp()`.
 
-| Return | Meaning      |
-|--------|--------------|
-| `< 0`  | `this < rhs` |
-| `0`    | Equal        |
-| `> 0`  | `this > rhs` |
-
----
-
-### 🔹 `starts_with()` / `ends_with()`
-
-Prefix and suffix checks based on raw bytes.
-
-| Function              | Description                                          |
-|-----------------------|------------------------------------------------------|
-| `starts_with(prefix)` | Returns `true` if first `prefix.size()` bytes match. |
-| `ends_with(suffix)`   | Returns `true` if last `suffix.size()` bytes match.  |
-
-#### Details
-
-* Matching is **strictly bytewise** — no special handling for `'\0'`.
-* Whether a terminator is compared depends on how the view was constructed:
-
-  ```cpp
-  jh::pod::string_view{"hello", strlen("hello")}   // excludes '\0'
-  jh::pod::string_view{"hello", sizeof("hello")}   // includes '\0'
-  ```
-* To avoid ambiguity, use `from_literal()`, which **excludes the terminator automatically**.
-* `jh::immutable_str::pod_view()` follows the same rule — it never includes the final `'\0'`.
+| Return | Meaning |
+|--------|---------|
+| `<0`   | less    |
+| `0`    | equal   |
+| `>0`   | greater |
 
 ---
 
-### 🔹 `find(char ch)`
-
-Returns index of first occurrence of `ch`, or `-1` if not found.
-
-```cpp
-auto i = sv.find('o'); // e.g. 4
-```
-
----
-
-### 🔹 `hash(hash_method = fnv1a64)`
-
-Computes a **constexpr-safe**, deterministic 64-bit hash of the string contents
-using the algorithms defined in [`jh::meta::hash`](../metax/hash.md).
-
-```cpp
-constexpr std::uint64_t
-hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64) const noexcept;
-```
-
-| Parameter     | Description                                   |
-|---------------|-----------------------------------------------|
-| `hash_method` | Hash algorithm selector (default: `fnv1a64`). |
-
-**Example:**
-
-```cpp
-using namespace jh::pod;
-
-constexpr auto sv = string_view::from_literal("example");
-constexpr auto h1 = sv.hash(); // FNV-1a 64-bit
-constexpr auto h2 = sv.hash(jh::meta::c_hash::xxhash64);
-```
-
-**Behavior and Notes:**
-
-* The hash is based strictly on the `len` field —
-  including or excluding the trailing `'\0'` produces different results.
-* Fully `constexpr` and `consteval`-safe: may be evaluated at compile time.
-* Uses the same deterministic algorithms provided by [`jh::meta::hash`](../metax/hash.md).
-* No allocation, no RTTI, and no platform-specific variance.
-* Intended for identifiers, string literals, and compile-time symbol mapping.
-* For hashing arbitrary runtime memory, use [`jh::pod::bytes_view::hash()`](bytes_view.md#-hashhash_method--fnv1a64).
-
-**Supported Algorithms:** see
-👉 [`jh::meta::hash` — Core Components](../metax/hash.md#-core-components)
-
----
-
-### 🔹 `copy_to(char* buffer, uint64_t max_len)`
-
-Copies content into a C-style buffer with a null terminator.
-
-| Aspect   | Description                                          |
-|----------|------------------------------------------------------|
-| Purpose  | For debug or interoperability only.                  |
-| POD-safe | ❌ — Not strictly POD-safe; writes a null terminator. |
-| Behavior | Truncates to `max_len - 1`, then writes `'\0'`.      |
-
-> ⚠️ Recommended only for interop with legacy APIs.  
-> Avoid in normal POD pipelines.
-
----
-
-### 🔹 `to_std()` and Explicit Conversion
-
-Provides **interoperability with `std::string_view`** while keeping POD semantics.
-
-```cpp
-explicit constexpr operator std::string_view() const noexcept;
-constexpr std::string_view to_std() const noexcept;
-```
-
-| Function                               | Description                                                        |
-|----------------------------------------|--------------------------------------------------------------------|
-| `explicit operator std::string_view()` | Explicit conversion (requires `static_cast` or brace-init).        |
-| `to_std()`                             | Named helper; returns `std::string_view` directly, no cast needed. |
-
-**Semantics**
-
-* Both conversions perform **no allocation or copy** — they simply wrap the existing pointer and length.
-* Pointer and size are preserved **1:1**.
-* `explicit` form is used to prevent implicit conversions in overload resolution.
-* `to_std()` is a convenience wrapper for readability in mixed API contexts.
-
-**Example:**
-
-```cpp
-jh::pod::string_view sv = jh::pod::string_view::from_literal("world");
-std::string_view stdv = sv.to_std();        // direct named conversion
-std::string_view stdv2 = static_cast<std::string_view>(sv); // explicit cast
-```
-
----
-
-### 🔹 Three-Way Comparison (`operator<=>`)
-
-Performs a **lexicographical three-way comparison**,
-returning a `std::strong_ordering` consistent with **`std::string` and `std::string_view`** semantics.
+### Three-Way Comparison (`operator<=>`)
 
 ```cpp
 constexpr std::strong_ordering
-operator<=>(const jh::pod::string_view& rhs) const noexcept;
+operator<=>(const string_view& rhs) const noexcept;
 ```
 
-**Semantics**
+| Result    | Meaning      |
+|-----------|--------------|
+| `less`    | `this < rhs` |
+| `equal`   | equal        |
+| `greater` | `this > rhs` |
 
-* Returns:
+Properties:
 
-    * `std::strong_ordering::less` if `*this < rhs`
-    * `std::strong_ordering::equal` if `*this == rhs`
-    * `std::strong_ordering::greater` if `*this > rhs`
-* Implements **lexicographic comparison** identical to `compare()`.
-* Uses `std::strong_ordering` specifically to **align with the standard C++ `std::string` and `std::string_view`
-  three-way comparison** behavior,
-  ensuring consistent results and interoperability with standard library algorithms.
+* strict total ordering
+* consistent with `std::string_view`
+* automatically enables `< <= > >=`
 
-**Example:**
+---
+
+# 🔹 Prefix / Suffix
+
+### `starts_with(prefix)`
+
+Returns `true` if the view begins with `prefix`.
+
+### `ends_with(suffix)`
+
+Returns `true` if the view ends with `suffix`.
+
+Both operations compare **raw bytes**.
+
+---
+
+# 🔹 Search
+
+### `find(char ch)`
+
+Returns the index of the first occurrence.
 
 ```cpp
-using namespace jh::pod;
-
-constexpr auto a = string_view::from_literal("abc");
-constexpr auto b = string_view::from_literal("abd");
-
-static_assert((a <=> b) == std::strong_ordering::less);
+auto i = sv.find('o');
 ```
 
-**Properties**
-
-* Fully `constexpr` and `noexcept`.
-* Provides **strict total ordering** identical to the standard string types.
-* Automatically enables all relational operators (`<`, `<=`, `>`, `>=`).
-* Guarantees bitwise consistency with `compare()` and `operator==`.
+| Return | Meaning   |
+|--------|-----------|
+| index  | found     |
+| `-1`   | not found |
 
 ---
 
-### 🧩 Evaluation Model
+# 🔹 Hash
 
-Except for `copy_to()` — which exists purely as a **debugging and interop tool** —
-**all functions in `jh::pod::string_view` are `constexpr`**,
-and most internally use `std::is_constant_evaluated()` to **differentiate compile-time and runtime execution**.
+### `hash(hash_method = fnv1a64)`
 
-This dual-path design ensures:
+Computes a **constexpr-safe deterministic 64-bit hash**.
 
-* **Full compile-time support** (usable in `consteval` expressions).
-* **Optimized runtime behavior**, leveraging `memcmp`/`memcpy` for speed.
+```cpp
+constexpr auto h = sv.hash();
+```
 
-As a result, `jh::pod::string_view` can participate seamlessly in both
-**compile-time symbolic metaprogramming** and **high-performance runtime pipelines** without branching overhead.
+| Parameter     | Description        |
+|---------------|--------------------|
+| `hash_method` | algorithm selector |
+
+Characteristics:
+
+* constexpr / consteval safe
+* deterministic
+* byte-based
+
+Supported algorithms are defined in:
+
+```
+jh::meta::hash
+```
 
 ---
 
-## 🧾 Debug Stringification
+# 🔹 Character Validation
 
-When streamed to an `std::ostream`,
-a `jh::pod::string_view` renders its contents directly as a quoted literal:
+These APIs validate textual properties of the view.
+
+---
+
+### `is_digit()`
+
+Checks if all characters are decimal digits.
 
 ```
-string_view"Hello world"
+0-9
+```
+
+---
+
+### `is_number()`
+
+Validates full decimal number syntax.
+
+Grammar:
+
+```
+[+-]? DIGIT+ ('.' DIGIT+)? ([eE][+-]?DIGIT+)?
+```
+
+---
+
+### `is_alpha()`
+
+Checks if all characters are alphabetic.
+
+```
+A-Z a-z
+```
+
+---
+
+### `is_alnum()`
+
+Checks if characters are alphanumeric.
+
+```
+[A-Za-z0-9]
+```
+
+---
+
+### `is_ascii()`
+
+Returns true if every byte is within:
+
+```
+0 – 127
+```
+
+---
+
+### `is_printable_ascii()`
+
+Checks for printable ASCII.
+
+```
+32 – 126
+```
+
+---
+
+### `is_legal()`
+
+Validates that the string is composed of
+
+* printable ASCII
+* valid UTF-8 sequences
+
+Rejects:
+
+* invalid UTF-8
+* illegal ASCII control characters
+
+---
+
+### `is_hex()`
+
+Checks if the string is a valid hexadecimal sequence.
+
+Requirements:
+
+* length must be even
+* all characters must be hex digits
+
+---
+
+### `is_base64()`
+
+Checks if the string is valid Base64.
+
+Constraints:
+
+* length multiple of 4
+* valid alphabet
+* `=` padding allowed
+
+---
+
+### `is_base64url()`
+
+Checks Base64URL format.
+
+Characteristics:
+
+* URL-safe alphabet
+* optional padding
+
+---
+
+# 🔹 UTF-8 Utilities
+
+### `semantic_len()`
+
+Returns the number of **Unicode code points**.
+
+```cpp
+auto n = sv.semantic_len();
+```
+
+Notes:
+
+* counts UTF-8 code points
+* not grapheme clusters
+* assumes valid UTF-8
+
+---
+
+# 🔹 Utilities
+
+### `copy_to(char* buffer, uint64_t max_len)`
+
+Copies the content into a C-style buffer.
+
+Behavior:
+
+* truncates to `max_len-1`
+* always null-terminates
+
+⚠️ Intended only for debug or legacy interop.
+
+---
+
+# 🔹 Interoperability
+
+### Explicit conversion
+
+```cpp
+explicit operator std::string_view() const noexcept;
+```
+
+---
+
+### `to_std()`
+
+Named helper for conversion.
+
+```cpp
+std::string_view s = sv.to_std();
+```
+
+Characteristics:
+
+* zero-copy
+* zero-allocation
+
+---
+
+# 🔹 Literals
+
+Namespace:
+
+```cpp
+jh::pod::literals
+```
+
+### `_psv`
+
+User-defined literal for `string_view`.
+
+```cpp
+using namespace jh::pod::literals;
+
+auto sv = "hello"_psv;
+```
+
+Properties:
+
+* always safe
+* literal storage is static
+* never dangles
+
+---
+
+# 🧩 Evaluation Model
+
+All functions except `copy_to()` are `constexpr`.
+
+The implementation uses:
+
+```cpp
+std::is_constant_evaluated()
+```
+
+to distinguish between
+
+* **compile-time execution**
+* **optimized runtime paths**
+
+This allows:
+
+* compile-time hashing
+* constexpr validation
+* optimized runtime via `memcmp`
+
+---
+
+# 🧾 Debug Stringification
+
+When streamed to `std::ostream`, a `jh::pod::string_view` renders its contents directly as a quoted literal:
+
+```
+string_view"Hello"
 ```
 
 Example:
 
 ```cpp
-jh::pod::string_view sv = jh::pod::string_view::from_literal("Hello");
-std::cout << sv; // → string_view"Hello"
+std::cout << sv;
 ```
 
-> ⚠️ Output is **unescaped** — control or non-printable characters
-> will appear as-is.  
-> This is intentional: `string_view` is a **raw observation** type,
-> not an owned string with formatting semantics.
+⚠️ Output is **not escaped** — control or non-printable characters will appear exactly as stored.
+
+### Debug Support
+
+The debug stringification mechanism is **not automatically included** by all headers.
+
+It becomes available **only when the POD module is explicitly imported**:
+
+```cpp
+#include <jh/pod>
+```
+
+This header pulls in the internal debugging utilities:
+
+```
+jh/pods/stringify.h
+```
+
+Without including `<jh/pod>`, streaming operators for POD types are **not defined**.
 
 ---
 
-## 🧩 Integration Notes
+### Interaction with Derived Views
 
-* `jh::pod::string_view` is commonly used as a **POD-safe view** returned from
-  `jh::immutable_str::pod_view()`.
-* Like all `jh::pod` non-owning types, it must **not dangle** —
-  the underlying character storage must remain valid.
-* Unlike `bytes_view`, it is intended for **semantic string views**,
-  not arbitrary memory interpretation.
-* Supports compile-time usage in string-based metaprogramming
-  (e.g., constexpr identifiers or symbol tables).
+`jh::pod::string_view` often appears as the return type of:
+
+```cpp
+jh::immutable_str::pod_view()
+jh::meta::t_str::pod_view()
+```
+
+However:
+
+* Including
+
+```
+<jh/immutable_str>
+```
+
+or
+
+```
+<jh/meta>
+```
+
+**does NOT automatically enable POD debug printing.**
+
+The `std::ostream` streaming operator becomes available **only when `<jh/pod>` is included**.
 
 ---
 
-## 🧠 Summary
+### Stability Notice
 
-| Aspect     | Description                                 |
-|------------|---------------------------------------------|
-| Category   | POD string view                             |
-| Ownership  | Non-owning                                  |
-| Layout     | `const char* + uint64_t`                    |
-| Comparison | Deep bytewise equality                      |
-| Hashing    | Constexpr / Consteval safe                  |
-| Printing   | `string_view"..."` unescaped literal output |
-| Lifetime   | Must not dangle                             |
-| ABI        | Stable POD structure                        |
-| Consteval  | Supported (semantically meaningful)         |
+The file
+
+```
+jh/pods/stringify.h
+```
+
+exists **purely for debugging and inspection of POD types**.
+
+Its APIs are **not considered stable** and **may change without notice** between toolkit versions.
+
+---
+
+### Recommended Printing Method
+
+For production or stable formatting, convert to `std::string_view`:
+
+```cpp
+std::cout << sv.to_std();
+```
+
+or
+
+```cpp
+std::string_view s = sv.to_std();
+```
+
+This guarantees stable behavior independent of the POD debug facilities.
+
+---
+
+# 🧩 Integration Notes
+
+`jh::pod::string_view` commonly appears as the return type of:
+
+```
+jh::immutable_str::pod_view()
+jh::meta::t_str::pod_view()
+```
+
+Key rules:
+
+* non-owning
+* must not outlive the underlying storage
+* suitable for compile-time identifiers and symbol tables
+* debug printing requires explicit inclusion of `<jh/pod>`
+
+---
+
+# 🧠 Summary
+
+| Aspect     | Description                   |
+|------------|-------------------------------|
+| Category   | POD string view               |
+| Ownership  | Non-owning                    |
+| Layout     | `const char* + uint64_t`      |
+| Comparison | Deep bytewise                 |
+| Hashing    | constexpr safe                |
+| Encoding   | ASCII / UTF-8 aware utilities |
+| Printing   | raw literal form              |
+| ABI        | stable POD                    |
 
 ---
 
 > 📌 **Design Philosophy**
 >
 > `jh::pod::string_view` provides the semantic equivalent of `std::string_view`,
-> constrained to a POD-safe ABI.  
-> Its comparison and hashing are always **bytewise**,
-> ensuring predictable behavior across toolchains and platforms.
+> constrained to a POD-safe ABI.
 >
-> Unlike `bytes_view`, which represents *arbitrary reinterpretation of memory*,
-> `string_view` embodies the semantics of **immutable text** — 
-> making compile-time hashing, literal binding, and deep equality
-> both valid and well-defined.
+> Comparison and hashing are always **bytewise** to ensure deterministic
+> cross-platform behavior.
+>
+> Unlike `bytes_view`, which represents arbitrary memory,
+> `string_view` represents **immutable textual data** suitable for
+> compile-time metaprogramming and symbol identifiers.

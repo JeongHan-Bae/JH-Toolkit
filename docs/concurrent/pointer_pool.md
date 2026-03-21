@@ -224,15 +224,45 @@ The pool uses `std::shared_mutex` internally.
 
 ## Platform Notes (Windows)
 
-On Windows environments based on **Universal CRT** (including MinGW):
+On POSIX platforms, `std::shared_mutex` implementations typically exhibit strong practical ordering,
+and `pointer_pool` behaves as expected under high concurrency.
 
-* `shared_ptr` / `weak_ptr` may exhibit incorrect refcount synchronization
-* `weak_ptr::lock()` may succeed on already-destroyed objects
-* inserting `weak_ptr` into unordered containers may incur heavy jitter
+On Windows:
 
-As a result:
+* ISO C++ guarantees only acquire–release semantics for `std::shared_mutex`.
+* `pointer_pool` relies on:
 
-> High-pressure concurrent use of `pointer_pool` is **not recommended** on Windows UCRT-based toolchains.
+    * atomic reference counting inside `std::shared_ptr`
+    * `std::weak_ptr` lock operations
+    * `std::shared_mutex`
+    * `std::unordered_map` bucket management
+
+To strengthen ordering at the language level,
+`std::atomic_thread_fence(std::memory_order_seq_cst)` is inserted
+around shared mutex boundaries.
+
+This:
+
+* removes undefined behavior risks at the ISO C++ level
+* preserves data-race-freedom (DRF)
+* improves practical stability under contention
+
+However:
+
+* it cannot enforce hardware-level global ordering
+* it cannot strengthen opaque runtime or kernel primitives
+* it does not guarantee POSIX-equivalent behavior
+
+Empirically, pointer-based pools are **more sensitive** on Windows
+than contiguous-storage `flat_pool`,
+due to the combined interaction of atomics, weak pointers,
+and hash-table rehash behavior.
+
+Important:
+
+* High-pressure multicore stability is **not guaranteed** on Windows.
+* Windows is treated as a **compatibility platform**, not a strong-ordering baseline.
+* For extreme concurrency workloads, POSIX platforms are recommended.
 
 ---
 

@@ -182,20 +182,21 @@
 #include "jh/metax/t_str.h"
 #include "jh/pods/array.h"
 #include "jh/pods/pair.h"
+#include "jh/pods/bytes_view.h"
 
 namespace jh::serio {
 
     namespace detail {
 
         /// @brief Provides empty canonical_decoder for non-canonical Huffman variants.
-        template<bool IsCanonical, size_t N>
+        template<bool IsCanonical, std::size_t N>
         struct canonical_decoder_selector final {
             struct type final {
             };
         };
 
         /// @brief Provides canonical_decoder only for canonical Huffman variants.
-        template<size_t N>
+        template<std::size_t N>
         struct canonical_decoder_selector<true, N> final {
             struct type final {
                 std::uint8_t code_len[N];      ///< Code length per symbol
@@ -253,7 +254,7 @@ namespace jh::serio {
                 Algo == huff_algo::huff128_canonical || Algo == huff_algo::huff256_canonical;
 
         /// @brief Number of symbols (128 or 256) determined by algorithm type.
-        static constexpr size_t table_size =
+        static constexpr std::size_t table_size =
                 ((Algo == huff_algo::huff128 || Algo == huff_algo::huff128_canonical)
                  ? 128 : 256);
 
@@ -315,7 +316,7 @@ namespace jh::serio {
          * @param pool  Output vector containing the built nodes.
          * @return Index of the root node (or -1 if empty input).
          */
-        static int build_tree(const std::vector<std::uint32_t> &freq,
+        static int build_tree(const jh::pod::array<std::uint32_t, table_size> &freq,
                               std::vector<node> &pool) {
             pool.clear();
             pool.reserve(table_size * 2);
@@ -559,9 +560,9 @@ namespace jh::serio {
 
             return out;
         }
-        
+
     public:
-        
+
         static void build_code_length(const std::vector<node> &pool,
                                       int root,
                                       jh::pod::array<std::uint8_t, table_size> &len_tbl
@@ -601,7 +602,7 @@ namespace jh::serio {
         static void compress(std::ostream &os, std::string_view input) {
             os.write(Signature.val(), Signature.size());
 
-            std::vector<std::uint32_t> freq(table_size);
+            jh::pod::array<std::uint32_t, table_size> freq{};
             for (unsigned char c: input) {
                 if constexpr (table_size == 128) {
                     if (c > 127)
@@ -612,8 +613,8 @@ namespace jh::serio {
             }
 
             if constexpr (!is_canonical) {
-                for (auto f: freq)
-                    os.write(reinterpret_cast<const char *>(&f), 4);
+                auto bv = jh::pod::bytes_view::from(freq);
+                os.write(bv.template fetch<char>(0), bv.size());
             }
 
             std::vector<node> pool;
@@ -634,7 +635,10 @@ namespace jh::serio {
                 for (unsigned char c: input)
                     total_bits += tbl[c].len;
 
-                os.write(reinterpret_cast<const char *>(&total_bits), 8);
+                {
+                    auto bv = jh::pod::bytes_view::from(total_bits);
+                    os.write(bv.fetch<char>(0), sizeof(total_bits));
+                }
 
                 std::uint8_t buf = 0;
                 int cnt = 0;
@@ -663,7 +667,10 @@ namespace jh::serio {
             for (unsigned char c: input)
                 total_bits += tbl[c].len;
 
-            os.write(reinterpret_cast<const char *>(&total_bits), 8);
+            {
+                auto bv = jh::pod::bytes_view::from(total_bits);
+                os.write(bv.fetch<char>(0), sizeof(total_bits));
+            }
 
             std::uint8_t buf = 0;
             int cnt = 0;
@@ -698,11 +705,11 @@ namespace jh::serio {
                 throw std::runtime_error("Bad signature");
 
             // ---------- Read freq for normal huffman ----------
-            std::vector<std::uint32_t> freq(table_size);
+            jh::pod::array<std::uint32_t, table_size> freq{};
 
             if constexpr (!is_canonical) {
-                for (size_t i = 0; i < table_size; i++)
-                    is.read(reinterpret_cast<char *>(&freq[i]), 4);
+                auto bv = jh::pod::bytes_view::from(freq);
+                is.read(const_cast<char *>(bv.template fetch<char>(0)), bv.size());
             }
 
             std::vector<node> pool;
@@ -724,7 +731,10 @@ namespace jh::serio {
                 build_canonical_decoder(len_tbl, dec);
 
                 std::uint64_t total_bits = 0;
-                is.read(reinterpret_cast<char *>(&total_bits), 8);
+                {
+                    auto bv = jh::pod::bytes_view::from(total_bits);
+                    is.read(const_cast<char *>(bv.fetch<char>(0)), sizeof(total_bits));
+                }
 
                 return canonical_decode(is, total_bits, dec);
             }
@@ -733,7 +743,10 @@ namespace jh::serio {
             root = build_tree(freq, pool);
 
             std::uint64_t total_bits = 0;
-            is.read(reinterpret_cast<char *>(&total_bits), 8);
+            {
+                auto bv = jh::pod::bytes_view::from(total_bits);
+                is.read(const_cast<char *>(bv.fetch<char>(0)), sizeof(total_bits));
+            }
 
             std::string out;
             out.reserve(total_bits / 3);
@@ -746,7 +759,8 @@ namespace jh::serio {
             int cnt = 0;
             std::uint64_t used = 0;
 
-            while (used < total_bits) {
+            while (used < total_bits) // NOLINT
+            {
                 if (cnt == 0) {
                     int b = is.get();
                     if (b == EOF) [[unlikely]]

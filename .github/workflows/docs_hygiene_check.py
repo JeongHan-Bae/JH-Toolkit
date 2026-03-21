@@ -106,6 +106,8 @@ summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
 if summary_path:
     with open(summary_path, "a", encoding="utf-8") as f:
         f.write("\n".join(sections) + "\n")
+else:
+    print("\n".join(sections))
 
 
 # ---------- Warnings (signal only) ----------

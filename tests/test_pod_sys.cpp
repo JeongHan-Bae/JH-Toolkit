@@ -94,6 +94,14 @@ TEST_CASE("JH PODS Recognition And Static Checks") {
     STATIC_REQUIRE(a == c);
     STATIC_REQUIRE(a <= c);
     STATIC_REQUIRE(a >= c);
+    constexpr auto s1 = "hello"_psv;
+    static_assert(s1.semantic_len() == 5);
+
+    constexpr auto s2 = "\U00004F60\U0000597D"_psv;
+    static_assert(s2.semantic_len() == 2);
+
+    constexpr auto s3 = "\U0001F30D"_psv;
+    static_assert(s3.semantic_len() == 1);
 }
 
 TEST_CASE("JH_POD_STRUCT generated struct is pod_like") {
@@ -252,7 +260,7 @@ TEST_CASE("bytes_view basic reinterpret and comparison") {
         pod::array<int, 3> arr = {10, 20, 30};
         auto view = pod::bytes_view::from(arr.data, pod::array<int, 3>::size());
 
-        auto clone = view.clone<pod::array<int, 3> >();
+        auto clone = view.clone<pod::array<int, 3> >(); // NOLINT
         REQUIRE(clone[0] == 10);
         REQUIRE(clone[1] == 20);
         REQUIRE(clone[2] == 30);
@@ -278,7 +286,7 @@ TEST_CASE("bytes_view basic reinterpret and comparison") {
 
         std::array<std::byte, 2> too_small{};
         auto view = pod::bytes_view{too_small.data(), too_small.size()};
-        const auto [a, b] = view.clone<PodTest>();
+        const auto [a, b] = view.clone<PodTest>(); // NOLINT
 
         REQUIRE(a == 0);
         REQUIRE(b == 0.0f);
@@ -291,7 +299,7 @@ TEST_CASE("bytes_view clone from std::array to pod::array") {
     std::iota(original.begin(), original.end(), 100); // Fill with 100, 101, ..., 163
 
     const auto view = pod::bytes_view::from(original.data(), original.size());
-    auto cloned = view.clone<pod::array<std::uint32_t, N> >();
+    auto cloned = view.clone<pod::array<std::uint32_t, N> >(); // NOLINT
 
     REQUIRE(cloned.size() == N);
     for (std::size_t i = 0; i < N; ++i) {

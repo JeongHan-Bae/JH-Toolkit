@@ -27,43 +27,10 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Get Project Version
-        id: get_version
-        run: |
-          if [ -f .github/workflows/generate_dependencies.py ]; then
-            VERSION=$(python .github/workflows/generate_dependencies.py --get-version)
-          else
-            VERSION="unknown"
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "PROJECT_VERSION=v$VERSION" >> $GITHUB_ENV
-
-      - name: Get Repository Description
-        id: get_desc
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          DESC=$(curl -s \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ github.repository }} \
-            | jq -r '.description // empty')
-
-          if [ -z "$DESC" ] || [ "$DESC" = "null" ]; then
-            DESC="C++ Toolkit for software engineering"
-          fi
-
-          echo "PROJECT_DESCRIPTION=$DESC" >> $GITHUB_ENV
-
       - name: Generate Doxyfile
-        run: |
-          ESCAPED_VERSION=$(echo "$PROJECT_VERSION" | sed 's/|/\\|/g')
-          ESCAPED_DESC=$(echo "$PROJECT_DESCRIPTION" | sed 's/|/\\|/g')
-
-          sed \
-            -e "s|__VERSION__|$ESCAPED_VERSION|g" \
-            -e "s|__DESCRIPTION__|$ESCAPED_DESC|g" \
-            docs/doxy_settings/Doxyfile > Doxyfile.tmp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python .github/workflows/generate_doxyfile.py
 
       - name: Set up Homebrew
         id: set-up-homebrew

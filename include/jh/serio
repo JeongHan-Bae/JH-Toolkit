@@ -33,6 +33,7 @@
 
 #include "jh/serialize_io/base64.h"
 #include "jh/serialize_io/huffman.h"
+#include "jh/serialize_io/uri.h"
 
 /**
  * @brief Aggregated entry point for serialization and codec utilities.

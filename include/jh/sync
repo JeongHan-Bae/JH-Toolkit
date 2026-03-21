@@ -28,6 +28,7 @@
 #include "jh/synchronous/ipc.h"
 #include "jh/synchronous/const_lock.h"
 #include "jh/synchronous/control_buf.h"
+#include "jh/synchronous/strong_lock.h"
 
 /**
  * @brief Aggregated entry point for synchronization and coordination facilities.

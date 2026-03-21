@@ -122,6 +122,62 @@
 
 #pragma once
 
+/**
+ * @brief Enable transactional multi-commit support for <code>occ_box</code>.
+ *
+ * <p><b>Default:</b> 1 (enabled)</p>
+ *
+ * <p>
+ * If not defined manually, it defaults to:
+ * </p>
+ * <pre>
+ * #define JH_OCC_ENABLE_MULTI_COMMIT 1
+ * </pre>
+ *
+ * <p>
+ * If overriding manually in source code, it <b>must be defined before any
+ * inclusion of the library public header</b> (i.e. <code>&lt;jh/concurrency&gt;</code>)
+ * within the translation unit.
+ * </p>
+ *
+ * <p><b>Configuration methods:</b></p>
+ * <ul>
+ *   <li>
+ *     Source-level (before any include of the library header):
+ *     <pre>
+ *     #define JH_OCC_ENABLE_MULTI_COMMIT 0
+ *     </pre>
+ *   </li>
+ *   <li>
+ *     CMake:
+ *     <pre>
+ *     target_compile_definitions(target PRIVATE JH_OCC_ENABLE_MULTI_COMMIT=0)
+ *     </pre>
+ *   </li>
+ *   <li>
+ *     Compiler flag:
+ *     <pre>
+ *     -DJH_OCC_ENABLE_MULTI_COMMIT=0
+ *     </pre>
+ *   </li>
+ * </ul>
+ *
+ * <p><b>When set to 1:</b></p>
+ * <ul>
+ *   <li>Enables <code>apply_to()</code> transactional operations.</li>
+ *   <li>Allows multiple <code>occ_box</code> instances to commit atomically
+ *       as a single transaction (multi-commit).</li>
+ *   <li>Single-box logic and correctness guarantees remain unchanged.</li>
+ *   <li>Adds a small additional read-path overhead (one extra atomic load).</li>
+ * </ul>
+ *
+ * <p><b>When set to 0:</b></p>
+ * <ul>
+ *   <li><code>apply_to()</code> is not compiled.</li>
+ *   <li>Only single-box OCC is available.</li>
+ *   <li>No transactional coordination overhead is introduced.</li>
+ * </ul>
+ */
 #ifndef JH_OCC_ENABLE_MULTI_COMMIT
 #define JH_OCC_ENABLE_MULTI_COMMIT 1
 #endif

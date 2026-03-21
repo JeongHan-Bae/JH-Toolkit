@@ -1885,13 +1885,17 @@ namespace jh::avl {
             std::size_t cur = root;
             auto parent = static_cast<std::size_t>(-1);
 
+            K k = key; ///< temporary eager materialization
+
+            // The original argument is preserved for forwarding into storage.
+
             while (cur != static_cast<std::size_t>(-1)) {
                 parent = cur;
                 auto &node = nodes_[cur];
 
-                if (std::forward<KArg>(key) < node.key()) {
+                if (k < node.key()) {
                     cur = node.left;
-                } else if (node.key() < std::forward<KArg>(key)) {
+                } else if (node.key() < k) {
                     cur = node.right;
                 } else {
                     if constexpr ((!jh::typed::monostate_t<V>) && Assign) {
@@ -1907,7 +1911,7 @@ namespace jh::avl {
                     std::forward<VArg>(value),
                     parent);
             auto &p_node = nodes_[parent];
-            if (std::forward<KArg>(key) < p_node.key())
+            if (k < p_node.key())
                 p_node.left = idx;
             else
                 p_node.right = idx;
@@ -2212,8 +2216,11 @@ namespace jh::avl {
          *               <code>false</code> if an existing element was updated.</li>
          *         </ol>
          */
+        template<typename KArg, typename VArg>
+        requires std::is_same_v<std::remove_cvref_t<KArg>, typename node_type::key_type> &&
+                 std::is_same_v<std::remove_cvref_t<VArg>, typename node_type::value_type>
         std::pair<iterator, bool>
-        insert_or_assign(node_type::key_type &&k, node_type::value_type &&v) requires (!jh::typed::monostate_t<V>) {
+        insert_or_assign(KArg &&k, VArg &&v) requires (!jh::typed::monostate_t<V>) {
             return _insert_impl<true>(k, v);
         }
 

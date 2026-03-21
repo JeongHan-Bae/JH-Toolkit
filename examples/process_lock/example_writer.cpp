@@ -36,6 +36,7 @@
 #include "jh/synchronous/ipc/process_mutex.h"
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <thread>
 
 using namespace std::chrono_literals;

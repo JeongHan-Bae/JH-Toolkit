@@ -78,9 +78,13 @@
 
 #if defined(__GNUC__) && !defined(__clang__)
   #define IS_GCC 1
+  #define JH_GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #else
   #define IS_GCC 0
+  #define JH_GCC_VERSION 0
 #endif
+
+#define JH_GCC_LE_13 (IS_GCC && JH_GCC_VERSION < 140000)
 
 #if defined(_MSC_VER) && !defined(__clang__) && !defined(__GNUC__)
   #define IS_MSVC 1

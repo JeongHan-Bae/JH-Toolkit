@@ -53,27 +53,26 @@ In other words, we aim to help you reclaim your understanding of modern C++ from
 performance, and enhanced security.
 </div>
 
-<div align="center">
-<p></p>
+<br>
+
+<div align="center" style="max-width: 80%; margin: 0 auto;">
 
 <!-- ✅ Core Info -->
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/JeongHan-Bae/JH-Toolkit/tree/main?tab=Apache-2.0-1-ov-file#readme)
+[![License](https://img.shields.io/github/license/JeongHan-Bae/JH-Toolkit.svg?labelColor=3E434A&color=1F6FEB&logo=github)](https://github.com/JeongHan-Bae/JH-Toolkit/tree/main?tab=Apache-2.0-1-ov-file#readme)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-violet.svg)](https://en.cppreference.com/w/cpp/20)
 ![Header-Only](https://img.shields.io/badge/header--only-supported-green)
-![Static Build](https://img.shields.io/badge/static--build-supported-green)
 
 <!-- ✅ CI / Contributors / Wiki -->
-[![CI](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml/badge.svg?branch=1.3.x-LTS)](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml)
-[![Contributors](https://img.shields.io/github/contributors/JeongHan-Bae/JH-Toolkit.svg)](https://github.com/JeongHan-Bae/JH-Toolkit/graphs/contributors)
-[![Wiki](https://img.shields.io/badge/docs-wiki-blue)](https://github.com/JeongHan-Bae/JH-Toolkit/wiki)
-
-<br>
+[![CI](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml)
+[![Contributors](https://img.shields.io/github/contributors/JeongHan-Bae/JH-Toolkit.svg?color=darkcyan)](https://github.com/JeongHan-Bae/JH-Toolkit/graphs/contributors)
+[![Wiki](https://img.shields.io/badge/wiki-overview-3A7DFF)](https://github.com/JeongHan-Bae/JH-Toolkit/wiki)
 
 <!-- ✅ Feature Highlights -->
 ![Pooling](https://img.shields.io/badge/pooling-powerful-brown)
 ![Immutable Strings](https://img.shields.io/badge/immutable--strings-safe-brown)
 ![Async](https://img.shields.io/badge/async%20%28coroutines%29-zero--boilerplate-brown)
 ![POD System](https://img.shields.io/badge/plain--old--data-primitive-brown)
+
 ![Duck Concepts](https://img.shields.io/badge/duck--concepts-smart-brown)
 ![Meta Programming](https://img.shields.io/badge/metaprogramming-compile--time-brown)
 ![Ranges and Views](https://img.shields.io/badge/ranges%20%26%20views-semantically--rich-brown)

@@ -132,16 +132,16 @@ TEST_CASE("Base64 decode into user-provided buffer", "[base64][safety][buffer]")
     auto view = decode("Qm9i", out); // "Bob"
 
     REQUIRE(out == "Bob");
-    REQUIRE(view.len == out.size());
-    REQUIRE(std::string(view.data, view.len) == "Bob");
+    REQUIRE(view.size() == out.size());
+    REQUIRE(std::string(view.data, view.size()) == "Bob");
 
     view = decode("TWFu", out); // "Man"
     REQUIRE(out == "Man");
-    REQUIRE(std::string(view.data, view.len) == "Man");
+    REQUIRE(std::string(view.data, view.size()) == "Man");
 
     view = decode("QQ==", out); // "A"
     REQUIRE(out == "A");
-    REQUIRE(std::string(view.data, view.len) == "A");
+    REQUIRE(std::string(view.data, view.size()) == "A");
 }
 
 TEST_CASE("Base64URL decode into user-provided buffer", "[base64url][safety][buffer]") {
@@ -150,44 +150,44 @@ TEST_CASE("Base64URL decode into user-provided buffer", "[base64url][safety][buf
     std::string out;
     auto view = decode("SGVsbG8", out); // "Hello"
     REQUIRE(out == "Hello");
-    REQUIRE(std::string(view.data, view.len) == "Hello");
+    REQUIRE(std::string(view.data, view.size()) == "Hello");
 
     view = decode("QQ", out); // "A"
     REQUIRE(out == "A");
-    REQUIRE(std::string(view.data, view.len) == "A");
+    REQUIRE(std::string(view.data, view.size()) == "A");
 }
 
 TEST_CASE("Base64 decode into user-provided vector<uint8_t> buffer", "[base64][safety][buffer]") {
     using namespace jh::serio::base64;
 
-    std::vector<uint8_t> out;
+    std::vector<std::uint8_t> out;
     auto view = decode("Qm9i", out); // "Bob"
 
-    REQUIRE(out == std::vector<uint8_t>({'B', 'o', 'b'}));
-    REQUIRE(view.len == out.size());
-    REQUIRE(std::string(reinterpret_cast<const char *>(view.data), view.len) == "Bob");
+    REQUIRE(out == std::vector<std::uint8_t>({'B', 'o', 'b'}));
+    REQUIRE(view.size() == out.size());
+    REQUIRE(std::string(view.fetch<const char>(), view.size()) == "Bob");
 
     view = decode("TWFu", out); // "Man"
-    REQUIRE(out == std::vector<uint8_t>({'M', 'a', 'n'}));
-    REQUIRE(std::string(reinterpret_cast<const char *>(view.data), view.len) == "Man");
+    REQUIRE(out == std::vector<std::uint8_t>({'M', 'a', 'n'}));
+    REQUIRE(std::string(view.fetch<const char>(), view.size()) == "Man");
 
     view = decode("QQ==", out); // "A"
-    REQUIRE(out == std::vector<uint8_t>({'A'}));
-    REQUIRE(std::string(reinterpret_cast<const char *>(view.data), view.len) == "A");
+    REQUIRE(out == std::vector<std::uint8_t>({'A'}));
+    REQUIRE(std::string(view.fetch<const char>(), view.size()) == "A");
 }
 
 TEST_CASE("Base64URL decode into user-provided vector<uint8_t> buffer", "[base64url][safety][buffer]") {
     using namespace jh::serio::base64url;
 
-    std::vector<uint8_t> out;
+    std::vector<std::uint8_t> out;
     auto view = decode("SGVsbG8", out); // "Hello"
-    REQUIRE(out == std::vector<uint8_t>({'H', 'e', 'l', 'l', 'o'}));
-    REQUIRE(view.len == out.size());
-    REQUIRE(std::string(reinterpret_cast<const char *>(view.data), view.len) == "Hello");
+    REQUIRE(out == std::vector<std::uint8_t>({'H', 'e', 'l', 'l', 'o'}));
+    REQUIRE(view.size() == out.size());
+    REQUIRE(std::string(view.fetch<const char>(), view.size()) == "Hello");
 
     view = decode("QQ", out); // "A"
-    REQUIRE(out == std::vector<uint8_t>({'A'}));
-    REQUIRE(std::string(reinterpret_cast<const char *>(view.data), view.len) == "A");
+    REQUIRE(out == std::vector<std::uint8_t>({'A'}));
+    REQUIRE(std::string(view.fetch<const char>(), view.size()) == "A");
 }
 
 TEST_CASE("Compile-time Base64 / Base64URL correctness", "[constexpr][base64]") {
@@ -195,23 +195,23 @@ TEST_CASE("Compile-time Base64 / Base64URL correctness", "[constexpr][base64]") 
     SECTION("Base64 decode at compile time") {
         // "SGVsbG8=" -> "Hello"
         constexpr auto out = jh::jindallae::decode_base64<"SGVsbG8=">();
-        STATIC_REQUIRE(out == jh::pod::array<uint8_t, 5>{{'H', 'e', 'l', 'l', 'o'}});
+        STATIC_REQUIRE(out == jh::pod::array<std::uint8_t, 5>{{'H', 'e', 'l', 'l', 'o'}});
     }
 
     SECTION("Base64URL decode at compile time (with pad)") {
         // "SGVsbG8=" -> "Hello"
         constexpr auto out = jh::jindallae::decode_base64url<"SGVsbG8=">();
-        STATIC_REQUIRE(out == jh::pod::array<uint8_t, 5>{{'H', 'e', 'l', 'l', 'o'}});
+        STATIC_REQUIRE(out == jh::pod::array<std::uint8_t, 5>{{'H', 'e', 'l', 'l', 'o'}});
     }
 
     SECTION("Base64URL decode at compile time (no pad)") {
         // "SGVsbG8" -> "Hello"
         constexpr auto out = jh::jindallae::decode_base64url<"SGVsbG8">();
-        STATIC_REQUIRE(out == jh::pod::array<uint8_t, 5>{{'H', 'e', 'l', 'l', 'o'}});
+        STATIC_REQUIRE(out == jh::pod::array<std::uint8_t, 5>{{'H', 'e', 'l', 'l', 'o'}});
     }
 
     SECTION("Base64 encode at compile time") {
-        constexpr jh::pod::array<uint8_t, 3> raw{{'H', 'i', '!'}};
+        constexpr jh::pod::array<std::uint8_t, 3> raw{{'H', 'i', '!'}};
         constexpr auto enc = jh::jindallae::encode_base64(raw);
 
         // "Hi!" -> "SGkh"
@@ -219,14 +219,14 @@ TEST_CASE("Compile-time Base64 / Base64URL correctness", "[constexpr][base64]") 
     }
 
     SECTION("Base64URL encode (no pad) at compile time") {
-        constexpr jh::pod::array<uint8_t, 3> raw{{'H', 'i', '!'}};
+        constexpr jh::pod::array<std::uint8_t, 3> raw{{'H', 'i', '!'}};
         constexpr auto enc = jh::jindallae::encode_base64url(raw, std::false_type{});
 
         STATIC_REQUIRE(enc == jh::jindallae::t_str<5>("SGkh"));
     }
 
     SECTION("Base64URL encode (with pad) at compile time") {
-        constexpr jh::pod::array<uint8_t, 3> raw{{'H', 'i', '!'}};
+        constexpr jh::pod::array<std::uint8_t, 3> raw{{'H', 'i', '!'}};
         constexpr auto enc = jh::jindallae::encode_base64url(raw, std::true_type{});
 
         STATIC_REQUIRE(enc == jh::jindallae::t_str<5>("SGkh"));

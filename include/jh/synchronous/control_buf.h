@@ -55,7 +55,7 @@
  * <h3>Core Features</h3>
  * <ul>
  *   <li>Block-based allocation: memory grows by allocating fixed-sized blocks on demand.</li>
- *   <li><b>Block size:</b> each block contains <code>JH_FIXED_VEC_BLOCK_SIZE</code> elements
+ *   <li><b>Block size:</b> each block contains <code>JH_CTRL_BUFFER_BLOCK_SIZE</code> elements
  *       (default: 64). This can be configured via a preprocessor macro.</li>
  *   <li>Each element is <b>default-constructed in-place</b>; no relocation, no reordering.</li>
  *   <li><b>Strict type constraints</b>: relocation-disabled types only (e.g. <code>std::mutex</code>).</li>
@@ -88,8 +88,16 @@
 #include <type_traits>
 #include "jh/conceptual/container_traits.h"
 
-#ifndef JH_FIXED_VEC_BLOCK_SIZE
-#define JH_FIXED_VEC_BLOCK_SIZE 64
+/**
+ * @brief Specifies the number of elements allocated per block in
+ * jh::sync::control_buf (default: 64).
+ *
+ * This macro controls the fixed block size used for internal
+ * block-based allocation. Larger values reduce allocation frequency
+ * but increase per-block memory usage.
+ */
+#ifndef JH_CTRL_BUFFER_BLOCK_SIZE
+#define JH_CTRL_BUFFER_BLOCK_SIZE 64
 #endif
 
 
@@ -112,7 +120,7 @@ namespace jh::sync {
     class control_buf final {
     public:
         /// @brief Number of elements per allocation block.
-        static constexpr std::size_t BLOCK_SIZE = JH_FIXED_VEC_BLOCK_SIZE;
+        static constexpr std::size_t BLOCK_SIZE = JH_CTRL_BUFFER_BLOCK_SIZE;
 
         /// @brief Type of allocator used for element construction.
         using allocator_type = typename std::allocator_traits<Alloc>::template rebind_alloc<T>;

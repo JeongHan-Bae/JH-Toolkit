@@ -10,6 +10,8 @@ set(EXAMPLE_SOURCES
         example_process_lock.cpp
         example_occ_box.cpp
         example_process_shm.cpp
+        example_runtime_arr.cpp
+        example_ordered_map.cpp
         hello.cpp
 )
 
@@ -17,7 +19,10 @@ foreach(src ${EXAMPLE_SOURCES})
     get_filename_component(fname ${src} NAME)
     get_filename_component(target ${fname} NAME_WE)
     add_executable(${target} ${src})
-    target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    target_link_libraries(${target}
+            PRIVATE
+            jh-toolkit
+    )
 endforeach()
 
 # Add process_lock subdirectory (defines writer/reader)

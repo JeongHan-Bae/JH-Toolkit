@@ -154,12 +154,13 @@ TEST_CASE("map emplace") {
     REQUIRE(ok3 == false);
     REQUIRE(it3->second == "one");
 
-    std::vector<std::pair<int,std::string>> v;
-    for (auto &kv : mp)
+    std::vector<std::pair<int, std::string>> v;
+    for (auto &kv: mp)
         v.emplace_back(kv.first, kv.second);
 
-    REQUIRE(v == std::vector<std::pair<int,std::string>>{
-            {1,"one"}, {2,"two"}
+    REQUIRE(v == std::vector<std::pair<int, std::string>>{
+            {1, "one"},
+            {2, "two"}
     });
 }
 
@@ -176,7 +177,7 @@ TEST_CASE("set emplace") {
     REQUIRE(ok3 == false);
 
     std::vector<int> v;
-    for (auto &x : s) v.push_back(x);
+    for (auto &x: s) v.push_back(x);
 
     REQUIRE(v == std::vector<int>{1, 3});
 }
@@ -195,17 +196,18 @@ TEST_CASE("map insert_or_assign") {
     REQUIRE(ok3 == false);
     REQUIRE(it3->second == 100);
 
-    std::vector<std::pair<int,int>> v;
-    for (auto &kv : mp)
+    std::vector<std::pair<int, int>> v;
+    for (auto &kv: mp)
         v.emplace_back(kv.first, kv.second);
 
-    REQUIRE(v == std::vector<std::pair<int,int>>{
-            {1, 100}, {2, 20}
+    REQUIRE(v == std::vector<std::pair<int, int>>{
+            {1, 100},
+            {2, 20}
     });
 }
 
 TEST_CASE("from_sorted basic ordering and lookup") {
-    for (int N = 1; N <= 200; N+=1) {
+    for (int N = 1; N <= 200; N += 1) {
 
         std::vector<int> sorted;
         sorted.reserve(N);
@@ -214,12 +216,12 @@ TEST_CASE("from_sorted basic ordering and lookup") {
 
         auto s = ordered_set<int>::from_sorted(sorted);
 
-        REQUIRE(s.size() == (size_t)N);
+        REQUIRE(s.size() == (size_t) N);
 
         {
             std::vector<int> vec;
             vec.reserve(N);
-            for (auto &x : s) vec.push_back(x);
+            for (auto &x: s) vec.push_back(x);
             REQUIRE(vec == sorted);
         }
 
@@ -229,7 +231,7 @@ TEST_CASE("from_sorted basic ordering and lookup") {
             REQUIRE(*it == i);
         }
         REQUIRE(s.find(-1) == s.end());
-        REQUIRE(s.find(N+1) == s.end());
+        REQUIRE(s.find(N + 1) == s.end());
 
         for (int i = 0; i < N; ++i) {
             auto it = s.lower_bound(i);
@@ -259,7 +261,7 @@ TEST_CASE("from_sorted basic ordering and lookup") {
 
         {
             int current = N - 1;
-            for (int it : std::ranges::reverse_view(s)) {
+            for (int it: std::ranges::reverse_view(s)) {
                 REQUIRE(it == current);
                 --current;
             }
@@ -272,7 +274,7 @@ TEST_CASE("from_sorted basic ordering and lookup") {
             REQUIRE(s.find(x) == s.end());
 
             std::vector<int> v2;
-            for (auto &x2 : s) v2.push_back(x2);
+            for (auto &x2: s) v2.push_back(x2);
 
             sorted.erase(sorted.begin() + x);
             REQUIRE(v2 == sorted);
@@ -325,15 +327,15 @@ TEST_CASE("map insert with various pair-like types") {
         REQUIRE(it->second == "five");
     }
     std::vector<std::pair<int, std::string>> v;
-    for (auto &kv : mp)
+    for (auto &kv: mp)
         v.emplace_back(kv.first, kv.second);
 
     REQUIRE(v == std::vector<std::pair<int, std::string>>{
-            {1,"one"},
-            {2,"two"},
-            {3,"three"},
-            {4,"four"},
-            {5,"five"}
+            {1, "one"},
+            {2, "two"},
+            {3, "three"},
+            {4, "four"},
+            {5, "five"}
     });
 }
 
@@ -348,11 +350,11 @@ TEST_CASE("map from_sorted with tuple<K,V> input") {
             {4, "ddd"}
     };
 
-    std::sort(vec.begin(), vec.end(), [](auto const& a, auto const& b) {
+    std::sort(vec.begin(), vec.end(), [](auto const &a, auto const &b) {
         return std::get<0>(a) < std::get<0>(b);
     });
 
-    vec.erase(std::unique(vec.begin(), vec.end(), [](auto const& a, auto const& b) {
+    vec.erase(std::unique(vec.begin(), vec.end(), [](auto const &a, auto const &b) {
         return std::get<0>(a) == std::get<0>(b);
     }), vec.end());
 
@@ -363,14 +365,14 @@ TEST_CASE("map from_sorted with tuple<K,V> input") {
     auto mp = ordered_map<int, std::string>::from_sorted(vec);
     REQUIRE(mp.size() == 4);
 
-    std::vector<std::pair<int,std::string>> out;
-    for (auto& kv : mp) out.emplace_back(kv.first, kv.second);
+    std::vector<std::pair<int, std::string>> out;
+    for (auto &kv: mp) out.emplace_back(kv.first, kv.second);
 
-    REQUIRE(out == std::vector<std::pair<int,std::string>>{
-            {1,"aaa"},
-            {2,"bbb"},
-            {3,"ccc"},
-            {4,"ddd"}
+    REQUIRE(out == std::vector<std::pair<int, std::string>>{
+            {1, "aaa"},
+            {2, "bbb"},
+            {3, "ccc"},
+            {4, "ddd"}
     });
 
     for (int i = 1; i <= 4; i++) {
@@ -428,8 +430,8 @@ TEST_CASE("container capacity-related utility functions") {
         REQUIRE(s.size() == 5);
 
         std::vector<int> v;
-        for (auto x : s) v.push_back(x);
-        REQUIRE(v == std::vector<int>{1,2,3,4,5});
+        for (auto x: s) v.push_back(x);
+        REQUIRE(v == std::vector<int>{1, 2, 3, 4, 5});
     }
 
     SECTION("reserve for map preserves elements") {
@@ -440,11 +442,13 @@ TEST_CASE("container capacity-related utility functions") {
 
         m.reserve(500);
 
-        std::vector<std::pair<int,int>> v;
-        for (auto& kv : m) v.emplace_back(kv.first, kv.second);
+        std::vector<std::pair<int, int>> v;
+        for (auto &kv: m) v.emplace_back(kv.first, kv.second);
 
-        REQUIRE(v == std::vector<std::pair<int,int>>{
-                {1,10},{2,20},{3,30}
+        REQUIRE(v == std::vector<std::pair<int, int>>{
+                {1, 10},
+                {2, 20},
+                {3, 30}
         });
     }
 
@@ -457,8 +461,8 @@ TEST_CASE("container capacity-related utility functions") {
         REQUIRE(s.size() == 5);
 
         std::vector<int> v;
-        for (auto x : s) v.push_back(x);
-        REQUIRE(v == std::vector<int>{10,20,30,40,50});
+        for (auto x: s) v.push_back(x);
+        REQUIRE(v == std::vector<int>{10, 20, 30, 40, 50});
     }
 
     SECTION("shrink_to_fit for map preserves structure") {
@@ -469,11 +473,79 @@ TEST_CASE("container capacity-related utility functions") {
 
         mp.shrink_to_fit();
 
-        std::vector<std::pair<int,std::string>> v;
-        for (auto& kv : mp) v.emplace_back(kv.first, kv.second);
+        std::vector<std::pair<int, std::string>> v;
+        for (auto &kv: mp)
+            v.emplace_back(kv.first, kv.second);
 
-        REQUIRE(v == std::vector<std::pair<int,std::string>>{
-                {1,"a"}, {2,"b"}, {3,"c"}
+        REQUIRE(v == std::vector<std::pair<int, std::string>>{
+                {1, "a"},
+                {2, "b"},
+                {3, "c"}
         });
     }
+}
+
+TEST_CASE("string ordered_map basic ordering and uniqueness") {
+    ordered_map<std::string, int> mp;
+
+    mp.emplace("banana", 1);
+    mp.emplace("apple", 2);
+    mp.emplace("date", 3);
+    mp.emplace("cherry", 4);
+
+    REQUIRE(mp.size() == 4);
+
+    std::vector<std::pair<std::string, int>> from_map;
+    for (const auto &[k, v]: mp)
+        from_map.emplace_back(k, v);
+
+    std::vector<std::pair<std::string, int>> expected = {
+            {"banana", 1},
+            {"apple",  2},
+            {"date",   3},
+            {"cherry", 4}
+    };
+
+    std::stable_sort(expected.begin(), expected.end(),
+                     [](const auto &a, const auto &b) {
+                         return a.first < b.first;
+                     });
+
+    REQUIRE(from_map == expected);
+}
+
+TEST_CASE("string-int map random stress vs std::map") {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+
+    std::uniform_int_distribution<int> dist_val(0, 100000);
+    std::uniform_int_distribution<int> dist_key(0, 100000);
+
+    auto make_key = [](int x) {
+        return "key_" + std::to_string(x);
+    };
+
+    ordered_map<std::string, int> mp;
+    std::map<std::string, int> stdmp;
+
+    for (int i = 0; i < 20000; i++) {
+        auto k = make_key(dist_key(gen));
+        int v = dist_val(gen);
+
+        mp.insert_or_assign(k, v);
+        stdmp.insert_or_assign(k, v);
+
+        if (i % 10 == 0) {
+            auto k2 = make_key(dist_key(gen));
+            mp.erase(k2);
+            stdmp.erase(k2);
+        }
+    }
+
+    std::vector<std::pair<std::string, int>> a, b;
+
+    for (auto &kv: mp) a.emplace_back(kv.first, kv.second);
+    for (auto &kv: stdmp) b.emplace_back(kv.first, kv.second);
+
+    REQUIRE(a == b);
 }
