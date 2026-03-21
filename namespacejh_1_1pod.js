@@ -1,0 +1,36 @@
+var namespacejh_1_1pod =
+[
+    [ "literals", "namespacejh_1_1pod_1_1literals.html", [
+      [ "operator\"\"_psv", "namespacejh_1_1pod_1_1literals.html#a4db45e8417cd00ec7e6114e1b2755099", null ]
+    ] ],
+    [ "array", "structjh_1_1pod_1_1array.html", "structjh_1_1pod_1_1array" ],
+    [ "bitflags", "structjh_1_1pod_1_1bitflags.html", null ],
+    [ "bitflags&lt; 8 &gt;", "structjh_1_1pod_1_1bitflags_3_018_01_4.html", null ],
+    [ "bitflags&lt; 16 &gt;", "structjh_1_1pod_1_1bitflags_3_0116_01_4.html", null ],
+    [ "bitflags&lt; 32 &gt;", "structjh_1_1pod_1_1bitflags_3_0132_01_4.html", null ],
+    [ "bitflags&lt; 64 &gt;", "structjh_1_1pod_1_1bitflags_3_0164_01_4.html", null ],
+    [ "bytes_view", "structjh_1_1pod_1_1bytes__view.html", "structjh_1_1pod_1_1bytes__view" ],
+    [ "optional", "structjh_1_1pod_1_1optional.html", "structjh_1_1pod_1_1optional" ],
+    [ "pair", "structjh_1_1pod_1_1pair.html", "structjh_1_1pod_1_1pair" ],
+    [ "span", "structjh_1_1pod_1_1span.html", "structjh_1_1pod_1_1span" ],
+    [ "string_view", "structjh_1_1pod_1_1string__view.html", "structjh_1_1pod_1_1string__view" ],
+    [ "tuple", "structjh_1_1pod_1_1tuple.html", null ],
+    [ "std_uint", "conceptjh_1_1pod_1_1std__uint.html", null ],
+    [ "trivial_bytes", "conceptjh_1_1pod_1_1trivial__bytes.html", null ],
+    [ "pod_like", "conceptjh_1_1pod_1_1pod__like.html", null ],
+    [ "cv_free_pod_like", "conceptjh_1_1pod_1_1cv__free__pod__like.html", null ],
+    [ "streamable", "conceptjh_1_1pod_1_1streamable.html", null ],
+    [ "streamable_pod", "conceptjh_1_1pod_1_1streamable__pod.html", null ],
+    [ "bytes_to_uint", "namespacejh_1_1pod.html#a7f2c0f4dbc28504d1eea591a1b86b8b3", null ],
+    [ "from_bytes", "namespacejh_1_1pod.html#aa66f1d237ccedf73ed484408b86a48af", null ],
+    [ "make_optional", "namespacejh_1_1pod.html#a718067e095218525842cfbed6ec96676", null ],
+    [ "make_pair", "namespacejh_1_1pod.html#a6bba6c453485cf29669db16b9612291d", null ],
+    [ "make_tuple", "namespacejh_1_1pod.html#a9feeff694ec7515b0c23c78aa7ada0f4", null ],
+    [ "to_bytes", "namespacejh_1_1pod.html#a6d1f8391a51ac87a4d482400fea14800", null ],
+    [ "to_span", "namespacejh_1_1pod.html#abb8f4c57e0f9a07020a1db4a5bee1169", null ],
+    [ "to_span", "namespacejh_1_1pod.html#af3494da3696f5e9a49efafb68146ee6f", null ],
+    [ "to_span", "namespacejh_1_1pod.html#a2ec05225b7c40fedc3b23c55655d8c04", null ],
+    [ "uint_to_bytes", "namespacejh_1_1pod.html#af93796d595c10e036e1637ff7e89b8eb", null ],
+    [ "max_pod_array_bytes", "namespacejh_1_1pod.html#aca802e7cca57b1c34f4d4877c914d035", null ],
+    [ "max_pod_bitflags_bytes", "namespacejh_1_1pod.html#a8721ba190c9c5f34c6d5a07381547fec", null ]
+];
