@@ -64,13 +64,13 @@ If your system differs from the CI presets, you can always [build from source](#
 
 ### 🧩 Requirements
 
-| Requirement    | Minimum Version | Notes                               |
-|----------------|-----------------|-------------------------------------|
-| **C++**        | 20              | Mandatory                           |
-| **CMake**      | 3.14+           | For library usage                   |
-| **CMake**      | 3.20+           | For full compilation & installation |
-| **Git**        | Latest          | Required for Debug builds           |
-| **System ABI** | 64-bit          | 32-bit builds prohibited            |
+| Requirement                  | Minimum Version | Notes                                          |
+|------------------------------|-----------------|------------------------------------------------|
+| **C++**                      | 20              | Mandatory                                      |
+| **CMake (consumer)**         | **3.14+**       | Required when using `find_package(jh-toolkit)` |
+| **CMake (building toolkit)** | **3.21+**       | Required when building JH Toolkit itself       |
+| **Git**                      | Latest          | Required for Debug / FetchContent builds       |
+| **System ABI**               | 64-bit          | 32-bit builds prohibited                       |
 
 ---
 

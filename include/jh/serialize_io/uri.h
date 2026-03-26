@@ -49,7 +49,7 @@
  * However, URI processing does not require this capability. The data handled by URI is
  * semantically UTF-8 strings, which should only be utilized within the runtime
  * serialization module <code>jh::serio</code>.
- *
+ * <p></p>
  * @note
  * This header participates in the <b>Dual-Mode Header</b> system of the
  * JH Toolkit.

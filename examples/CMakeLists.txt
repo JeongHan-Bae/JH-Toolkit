@@ -12,6 +12,7 @@ set(EXAMPLE_SOURCES
         example_process_shm.cpp
         example_runtime_arr.cpp
         example_ordered_map.cpp
+        example_flat_multimap.cpp
         hello.cpp
 )
 
