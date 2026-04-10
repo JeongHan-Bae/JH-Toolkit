@@ -3,8 +3,9 @@
  * @brief Forward-aggregator header for <code>jh::ipc</code>.
  *
  * <p>
- * This header provides a flattened entry point to the <code>jh::sync::ipc</code>
- * module under the simplified namespace <code>jh::ipc</code>.
+ * This header provides a flattened entry point to <code>jh::sync::ipc</code>
+ * under the simplified namespace <code>jh::ipc</code>.
+ * In JH Toolkit, IPC stands for <b>InterProcess Coordination</b>.
  * </p>
  *
  * <pre><code>#include &lt;jh/ipc&gt;</code></pre>
@@ -18,25 +19,25 @@
  * <h4>Overview</h4>
  * <ul>
  *   <li>Defines <code>jh::ipc</code> as the user-facing namespace.</li>
- *   <li>Aggregates and flattens the <code>jh::sync::ipc</code> hierarchy.</li>
- *   <li>All actual implementation details remain under
- *       <code>jh/synchronous/ipc.h</code>.</li>
- *   <li>Unlike <code>jh/sync</code>, this header exposes symbols directly under
- *       <code>jh::ipc</code> without the <code>jh::sync</code> prefix.</li>
+ *   <li>Flattens the <code>jh::sync::ipc</code> hierarchy.</li>
+ *   <li>Re-exports all IPC components:
+ *     <code>limits</code>, <code>process_mutex</code>, <code>process_cond_var</code>,
+ *     <code>process_counter</code>, <code>process_shm_obj</code>,
+ *     <code>shared_process_mutex</code>, and <code>process_launcher</code>.</li>
+ *   <li>All semantics remain authoritative in <code>jh/synchronous/ipc.h</code>.</li>
  * </ul>
  *
  * <img src="https://raw.githubusercontent.com/JeongHan-Bae/JH-Toolkit/main/docs/img/Ojing.svg" alt="Ojing mascot" width="64">
  *
  * <h4>Design Note</h4>
  * <p>
- * <code>jh::ipc</code> model is built on the idea that inter-process
- * primitives should behave like ordinary language constructs:
+ * <code>jh::ipc</code> keeps process-level syntax close to in-process STL usage:
  *   <tt>named at compile time</tt>,
  *   <tt>globally addressable</tt>,
- *   and free of <tt>runtime registries</tt> or <tt>supervising daemons</tt>
- * By binding each object to a static identity and mapping directly to OS facilities,
- * the system guarantees deterministic linkage, decentralized coordination, and zero-configuration
- * synchronization across processes.
+ *   and free of <tt>runtime registries</tt> or parent-process dependency.
+ * Most process-level primitives are accessed via <code>::instance()</code>, with type identity
+ * declared by NTTP strings. Different executables synchronize by instantiating the same names.
+ * Shared objects are intentionally pure POD data; each process interprets that data locally.
  * </p>
  */
 

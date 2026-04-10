@@ -7,12 +7,15 @@ set(EXAMPLE_SOURCES
         example_generator.cpp
         example_immutable_str.cpp
         example_pod.cpp
-        example_process_lock.cpp
+        example_pool.cpp
+        example_ipc.cpp
         example_occ_box.cpp
-        example_process_shm.cpp
         example_runtime_arr.cpp
         example_ordered_map.cpp
         example_flat_multimap.cpp
+        example_ranges.cpp
+        example_async.cpp
+        example_serio.cpp
         hello.cpp
 )
 
@@ -29,6 +32,5 @@ endforeach()
 # Add process_lock subdirectory (defines writer/reader)
 add_subdirectory(process_lock)
 
-# Ensure example_process_lock is built after writer and reader
-add_dependencies(example_process_lock writer reader counter)
-add_dependencies(example_process_shm counter sleeper awaker pod_writer)
+# Ensure IPC worker executables are built before the IPC umbrella example
+add_dependencies(example_ipc writer reader counter sleeper awaker pod_writer)

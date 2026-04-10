@@ -4,14 +4,14 @@
  *
  * <h3>Overview</h3>
  * <p>
- * This example is part of the <code>example_process_lock</code> demo.
+ * This example is part of the <code>example_ipc</code> demo.
  * It simulates a <strong>reader</strong> process that attempts to open and
  * read from a shared file (<code>shared_log.txt</code>).
  * </p>
  *
  * <h3>Details</h3>
  * <ul>
- *   <li>Synchronization is achieved using <code>jh::sync::ipc::process_mutex</code>.</li>
+ *   <li>Synchronization is achieved using <code>jh::ipc::process_mutex</code>.</li>
  *   <li>The <code>try_lock_for()</code> call ensures that the reader waits up to
  *       2 seconds to acquire the lock before opening the file.</li>
  *   <li>The timing of <code>std::ifstream</code> open is measured in
@@ -29,18 +29,18 @@
  * <h4>Note</h4>
  * <p>
  * Run together with the corresponding <strong>writer</strong> example under
- * <code>example_process_lock</code> to observe synchronization behavior.
+ * <code>example_ipc</code> to observe synchronization behavior.
  * </p>
  */
 
-#include "jh/synchronous/ipc/process_mutex.h"
+#include <jh/ipc>
 #include <fstream>
 #include <iostream>
 #include <thread>
 
 using namespace std::chrono_literals;
 using clock_t_ = std::chrono::steady_clock;
-using mutex_t = jh::sync::ipc::process_mutex<"demo_mutex">;
+using mutex_t = jh::ipc::process_mutex<"demo_mutex">;
 
 /**
  * @brief Entry point of the reader example.

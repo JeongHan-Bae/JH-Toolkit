@@ -422,28 +422,36 @@ namespace jh::pod {
     requires (is_native_bitflags<N>)
     [[nodiscard]] constexpr bitflags<N>
     operator|(const bitflags<N>& lhs, const bitflags<N>& rhs) noexcept {
-        return bitflags<N>{ lhs | rhs };
+        bitflags<N> out{};
+        out.bits = lhs.bits | rhs.bits;
+        return out;
     }
 
     template<std::uint16_t N>
     requires (is_native_bitflags<N>)
     [[nodiscard]] constexpr bitflags<N>
     operator&(const bitflags<N>& lhs, const bitflags<N>& rhs) noexcept {
-        return bitflags<N>{ lhs & rhs };
+        bitflags<N> out{};
+        out.bits = lhs.bits & rhs.bits;
+        return out;
     }
 
     template<std::uint16_t N>
     requires (is_native_bitflags<N>)
     [[nodiscard]] constexpr bitflags<N>
     operator^(const bitflags<N>& lhs, const bitflags<N>& rhs) noexcept {
-        return bitflags<N>{ lhs ^ rhs };
+        bitflags<N> out{};
+        out.bits = lhs.bits ^ rhs.bits;
+        return out;
     }
 
     template<std::uint16_t N>
     requires (is_native_bitflags<N>)
     [[nodiscard]] constexpr bitflags<N>
     operator~(const bitflags<N>& v) noexcept {
-        return bitflags<N>{ ~v };
+        bitflags<N> out{};
+        out.bits = ~v.bits;
+        return out;
     }
 
     /**

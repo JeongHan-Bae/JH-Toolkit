@@ -1090,7 +1090,7 @@ namespace jh::conc {
             bool operator==(const ptr &other) const = default;
 
             /// @brief Compares the handle against <code>nullptr</code>.
-            bool operator==(std::nullptr_t) {
+            bool operator==(std::nullptr_t) const noexcept {
                 return pool_ == nullptr;
             }
 

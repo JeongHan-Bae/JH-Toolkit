@@ -23,7 +23,7 @@
  * <h3>Overview</h3>
  * <p>
  * This header defines <code>consteval</code> (compile-time evaluated) utilities
- * to enforce platform-aware constraints for inter-process communication (IPC) primitives
+ * to enforce platform-aware constraints for InterProcess Coordination (IPC) primitives
  * implemented under <code>jh::sync::ipc</code>.
  * </p>
  *

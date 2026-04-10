@@ -127,7 +127,15 @@ namespace jh::pod {
                 if constexpr (S.first == data_status::field) {
                     using ptr_t = decltype(&T::data);
                     static_assert(!std::is_member_function_pointer_v<ptr_t>);
-                    return std::type_identity<decltype(std::declval<T *>()->data)>{};
+                    using field_t = decltype(std::declval<T *>()->data);
+                    using field_no_ref_t = std::remove_reference_t<field_t>;
+
+                    if constexpr (std::is_array_v<field_no_ref_t>) {
+                        using elem_t = std::remove_extent_t<field_no_ref_t>;
+                        return std::type_identity<elem_t *>{};
+                    } else {
+                        return std::type_identity<field_t>{};
+                    }
                 } else if constexpr (S.first == data_status::method) {
                     return std::type_identity<decltype(std::declval<T *>()->data())>{};
                 } else {
@@ -339,7 +347,12 @@ namespace jh::pod {
         constexpr auto status = jh::pod::detail::linear_status<C>;
 
         using Ref = typename decltype(detail::ref_type_helper<status, C>::get())::type;
-        using Elem = std::remove_pointer_t<std::remove_reference_t<Ref>>;
+        using RawElem = std::remove_pointer_t<std::remove_reference_t<Ref>>;
+
+        using Elem = std::conditional_t<
+                std::is_const_v<C>,
+                const RawElem,
+                RawElem>;
 
         Elem *ptr{};
         std::uint64_t len{};

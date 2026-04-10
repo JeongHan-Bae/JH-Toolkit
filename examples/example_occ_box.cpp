@@ -1,16 +1,32 @@
 /**
  * @file example_occ_box.cpp
- * @brief Demonstrates the usage of <code>jh::conc::occ_box</code> in <code>jh-toolkit</code>.
+ * @brief Usage examples for <code>jh::conc::occ_box</code>.
+ *
+ * @details
+ * <h4>Philosophy</h4>
+ * <ul>
+ *   <li>Prefer <b>correctness</b> and <b>cognitive simplicity</b> over lock choreography.</li>
+ *   <li>Read from validated snapshots and commit via atomic whole-state replacement.</li>
+ *   <li>Treat updates as <em>build next state, then publish</em>, not in-place mutation.</li>
+ * </ul>
+ *
+ * <p>
+ * <code>occ_box</code> is a strong fit for prototype/MVP phases because it keeps concurrent
+ * business logic explicit and auditable. The trade-off is structural: each write path may
+ * allocate and retry, so heavy write-hot paths eventually benefit from a specialized model
+ * derived from the same OCC principles.
+ * </p>
  */
 
 #include <iostream>
 #include <string>
 #include <vector>
 #include <thread>
+#include <sstream>
 #include <chrono>    // NOLINT force include for std::chrono_literals
 #include <atomic>
 #include <random>
-#include "jh/concurrent/occ_box.h"
+#include <jh/concurrency>
 
 namespace example {
 
@@ -24,22 +40,26 @@ namespace example {
     };
 
     /**
-     * <strong>Demonstrates pointer-based replacement without unnecessary copy.</strong>
+     * @brief Demonstrates pointer-based replacement without deep-copying old state.
      *
-     * <h4>Overview</h4>
-     * <ul>
-     *   <li>Instead of copying <code>*old</code>, we build a brand new <code>Foo</code> object.</li>
-     *   <li>This avoids expensive deep copies (especially when <code>std::string</code> or other heavy members are not reused).</li>
-     *   <li>In this example, we construct a new <code>Foo</code> with <code>x + 2</code> and a different name.</li>
-     * </ul>
-     *
-     * <h4>Expected Result</h4>
+     * @details
      * <p>
-     * The final stored value will be a newly created <code>Foo</code> instance,
-     * proving that <strong>write_ptr()</strong> can be used to replace the object efficiently.
+     * <code>write_ptr()</code> expresses an important OCC idea: build the next immutable state
+     * directly, then publish it with a single commit. Instead of mutating or cloning
+     * the current object graph, this example creates a fresh <code>Foo</code>.
      * </p>
      *
-     * @return void
+     * @par Philosophy
+     * <p>
+     * The box owns versioned snapshots. Writers produce a candidate snapshot and readers
+     * observe either the old snapshot or the new one, never a partial state.
+     * </p>
+     *
+     * @par Expected result
+     * <p>
+     * Final value is a newly constructed <code>Foo</code> with <code>x + 2</code> and a changed
+     * <code>name</code>.
+     * </p>
      */
     void pointer_replacement_no_copy() {
         std::cout << "\n\U0001F539 Pointer Replacement (No Copy):\n";
@@ -59,34 +79,27 @@ namespace example {
     }
 
     /**
-     * <strong>Demonstrates a deterministic OCC update with per-thread backoff.</strong>
+     * @brief Demonstrates deterministic OCC updates under contention with backoff.
      *
-     * <h4>Overview</h4>
+     * @details
      * <ul>
-     *   <li>Four worker threads attempt to update the same <code>occ_box&lt;int&gt;</code> concurrently.</li>
-     *   <li>Each thread applies a fixed delta (<code>+10</code>, <code>-15</code>, <code>+20</code>, <code>-5</code>).</li>
-     *   <li>A per-thread exponential backoff (<code>std::chrono::microseconds</code>) is used 
-     *       to avoid aggressive spinning when CAS fails.</li>
-     *   <li>Each thread tracks its own attempt counter (<code>std::atomic&lt;uint32_t&gt;</code>).</li>
-     *   <li>Logging with <code>std::ostringstream</code> ensures atomic output and simulates syscall overhead,
-     *       making retries more likely (to showcase OCC conflict resolution).</li>
+     *   <li>Four threads update one <code>occ_box&lt;int&gt;</code> with fixed deltas.</li>
+     *   <li>Retries are expected under contention.</li>
+     *   <li>Each worker uses exponential backoff with jitter to avoid pathological spinning.</li>
      * </ul>
      *
-     * <h4>Expected Result</h4>
+     * @par Philosophy
      * <p>
-     * Since the operations are commutative and independent:
-     * </p>
-     * <pre>
-     *   Initial value = 40;
-     *   +10 - 15 + 20 - 5 = +10;
-     *   Final value = 50
-     * </pre>
-     * <p>
-     * Regardless of execution order or conflicts, the final result is <strong>deterministic</strong>.
+     * OCC does not promise deterministic execution order; it promises atomic commits.
+     * If each update is a valid state transition, final business invariants remain
+     * deterministic even when interleavings are not.
      * </p>
      *
-     * @param none This example function has no parameters.
-     * @return void
+     * @par Expected result
+     * <p>
+     * Initial value <code>40</code> plus deltas <code>(+10, -15, +20, -5)</code> yields
+     * final value <code>50</code>.
+     * </p>
      */
     void deterministic_backoff_example() {
         std::cout << "\n\U0001F539 Deterministic OCC with Backoff:\n";
@@ -99,12 +112,11 @@ namespace example {
         std::atomic<uint32_t> attemptsA{0}, attemptsB{0}, attemptsC{0}, attemptsD{0};
 
         /**
-         * <strong>Helper factory for worker threads.</strong><br>
-         * Each worker will repeatedly attempt to update the box with its own delta.
+         * @brief Creates a worker that repeatedly applies one delta until committed.
          *
-         * @param delta The value to add or subtract in this worker.
-         * @param counter A reference to the attempt counter for this worker.
-         * @return A lambda suitable for execution in <code>std::thread</code>.
+         * @param delta Value to add/subtract.
+         * @param counter Attempt counter for the worker.
+         * @return Callable suitable for <code>std::thread</code>.
          */
         auto make_worker = [&](int delta, std::atomic<uint32_t> &counter) {
             return [&, delta]() {
@@ -168,32 +180,25 @@ namespace example {
     }
 
     /**
-     * <strong>Demonstrates usage of <code>apply_to</code> for multi-object atomic updates.</strong>
+     * @brief Demonstrates <code>apply_to</code> for multi-box atomic updates.
      *
-     * <h4>Overview</h4>
+     * @details
      * <ul>
-     *   <li>We create two <code>occ_box&lt;int&gt;</code> objects: one representing an "account A"
-     *       and the other "account B".</li>
-     *   <li>We want to perform a <strong>transfer</strong> of <code>50</code> units
-     *       from A to B.</li>
-     *   <li>Using <code>apply_to</code>, both modifications are committed atomically,
-     *       so there is no risk of:
-     *       <ul>
-     *         <li>Money disappearing (decrement applied, increment not applied).</li>
-     *         <li>Money duplication (increment applied without decrement).</li>
-     *       </ul>
-     *   </li>
-     *   <li>This ensures <strong>all-or-nothing semantics</strong> across multiple boxes.</li>
+     *   <li>Two account boxes are updated as one logical transaction using <code>apply_to</code>.</li>
+     *   <li>Debit and credit either both commit or both fail.</li>
      * </ul>
      *
-     * <h4>Expected Result</h4>
-     * <pre>
-     * Initial: A = 100, B = 200;
-     * Transfer: -50 from A, +50 to B;
-     * Final:   A = 50, B = 250
-     * </pre>
+     * @par Philosophy
+     * <p>
+     * Cross-object invariants belong to one atomic commit boundary. OCC can extend
+     * from single-value correctness to multi-value correctness when updates are
+     * composed into one transaction attempt.
+     * </p>
      *
-     * @return void
+     * @par Expected result
+     * <p>
+     * <code>A: 100 -&gt; 50</code>, <code>B: 200 -&gt; 250</code>.
+     * </p>
      */
     void apply_to_example() {
         std::cout << "\n\U0001F539 Apply-To Example (Atomic Transfer):\n";
@@ -222,26 +227,25 @@ namespace example {
                   << ", B=" << accountB.get_version() << "\n";
     }
     /**
-     * <strong>Demonstrates pointer-based <code>apply_to</code> for multi-object atomic updates.</strong>
+     * @brief Demonstrates pointer-based <code>apply_to</code> with object replacement.
      *
-     * <h4>Overview</h4>
+     * @details
      * <ul>
-     *   <li>We define two <code>occ_box&lt;Foo&gt;</code> objects, representing two user records.</li>
-     *   <li>Using <code>apply_to</code> (pointer version), both are replaced with brand new
-     *       <code>shared_ptr&lt;Foo&gt;</code> objects.</li>
-     *   <li>This avoids deep copy of existing <code>Foo</code> objects (which contain strings).</li>
-     *   <li>Both updates are committed atomically, ensuring consistency across multiple boxes.</li>
+     *   <li>Uses multi-box atomicity with <code>apply_to</code>.</li>
+     *   <li>Uses build-new-and-publish with pointer-returning lambdas.</li>
      * </ul>
      *
-     * <h4>Expected Result</h4>
-     * <pre>
-     * Initial: A = Foo{x=1, name="Alice"}
-     *          B = Foo{x=2, name="Bob"}
-     * Update:  A → Foo{x=11, name="Alice-updated"}
-     *          B → Foo{x=22, name="Bob-updated"}
-     * </pre>
+     * @par Philosophy
+     * <p>
+     * When payloads are non-trivial, replacing snapshots with freshly built objects
+     * keeps update intent explicit and avoids accidental in-place mutation patterns.
+     * </p>
      *
-     * @return void
+     * @par Expected result
+     * <ul>
+     *   <li><code>A: Foo{x=1, "Alice"} -&gt; Foo{x=11, "Alice-updated"}</code></li>
+     *   <li><code>B: Foo{x=2, "Bob"} -&gt; Foo{x=22, "Bob-updated"}</code></li>
+     * </ul>
      */
     void apply_to_ptr_example() {
         std::cout << "\n\U0001F539 Apply-To Example (Pointer Version, Foo):\n";
@@ -276,23 +280,25 @@ namespace example {
     }
 
     /**
-     * <strong>Demonstrates passing external variables into apply_to via lambda captures.</strong>
+     * @brief Demonstrates passing runtime parameters to <code>apply_to</code> via captures.
      *
-     * <h4>Overview</h4>
-     * <ul>
-     *   <li><code>apply_to</code> does not accept extra parameters by design
-     *       (to keep template deduction tractable).</li>
-     *   <li>Instead, external variables should be captured inside the lambda.</li>
-     *   <li>This example simulates a business transfer where the transfer amount
-     *       is provided by a captured variable (<code>amount</code>).</li>
-     * </ul>
+     * @details
+     * <p>
+     * <code>apply_to</code> intentionally keeps a tight callable shape.
+     * External policy inputs (such as transfer amount) are injected through lambda captures.
+     * </p>
      *
-     * <h4>Expected Result</h4>
-     * <pre>
-     * Initial: A = 300, B = 100;
-     * Transfer: -75 from A, +75 to B;
-     * Final:   A = 225, B = 175
-     * </pre>
+     * @par Philosophy
+     * <p>
+     * Keep transactional API signatures strict, and move dynamic business context
+     * to capture scope. This keeps template contracts simple while preserving
+     * expressive user logic.
+     * </p>
+     *
+     * @par Expected result
+     * <p>
+     * <code>A: 300 -&gt; 225</code>, <code>B: 100 -&gt; 175</code>.
+     * </p>
      */
     void apply_to_with_captures_example() {
         std::cout << "\n\U0001F539 Apply-To Example (Lambda Capture for Parameters):\n";
@@ -325,7 +331,8 @@ namespace example {
 
 
 /**
- * @brief Main entry point to run all occ_box examples.
+ * @brief Runs all <code>occ_box</code> examples in this file.
+ * @return Process exit code.
  */
 int main() {
     example::pointer_replacement_no_copy();

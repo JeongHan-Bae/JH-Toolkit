@@ -3,10 +3,10 @@
  * @brief Worker process that increments a shared counter aggressively.
  */
 
-#include "jh/synchronous/ipc/process_counter.h"
+#include <jh/ipc>
 
 
-using counter_t = jh::sync::ipc::process_counter<"demo_counter">;
+using counter_t = jh::ipc::process_counter<"demo_counter">;
 
 int main() {
     auto &c = counter_t::instance();

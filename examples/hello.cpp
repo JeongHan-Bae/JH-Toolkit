@@ -1,13 +1,13 @@
 #include <iostream>
 #include <string_view>
-#include "jh/async"
-#include "jh/immutable_str"
-#include "jh/serio"
+#include <jh/async>
+#include <jh/immutable_str>
+#include <jh/serio>
 
 
 void hello_async() {
-    auto make_fib = [](std::string_view& sv, std::ostream& out) -> jh::async::fiber {
-        for (const auto c : sv) {
+    auto make_fib = [](std::string_view &sv, std::ostream &out) -> jh::async::fiber {
+        for (const auto c: sv) {
             out << c;
             co_await jh::async::resume_tag;
         }
@@ -17,8 +17,8 @@ void hello_async() {
     while (!fib.done()) {
         fib.resume();
     }
-    auto make_gen = [](std::string_view& sv) -> jh::async::generator<char> {
-        for (const auto c : sv) {
+    auto make_gen = [](std::string_view &sv) -> jh::async::generator<char> {
+        for (const auto c: sv) {
             co_yield c;
         }
     };

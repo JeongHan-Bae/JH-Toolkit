@@ -3,12 +3,12 @@
  * @brief Process that sleeps briefly, then notifies all waiters.
  */
 
-#include "jh/synchronous/ipc/process_cond_var.h"
+#include <jh/ipc>
 #include <thread>
 #include <chrono>
 
 using namespace std::chrono_literals;
-using cond_t = jh::sync::ipc::process_cond_var<"demo_cond_var">;
+using cond_t = jh::ipc::process_cond_var<"demo_cond_var">;
 
 int main() {
     auto &cond = cond_t::instance();

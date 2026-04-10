@@ -4,14 +4,14 @@
  *
  * <h3>Overview</h3>
  * <p>
- * This example is part of the <code>example_process_lock</code> demo.
+ * This example is part of the <code>example_ipc</code> demo.
  * It simulates a <strong>writer</strong> process that appends log entries
  * to a shared file (<code>shared_log.txt</code>).
  * </p>
  *
  * <h3>Details</h3>
  * <ul>
- *   <li>Synchronization is achieved using <code>jh::sync::ipc::process_mutex</code>.</li>
+ *   <li>Synchronization is achieved using <code>jh::ipc::process_mutex</code>.</li>
  *   <li>Before writing iterations, the writer clears the file using
  *       <code>std::ios::trunc</code> to ensure a clean start.</li>
  *   <li>Each iteration acquires the lock, appends a timestamped entry,
@@ -29,11 +29,11 @@
  * <h4>Note</h4>
  * <p>
  * Run together with the corresponding <strong>reader</strong> example under
- * <code>example_process_lock</code> to observe lock coordination.
+ * <code>example_ipc</code> to observe lock coordination.
  * </p>
  */
 
-#include "jh/synchronous/ipc/process_mutex.h"
+#include <jh/ipc>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -41,7 +41,7 @@
 
 using namespace std::chrono_literals;
 using clock_t_ = std::chrono::steady_clock;
-using mutex_t = jh::sync::ipc::process_mutex<"demo_mutex">;
+using mutex_t = jh::ipc::process_mutex<"demo_mutex">;
 
 /**
  * @brief Entry point of the writer example.

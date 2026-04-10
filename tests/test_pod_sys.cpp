@@ -562,6 +562,35 @@ TEST_CASE("pod::span works with pod::array") {
     }
 }
 
+TEST_CASE("pod::to_span supports direct pod::array input") {
+    using jh::pod::array;
+    using jh::pod::to_span;
+
+    SECTION("non-const pod::array") {
+        array<int, 5> arr = {{1, 2, 3, 4, 5}};
+
+        auto s = to_span(arr);
+
+        static_assert(std::is_same_v<jh::pod::span<int>, decltype(s)>);
+
+        REQUIRE(s.size() == 5);
+        REQUIRE(s[0] == 1);
+        REQUIRE(s[4] == 5);
+    }
+
+    SECTION("const pod::array") {
+        const jh::pod::array<int, 3> arr = {{7, 8, 9}};
+
+        auto s = jh::pod::to_span(arr);
+
+        static_assert(std::is_same_v<jh::pod::span<const int>, decltype(s)>);
+
+        REQUIRE(s.size() == 3);
+        REQUIRE(s[0] == 7);
+        REQUIRE(s[2] == 9);
+    }
+}
+
 TEST_CASE("pod::to_span from array and containers") {
     using pod::array;
     using pod::to_span;
@@ -672,8 +701,7 @@ TEST_CASE("pod::string_view basic usage", "[string_view]") {
         char buffer[32] = {};
         sv.copy_to(buffer, sizeof(buffer));
         REQUIRE(std::strcmp(buffer, "hello_pod_world") == 0);
-    }
-    SECTION("Three-way comparison and compare() consistency") {
+    }SECTION("Three-way comparison and compare() consistency") {
         using namespace std;
         string_view a{"abc", 3};
         string_view b{"abd", 3};
@@ -994,7 +1022,7 @@ TEST_CASE("pod::ostream << overloads for built-in and custom POD types", "[ostre
         std::ostringstream oss0, oss1, oss5;
 
         tuple<> t0{};
-        tuple<int> t1{{ {42}, {} }};
+        tuple<int> t1{{{42}, {}}};
         auto t5 = make_tuple(1, 2, 3, 4, 5);
 
         oss0 << t0;
@@ -1005,6 +1033,54 @@ TEST_CASE("pod::ostream << overloads for built-in and custom POD types", "[ostre
         REQUIRE(oss1.str() == "(42,)");
         REQUIRE(oss5.str() == "(1, 2, 3, 4, 5)");
     }
+}
+
+TEST_CASE("bitflags native ops with auto deduction behave correctly") {
+    using namespace jh::pod;
+
+    auto test_ops = []<std::size_t N>() {
+        using F = bitflags<N>;
+
+        F a{}, b{};
+
+        a.set(0);
+        a.set(2);
+
+        b.set(2);
+        b.set(3);
+
+        // OR
+        auto r_or = a | b;
+        STATIC_REQUIRE(std::is_same_v<decltype(r_or), F>);
+        REQUIRE(r_or.has(0));
+        REQUIRE(r_or.has(2));
+        REQUIRE(r_or.has(3));
+
+        // AND
+        auto r_and = a & b;
+        STATIC_REQUIRE(std::is_same_v<decltype(r_and), F>);
+        REQUIRE_FALSE(r_and.has(0));
+        REQUIRE(r_and.has(2));
+        REQUIRE_FALSE(r_and.has(3));
+
+        // XOR
+        auto r_xor = a ^ b;
+        STATIC_REQUIRE(std::is_same_v<decltype(r_xor), F>);
+        REQUIRE(r_xor.has(0));
+        REQUIRE_FALSE(r_xor.has(2));
+        REQUIRE(r_xor.has(3));
+
+        // NOT
+        auto r_not = ~a;
+        STATIC_REQUIRE(std::is_same_v<decltype(r_not), F>);
+        REQUIRE_FALSE(r_not.has(0));
+        REQUIRE(r_not.has(1));  // was unset → now set
+    };
+
+    SECTION("bitflags<8>") { test_ops.template operator()<8>(); }SECTION(
+            "bitflags<16>") { test_ops.template operator()<16>(); }SECTION(
+            "bitflags<32>") { test_ops.template operator()<32>(); }SECTION(
+            "bitflags<64>") { test_ops.template operator()<64>(); }
 }
 
 TEST_CASE("pod::array works with std::views pipelines") {
@@ -1048,7 +1124,7 @@ TEST_CASE("pod::tuple construction: nested braces vs make_tuple") {
     using jh::pod::tuple;
     using jh::pod::make_tuple;
 
-    tuple<int, double> t1{{ {7}, {{3.14}, {}} }};
+    tuple<int, double> t1{{{7}, {{3.14}, {}}}};
     auto t2 = make_tuple(7, 3.14);
 
     REQUIRE(t1 == t2);
@@ -1058,28 +1134,40 @@ TEST_CASE("bitflags native type operator return types are self type") {
     using namespace jh::pod;
 
     SECTION("operator| returns self type") {
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<8>>()  | std::declval<bitflags<8>>()),  bitflags<8>>);
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<16>>() | std::declval<bitflags<16>>()), bitflags<16>>);
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<32>>() | std::declval<bitflags<32>>()), bitflags<32>>);
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<64>>() | std::declval<bitflags<64>>()), bitflags<64>>);
+        STATIC_REQUIRE(
+                std::is_same_v<decltype(std::declval<bitflags<8>>() | std::declval<bitflags<8>>()), bitflags<8>>);
+        STATIC_REQUIRE(
+                std::is_same_v<decltype(std::declval<bitflags<16>>() | std::declval<bitflags<16>>()), bitflags<16>>);
+        STATIC_REQUIRE(
+                std::is_same_v<decltype(std::declval<bitflags<32>>() | std::declval<bitflags<32>>()), bitflags<32>>);
+        STATIC_REQUIRE(
+                std::is_same_v<decltype(std::declval<bitflags<64>>() | std::declval<bitflags<64>>()), bitflags<64>>);
     }
 
     SECTION("operator& returns self type") {
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<8>>()  & std::declval<bitflags<8>>()),  bitflags<8>>);
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<16>>() & std::declval<bitflags<16>>()), bitflags<16>>);
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<32>>() & std::declval<bitflags<32>>()), bitflags<32>>);
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<64>>() & std::declval<bitflags<64>>()), bitflags<64>>);
+        STATIC_REQUIRE(
+                std::is_same_v<decltype(std::declval<bitflags<8>>() & std::declval<bitflags<8>>()), bitflags<8>>);
+        STATIC_REQUIRE(
+                std::is_same_v<decltype(std::declval<bitflags<16>>() & std::declval<bitflags<16>>()), bitflags<16>>);
+        STATIC_REQUIRE(
+                std::is_same_v<decltype(std::declval<bitflags<32>>() & std::declval<bitflags<32>>()), bitflags<32>>);
+        STATIC_REQUIRE(
+                std::is_same_v<decltype(std::declval<bitflags<64>>() & std::declval<bitflags<64>>()), bitflags<64>>);
     }
 
     SECTION("operator^ returns self type") {
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<8>>()  ^ std::declval<bitflags<8>>()),  bitflags<8>>);
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<16>>() ^ std::declval<bitflags<16>>()), bitflags<16>>);
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<32>>() ^ std::declval<bitflags<32>>()), bitflags<32>>);
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<bitflags<64>>() ^ std::declval<bitflags<64>>()), bitflags<64>>);
+        STATIC_REQUIRE(
+                std::is_same_v<decltype(std::declval<bitflags<8>>() ^ std::declval<bitflags<8>>()), bitflags<8>>);
+        STATIC_REQUIRE(
+                std::is_same_v<decltype(std::declval<bitflags<16>>() ^ std::declval<bitflags<16>>()), bitflags<16>>);
+        STATIC_REQUIRE(
+                std::is_same_v<decltype(std::declval<bitflags<32>>() ^ std::declval<bitflags<32>>()), bitflags<32>>);
+        STATIC_REQUIRE(
+                std::is_same_v<decltype(std::declval<bitflags<64>>() ^ std::declval<bitflags<64>>()), bitflags<64>>);
     }
 
     SECTION("operator~ returns self type") {
-        STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<8>>()),  bitflags<8>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<8>>()), bitflags<8>>);
         STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<16>>()), bitflags<16>>);
         STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<32>>()), bitflags<32>>);
         STATIC_REQUIRE(std::is_same_v<decltype(~std::declval<bitflags<64>>()), bitflags<64>>);
@@ -1113,7 +1201,7 @@ TEST_CASE("pod::string_view explicit conversion and to_std() behave identically"
     }
 }
 
-namespace test{
+namespace test {
     consteval auto f() {
         constexpr auto t = jh::pod::make_tuple(1, 2, 3);
         return get<0>(t) + get<1>(t) + get<2>(t);
@@ -1150,7 +1238,7 @@ TEST_CASE("pod::tuple constexpr and compile-time semantics") {
 
     // 4. tuple of POD types with manual nested braces (aggregate form)
     {
-        constexpr tuple<int, float> t1{{ {7}, {{3.14f}, {}} }};
+        constexpr tuple<int, float> t1{{{7}, {{3.14f}, {}}}};
         constexpr auto t2 = make_tuple(7, 3.14f);
         STATIC_REQUIRE(t1 == t2);
     }

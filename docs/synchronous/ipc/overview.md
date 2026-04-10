@@ -31,6 +31,17 @@ The module is available through two headers:
 
 This documentation lives in `docs/synchronous/ipc/…` and describes both the module and each primitive.
 
+The design keeps syntax close to in-process synchronization:
+
+* template NTTP strings define the process-level identity
+* most process-level primitives are accessed via `::instance()` singletons
+* different executables synchronize by instantiating the same compile-time names
+* shared objects are pure POD data; each process applies its own local semantics
+
+Unified runnable example:
+
+* `examples/example_ipc.cpp`
+
 ---
 
 ## 🔹 Core Components
