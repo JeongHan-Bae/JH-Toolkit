@@ -16,27 +16,27 @@ FetchContent_MakeAvailable(Catch2)
 # Format: target_name source_file linked_library
 # ---------------------------
 set(TESTS
-        test_generator.cpp      jh-toolkit
-        test_immutable_str.cpp  jh-toolkit-static
-        test_sequence.cpp       jh-toolkit
-        test_pool.cpp           jh-toolkit
-        test_runtime_arr.cpp    jh-toolkit-static
-        test_ranges.cpp         jh-toolkit
-        test_pod_sys.cpp        jh-toolkit
-        test_base64.cpp         jh-toolkit-static
-        test_t_str.cpp          jh-toolkit
-        test_process_lock.cpp   jh-toolkit
-        test_occ.cpp            jh-toolkit
-        test_proc_mapping.cpp   jh-toolkit
-        test_proc_cond.cpp      jh-toolkit
-        test_shproc_lock.cpp    jh-toolkit
-        test_fiber.cpp          jh-toolkit
-        test_lookup_map.cpp     jh-toolkit
-        test_huffman.cpp        jh-toolkit
-        test_ordered_map.cpp    jh-toolkit
-        test_slot.cpp           jh-toolkit
         test_adt.cpp            jh-toolkit
+        test_base64.cpp         jh-toolkit-static
+        test_fiber.cpp          jh-toolkit
         test_flat_multimap.cpp  jh-toolkit
+        test_generator.cpp      jh-toolkit
+        test_huffman.cpp        jh-toolkit
+        test_immutable_str.cpp  jh-toolkit-static
+        test_lookup_map.cpp     jh-toolkit
+        test_occ.cpp            jh-toolkit
+        test_ordered_map.cpp    jh-toolkit
+        test_pod_sys.cpp        jh-toolkit
+        test_pool.cpp           jh-toolkit
+        test_proc_cond.cpp      jh-toolkit
+        test_proc_mapping.cpp   jh-toolkit
+        test_process_lock.cpp   jh-toolkit
+        test_ranges.cpp         jh-toolkit
+        test_runtime_arr.cpp    jh-toolkit-static
+        test_sequence.cpp       jh-toolkit
+        test_shproc_lock.cpp    jh-toolkit
+        test_slot.cpp           jh-toolkit
+        test_t_str.cpp          jh-toolkit
         test_uri.cpp            jh-toolkit-static
 )
 

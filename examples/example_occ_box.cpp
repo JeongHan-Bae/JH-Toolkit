@@ -28,6 +28,12 @@
 #include <random>
 #include <jh/concurrency>
 
+#include "ensure_output.h"
+
+#if IS_WINDOWS
+static EnsureOutput ensure_output_setup;
+#endif
+
 namespace example {
 
     struct Foo {

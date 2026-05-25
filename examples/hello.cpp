@@ -3,7 +3,11 @@
 #include <jh/async>
 #include <jh/immutable_str>
 #include <jh/serio>
+#include "ensure_output.h"
 
+#if IS_WINDOWS
+static EnsureOutput ensure_output_setup;
+#endif
 
 void hello_async() {
     auto make_fib = [](std::string_view &sv, std::ostream &out) -> jh::async::fiber {

@@ -45,6 +45,12 @@
 #include <numeric>
 #include <vector>
 
+#include "ensure_output.h"
+
+#if IS_WINDOWS
+static EnsureOutput ensure_output_setup;
+#endif
+
 namespace example {
 
     using namespace jh;
