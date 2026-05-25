@@ -5,7 +5,6 @@
 
 #include <jh/ipc>
 #include <thread>
-#include <chrono>
 
 using namespace std::chrono_literals;
 using cond_t = jh::ipc::process_cond_var<"demo_cond_var">;

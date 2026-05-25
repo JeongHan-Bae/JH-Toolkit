@@ -10,6 +10,7 @@
 #include <vector>
 #include <algorithm>
 #include <random>
+#include <mutex>
 
 // -----------------------------------------------------------------------------
 // Define shared POD type

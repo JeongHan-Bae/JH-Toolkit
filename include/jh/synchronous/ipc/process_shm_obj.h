@@ -119,6 +119,7 @@
 #include <stdexcept>
 #include <string>
 #include <functional>
+#include <mutex>
 
 #if IS_WINDOWS
 #include <windows.h>
