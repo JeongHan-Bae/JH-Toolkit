@@ -246,92 +246,92 @@ AI-generated guesses that are not grounded in the documented contracts.
     <tr>
       <td><code>&lt;jh/async&gt;</code></td>
       <td align="center">🌀</td>
-      <td><a href="docs/asynchronous/overview.md">API References</a></td>
+      <td><a href="docs/entry_points/async.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/concepts&gt;</code></td>
       <td align="center">🧩</td>
-      <td><a href="docs/conceptual/overview.md">API References</a></td>
+      <td><a href="docs/entry_points/concepts.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/concurrency&gt;</code></td>
       <td align="center">🎍</td>
-      <td><a href="docs/concurrent/overview.md">API References</a></td>
+      <td><a href="docs/entry_points/concurrency.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/flat_multimap&gt;</code></td>
       <td align="center">🧱</td>
-      <td><a href="docs/core/flat_multimap.md">API References</a></td>
+      <td><a href="docs/entry_points/flat_multimap.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/generator&gt;</code></td>
       <td align="center">🌀</td>
-      <td><a href="docs/asynchronous/generator.md">API References</a></td>
+      <td><a href="docs/entry_points/generator.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/immutable_str&gt;</code></td>
       <td align="center">🧱</td>
-      <td><a href="docs/core/immutable_str.md">API References</a></td>
+      <td><a href="docs/entry_points/immutable_str.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/ipc&gt;</code> (InterProcess Coordination)</td>
       <td align="center">🛰️</td>
-      <td><a href="docs/synchronous/ipc.md">API References</a></td>
+      <td><a href="docs/entry_points/ipc.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/jindallae&gt;</code> (Easter Egg Alias)</td>
       <td align="center">⚗️</td>
-      <td><a href="docs/metax/overview.md">API References</a></td>
+      <td><a href="docs/entry_points/jindallae.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/meta&gt;</code></td>
       <td align="center">⚗️</td>
-      <td><a href="docs/metax/overview.md">API References</a></td>
+      <td><a href="docs/entry_points/meta.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/ordered_map&gt;</code></td>
       <td align="center">🧱</td>
-      <td><a href="docs/core/ordered_map.md">API References</a></td>
+      <td><a href="docs/entry_points/ordered_map.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/pod&gt;</code></td>
       <td align="center">🧊</td>
-      <td><a href="docs/pods/overview.md">API References</a></td>
+      <td><a href="docs/entry_points/pod.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/pool&gt;</code></td>
       <td align="center">🎍</td>
-      <td><a href="docs/concurrent/overview.md">API References</a></td>
+      <td><a href="docs/entry_points/pool.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/ranges_ext&gt;</code></td>
       <td align="center">🌗</td>
-      <td><a href="docs/ranges/range_ext.md">API References</a></td>
+      <td><a href="docs/entry_points/ranges_ext.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/runtime_arr&gt;</code></td>
       <td align="center">🧱</td>
-      <td><a href="docs/core/runtime_arr.md">API References</a></td>
+      <td><a href="docs/entry_points/runtime_arr.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/serio&gt;</code></td>
       <td align="center">🍯</td>
-      <td><a href="docs/serialize_io/overview.md">API References</a></td>
+      <td><a href="docs/entry_points/serio.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/sync&gt;</code></td>
       <td align="center">⏱️</td>
-      <td><a href="docs/synchronous/overview.md">API References</a></td>
+      <td><a href="docs/entry_points/sync.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/typed&gt;</code></td>
       <td align="center">🧬</td>
-      <td><a href="docs/typing/overview.md">API References</a></td>
+      <td><a href="docs/entry_points/typed.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/views&gt;</code></td>
       <td align="center">🔭</td>
-      <td><a href="docs/ranges/views/overview.md">API References</a></td>
+      <td><a href="docs/entry_points/views.md">Entry Header Guide</a></td>
     </tr>
   </tbody>
 </table>
