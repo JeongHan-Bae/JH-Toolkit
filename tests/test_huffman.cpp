@@ -1,4 +1,5 @@
 #include <random>
+#include <stdexcept>
 #include <catch2/catch_all.hpp>
 #include "jh/serio"
 #include "jh/pod"
@@ -143,6 +144,17 @@ TEST_CASE("Base64 + Huff128Canonical roundtrip") {
 
         REQUIRE(raw_out == raw);
     }
+}
+
+TEST_CASE("Huffman signature mismatch is rejected") {
+    using Compress = jh::serio::huffman<"sig_one", jh::serio::huff_algo::huff256_canonical>;
+    using Decompress = jh::serio::huffman<"sig_two", jh::serio::huff_algo::huff256_canonical>;
+
+    std::stringstream ss(std::ios::in | std::ios::out | std::ios::binary);
+    Compress::compress(ss, "signature check");
+    ss.seekg(0);
+
+    REQUIRE_THROWS_AS(Decompress::decompress(ss), std::runtime_error);
 }
 
 __attribute__((noinline))

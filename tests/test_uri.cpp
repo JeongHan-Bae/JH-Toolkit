@@ -1,4 +1,5 @@
 #include <random>
+#include <stdexcept>
 #include <catch2/catch_all.hpp>
 
 #include "jh/serio"
@@ -128,6 +129,14 @@ TEST_CASE("URI URL-safe Encode legality checks", "[uri][url]") {
         bad.push_back(char(0x28)); // invalid UTF-8 sequence
 
         REQUIRE_THROWS_AS(encode_safe(bad), std::runtime_error);
+    }
+}
+
+TEST_CASE("URI safe decode rejects malformed or unsafe output", "[uri][url][error]") {
+    using namespace jh::serio::uri;
+
+    SECTION("Decoded control characters are rejected") {
+        REQUIRE_THROWS_AS(decode_safe("%01"), std::runtime_error);
     }
 }
 

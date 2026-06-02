@@ -5,6 +5,7 @@
 #include <ranges>
 #include <vector>
 #include <set>
+#include <stdexcept>
 #include "jh/ordered_map"
 
 using jh::ordered_set;
@@ -339,6 +340,30 @@ TEST_CASE("map insert with various pair-like types") {
     });
 }
 
+TEST_CASE("map range construction follows insert semantics") {
+    std::vector<std::pair<int, std::string>> input = {
+            {3, "ccc"},
+            {1, "aaa"},
+            {2, "bbb"},
+            {1, "ignored duplicate"},
+            {4, "ddd"}
+    };
+
+    ordered_map<int, std::string> mp(input);
+
+    std::vector<std::pair<int, std::string>> out;
+    out.reserve(mp.size());
+    for (auto &kv: mp)
+        out.emplace_back(kv.first, kv.second);
+
+    REQUIRE(out == std::vector<std::pair<int, std::string>>{
+            {1, "aaa"},
+            {2, "bbb"},
+            {3, "ccc"},
+            {4, "ddd"}
+    });
+}
+
 TEST_CASE("map from_sorted with tuple<K,V> input") {
     using T = std::tuple<int, std::string>;
 
@@ -482,6 +507,13 @@ TEST_CASE("container capacity-related utility functions") {
                 {2, "b"},
                 {3, "c"}
         });
+    }
+
+    SECTION("map at() throws for missing keys") {
+        ordered_map<int, int> mp;
+        mp[1] = 10;
+        REQUIRE(mp.at(1) == 10);
+        REQUIRE_THROWS_AS(mp.at(2), std::out_of_range);
     }
 }
 

@@ -359,6 +359,7 @@ namespace jh::ranges {
     template<typename... Iters>
     struct [[maybe_unused]] zip_iterator final {
         std::tuple<Iters...> iters;
+        bool terminal_ = false;
 
         using difference_type   = std::ptrdiff_t;
         using value_type        = std::tuple<std::remove_cvref_t<std::iter_value_t<Iters>>...>;
@@ -388,6 +389,9 @@ namespace jh::ranges {
 
         constexpr bool operator==(const zip_iterator &other) const {
             return [&]<std::size_t... I>(std::index_sequence<I...>) {
+                if (terminal_ || other.terminal_) {
+                    return ((std::get<I>(iters) == std::get<I>(other.iters)) || ...);
+                }
                 return ((std::get<I>(iters) == std::get<I>(other.iters)) && ...);
             }(std::index_sequence_for<Iters...>{});
         }
@@ -514,11 +518,18 @@ namespace jh::ranges {
          * @details
          * Iteration stops when <strong>any</strong> of the component iterators
          * reaches its corresponding end sentinel.
+         *
+         * <p>
+         * The fallback implementation always uses <code>zip_sentinel</code>
+         * for termination so truncation works correctly even when all
+         * underlying ranges are common ranges with different lengths.
+         * </p>
          */
         constexpr auto end() {
             if constexpr ((std::ranges::common_range<Views> && ...)) {
                 return zip_iterator{
-                        tuple_transform([](auto &v) { return std::ranges::end(v); }, bases)
+                        tuple_transform([](auto &v) { return std::ranges::end(v); }, bases),
+                        true
                 };
             } else {
                 return zip_sentinel{
@@ -552,9 +563,16 @@ namespace jh::ranges {
          * This overload participates when <code>*this</code> is const.
          */
         constexpr auto end() const {
-            return zip_sentinel{
-                    tuple_transform([](auto const &v) { return std::ranges::end(v); }, bases)
-            };
+            if constexpr ((std::ranges::common_range<Views> && ...)) {
+                return zip_iterator{
+                        tuple_transform([](auto const &v) { return std::ranges::end(v); }, bases),
+                        true
+                };
+            } else {
+                return zip_sentinel{
+                        tuple_transform([](auto const &v) { return std::ranges::end(v); }, bases)
+                };
+            }
         }
     };
 

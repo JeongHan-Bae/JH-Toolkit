@@ -1,4 +1,5 @@
 #include <random>
+#include <stdexcept>
 #include <catch2/catch_all.hpp>
 #include "jh/serio"
 #include "jh/jindallae"
@@ -174,6 +175,13 @@ TEST_CASE("Base64 decode into user-provided vector<uint8_t> buffer", "[base64][s
     view = decode("QQ==", out); // "A"
     REQUIRE(out == std::vector<std::uint8_t>({'A'}));
     REQUIRE(std::string(view.fetch<const char>(), view.size()) == "A");
+}
+
+TEST_CASE("Base64 encode rejects null input when length is non-zero", "[base64][error]") {
+    const std::uint8_t *null_data = nullptr;
+
+    REQUIRE_THROWS_AS(jh::serio::base64::encode(null_data, 1), std::invalid_argument);
+    REQUIRE_THROWS_AS(jh::serio::base64url::encode(null_data, 1), std::invalid_argument);
 }
 
 TEST_CASE("Base64URL decode into user-provided vector<uint8_t> buffer", "[base64url][safety][buffer]") {

@@ -364,6 +364,22 @@ TEST_CASE("adapt: direct call vs pipe form equivalence", "[adapt][equiv]") {
     REQUIRE(out1.str() == "10 20 30 ");
 }
 
+TEST_CASE("adapt empty runtime_arr stays empty", "[adapt][empty]") {
+    jh::runtime_arr<int> arr(0);
+
+    auto direct = jh::ranges::adapt(arr);
+    auto pipe = arr | jh::ranges::adapt();
+
+    REQUIRE(std::ranges::empty(direct));
+    REQUIRE(std::ranges::empty(pipe));
+
+    std::ostringstream out;
+    for (auto x: pipe)
+        out << x;
+
+    REQUIRE(out.str().empty());
+}
+
 TEST_CASE("flatten: direct call vs pipe form equivalence", "[flatten][equiv]") {
     jh::runtime_arr<int> a(3);
     jh::runtime_arr<std::string> b(3);
@@ -431,6 +447,28 @@ TEST_CASE("flatten deep nested enumerate+zip_pipe", "[flatten][nested]") {
             "(100,10,A,10,10,10,20,30) (101,20,B,11,20,40,50,60) (102,30,C,12,30,70,80,90) ");
 }
 
+TEST_CASE("zip_pipe truncates to empty when one range is empty", "[zip][empty][pipe]") {
+    std::vector<int> ids{1, 2, 3};
+    std::vector<std::string> names;
+    std::vector<double> weights{1.0, 2.0, 3.0};
+
+    std::size_t zipped_count = 0;
+    for (auto e: ids | jh::ranges::views::zip_pipe(names, weights)) {
+        (void) e;
+        ++zipped_count;
+    }
+
+    std::size_t flattened_count = 0;
+    for (auto e: (ids | jh::ranges::views::zip_pipe(names, weights))
+                   | jh::ranges::views::flatten()) {
+        (void) e;
+        ++flattened_count;
+    }
+
+    REQUIRE(zipped_count == 0);
+    REQUIRE(flattened_count == 0);
+}
+
 TEST_CASE("constexpr flatten_proxy recursion and tuple_materialize", "[flatten][meta][constexpr]") {
     using jh::meta::flatten_proxy;
     using jh::pod::make_tuple;
@@ -460,6 +498,28 @@ TEST_CASE("constexpr flatten_proxy recursion and tuple_materialize", "[flatten][
     const auto [a, b, c, d, e, f, g] = fp;
     out << a << "," << b << "," << c << "," << d << "," << e << "," << f << "," << g;
     REQUIRE(out.str() == "1,2,3,4,5,6,7");
+}
+
+TEST_CASE("vis_transform remains non-consuming across repeated passes", "[vis_transform][reentrant]") {
+    std::vector<int> values{1, 2, 3};
+    int calls = 0;
+
+    auto view = values | jh::ranges::views::vis_transform([&](int x) {
+        ++calls;
+        return x * 3;
+    });
+
+    std::ostringstream out1;
+    for (auto v: view)
+        out1 << v << " ";
+
+    std::ostringstream out2;
+    for (auto v: view)
+        out2 << v << " ";
+
+    REQUIRE(out1.str() == out2.str());
+    REQUIRE(out1.str() == "3 6 9 ");
+    REQUIRE(calls == 6);
 }
 
 struct DeclaredOnly {
@@ -698,6 +758,25 @@ namespace demo {
             return {static_cast<int>(index), name + ":(" + std::to_string(value) + ", " + std::to_string(id) + ")"};
         }
     };
+}
+
+TEST_CASE("common preserves repeated traversal on already common ranges", "[common][reentrant]") {
+    jh::runtime_arr<int> values(3);
+    for (auto [i, x]: values | jh::ranges::views::enumerate())
+        x = static_cast<int>(i);
+
+    auto normalized = values | jh::ranges::views::common();
+
+    std::ostringstream out1;
+    for (auto v: normalized)
+        out1 << v << " ";
+
+    std::ostringstream out2;
+    for (auto v: normalized)
+        out2 << v << " ";
+
+    REQUIRE(out1.str() == out2.str());
+    REQUIRE(out1.str() == "0 1 2 ");
 }
 
 TEST_CASE("flatten + collect + to pmr unordered_map", "[flatten][collect][to][combine]") {

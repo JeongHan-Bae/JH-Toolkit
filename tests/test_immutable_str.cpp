@@ -3,6 +3,7 @@
 #include <random>
 #include <thread>
 #include <shared_mutex>
+#include <string_view>
 
 #include "jh/immutable_str"
 #include "jh/typed"
@@ -55,6 +56,12 @@ TEST_CASE("Immutable String - Disabled Operations") {
     static_assert(!std::is_move_assignable_v<immutable_str>, "immutable_str should not be move-assignable");
 
     immutable_str str("Hello, World!");
+}
+
+TEST_CASE("Immutable String nullptr construction") {
+    jh::immutable_str empty(nullptr);
+    REQUIRE(empty.size() == 0);
+    REQUIRE(empty.view().empty());
 }
 
 // Basic functionality tests for immutable_str
@@ -251,7 +258,7 @@ TEST_CASE("Atomic String Hashing & Equality") {
 }
 
 // Basic functionality tests
-TEST_CASE("pool<immutable_str> - Basic Functionality") {
+TEST_CASE("observe_pool<immutable_str> - Basic Functionality") {
     test::ImmutablePool pool;
 
     auto str1 = pool.acquire("Hello, World!");
@@ -264,7 +271,7 @@ TEST_CASE("pool<immutable_str> - Basic Functionality") {
 }
 
 // Cleanup behavior tests
-TEST_CASE("pool<immutable_str> - Cleanup Behavior") {
+TEST_CASE("observe_pool<immutable_str> - Cleanup Behavior") {
     test::ImmutablePool pool;
 
     auto str1 = pool.acquire("Persistent String");
@@ -278,7 +285,7 @@ TEST_CASE("pool<immutable_str> - Cleanup Behavior") {
 }
 
 // Hashing and equality tests
-TEST_CASE("pool<immutable_str> - Hashing and Equality") {
+TEST_CASE("observe_pool<immutable_str> - Hashing and Equality") {
     test::ImmutablePool pool;
 
     auto str1 = pool.acquire("Hash Test");
@@ -289,7 +296,7 @@ TEST_CASE("pool<immutable_str> - Hashing and Equality") {
 }
 
 // Multithreading test: Pooling the same string
-TEST_CASE("pool<immutable_str> - Multithreading Same String") {
+TEST_CASE("observe_pool<immutable_str> - Multithreading Same String") {
     test::ImmutablePool pool;
     constexpr int THREADS = 4;
     constexpr int OBJECTS_PER_THREAD = 100;
@@ -322,7 +329,7 @@ TEST_CASE("pool<immutable_str> - Multithreading Same String") {
 }
 
 // Multithreading test: Correctly storing shared_ptr
-TEST_CASE("pool<immutable_str> - Multithreading with Stored Shared_Ptr") {
+TEST_CASE("observe_pool<immutable_str> - Multithreading with Stored Shared_Ptr") {
     test::ImmutablePool pool;
     constexpr int THREADS = 4;
     constexpr int OBJECTS_PER_THREAD = 100;
@@ -354,7 +361,7 @@ TEST_CASE("pool<immutable_str> - Multithreading with Stored Shared_Ptr") {
 }
 
 // Automatic expansion and contraction
-TEST_CASE("pool<immutable_str> - Expansion and Contraction") {
+TEST_CASE("observe_pool<immutable_str> - Expansion and Contraction") {
     test::ImmutablePool pool(4); // Initial size 4
 
     std::vector<std::shared_ptr<jh::immutable_str> > objects;
@@ -374,7 +381,7 @@ TEST_CASE("pool<immutable_str> - Expansion and Contraction") {
 }
 
 // Clear pool
-TEST_CASE("pool<immutable_str> - Clear Pool") {
+TEST_CASE("observe_pool<immutable_str> - Clear Pool") {
     test::ImmutablePool pool;
 
     auto str1 = pool.acquire("To be removed");

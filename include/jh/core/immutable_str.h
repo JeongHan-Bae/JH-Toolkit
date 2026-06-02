@@ -257,6 +257,7 @@
 #include <string>           // for std::string
 #include <cstring>          // for ::strnlen
 #include <string_view>      // for std::string_view
+#include <cstddef>          // for std::nullptr_t
 #include <cstdint>          // for std::uint64_t
 #include <optional>         // for std::optional
 #include <type_traits>      // for std::remove_cvref_t
@@ -380,6 +381,11 @@ namespace jh {
          * </ul>
          */
         explicit immutable_str(const char *str);
+
+        /**
+         * @brief Constructs an empty immutable string from <code>nullptr</code>.
+         */
+        explicit immutable_str(std::nullptr_t);
 
         /**
          * @brief Deleted constructor to prevent unintended conversions.
@@ -1134,6 +1140,10 @@ namespace jh {
 
     JH_INLINE immutable_str::immutable_str(const char *str) {
         init_from_string(str);
+    }
+
+    JH_INLINE immutable_str::immutable_str(std::nullptr_t) {
+        init_from_string(static_cast<const char *>(nullptr));
     }
 
     JH_INLINE const char *immutable_str::c_str() const noexcept {

@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <stdexcept>
 
 #include "jh/flat_multimap"
 
@@ -140,6 +141,19 @@ TEST_CASE("range erase equivalence") {
     sm.erase(sl, sr);
 
     REQUIRE(helper::dump_multimap(fm) == helper::dump_multimap(sm));
+}
+
+TEST_CASE("range erase rejects inverted iterators") {
+    flat_multimap<int, int> fm;
+
+    fm.insert(std::forward_as_tuple(1, 10));
+    fm.insert(std::forward_as_tuple(2, 20));
+    fm.insert(std::forward_as_tuple(3, 30));
+
+    auto first = fm.find(2);
+    auto last = fm.find(1);
+
+    REQUIRE_THROWS_AS(fm.erase(first, last), std::logic_error);
 }
 
 TEST_CASE("bulk construction then sort equivalence") {

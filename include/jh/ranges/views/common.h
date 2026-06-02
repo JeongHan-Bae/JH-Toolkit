@@ -152,16 +152,20 @@ namespace jh::ranges::views {
              */
             template<typename R>
             requires (jh::concepts::sequence<R> || std::ranges::range<R>)
-            constexpr auto operator()(R &&r) const {
-                if constexpr (std::ranges::common_range<R>) {
-                    return std::forward<R>(r);
-                }
-                if constexpr (jh::concepts::sequence<R>)
-                    return std::ranges::common_view{
-                            std::views::all(jh::to_range(std::forward<R>(r)))
-                    };
-                else
+            constexpr decltype(auto) operator()(R &&r) const {
+                if constexpr (jh::concepts::sequence<R>) {
+                    using all_t = decltype(std::views::all(jh::to_range(std::declval<R>())));
+
+                    if constexpr (std::ranges::common_range<std::remove_cvref_t<all_t>>) {
+                        return std::views::all(jh::to_range(std::forward<R>(r)));
+                    } else {
+                        return std::ranges::common_view{
+                                std::views::all(jh::to_range(std::forward<R>(r)))
+                        };
+                    }
+                } else {
                     return std::ranges::views::common(std::forward<R>(r));
+                }
             }
 
             /**
@@ -224,13 +228,20 @@ namespace jh::ranges::views {
              */
             template<typename R>
             requires (jh::concepts::sequence<R> || std::ranges::range<R>)
-            constexpr auto operator()(R &&r) const {
-                if constexpr (jh::concepts::sequence<R>)
-                    return std::ranges::common_view{
-                            std::views::all(jh::to_range(std::forward<R>(r)))
-                    };
-                else
+            constexpr decltype(auto) operator()(R &&r) const {
+                if constexpr (jh::concepts::sequence<R>) {
+                    using all_t = decltype(std::views::all(jh::to_range(std::declval<R>())));
+
+                    if constexpr (std::ranges::common_range<std::remove_cvref_t<all_t>>) {
+                        return std::views::all(jh::to_range(std::forward<R>(r)));
+                    } else {
+                        return std::ranges::common_view{
+                                std::views::all(jh::to_range(std::forward<R>(r)))
+                        };
+                    }
+                } else {
                     return std::ranges::views::common(std::forward<R>(r));
+                }
             }
 
             /**
