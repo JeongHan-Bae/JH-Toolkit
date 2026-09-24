@@ -63,9 +63,7 @@ namespace jh::meta {
     };
 
     template<jh::concepts::scoped_enum E>
-    [[maybe_unused]] unexpected(E
-    e) ->
-    unexpected<E>;
+    unexpected(E) -> unexpected<E>;
 
     /**
      * @brief Result of an operation that may fail with a scoped enum.
