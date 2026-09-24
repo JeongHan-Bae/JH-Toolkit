@@ -18,6 +18,7 @@ FetchContent_MakeAvailable(Catch2)
 set(TESTS
         test_adt.cpp            jh-toolkit
         test_base64.cpp         jh-toolkit-static
+        test_enum_case.cpp      jh-toolkit-static
         test_fiber.cpp          jh-toolkit
         test_flat_multimap.cpp  jh-toolkit
         test_generator.cpp      jh-toolkit

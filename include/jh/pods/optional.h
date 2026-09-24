@@ -18,26 +18,27 @@
  */
 /**
  * @file optional.h
- * @brief POD-safe <code>optional&lt;T&gt;</code> with raw storage.
+ * @brief POD-safe <code>optional&lt;T&gt;</code> with constexpr-capable union storage.
  *
  * <h3>Design Goals:</h3>
  * <ul>
  *   <li>Strict POD semantics (<code>pod_like</code> required)</li>
- *   <li>Raw byte buffer + 1 flag, no constructors or destructors</li>
+ *   <li>Trivial union storage + 1 flag, no non-trivial lifetime work</li>
  *   <li>Safe in <code>pod::array</code>, serialization, and mmap'd memory</li>
- *   <li>ABI predictable (<code>sizeof(optional&lt;T&gt;) == sizeof(T) + 1</code>)</li>
+ *   <li>ABI stable: inline T storage and a presence flag, with normal ABI padding</li>
  * </ul>
  *
- * @note Unlike <code>std::optional</code>, this type never runs constructors or destructors.
- * @note Functions rely on <code>reinterpret_cast</code>/<code>std::launder</code> and therefore
- *       cannot be used in <code>consteval</code> contexts.
+ * @note Unlike <code>std::optional</code>, this type only accepts POD-like T and never runs
+ *       non-trivial constructors or destructors.
  */
 
 #pragma once
 
 #include "jh/pods/pod_like.h"
-#include <new>
+#include <array>
+#include <bit>
 #include <cstddef>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 
@@ -45,7 +46,7 @@ namespace jh::pod {
     /**
      * @brief POD-compatible optional wrapper.
      *
-     * Stores raw bytes for <code>T</code> and a boolean flag.
+     * Stores <code>T</code> in a trivial union and a boolean flag.
      * Provides POD-level semantics similar to <code>std::optional</code>.
      *
      * <h4>Equality Semantics:</h4>
@@ -70,7 +71,10 @@ namespace jh::pod {
      */
     template<cv_free_pod_like T>
     struct alignas(alignof(T)) optional final {
-        std::byte storage[sizeof(T)];  ///< Raw storage; flattens type ABI, never access directly.
+        union storage_type {
+            T value;
+            std::byte bytes[sizeof(T)];
+        } storage;                     ///< Inline storage for T or its raw representation.
         bool has_value;                ///< Presence flag (true = has value).
 
         using value_type = T;          ///< Alias of contained type.
@@ -79,57 +83,65 @@ namespace jh::pod {
         constexpr optional() noexcept = default;
 
         /**
-         * @brief Store a value by copying raw memory.
+         * @brief Store a value using T's trivial copy construction.
          * @param value Source value to copy.
          */
-        void store(const T &value) noexcept {
-            std::memcpy(storage, std::addressof(value), sizeof(T));
+        constexpr void store(const T &value) noexcept {
+            if (std::is_constant_evaluated()) {
+                if constexpr (std::is_copy_constructible_v<T>) {
+                    std::construct_at(std::addressof(storage.value), value);
+                } else {
+                    std::abort();
+                }
+            } else {
+                std::memcpy(std::addressof(storage.value), std::addressof(value), sizeof(T));
+            }
             has_value = true;
         }
 
         /// @brief Clear the stored value (set to empty).
-        void clear() noexcept { has_value = false; }
+        constexpr void clear() noexcept { has_value = false; }
 
         /**
          * @brief Get mutable pointer to stored value.
-         * @return Pointer to <code>T</code>, must check <code>.has()</code> before use.
+         * @return Pointer to active <code>T</code>, must check <code>.has()</code> first.
          */
-        T *get() noexcept {
-            return std::launder(reinterpret_cast<T *>(&storage));
+        constexpr T *get() noexcept {
+            return std::addressof(storage.value);
         }
 
         /**
          * @brief Get const pointer to stored value.
-         * @return Pointer to const <code>T</code>, must check <code>.has()</code> before use.
+         * @return Pointer to active const <code>T</code>, must check <code>.has()</code> first.
          */
-        [[nodiscard]] const T *get() const noexcept {
-            return std::launder(reinterpret_cast<const T *>(&storage));
+        [[nodiscard]] constexpr const T *get() const noexcept {
+            return std::addressof(storage.value);
         }
 
         /// @brief Whether a value is present.
-        [[nodiscard]] bool has() const noexcept { return has_value; }
+        [[nodiscard]] constexpr bool has() const noexcept { return has_value; }
 
         /// @brief Whether the optional is empty.
-        [[nodiscard]] bool empty() const noexcept { return !has_value; }
+        [[nodiscard]] constexpr bool empty() const noexcept { return !has_value; }
 
         /**
          * @brief Access stored value by reference.
          * @return Reference to <code>T</code>. Undefined if <code>.has() == false</code>.
          */
-        [[nodiscard]] T &ref() noexcept { return *get(); }
+        [[nodiscard]] constexpr T &ref() noexcept { return *get(); }
 
         /**
          * @brief Access stored value by const reference.
          * @return Const reference to <code>T</code>. Undefined if <code>.has() == false</code>.
          */
-        [[nodiscard]] const T &ref() const noexcept { return *get(); }
+        [[nodiscard]] constexpr const T &ref() const noexcept { return *get(); }
 
         /**
          * @brief Return stored value or fallback.
          * @param fallback Value to return if empty.
          * @return Copy of stored or fallback value.
          */
-        [[nodiscard]] T value_or(T fallback) const noexcept {
+        [[nodiscard]] constexpr T value_or(T fallback) const noexcept {
             return has_value ? ref() : fallback;
         }
 
@@ -152,13 +164,26 @@ namespace jh::pod {
          *       <code>has_value == false</code>. That would force meaningless zeroing of
          *       storage in <code>.clear()</code>. Instead, we define comparison explicitly:
          *       empty optionals are always equal regardless of storage content.
-         * @note Raw comparison is performed with <code>std::memcmp</code>, ensuring POD-level
-         *       semantics without invoking <code>T::operator==</code>.
+         * @note Runtime comparison uses <code>std::memcmp</code>. Constant evaluation compares
+         *       scalar values or uses a constexpr object-representation comparison.
          */
         constexpr bool operator==(const optional &rhs) const noexcept {
             if (has_value != rhs.has_value) return false;
             if (!has_value) return true;
-            return std::memcmp(storage, rhs.storage, sizeof(T)) == 0;
+            if (std::is_constant_evaluated()) {
+                if constexpr (requires(const T &lhs, const T &other) { lhs == other; }) {
+                    return static_cast<bool>(storage.value == rhs.storage.value);
+                } else {
+                    const auto lhs = std::bit_cast<std::array<std::byte, sizeof(T)>>(storage.value);
+                    const auto other = std::bit_cast<std::array<std::byte, sizeof(T)>>(rhs.storage.value);
+                    return lhs == other;
+                }
+            }
+            return std::memcmp(
+                    std::addressof(storage.value),
+                    std::addressof(rhs.storage.value),
+                    sizeof(T)
+            ) == 0;
         }
     };
 

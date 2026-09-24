@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <array>
+#include <string>
 #include <vector>
 #include <ranges>
 #include "jh/macros/platform.h"
@@ -26,6 +27,11 @@ namespace test {
     };
 
     JH_ASSERT_POD_LIKE(Legacy);
+
+    struct throwing_linear_view {
+        int *data() const noexcept(false);
+        std::size_t size() const noexcept;
+    };
 }
 
 // Recognizing JH PODS
@@ -41,6 +47,111 @@ TEST_CASE("JH PODS Recognition And Static Checks") {
     STATIC_REQUIRE(pod::pod_like<pod::tuple<int, double, bool>>);
     STATIC_REQUIRE(pod::pod_like<pod::span<int>>);
     STATIC_REQUIRE(pod::pod_like<pod::string_view>);
+    enum class result_error : std::uint8_t { failed };
+    using int_result = jh::meta::expected<int, result_error>;
+    using rebound_result = int_result::rebind<long>;
+    STATIC_REQUIRE(pod::pod_like<int_result>);
+    STATIC_REQUIRE(pod::pod_like<jh::meta::unexpected<result_error>>);
+    STATIC_REQUIRE(std::is_same_v<rebound_result, jh::meta::expected<long, result_error>>);
+    STATIC_REQUIRE(std::is_constructible_v<jh::meta::expected<std::string, result_error>, std::string>);
+    STATIC_REQUIRE(std::is_constructible_v<jh::meta::expected<std::string, result_error>,
+                                           jh::meta::unexpected<result_error>>);
+    STATIC_REQUIRE_FALSE(pod::pod_like<jh::meta::expected<std::string, result_error>>);
+    STATIC_REQUIRE(noexcept(std::declval<int_result &>().value()));
+    STATIC_REQUIRE(noexcept(std::declval<int_result &>().error()));
+    STATIC_REQUIRE(noexcept(std::declval<pod::array<int, 3> &>().at(0)));
+    STATIC_REQUIRE(pod::pod_like<decltype(std::declval<pod::array<int, 3> &>().at(0))>);
+    STATIC_REQUIRE(pod::pod_like<decltype(std::declval<pod::array<int, 3> const &>().at(0))>);
+    STATIC_REQUIRE(noexcept(std::declval<pod::bytes_view const &>().fetch<std::uint32_t>(0)));
+    STATIC_REQUIRE(noexcept(std::declval<pod::bytes_view const &>().clone<std::uint32_t>()));
+    STATIC_REQUIRE(noexcept(std::declval<pod::bytes_view const &>().hash()));
+    STATIC_REQUIRE(noexcept(std::declval<pod::optional<int> &>().store(1)));
+    STATIC_REQUIRE(noexcept(std::declval<pod::span<int> const &>().sub(0)));
+    STATIC_REQUIRE(noexcept(std::declval<pod::span<int> const &>().first(0)));
+    STATIC_REQUIRE(noexcept(std::declval<pod::span<int> const &>().last(0)));
+    STATIC_REQUIRE(noexcept(pod::to_span(std::declval<pod::array<int, 3> &>())));
+    STATIC_REQUIRE_FALSE(noexcept(pod::to_span(std::declval<test::throwing_linear_view &>())));
+    STATIC_REQUIRE(noexcept(std::declval<pod::string_view const &>().sub(0)));
+    STATIC_REQUIRE(noexcept(std::declval<pod::string_view const &>().semantic_len()));
+    STATIC_REQUIRE(noexcept(std::declval<pod::string_view const &>().copy_to(nullptr, 0)));
+    STATIC_REQUIRE(noexcept(std::declval<pod::string_view const &>().hash()));
+    STATIC_REQUIRE(noexcept(pod::uint_to_bytes<std::uint32_t>(1)));
+    STATIC_REQUIRE(noexcept(pod::bytes_to_uint<4>(std::declval<const pod::array<std::uint8_t, 4> &>())));
+    STATIC_REQUIRE(noexcept(pod::bitflags<8>::size()));
+    STATIC_REQUIRE(noexcept(pod::bitflags<24>::size()));
+    STATIC_REQUIRE(noexcept(pod::to_bytes(std::declval<pod::bitflags<24>>())));
+    STATIC_REQUIRE(noexcept(pod::from_bytes<24>(std::declval<pod::array<std::uint8_t, 3>>())));
+
+    constexpr auto little_endian = pod::uint_to_bytes<std::uint32_t>(0x12345678u);
+    STATIC_REQUIRE(little_endian.data[0] == 0x78);
+    STATIC_REQUIRE(little_endian.data[1] == 0x56);
+    STATIC_REQUIRE(pod::bytes_to_uint<4>(little_endian) == 0x12345678u);
+    constexpr auto flag_roundtrip = [] {
+        pod::bitflags<24> flags{};
+        flags.set(3);
+        flags.set(17);
+        return pod::from_bytes<24>(pod::to_bytes(flags));
+    }();
+    STATIC_REQUIRE(flag_roundtrip.size() == 24);
+    STATIC_REQUIRE(flag_roundtrip.has(3));
+    STATIC_REQUIRE(flag_roundtrip.has(17));
+
+    constexpr int_result value_result{42};
+    constexpr int_result error_result = jh::meta::unexpected(result_error::failed);
+    constexpr int_result assigned_error = [] {
+        int_result result{};
+        result = jh::meta::unexpected(result_error::failed);
+        return result;
+    }();
+    constexpr int_result assigned_value = [] {
+        int_result result = jh::meta::unexpected(result_error::failed);
+        result = 13;
+        return result;
+    }();
+    STATIC_REQUIRE(value_result && value_result.value() == 42);
+    STATIC_REQUIRE(value_result.value_or(0) == 42);
+    STATIC_REQUIRE(error_result.has_error());
+    STATIC_REQUIRE(error_result.error() == result_error::failed);
+    STATIC_REQUIRE(assigned_error.error() == result_error::failed);
+    STATIC_REQUIRE(assigned_value && assigned_value.value() == 13);
+    STATIC_REQUIRE(error_result.value_or(7) == 7);
+    STATIC_REQUIRE(error_result.error_or(result_error::failed) == result_error::failed);
+    STATIC_REQUIRE(value_result.error_or(result_error::failed) == result_error::failed);
+
+    constexpr auto maybe = pod::make_optional(17);
+    STATIC_REQUIRE(maybe.has());
+    STATIC_REQUIRE(maybe.value_or(0) == 17);
+    constexpr auto optional_text_a = pod::make_optional("optional"_psv);
+    constexpr auto optional_text_b = pod::make_optional("optional"_psv);
+    STATIC_REQUIRE(optional_text_a == optional_text_b);
+
+    static constexpr int checked_span_values[] = {1, 2, 3};
+    constexpr pod::span<const int> checked_span{checked_span_values, 3};
+    constexpr auto bad_slice = checked_span.sub(4);
+    STATIC_REQUIRE_FALSE(bad_slice);
+    STATIC_REQUIRE(bad_slice.error() == pod::span<const int>::error_code::out_of_bounds);
+
+    constexpr bool copied_at_compile_time = [] {
+        char output[4]{};
+        const auto result = "abc"_psv.copy_to(output, sizeof(output));
+        return result && result.value() == 3 && output[0] == 'a' && output[3] == '\0';
+    }();
+    STATIC_REQUIRE(copied_at_compile_time);
+    constexpr auto invalid_hash = pod::string_view{nullptr, 1}.hash();
+    STATIC_REQUIRE_FALSE(invalid_hash);
+    STATIC_REQUIRE(invalid_hash.error() == pod::string_view::error_code::null_data);
+    constexpr auto invalid_copy = pod::string_view::from_literal("x").copy_to(nullptr, 0);
+    STATIC_REQUIRE_FALSE(invalid_copy);
+    STATIC_REQUIRE(invalid_copy.error() == pod::string_view::error_code::invalid_buffer);
+
+    static constexpr pod::array<int, 3> checked_array{{3, 5, 7}};
+    constexpr auto in_bounds = checked_array.at(1);
+    constexpr auto out_of_bounds = checked_array.at(3);
+    STATIC_REQUIRE(in_bounds && **in_bounds == 5);
+    STATIC_REQUIRE(!out_of_bounds);
+    STATIC_REQUIRE(out_of_bounds.error() == pod::array<int, 3>::error_code::out_of_bounds);
+    constexpr auto checked_view = pod::to_span(checked_array);
+    STATIC_REQUIRE(checked_view && checked_view.value().size() == 3);
     STATIC_REQUIRE(pod::pod_like<pod::span<pod::array<int, 128>>>);
     STATIC_REQUIRE(pod::pod_like<pod::array<pod::string_view, 128>>);
     STATIC_REQUIRE(pod::pod_like<pod::array<pod::span<pod::optional<pod::bytes_view>>, 128>>);
@@ -72,14 +183,16 @@ TEST_CASE("JH PODS Recognition And Static Checks") {
     STATIC_REQUIRE(hw.ends_with(suf));
     STATIC_REQUIRE(!hw.starts_with("holla"_psv));
     STATIC_REQUIRE(!hw.ends_with("wurld"_psv));
-    STATIC_REQUIRE(hw.sub(1, 6) == mid);
+    constexpr auto hw_sub = hw.sub(1, 6);
+    STATIC_REQUIRE(hw_sub);
+    STATIC_REQUIRE(hw_sub.value() == mid);
     STATIC_REQUIRE("abc"_psv.compare("abc"_psv) == 0);
     STATIC_REQUIRE("abc"_psv.compare("abd"_psv) < 0);
     STATIC_REQUIRE("abd"_psv.compare("abc"_psv) > 0);
     STATIC_REQUIRE("abc"_psv.hash() == "abc"_psv.hash());
     STATIC_REQUIRE("abc"_psv.hash() != "xyz"_psv.hash());
     constexpr auto s = "podsystem"_psv;
-    STATIC_REQUIRE(s.sub(0, 3) == "pod"_psv);
+    STATIC_REQUIRE(s.sub(0, 3).value() == "pod"_psv);
     STATIC_REQUIRE(s.find('s') == 3);
     STATIC_REQUIRE(s.find('x') == static_cast<std::uint64_t>(-1));
     constexpr auto a = "abc"_psv;
@@ -95,13 +208,13 @@ TEST_CASE("JH PODS Recognition And Static Checks") {
     STATIC_REQUIRE(a <= c);
     STATIC_REQUIRE(a >= c);
     constexpr auto s1 = "hello"_psv;
-    static_assert(s1.semantic_len() == 5);
+    static_assert(s1.semantic_len().value() == 5);
 
     constexpr auto s2 = "\U00004F60\U0000597D"_psv;
-    static_assert(s2.semantic_len() == 2);
+    static_assert(s2.semantic_len().value() == 2);
 
     constexpr auto s3 = "\U0001F30D"_psv;
-    static_assert(s3.semantic_len() == 1);
+    static_assert(s3.semantic_len().value() == 1);
 }
 
 TEST_CASE("JH_POD_STRUCT generated struct is pod_like") {
@@ -128,6 +241,48 @@ TEST_CASE("pod::array basic construction and access") {
 
     a[2] = 42;
     REQUIRE(a[2] == 42);
+}
+
+TEST_CASE("pod::array checked at access") {
+    static constexpr pod::array<int, 3> values{{11, 22, 33}};
+    constexpr auto valid = values.at(1);
+    constexpr auto invalid = values.at(3);
+
+    STATIC_REQUIRE(valid);
+    STATIC_REQUIRE(**valid == 22);
+    STATIC_REQUIRE_FALSE(invalid);
+    STATIC_REQUIRE(invalid.error() == pod::array<int, 3>::error_code::out_of_bounds);
+
+    pod::array<int, 3> mutable_values{{1, 2, 3}};
+    auto item = mutable_values.at(1);
+    REQUIRE(item);
+    *item.value() = 20;
+    REQUIRE(mutable_values[1] == 20);
+    REQUIRE_FALSE(mutable_values.at(3));
+}
+
+TEST_CASE("jh::meta::expected value and error assignment") {
+    enum class result_error : std::uint8_t { failed };
+    using result_type = jh::meta::expected<int, result_error>;
+
+    result_type result{12};
+    REQUIRE(result.has_value());
+    REQUIRE(result.value() == 12);
+    REQUIRE(*result == 12);
+    struct box { int value; };
+    jh::meta::expected<box, result_error> boxed{box{24}};
+    REQUIRE(boxed->value == 24);
+    REQUIRE((*boxed).value == 24);
+
+    result = jh::meta::unexpected(result_error::failed);
+    REQUIRE(result.has_error());
+    REQUIRE(result.error() == result_error::failed);
+    REQUIRE(result.error_or(result_error::failed) == result_error::failed);
+    REQUIRE(result.value_or(5) == 5);
+
+    result = 41;
+    REQUIRE(result);
+    REQUIRE(result.value() == 41);
 }
 
 TEST_CASE("pod::array supports range-based iteration") {
@@ -260,24 +415,28 @@ TEST_CASE("bytes_view basic reinterpret and comparison") {
         pod::array<int, 3> arr = {10, 20, 30};
         auto view = pod::bytes_view::from(arr.data, pod::array<int, 3>::size());
 
-        auto clone = view.clone<pod::array<int, 3> >(); // NOLINT
+        auto result = view.clone<pod::array<int, 3> >(); // NOLINT
+        REQUIRE(result);
+        auto clone = result.value();
         REQUIRE(clone[0] == 10);
         REQUIRE(clone[1] == 20);
         REQUIRE(clone[2] == 30);
     }
 
-    SECTION("fetch returns nullptr if out of bounds") {
+    SECTION("fetch reports out-of-bounds access") {
         std::uint32_t x = 0xAABBCCDD;
         auto view = pod::bytes_view::from(x);
 
-        const auto *ok = view.fetch<std::uint32_t>();
-        const auto *bad = view.fetch<std::uint32_t>(4); // too far
+        const auto ok = view.fetch<std::uint32_t>();
+        const auto bad = view.fetch<std::uint32_t>(4); // too far
 
-        REQUIRE(ok != nullptr);
-        REQUIRE(bad == nullptr);
+        REQUIRE(ok);
+        REQUIRE(ok.value() != nullptr);
+        REQUIRE_FALSE(bad);
+        REQUIRE(bad.error() == pod::bytes_view::error_code::out_of_bounds);
     }
 
-    SECTION("fallback clone returns default on length mismatch") {
+    SECTION("clone reports a length mismatch") {
         struct PodTest {
             int a;
             float b;
@@ -286,10 +445,9 @@ TEST_CASE("bytes_view basic reinterpret and comparison") {
 
         std::array<std::byte, 2> too_small{};
         auto view = pod::bytes_view{too_small.data(), too_small.size()};
-        const auto [a, b] = view.clone<PodTest>(); // NOLINT
-
-        REQUIRE(a == 0);
-        REQUIRE(b == 0.0f);
+        const auto clone = view.clone<PodTest>(); // NOLINT
+        REQUIRE_FALSE(clone);
+        REQUIRE(clone.error() == pod::bytes_view::error_code::size_mismatch);
     }
 }
 
@@ -299,7 +457,9 @@ TEST_CASE("bytes_view clone from std::array to pod::array") {
     std::iota(original.begin(), original.end(), 100); // Fill with 100, 101, ..., 163
 
     const auto view = pod::bytes_view::from(original.data(), original.size());
-    auto cloned = view.clone<pod::array<std::uint32_t, N> >(); // NOLINT
+    auto clone_result = view.clone<pod::array<std::uint32_t, N> >(); // NOLINT
+    REQUIRE(clone_result);
+    auto cloned = clone_result.value();
 
     REQUIRE(cloned.size() == N);
     for (std::size_t i = 0; i < N; ++i) {
@@ -538,17 +698,23 @@ TEST_CASE("pod::span works with pod::array") {
     }
 
     SECTION("sub(), first(), last() slicing") {
-        auto mid = s.sub(3, 4);
+        auto mid_result = s.sub(3, 4);
+        REQUIRE(mid_result);
+        auto mid = mid_result.value();
         REQUIRE(mid.size() == 4);
         REQUIRE(mid[0] == arr[3]);
         REQUIRE(mid[3] == arr[6]);
 
-        auto first = s.first(5);
+        auto first_result = s.first(5);
+        REQUIRE(first_result);
+        auto first = first_result.value();
         REQUIRE(first.size() == 5);
         REQUIRE(first[0] == arr[0]);
         REQUIRE(first[4] == arr[4]);
 
-        auto last = s.last(3);
+        auto last_result = s.last(3);
+        REQUIRE(last_result);
+        auto last = last_result.value();
         REQUIRE(last.size() == 3);
         REQUIRE(last[0] == arr[N - 3]);
     }
@@ -569,7 +735,9 @@ TEST_CASE("pod::to_span supports direct pod::array input") {
     SECTION("non-const pod::array") {
         array<int, 5> arr = {{1, 2, 3, 4, 5}};
 
-        auto s = to_span(arr);
+        auto result = to_span(arr);
+        REQUIRE(result);
+        auto s = result.value();
 
         static_assert(std::is_same_v<jh::pod::span<int>, decltype(s)>);
 
@@ -581,7 +749,9 @@ TEST_CASE("pod::to_span supports direct pod::array input") {
     SECTION("const pod::array") {
         const jh::pod::array<int, 3> arr = {{7, 8, 9}};
 
-        auto s = jh::pod::to_span(arr);
+        auto result = jh::pod::to_span(arr);
+        REQUIRE(result);
+        auto s = result.value();
 
         static_assert(std::is_same_v<jh::pod::span<const int>, decltype(s)>);
 
@@ -634,7 +804,9 @@ TEST_CASE("pod::to_span from array and containers") {
         };
 
         DummyVec v{};
-        auto s = to_span(v);
+        auto result = to_span(v);
+        REQUIRE(result);
+        auto s = result.value();
         REQUIRE(s.size() == 3);
         REQUIRE(s[2] == 21);
     }
@@ -649,7 +821,9 @@ TEST_CASE("pod::to_span from array and containers") {
         };
 
         ConstVec v{};
-        auto s = to_span(v);
+        auto result = to_span(v);
+        REQUIRE(result);
+        auto s = result.value();
         REQUIRE(s.size() == 2);
         REQUIRE(s[0] == 42);
     }
@@ -675,7 +849,9 @@ TEST_CASE("pod::string_view basic usage", "[string_view]") {
     }
 
     SECTION("Subrange works") {
-        string_view sub = sv.sub(6, 3); // expect "pod"
+        const auto sub_result = sv.sub(6, 3);
+        REQUIRE(sub_result);
+        string_view sub = sub_result.value(); // expect "pod"
         REQUIRE(sub.size() == 3);
         REQUIRE(sub == string_view{"pod", 3});
         // temporary, do NOT use this for long life-time pod::string_view
@@ -693,13 +869,13 @@ TEST_CASE("pod::string_view basic usage", "[string_view]") {
 
     SECTION("Hash is deterministic and non-zero") {
         auto hash = sv.hash();
-        REQUIRE(hash != 0);
-        REQUIRE(hash != static_cast<std::uint64_t>(-1));
+        REQUIRE(hash);
+        REQUIRE(hash.value() != 0);
     }
 
     SECTION("Copy to buffer") {
         char buffer[32] = {};
-        sv.copy_to(buffer, sizeof(buffer));
+        REQUIRE(sv.copy_to(buffer, sizeof(buffer)));
         REQUIRE(std::strcmp(buffer, "hello_pod_world") == 0);
     }SECTION("Three-way comparison and compare() consistency") {
         using namespace std;
@@ -802,7 +978,7 @@ TEST_CASE("bytes_view hash reflects exact byte content") {
         auto vb = bytes_view::from(b.data(), b.size());
 
         REQUIRE(va == vb);
-        REQUIRE(va.hash() == vb.hash());
+    REQUIRE(va.hash().value() == vb.hash().value());
     }
 
     SECTION("Different content produces different hash") {
@@ -813,7 +989,7 @@ TEST_CASE("bytes_view hash reflects exact byte content") {
         auto vc = bytes_view::from(c);
 
         REQUIRE(va != vc);
-        REQUIRE(va.hash() != vc.hash());
+    REQUIRE(va.hash().value() != vc.hash().value());
     }
 
     SECTION("Same layout different values changes hash") {
@@ -827,7 +1003,7 @@ TEST_CASE("bytes_view hash reflects exact byte content") {
         auto h1 = bytes_view::from(p1).hash();
         auto h2 = bytes_view::from(p2).hash();
 
-        REQUIRE(h1 != h2);
+        REQUIRE(h1.value() != h2.value());
     }
 
     SECTION("pod::string_view vs bytes_view with same content") {
@@ -839,7 +1015,11 @@ TEST_CASE("bytes_view hash reflects exact byte content") {
 
         REQUIRE(sv.size() == bv.len);
         REQUIRE(std::memcmp(sv.data, bv.data, sv.size()) == 0);
-        REQUIRE(sv.hash() == bv.hash());
+        const auto string_hash = sv.hash();
+        const auto byte_hash = bv.hash();
+        REQUIRE(string_hash);
+        REQUIRE(byte_hash);
+        REQUIRE(string_hash.value() == byte_hash.value());
     }
 }
 
@@ -873,25 +1053,28 @@ TEST_CASE("string_view hash reflects exact character content") {
         auto h5 = sv1.hash(c_hash::murmur64);
         auto h6 = sv1.hash(c_hash::xxhash64);
 
-        REQUIRE(h1 != static_cast<std::uint64_t>(-1));
-        REQUIRE(h2 != static_cast<std::uint64_t>(-1));
-        REQUIRE(h3 != static_cast<std::uint64_t>(-1));
-        REQUIRE(h4 != static_cast<std::uint64_t>(-1));
-        REQUIRE(h5 != static_cast<std::uint64_t>(-1));
-        REQUIRE(h5 != static_cast<std::uint64_t>(-1));
-        REQUIRE(h6 != static_cast<std::uint64_t>(-1));
+        REQUIRE(h1);
+        REQUIRE(h2);
+        REQUIRE(h3);
+        REQUIRE(h4);
+        REQUIRE(h5);
+        REQUIRE(h6);
 
         // Same view, multiple algorithms must differ
-        REQUIRE(h1 != h2);
-        REQUIRE(h2 != h3);
-        REQUIRE(h3 != h4);
-        REQUIRE(h4 != h5);
-        REQUIRE(h5 != h6);
+        REQUIRE(h1.value() != h2.value());
+        REQUIRE(h2.value() != h3.value());
+        REQUIRE(h3.value() != h4.value());
+        REQUIRE(h4.value() != h5.value());
+        REQUIRE(h5.value() != h6.value());
     }
 
     SECTION("string_view vs bytes_view from same buffer") {
         auto bv = jh::pod::bytes_view::from(content1, sizeof(content1) - 1);
-        REQUIRE(sv1.hash() == bv.hash());
+        const auto string_hash = sv1.hash();
+        const auto byte_hash = bv.hash();
+        REQUIRE(string_hash);
+        REQUIRE(byte_hash);
+        REQUIRE(string_hash.value() == byte_hash.value());
     }
 }
 
@@ -988,8 +1171,7 @@ TEST_CASE("pod::ostream << overloads for built-in and custom POD types", "[ostre
         const uint8_t raw[] = {0x48, 0x65, 0x6c, 0x6c, 0x6f};  // "Hello"
         bytes_view bv = bytes_view::from(raw, 5);
         oss << bv;
-        REQUIRE(oss.str().starts_with("base64'"));
-        REQUIRE(oss.str().ends_with("'"));
+        REQUIRE(oss.str() == "base64'SGVsbG8='");
     }
 
     SECTION("span<T> prints container-like output") {

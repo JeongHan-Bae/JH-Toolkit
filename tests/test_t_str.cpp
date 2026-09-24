@@ -223,18 +223,18 @@ TEST_CASE("t_str ostream operator<<") {
  * @test Conversion to and from byte arrays.
  *
  * <ul>
- *   <li>Compile-time: <code>to_bytes()</code> and <code>from_bytes()</code> are constexpr-safe.</li>
+ *   <li>Compile-time: <code>to_bytes()</code> and CTAD from byte arrays are constexpr-safe.</li>
  *   <li>Runtime: <code>memcpy</code> path yields identical reconstruction.</li>
  * </ul>
  */
-TEST_CASE("t_str to_bytes/from_bytes conversion") {
+TEST_CASE("t_str conversion to and from byte arrays") {
     using arr_t = jh::pod::array<std::uint8_t, 5>;
 
     // constexpr compile-time conversion
     {
         constexpr t_str s("hello");
         constexpr auto bytes = static_cast<arr_t>(s);
-        constexpr auto restored = t_str<6>::from_bytes(bytes);
+        constexpr auto restored = t_str{bytes};
         STATIC_REQUIRE(restored == s);
         STATIC_REQUIRE(bytes.data[0] == static_cast<std::uint8_t>('h'));
         STATIC_REQUIRE(bytes.data[4] == static_cast<std::uint8_t>('o'));
@@ -246,7 +246,7 @@ TEST_CASE("t_str to_bytes/from_bytes conversion") {
         auto bytes = static_cast<arr_t>(s);
         REQUIRE(bytes.data[0] == static_cast<std::uint8_t>('w'));
 
-        auto restored = t_str<6>::from_bytes(bytes);
+        auto restored = t_str{bytes};
         REQUIRE(restored.view() == "world");
         REQUIRE(restored == s);
     }
@@ -256,7 +256,7 @@ TEST_CASE("t_str to_bytes/from_bytes conversion") {
         t_str<6> s("abcde");
         auto bytes = static_cast<arr_t>(s);
         bytes.data[0] = static_cast<std::uint8_t>('A');
-        auto modified = t_str<6>::from_bytes(bytes);
+        auto modified = t_str{bytes};
         REQUIRE(modified.view() == "Abcde");
         REQUIRE(modified != s);
     }
@@ -430,7 +430,7 @@ TEST_CASE("t_str substring default count equals -1") {
 
     {
         constexpr auto a = s.sub<0>();
-        constexpr auto b = s.sub<0, static_cast<std::uint16_t>(-1)>();
+        constexpr auto b = s.sub<0, static_cast<std::size_t>(-1)>();
 
         STATIC_REQUIRE(a == b);
         STATIC_REQUIRE(a == "hello_world");
@@ -438,7 +438,7 @@ TEST_CASE("t_str substring default count equals -1") {
 
     {
         constexpr auto a = s.sub<6>();
-        constexpr auto b = s.sub<6, static_cast<std::uint16_t>(-1)>();
+        constexpr auto b = s.sub<6, static_cast<std::size_t>(-1)>();
 
         STATIC_REQUIRE(a == b);
         STATIC_REQUIRE(a == "world");
@@ -449,7 +449,7 @@ TEST_CASE("t_str substring default count equals -1") {
      */
     {
         auto v1 = s.sub_view<6>();
-        auto v2 = s.sub_view<6, static_cast<std::uint16_t>(-1)>();
+        auto v2 = s.sub_view<6, static_cast<std::size_t>(-1)>();
 
         REQUIRE(v1 == v2);
         REQUIRE(v1 == "world");
@@ -461,7 +461,7 @@ TEST_CASE("t_str substring default count equals -1") {
     {
         using namespace jh::pod::literals;
         auto p1 = s.sub_pod_view<6>();
-        auto p2 = s.sub_pod_view<6, static_cast<std::uint16_t>(-1)>();
+        auto p2 = s.sub_pod_view<6, static_cast<std::size_t>(-1)>();
 
         REQUIRE(p1 == p2);
         REQUIRE(p1 == "world"_psv);

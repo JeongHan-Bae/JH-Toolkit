@@ -87,7 +87,7 @@ Supports both padded and unpadded Base64URL literals.
 ### Base64 encoding (padded)
 
 ```cpp
-template<std::uint16_t N>
+template<std::size_t N>
 constexpr auto encode_base64(
     const jh::pod::array<std::uint8_t, N>& bytes
 );
@@ -100,7 +100,7 @@ Returns a **padded Base64** `TStr<M>` with a built-in null terminator.
 ### Base64URL encoding (padding via type tag)
 
 ```cpp
-template<std::uint16_t N, class PadT = std::false_type>
+template<std::size_t N, class PadT = std::false_type>
 constexpr auto encode_base64url(
     const jh::pod::array<std::uint8_t, N>& bytes,
     PadT = {}
@@ -143,8 +143,7 @@ jh::pod::array<std::uint8_t, N>
 ### Bytes → String
 
 ```cpp
-constexpr auto restored =
-    jh::meta::t_str<bytes.size() + 1>::from_bytes(bytes);
+constexpr auto restored = jh::meta::t_str{bytes};
 ```
 
 This enables round-trips between textual and binary representations

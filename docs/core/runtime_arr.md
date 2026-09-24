@@ -112,7 +112,7 @@ Output
 
 ```cpp
 using value_type        = T;
-using size_type         = std::uint64_t;
+using size_type         = std::size_t;
 using difference_type   = std::ptrdiff_t;
 using reference         = value_type&;
 using const_reference   = const value_type&;
@@ -172,38 +172,38 @@ Features:
 
 ## 🔸 API Breakdown — `runtime_arr<T>`
 
-| Category       | Member                                                             | Description                               |
-|----------------|--------------------------------------------------------------------|-------------------------------------------|
-| Construction   | `runtime_arr(u64 n)`                                               | Allocates `n` elements                    |
-|                | `runtime_arr(u64 n, uninitialized_t)`                              | POD-only raw allocation                   |
-|                | `runtime_arr(u64 n, const Alloc& alloc)`                           | Uses custom allocator                     |
-|                | `runtime_arr(std::vector<T>&& vec)`                                | Move-construct from vector                |
-|                | `runtime_arr(std::vector<T, VecAlloc>&& vec, const Alloc& alloc)`  | Move from vector using provided allocator |
-|                | `runtime_arr(std::vector<T, Alloc>&& vec)`                         | Move from vector using its own allocator  |
-|                | `runtime_arr(std::initializer_list<T>)`                            | Initialize from list                      |
-|                | `runtime_arr(std::initializer_list<T>, const Alloc&)`              | Init list with allocator                  |
-|                | `runtime_arr(ForwardIt first, ForwardIt last)`                     | Construct from iterator range             |
-|                | `runtime_arr(ForwardIt first, ForwardIt last, const Alloc& alloc)` | Range constructor using allocator         |
-| Element Access | `operator[](u64)`                                                  | Unchecked access                          |
-|                | `at(u64)`                                                          | Checked access                            |
-|                | `data()`                                                           | Raw pointer                               |
-|                | `as_span()`                                                        | Mutable span view                         |
-|                | `as_span() const`                                                  | Const span view                           |
-| Iteration      | `begin()`                                                          | Begin iterator                            |
-|                | `end()`                                                            | End iterator                              |
-|                | `begin() const`                                                    | Const begin                               |
-|                | `end() const`                                                      | Const end                                 |
-|                | `cbegin()`                                                         | Const begin iterator                      |
-|                | `cend()`                                                           | Const end iterator                        |
-| Modifiers      | `set(u64, Args...)`                                                | Assign element                            |
-|                | `reset_all()`                                                      | Reset entire array                        |
-| Capacity       | `size()`                                                           | Element count                             |
-|                | `empty()`                                                          | Whether empty                             |
-| Ownership      | `operator std::vector<T>() &&`                                     | Convert to vector                         |
-|                | `is_static_built()`                                                | Dual-mode flag                            |
-| Semantics      | Move-only                                                          | Copy disabled                             |
-|                | Contiguous                                                         | Raw array storage                         |
-|                | POD-optimized                                                      | memset fast path                          |
+| Category       | Member                                                     | Description                               |
+|----------------|------------------------------------------------------------|-------------------------------------------|
+| Construction   | `runtime_arr(std::size_t n)`                               | Allocates `n` elements                    |
+|                | `runtime_arr(std::size_t n, uninitialized_t)`              | POD-only raw allocation                   |
+|                | `runtime_arr(std::size_t n, const Alloc& alloc)`           | Uses custom allocator                     |
+|                | `runtime_arr(std::vector<T>&& vec)`                        | Move-construct from vector                |
+|                | `runtime_arr(std::vector<T, VecAlloc>&& vec, const Alloc&)`| Move from vector using provided allocator |
+|                | `runtime_arr(std::vector<T, Alloc>&& vec)`                 | Move from vector using its own allocator  |
+|                | `runtime_arr(std::initializer_list<T>)`                    | Initialize from list                      |
+|                | `runtime_arr(std::initializer_list<T>, const Alloc&)`      | Init list with allocator                  |
+|                | `runtime_arr(ForwardIt first, ForwardIt last)`             | Construct from iterator range             |
+|                | `runtime_arr(ForwardIt first, ForwardIt last, const Alloc&)`| Range constructor using allocator         |
+| Element Access | `operator[](std::size_t)`                                  | Unchecked access                          |
+|                | `at(std::size_t)`                                          | Checked access                            |
+|                | `data()`                                                   | Raw pointer                               |
+|                | `as_span()`                                                | Mutable span view                         |
+|                | `as_span() const`                                          | Const span view                           |
+| Iteration      | `begin()`                                                  | Begin iterator                            |
+|                | `end()`                                                    | End iterator                              |
+|                | `begin() const`                                            | Const begin                               |
+|                | `end() const`                                              | Const end                                 |
+|                | `cbegin()`                                                 | Const begin iterator                      |
+|                | `cend()`                                                   | Const end iterator                        |
+| Modifiers      | `set(std::size_t, Args...)`                                | Assign element                            |
+|                | `reset_all()`                                              | Reset entire array                        |
+| Capacity       | `size()`                                                   | Element count                             |
+|                | `empty()`                                                  | Whether empty                             |
+| Ownership      | `operator std::vector<T>() &&`                             | Convert to vector                         |
+|                | `is_static_built()`                                        | Dual-mode flag                            |
+| Semantics      | Move-only                                                  | Copy disabled                             |
+|                | Contiguous                                                 | Raw array storage                         |
+|                | POD-optimized                                              | memset fast path                          |
 
 ---
 
@@ -211,17 +211,17 @@ Features:
 
 | Category       | Member                                     | Description           |
 |----------------|--------------------------------------------|-----------------------|
-| Construction   | `runtime_arr(u64 size)`                    | Allocates bit storage |
+| Construction   | `runtime_arr(std::size_t size)`            | Allocates bit storage |
 |                | `runtime_arr(std::vector<bool>&&)`         | Build from vector     |
 |                | `runtime_arr(std::initializer_list<bool>)` | Init from list        |
 |                | `runtime_arr(ForwardIt, ForwardIt)`        | Construct from range  |
-| Bit Access     | `operator[](u64)`                          | Proxy reference       |
-|                | `operator[](u64) const`                    | Read bit              |
-|                | `at(u64)`                                  | Checked access        |
-|                | `at(u64) const`                            | Checked read          |
-| Bit Operations | `set(u64,bool)`                            | Set bit               |
-|                | `unset(u64)`                               | Clear bit             |
-|                | `test(u64)`                                | Read bit              |
+| Bit Access     | `operator[](std::size_t)`                  | Proxy reference       |
+|                | `operator[](std::size_t) const`            | Read bit              |
+|                | `at(std::size_t)`                          | Checked access        |
+|                | `at(std::size_t) const`                    | Checked read          |
+| Bit Operations | `set(std::size_t,bool)`                    | Set bit               |
+|                | `unset(std::size_t)`                       | Clear bit             |
+|                | `test(std::size_t)`                        | Read bit              |
 |                | `reset_all()`                              | Clear all bits        |
 | Iterators      | `begin()`                                  | Bit iterator          |
 |                | `end()`                                    | Bit iterator end      |

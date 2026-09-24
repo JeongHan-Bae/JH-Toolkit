@@ -70,6 +70,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -231,7 +232,7 @@ namespace jh::serio::uri {
 
     [[nodiscard]] JH_INLINE std::string encode(const std::string_view &input) {
 
-        std::uint64_t encoded_len =
+        std::size_t encoded_len =
                 jh::detail::uri_common::calculate_encoded_length(input.data(), input.size());
 
         std::vector<std::uint8_t> buffer(encoded_len);
@@ -248,10 +249,10 @@ namespace jh::serio::uri {
 
     [[nodiscard]] JH_INLINE std::string decode(const std::string_view &input) {
 
-        std::uint64_t decoded_len =
+        std::size_t decoded_len =
                 jh::detail::uri_common::calculate_decoded_length(input.data(), input.size());
 
-        if (decoded_len == static_cast<std::uint64_t>(-1))
+        if (decoded_len == static_cast<std::size_t>(-1))
             throw std::runtime_error(
                     "Invalid URI: contains invalid percent-encoding."
             );

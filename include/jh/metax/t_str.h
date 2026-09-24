@@ -63,6 +63,7 @@
 #include <utility>
 #include <string>
 #include <string_view>
+#include <cstddef>
 #include <cstdint>
 #include "jh/pods/array.h"
 #include "jh/pods/string_view.h"
@@ -71,10 +72,10 @@
 
 namespace jh::meta {
     namespace detail {
-        template<std::uint16_t N>
-        concept t_str_size_legal = (N <= jh::pod::max_pod_array_bytes);
+        template<std::size_t N>
+        concept t_str_size_legal = (N > 0) && (N <= jh::pod::max_pod_array_bytes);
 
-        template<std::uint16_t N, std::uint16_t M>
+        template<std::size_t N, std::size_t M>
         concept t_str_concat_legal = ((N - 1) + (M - 1) + 1 <= jh::pod::max_pod_array_bytes);
 
         /// Check if a character is valid in a POSIX relative path.
@@ -85,11 +86,11 @@ namespace jh::meta {
                    c == '_' || c == '-' || c == '.' || c == '/';
         }
 
-        template<std::uint16_t N, std::uint16_t Pos, std::uint16_t Count>
+        template<std::size_t N, std::size_t Pos, std::size_t Count>
         concept t_str_sub_legal =
         (Pos <= N - 1) &&
         (
-                Count == static_cast<std::uint16_t>(-1) ||
+                Count == static_cast<std::size_t>(-1) ||
                 Count <= (N - 1 - Pos)
         );
     } // namespace detail
@@ -97,15 +98,18 @@ namespace jh::meta {
     /**
      * @brief Compile-time string wrapper for use as a non-type template parameter (NTTP).
      *
-     * @tparam N The size of the string literal including null terminator.
+     * @tparam N The size of the string literal including null terminator; must be greater than zero.
      *
      * @details
      * <code>t_str&lt;N&gt;</code> enables string literals to be bound directly as
      * <strong>non-type template parameters (NTTP)</strong> in C++20.
      * It provides constexpr construction, validation, transformation,
      * concatenation, and hashing of string literals with <b>zero runtime overhead</b>.
+     *
+     * @note An empty string is represented by <code>t_str&lt;1&gt;</code>, which stores only
+     *       the null terminator. A zero-width substring therefore produces an empty string.
      */
-    template<std::uint16_t N> requires detail::t_str_size_legal<N>
+    template<std::size_t N> requires detail::t_str_size_legal<N>
     struct t_str final {
 
         /**
@@ -116,7 +120,7 @@ namespace jh::meta {
          * Different <code>t_str&lt;M&gt;</code> instances must access
          * each other's internal storage to perform constexpr concatenation.
          */
-        template<std::uint16_t M> requires detail::t_str_size_legal<M>
+        template<std::size_t M> requires detail::t_str_size_legal<M>
         friend
         struct t_str;
 
@@ -133,7 +137,7 @@ namespace jh::meta {
 
         static constexpr jh::pod::array<char, N> make_array(const char(&src)[N]) {
             jh::pod::array<char, N> arr{};
-            for (std::uint64_t i = 0; i < N; i++) {
+            for (std::size_t i = 0; i < N; i++) {
                 arr.data[i] = src[i];
             }
             return arr;
@@ -141,13 +145,40 @@ namespace jh::meta {
 
         static constexpr jh::pod::array<char, N> make_array(const char8_t(&src)[N]) {
             jh::pod::array<char, N> arr{};
-            for (std::uint64_t i = 0; i < N; i++) {
+            for (std::size_t i = 0; i < N; i++) {
                 arr.data[i] = static_cast<char>(src[i]);
             }
             return arr;
         } ///< Build storage from a UTF-8 char8_t literal.
 
+        template<std::size_t M>
+        requires (M > 0) && (M == N - 1)
+        static constexpr jh::pod::array<char, N>
+        make_array(const jh::pod::array<std::uint8_t, M> &bytes) noexcept {
+            jh::pod::array<char, N> arr{};
+            if (std::is_constant_evaluated()) {
+                for (std::size_t i = 0; i < N - 1; ++i)
+                    arr.data[i] = static_cast<char>(bytes.data[i]);
+            } else {
+                std::memcpy(arr.data, bytes.data, N - 1);
+            }
+            return arr;
+        } ///< Build null-terminated storage from a non-terminated byte buffer.
+
     public:
+        /**
+         * @brief Construct from a byte array and append a null terminator.
+         *
+         * @tparam M Number of bytes in the non-terminated input buffer; must be greater than zero
+         *           and equal <code>N - 1</code>.
+         * @param bytes A non-terminated byte buffer containing exactly <code>M</code> bytes.
+         * @details Each byte is converted to <code>char</code> without validation. The
+         *          resulting <code>t_str</code> stores those bytes followed by a null terminator.
+         */
+        template<std::size_t M>
+        requires (M > 0) && (M == N - 1)
+        constexpr explicit t_str(const jh::pod::array<std::uint8_t, M> &bytes) noexcept
+                : storage(make_array(bytes)) {}
         /**
          * @brief Construct from a regular string literal.
          *
@@ -207,7 +238,7 @@ namespace jh::meta {
          * @brief Get the length of the string (excluding null terminator).
          * @return Number of characters before the null terminator.
          */
-        [[nodiscard]] constexpr std::uint64_t size() const noexcept { return static_cast<std::uint64_t>(N - 1); }
+        [[nodiscard]] constexpr std::size_t size() const noexcept { return static_cast<std::size_t>(N - 1); }
 
         /**
          * @brief Get a <code>std::string_view</code> over the stored string.
@@ -265,14 +296,14 @@ namespace jh::meta {
          *          <li><code>c_hash::xxhash64</code> - constexpr xxHash64 variant (seedless)</li>
          *        </ul>
          * @param include_null If true, the null terminator is included in the hash computation.
-         * @return 64-bit non-cryptographic hash value.
+         * @return <code>std::size_t</code> non-cryptographic hash value.
          *
          * @note
          * All supported algorithms are constexpr-safe and suitable for compile-time use
          * (e.g., as template arguments or static IDs).
          * They are <b>not cryptographically secure</b>.
          */
-        [[nodiscard]] constexpr std::uint64_t
+        [[nodiscard]] constexpr jh::meta::expected<std::size_t, jh::pod::string_view::error_code>
         hash(c_hash hash_method = c_hash::fnv1a64, bool include_null = false) const noexcept {
             return jh::pod::string_view{
                     val(), size() + (include_null ? 1 : 0)
@@ -280,7 +311,7 @@ namespace jh::meta {
         }
 
         /// @brief Sentinel value representing "no position" or "until the end".
-        static constexpr auto npos = static_cast<std::uint16_t>(-1);
+        static constexpr auto npos = static_cast<std::size_t>(-1);
 
     private:
         /**
@@ -288,12 +319,12 @@ namespace jh::meta {
          * @details Expands two <code>t_str</code> storages into a new one
          * using index sequences. Called by <code>operator+</code>.
          */
-        template<std::uint16_t M, std::size_t... I, std::size_t... J>
+        template<std::size_t M, std::size_t... I, std::size_t... J>
         requires detail::t_str_concat_legal<N, M>
         [[nodiscard]] constexpr t_str<(N - 1) + (M - 1) + 1>
         concat_impl(const t_str<M> &other,
                     std::index_sequence<I...>, std::index_sequence<J...>) const noexcept {
-            constexpr std::uint16_t NewSize = (N - 1) + (M - 1) + 1;
+            constexpr std::size_t NewSize = (N - 1) + (M - 1) + 1;
             jh::pod::array<char, NewSize> arr{{storage[I]..., other.storage[J]...}};
             return t_str<NewSize>(arr);
         }
@@ -331,15 +362,15 @@ namespace jh::meta {
          *
          * @note
          * Bounds checking and the handling of the special substring sentinel
-         * (<code>Count == static_cast&lt;std::uint16_t&gt;(-1)</code>) are performed by
+         * (<code>Count == static_cast&lt;std::size_t&gt;(-1)</code>) are performed by
          * the public <code>sub()</code> interface before calling this helper.
          */
-        template<std::uint16_t Pos, std::uint16_t ActualCount, std::size_t... I>
+        template<std::size_t Pos, std::size_t ActualCount, std::size_t... I>
         [[nodiscard]] constexpr auto
         sub_impl(std::index_sequence<I...>) const noexcept {
 
             constexpr auto NewSize =
-                    static_cast<std::uint16_t>(ActualCount + 1);
+                    static_cast<std::size_t>(ActualCount + 1);
 
             jh::pod::array<char, NewSize> arr{
                     {storage[Pos + I]..., '\0'}
@@ -365,7 +396,7 @@ namespace jh::meta {
          *       and a new null terminator is appended at the end.</li>
          * </ul>
          */
-        template<std::uint16_t M>
+        template<std::size_t M>
         requires detail::t_str_concat_legal<N, M>
         [[nodiscard]] constexpr auto operator+(const t_str<M> &other) const noexcept {
             return concat_impl(other,
@@ -417,13 +448,13 @@ namespace jh::meta {
          * <code>s.sub&lt;Pos, Count&gt;().pod_view()</code> is valid but creates a temporary
          * <code>t_str</code> that may lead to dangling views if not used carefully.
          */
-        template<std::uint16_t Pos, std::uint16_t Count = npos>
+        template<std::size_t Pos, std::size_t Count = npos>
         requires detail::t_str_sub_legal<N, Pos, Count>
         [[nodiscard]] constexpr auto sub() const noexcept {
 
-            constexpr std::uint16_t ActualCount =
+            constexpr std::size_t ActualCount =
                     Count == npos
-                    ? static_cast<std::uint16_t>((N - 1) - Pos)
+                    ? static_cast<std::size_t>((N - 1) - Pos)
                     : Count;
 
             return sub_impl<Pos, ActualCount>(
@@ -453,13 +484,13 @@ namespace jh::meta {
          * The returned view is non-owning and becomes invalid if the source
          * <code>t_str</code> object goes out of scope.
          */
-        template<std::uint16_t Pos, std::uint16_t Count = npos>
+        template<std::size_t Pos, std::size_t Count = npos>
         requires detail::t_str_sub_legal<N, Pos, Count>
         [[nodiscard]] constexpr std::string_view sub_view() const noexcept {
 
-            constexpr std::uint16_t ActualCount =
+            constexpr std::size_t ActualCount =
                     Count == npos
-                    ? static_cast<std::uint16_t>((N - 1) - Pos)
+                    ? static_cast<std::size_t>((N - 1) - Pos)
                     : Count;
 
             return {storage.data + Pos, ActualCount};
@@ -488,13 +519,13 @@ namespace jh::meta {
          * This function is primarily intended for interoperability with
          * APIs expecting <code>jh::pod::string_view</code>.
          */
-        template<std::uint16_t Pos, std::uint16_t Count = npos>
+        template<std::size_t Pos, std::size_t Count = npos>
         requires detail::t_str_sub_legal<N, Pos, Count>
         [[nodiscard]] constexpr jh::pod::string_view sub_pod_view() const noexcept {
 
-            constexpr std::uint16_t ActualCount =
+            constexpr std::size_t ActualCount =
                     Count == npos
-                    ? static_cast<std::uint16_t>((N - 1) - Pos)
+                    ? static_cast<std::size_t>((N - 1) - Pos)
                     : Count;
 
             return {storage.data + Pos, ActualCount};
@@ -727,7 +758,7 @@ namespace jh::meta {
             if (size() > 128) return false;
             if (val()[0] == '/') return false;   // absolute path forbidden
 
-            std::uint64_t i = 0;
+            std::size_t i = 0;
 
             if constexpr (AllowParent) {
                 // Allow leading "../" segments
@@ -764,7 +795,7 @@ namespace jh::meta {
          */
         template<char (*F)(char), std::size_t ... I>
         [[nodiscard]] constexpr auto transform_impl(std::index_sequence<I...>) const noexcept {
-            constexpr std::uint16_t NewSize = N;
+            constexpr std::size_t NewSize = N;
             const char arr[NewSize] = {F(storage[I])...};
             return t_str<NewSize>(arr);
         }
@@ -804,7 +835,7 @@ namespace jh::meta {
          * @note This overload exists to provide a compile-time fast-path:
          *       if <code>N != M</code>, the comparison does not even check characters.
          */
-        template<std::uint16_t M>
+        template<std::size_t M>
         constexpr bool operator==(const t_str<M> &) const
         noexcept requires (M != N) { return false; }
 
@@ -843,11 +874,14 @@ namespace jh::meta {
          *   <li>At compile time, values are assigned element-by-element.</li>
          *   <li>At runtime, <code>std::memcpy</code> is used for maximum efficiency.</li>
          * </ul>
+         * @note This conversion is available only when the string contains at least one byte.
          */
-        [[nodiscard]] constexpr explicit operator jh::pod::array<std::uint8_t, N - 1>() const noexcept {
-            jh::pod::array<std::uint8_t, N - 1> bytes{};
+        template<std::size_t M = N - 1>
+        requires (M > 0) && (M == N - 1)
+        [[nodiscard]] constexpr explicit operator jh::pod::array<std::uint8_t, M>() const noexcept {
+            jh::pod::array<std::uint8_t, M> bytes{};
             if (std::is_constant_evaluated()) {
-                for (std::uint64_t i = 0; i < N - 1; ++i)
+                for (std::size_t i = 0; i < N - 1; ++i)
                     bytes.data[i] = static_cast<std::uint8_t>(storage[i]);
             } else {
                 std::memcpy(bytes.data, storage.data, N - 1);
@@ -863,55 +897,21 @@ namespace jh::meta {
          *
          * @details
          * This is equivalent to the explicit byte-array conversion operator.
+         *
+         * @note This conversion is available only when the string contains at least one byte.
          */
-        [[nodiscard]] constexpr jh::pod::array<std::uint8_t, N - 1> to_bytes() const noexcept {
-            return jh::pod::array<std::uint8_t, N - 1>(*this);
+        template<std::size_t M = N - 1>
+        requires (M > 0) && (M == N - 1)
+        [[nodiscard]] constexpr jh::pod::array<std::uint8_t, M> to_bytes() const noexcept {
+            return jh::pod::array<std::uint8_t, M>(*this);
         }
 
-        /**
-         * @brief Construct a <code>t_str&lt;N&gt;</code> from a byte buffer.
-         *
-         * @param bytes
-         *     A <code>jh::pod::array&lt;std::uint8_t, N - 1&gt;</code> representing
-         *     a binary buffer.  
-         *     The buffer does <b>not</b> contain a null terminator.
-         *
-         * @return A new <code>t_str&lt;N&gt;</code> whose characters are taken directly
-         *         from <code>bytes</code>, with a null terminator appended internally.
-         *
-         * @details
-         * <ul>
-         *   <li>This function treats <code>bytes</code> as pure binary data.</li>
-         *   <li>No validation is performed &mdash; any byte value (0-255) is accepted.</li>
-         *   <li>The resulting <code>t_str</code> is always null-terminated internally,
-         *       because <code>t_str</code> is semantically a C-string wrapper.</li>
-         *   <li>
-         *     This method enables a useful pattern:
-         *     writing a binary buffer as if it were a string literal,
-         *     then reconstructing <code>t_str</code> from it.
-         *   </li>
-         *   <li>
-         *     The null terminator added at the end is not part of the returned
-         *     <em>bytes</em> if converted back using <code>to_bytes()</code>.
-         *   </li>
-         * </ul>
-         * <b>Example Usage</b>:
-         * @code
-         * jh::meta::t_str&lt;bytes.size() + 1&gt;::from_bytes(bytes);
-         * // Use this form instead of an explicit size, especially when the byte array is deduced with auto.
-         * @endcode
-         */
-        [[nodiscard]] static constexpr t_str from_bytes(const jh::pod::array<std::uint8_t, N - 1> &bytes) noexcept {
-            jh::pod::array<char, N> arr{};
-            if (std::is_constant_evaluated()) {
-                for (std::uint64_t i = 0; i < N - 1; ++i)
-                    arr.data[i] = static_cast<char>(bytes.data[i]);
-            } else {
-                std::memcpy(arr.data, bytes.data, N - 1);
-            }
-            return t_str(arr);
-        }
     };
+
+    /** @brief Deduce <code>t_str&lt;M + 1&gt;</code> from an M-byte POD array. */
+    template<std::size_t M>
+        requires (M > 0) && detail::t_str_size_legal<M + 1>
+    t_str(const jh::pod::array<std::uint8_t, M> &) -> t_str<M + 1>;
 
     /**
      * @brief Alias for <code>t_str&lt;N&gt;</code> with template argument deduction.
@@ -927,7 +927,7 @@ namespace jh::meta {
      *   <li>Intended primarily for compile-time string literal binding in templates.</li>
      * </ul>
      */
-    template<std::uint16_t N>
+    template<std::size_t N>
     using TStr = t_str<N>;
 
     /**
@@ -951,7 +951,7 @@ namespace jh::meta {
      * @note The printed form is identical to the underlying string literal content
      *       (no quotes, escapes, or formatting applied).
      */
-    template<std::uint16_t N>
+    template<std::size_t N>
     inline std::ostream &operator<<(std::ostream &os, const t_str<N> &str) {
         os << str.view();
         return os;

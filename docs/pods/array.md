@@ -30,7 +30,7 @@ no constructors, no heap, no indirection.
 ## 🔹 Definition
 
 ```cpp
-template<cv_free_pod_like T, std::uint16_t N>
+template<cv_free_pod_like T, std::size_t N>
 requires (sizeof(T) * N <= 16 * 1024)
 struct alignas(alignof(T)) array final;
 ```
@@ -62,7 +62,7 @@ mirroring `std::array` but restricted to POD semantics:
 
 ```cpp
 using value_type      = T;
-using size_type       = std::uint16_t;     // 16-bit bounded
+using size_type       = std::size_t;
 using difference_type = std::ptrdiff_t;
 using reference       = value_type&;
 using const_reference = const value_type&;
@@ -165,9 +165,18 @@ This makes it ideal for:
 |----------------------|---------------|--------------------------------------------------|
 | `T data[N]`          | Inline buffer | Raw storage, compatible with structured binding. |
 | `operator[](size_t)` | Access        | Returns reference to element (unchecked).        |
+| `at(size_t)`         | Checked access| Returns expected pointer or `out_of_bounds`.     |
 | `begin()` / `end()`  | Iterators     | Return raw pointers, compatible with STL ranges. |
 | `size()`             | Static        | Returns constant `N`.                            |
 | `operator==`         | Comparison    | Performs element-wise comparison.                |
+
+`at(i)` is `constexpr` and `noexcept`:
+
+```cpp
+auto result = values.at(i);
+if (result)
+    use(*result.value());
+```
 
 ---
 
@@ -249,7 +258,8 @@ binary IO, and any code path sensitive to memory locality.
 | `sizeof(T) * N > 16KB`   | Compile-time error (`requires` fails).         |
 | Non-POD `T`              | Compile-time error (`pod_like` fails).         |
 | `const` / `volatile` `T` | Compile-time error (`cv_free_pod_like` fails). |
-| Out-of-bounds access     | Undefined (unchecked).                         |
+| Out-of-bounds `operator[]` | Undefined (unchecked).                       |
+| Out-of-bounds `at()`      | Returns `array<T, N>::error_code::out_of_bounds`. |
 
 All static constraints are enforced at compile time.  
 Clang-based toolchains and IDEs (via Clangd)

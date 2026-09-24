@@ -30,20 +30,20 @@ and **binary transparency**.
 ```cpp
 struct string_view final {
     const char* data;
-    std::uint64_t len;
+    std::size_t len;
 };
 ```
 
 ### Key Properties
 
-| Aspect     | Description                                |
-|------------|--------------------------------------------|
-| Layout     | Flat POD layout — `const char* + uint64_t` |
-| Ownership  | Non-owning                                 |
-| Comparison | Deep bytewise (`memcmp`) equality          |
-| Hashing    | `constexpr` and `consteval`-safe           |
-| Lifetime   | Must not outlive underlying memory         |
-| ABI        | Stable and deterministic                   |
+| Aspect     | Description                                   |
+|------------|-----------------------------------------------|
+| Layout     | Flat POD layout — `const char* + std::size_t` |
+| Ownership  | Non-owning                                    |
+| Comparison | Deep bytewise (`memcmp`) equality             |
+| Hashing    | `constexpr` and `consteval`-safe              |
+| Lifetime   | Must not outlive underlying memory            |
+| ABI        | Layout follows the target `std::size_t` width |
 
 ---
 
@@ -70,7 +70,7 @@ auto sv = jh::pod::string_view::from_literal("hello");
 
 # 🔹 Basic Access
 
-### `operator[](uint64_t index)`
+### `operator[](std::size_t index)`
 
 Returns the character at `index`.
 
@@ -105,7 +105,7 @@ for (char c : sv) { ... }
 Returns the number of bytes in the view.
 
 ```cpp
-std::uint64_t n = sv.size();
+std::size_t n = sv.size();
 ```
 
 ---
@@ -128,13 +128,13 @@ Returns a substring view.
 
 | Aspect   | Description                        |
 |----------|------------------------------------|
-| Bounds   | If `offset > len`, returns empty   |
+| Bounds   | If `offset > len`, returns `error_code::out_of_bounds` |
 | Sentinel | `length == 0` extends to end       |
 | Safety   | Never produces out-of-range memory |
 
 ```cpp
-auto hello = sv.sub(0,5);
-auto tail  = sv.sub(6);
+auto hello = sv.sub(0,5); // check, then read hello.value()
+auto tail  = sv.sub(6);   // check, then read tail.value()
 ```
 
 ---
@@ -220,10 +220,11 @@ auto i = sv.find('o');
 
 ### `hash(hash_method = fnv1a64)`
 
-Computes a **constexpr-safe deterministic 64-bit hash**.
+Computes a **constexpr-safe deterministic hash** and returns
+`expected<std::size_t, string_view::error_code>`; check it before reading `value`.
 
 ```cpp
-constexpr auto h = sv.hash();
+constexpr auto h = sv.hash(); // check h, then read h.value()
 ```
 
 | Parameter     | Description        |
@@ -241,6 +242,10 @@ Supported algorithms are defined in:
 ```
 jh::meta::hash
 ```
+
+`hash_checked()` is an alias for the same checked operation. A size-based ADL
+adapter supports generic hash functors that require `std::size_t`; call the
+member `hash()` directly when the error must be observed.
 
 ---
 
@@ -367,7 +372,7 @@ Characteristics:
 Returns the number of **Unicode code points**.
 
 ```cpp
-auto n = sv.semantic_len();
+auto n = sv.semantic_len(); // check, then read n.value()
 ```
 
 Notes:
@@ -380,7 +385,7 @@ Notes:
 
 # 🔹 Utilities
 
-### `copy_to(char* buffer, uint64_t max_len)`
+### `copy_to(char* buffer, std::size_t max_len)`
 
 Copies the content into a C-style buffer.
 
@@ -388,6 +393,8 @@ Behavior:
 
 * truncates to `max_len-1`
 * always null-terminates
+* returns `invalid_buffer` if the output pointer is null or capacity is zero
+* returns `null_data` for a non-empty view with a null source pointer
 
 ⚠️ Intended only for debug or legacy interop.
 
@@ -588,7 +595,7 @@ Key rules:
 |------------|-------------------------------|
 | Category   | POD string view               |
 | Ownership  | Non-owning                    |
-| Layout     | `const char* + uint64_t`      |
+| Layout     | `const char* + std::size_t`   |
 | Comparison | Deep bytewise                 |
 | Hashing    | constexpr safe                |
 | Encoding   | ASCII / UTF-8 aware utilities |

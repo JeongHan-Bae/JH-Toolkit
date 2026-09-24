@@ -214,6 +214,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 #include <span>
@@ -233,7 +234,7 @@ namespace jh {
         /// @brief Checks if Alloc provides direct allocate/deallocate for T.
         template<typename A, typename T>
         concept direct_alloc_for =
-        (!jh::typed::monostate_t<A>) && requires(A a, std::uint64_t n) {
+        (!jh::typed::monostate_t<A>) && requires(A a, std::size_t n) {
             { a.allocate(n) } -> std::same_as<T *>;
             { a.deallocate(std::declval<T *>(), n) };
         };
@@ -241,7 +242,7 @@ namespace jh {
         /// @brief Checks if Alloc can be rebound to T via allocator_traits.
         template<typename A, typename T>
         concept rebind_alloc_for =
-        (!jh::typed::monostate_t<A>) && requires(std::uint64_t n) {
+        (!jh::typed::monostate_t<A>) && requires(std::size_t n) {
             requires requires
                     (typename std::allocator_traits<A>::template rebind_alloc<T> rebind){
                 rebind.allocate(n);
@@ -365,7 +366,7 @@ namespace jh {
     template<typename T, typename Alloc = typed::monostate> requires
     detail::valid_rt_arr_allocator<T, Alloc>
     class runtime_arr final {
-        std::uint64_t size_{0};
+        std::size_t size_{0};
 
         using deleter_t = std::function<void(T *)>;
         std::unique_ptr<T[], deleter_t> data_{nullptr, make_deleter()}; // Tie deleter to allocator
@@ -383,7 +384,7 @@ namespace jh {
     public:
 
         using value_type = T;                            ///< Value type alias.
-        using size_type = std::uint64_t;                 ///< Size type alias (64-bit).
+        using size_type = std::size_t;                 ///< Native object-size type.
         using difference_type = std::ptrdiff_t;          ///< Difference type alias.
         using reference = value_type &;                  ///< Reference type.
         using const_reference = const value_type &;      ///< Const reference type.
@@ -448,7 +449,7 @@ namespace jh {
          * <p><strong>Note:</strong> The content of the allocated memory is indeterminate until written to.
          * Accessing any element before explicit initialization results in undefined behavior.</p>
          */
-        explicit runtime_arr(const std::uint64_t size, uninitialized_t) requires
+        explicit runtime_arr(const std::size_t size, uninitialized_t) requires
         jh::pod::pod_like<T> && typed::monostate_t<Alloc> {
             size_ = size;
             T *ptr = static_cast<T *>(operator new[](sizeof(T) * size_));
@@ -525,7 +526,7 @@ namespace jh {
          * safe, fixed-size runtime arrays. It offers predictable initialization and deallocation
          * behavior, suitable for both POD and non-POD types.</p>
          */
-        explicit runtime_arr(std::uint64_t size)
+        explicit runtime_arr(std::size_t size)
                 : size_(size) {
             if constexpr (typed::monostate_t<allocator_type>) {
                 T *ptr = new T[size_];
@@ -595,7 +596,7 @@ namespace jh {
          *   <li>Ensures allocator lifetime and destruction safety via lambda capture semantics.</li>
          * </ul>
          */
-        explicit runtime_arr(std::uint64_t size, const Alloc &alloc) requires
+        explicit runtime_arr(std::size_t size, const Alloc &alloc) requires
         (!typed::monostate_t<Alloc>)
                 : size_(size) {
             allocator_type rebound = make_allocator_from(alloc);
@@ -697,7 +698,7 @@ namespace jh {
 
                 if constexpr (std::same_as<T, bool>) {
                     // vector<bool> proxy -> bool
-                    for (std::uint64_t i = 0; i < size_; ++i)
+                    for (std::size_t i = 0; i < size_; ++i)
                         ptr[i] = static_cast<bool>(vec[i]);
                 } else {
                     std::uninitialized_move(vec.begin(), vec.end(), ptr);
@@ -933,7 +934,7 @@ namespace jh {
          * @param index Element index within <code>[0, size())</code>.
          * @return Reference to the element.
          */
-        reference operator[](std::uint64_t index) noexcept { return data_[index]; }
+        reference operator[](std::size_t index) noexcept { return data_[index]; }
 
         /**
          * @brief Unchecked const element access.
@@ -945,7 +946,7 @@ namespace jh {
          * @param index Element index within <code>[0, size())</code>.
          * @return Const reference to the element.
          */
-        const_reference operator[](std::uint64_t index) const noexcept { return data_[index]; }
+        const_reference operator[](std::size_t index) const noexcept { return data_[index]; }
 
         /**
          * @brief Bounds-checked element access.
@@ -961,7 +962,7 @@ namespace jh {
          * @throws std::out_of_range If <code>index &gt;= size()</code>.
          * @see operator[]()
          */
-        reference at(std::uint64_t index) {
+        reference at(std::size_t index) {
             if (index >= size_) throw std::out_of_range("jh::runtime_arr::at(): index out of bounds");
             return data_[index];
         }
@@ -980,7 +981,7 @@ namespace jh {
          * @throws std::out_of_range If <code>index &gt;= size()</code>.
          * @see operator[]()
          */
-        [[nodiscard]] const_reference at(std::uint64_t index) const {
+        [[nodiscard]] const_reference at(std::size_t index) const {
             if (index >= size_) throw std::out_of_range("jh::runtime_arr::at(): index out of bounds");
             return data_[index];
         }
@@ -991,7 +992,7 @@ namespace jh {
          * @param args Arguments to construct T
          */
         template<typename... Args>
-        void set(std::uint64_t i, Args &&... args) {
+        void set(std::size_t i, Args &&... args) {
             if (i >= size_) throw std::out_of_range("set(): index out of bounds");
             data_[i] = T(std::forward<Args>(args)...);
         }
@@ -1035,10 +1036,10 @@ namespace jh {
             if constexpr (pod::pod_like<T>) {
                 std::memset(data_.get(), 0, size_ * sizeof(T));
             } else if constexpr (std::is_trivially_destructible_v<T>) {
-                for (std::uint64_t i = 0; i < size_; ++i)
+                for (std::size_t i = 0; i < size_; ++i)
                     new(data_ + i) T{};
             } else {
-                for (std::uint64_t i = 0; i < size_; ++i)
+                for (std::size_t i = 0; i < size_; ++i)
                     data_[i] = T{};
             }
         }
@@ -1144,7 +1145,7 @@ namespace jh {
         explicit operator std::vector<T>() && {
             if constexpr (std::is_same_v<T, bool> && !typed::monostate_t<Alloc>) {
                 std::vector<bool> vec(size_);
-                for (std::uint64_t i = 0; i < size_; ++i)
+                for (std::size_t i = 0; i < size_; ++i)
                     vec[i] = static_cast<bool>(data_[i]);
                 size_ = 0;
                 data_.reset();
@@ -1470,11 +1471,11 @@ namespace jh {
      */
     template<>
     class runtime_arr<bool> final {
-        std::uint64_t size_{};
+        std::size_t size_{};
         std::unique_ptr<std::uint64_t[]> storage_;
         static constexpr std::uint64_t BITS = 64;
 
-        [[nodiscard]] inline std::uint64_t word_count() const noexcept {
+        [[nodiscard]] inline std::size_t word_count() const noexcept {
             return (size_ + BITS - 1) / BITS;
         }
 
@@ -1497,7 +1498,7 @@ namespace jh {
             std::uint64_t mask_;
 
         public:
-            bit_ref(std::uint64_t &word, const std::uint64_t bit)
+            bit_ref(std::uint64_t &word, const std::size_t bit)
                     : word_(word), mask_(1ULL << bit) {
             }
 
@@ -1538,7 +1539,7 @@ namespace jh {
         struct bit_iterator final {
         public:
             runtime_arr *parent_;
-            std::uint64_t index_;
+            std::size_t index_;
             using iterator_concept = std::random_access_iterator_tag;
             using iterator_category = iterator_concept;
             using value_type = bool;
@@ -1546,7 +1547,7 @@ namespace jh {
             using reference = bit_ref;
             using pointer = void;
 
-            bit_iterator(runtime_arr *parent, const std::uint64_t index)
+            bit_iterator(runtime_arr *parent, const std::size_t index)
                     : parent_(parent), index_(index) {
             }
 
@@ -1623,7 +1624,7 @@ namespace jh {
         struct bit_const_iterator final {
         public:
             const runtime_arr *parent_;
-            std::uint64_t index_;
+            std::size_t index_;
 
             using iterator_concept = std::random_access_iterator_tag;
             using iterator_category = iterator_concept;
@@ -1632,7 +1633,7 @@ namespace jh {
             using reference = bit_ref;
             using pointer = void;
 
-            bit_const_iterator(const runtime_arr *parent, const std::uint64_t index)
+            bit_const_iterator(const runtime_arr *parent, const std::size_t index)
                     : parent_(parent), index_(index) {
             }
 
@@ -1696,7 +1697,7 @@ namespace jh {
 
         using raw_type = std::uint64_t;
         using value_type = bool;
-        using size_type = std::uint64_t;
+        using size_type = std::size_t;
         using difference_type = std::ptrdiff_t;
         using reference = bit_ref;
         using const_reference = bool;
@@ -1723,7 +1724,7 @@ namespace jh {
          *       for bit manipulation.</li>
          * </ul>
          */
-        explicit runtime_arr(std::uint64_t size);
+        explicit runtime_arr(std::size_t size);
 
         /**
          * @brief Constructs a bit-packed array by moving data from a <code>std::vector&lt;bool&gt;</code>.
@@ -1795,11 +1796,11 @@ namespace jh {
          std::convertible_to<typename ForwardIt::value_type, value_type>) {
             const auto dist = std::distance(first, last);
             if (dist < 0) throw std::invalid_argument("Invalid iterator range");
-            size_ = static_cast<std::uint64_t>(dist);
+            size_ = static_cast<std::size_t>(dist);
             storage_ = std::make_unique<std::uint64_t[]>(word_count());
             std::memset(storage_.get(), 0, word_count() * sizeof(std::uint64_t));
 
-            std::uint64_t i = 0;
+            std::size_t i = 0;
             for (; first != last; ++first, ++i)
                 set(i, static_cast<bool>(*first));
         }
@@ -1881,7 +1882,7 @@ namespace jh {
          * @param i Bit index within <code>[0, size())</code>.
          * @return Reference proxy object representing the targeted bit.
          */
-        reference operator[](std::uint64_t i) noexcept;
+        reference operator[](std::size_t i) noexcept;
 
         /**
          * @brief Unchecked const bit access (read-only).
@@ -1894,7 +1895,7 @@ namespace jh {
          * @param i Bit index within <code>[0, size())</code>.
          * @return Boolean value of the bit.
          */
-        [[nodiscard]] value_type operator[](std::uint64_t i) const noexcept;
+        [[nodiscard]] value_type operator[](std::size_t i) const noexcept;
 
         /**
          * @brief Bounds-checked bit access (read/write).
@@ -1915,7 +1916,7 @@ namespace jh {
          * @throws std::out_of_range If <code>i &gt;= size()</code>.
          * @see operator[]()
          */
-        reference at(std::uint64_t i);
+        reference at(std::size_t i);
 
         /**
          * @brief Const bounds-checked bit access (read-only).
@@ -1937,7 +1938,7 @@ namespace jh {
          * @throws std::out_of_range If <code>i &gt;= size()</code>.
          * @see operator[]()
          */
-        [[nodiscard]] value_type at(std::uint64_t i) const;
+        [[nodiscard]] value_type at(std::size_t i) const;
 
         /**
          * @brief Sets or clears the bit at given index.
@@ -1945,14 +1946,14 @@ namespace jh {
          * @param val Bit value to assign (<code>true</code> by default)
          * @throws std::out_of_range if i out of bounds
          */
-        void set(std::uint64_t i, bool val = true);
+        void set(std::size_t i, bool val = true);
 
         /**
          * @brief Clears the bit at given index.
          * @param i Bit index
          * @throws std::out_of_range if i out of bounds
          */
-        void unset(std::uint64_t i);
+        void unset(std::size_t i);
 
         /**
          * @brief Tests if the bit at index is set.
@@ -1960,7 +1961,7 @@ namespace jh {
          * @return <code>true</code> if bit is <tt>1</tt>, <code>false</code> if <tt>0</tt>
          * @throws std::out_of_range if i out of bounds
          */
-        [[nodiscard]] value_type test(std::uint64_t i) const;
+        [[nodiscard]] value_type test(std::size_t i) const;
 
         /**
          * @brief Resets all bits in the bit-packed array to zero.
@@ -2082,7 +2083,7 @@ namespace jh {
          *       for a byte-based boolean array that supports allocator semantics.</li>
          * </ul>
          */
-        runtime_arr(std::uint64_t size, auto) = delete;
+        runtime_arr(std::size_t size, auto) = delete;
 
         /// @brief Deleted &mdash; bit-packed array cannot expose a contiguous span of bools.
         [[nodiscard]] std::span<value_type> as_span() = delete;
@@ -2113,7 +2114,7 @@ namespace jh {
 #if JH_INTERNAL_SHOULD_DEFINE
 
     // ---- ctor ----
-    JH_INLINE runtime_arr<bool>::runtime_arr(const std::uint64_t size)
+    JH_INLINE runtime_arr<bool>::runtime_arr(const std::size_t size)
             : size_(size),
               storage_(std::make_unique<std::uint64_t[]>(word_count())) {
         std::memset(storage_.get(), 0, word_count() * sizeof(std::uint64_t));
@@ -2121,7 +2122,7 @@ namespace jh {
 
     JH_INLINE runtime_arr<bool>::runtime_arr(std::vector<bool> &&vec)
             : runtime_arr(vec.size()) {
-        for (std::uint64_t i = 0; i < size_; ++i)
+        for (std::size_t i = 0; i < size_; ++i)
             set(i, vec[i]);
     }
 
@@ -2150,21 +2151,21 @@ namespace jh {
 
     // ---- bit access ----
 
-    JH_INLINE auto runtime_arr<bool>::operator[](const std::uint64_t i) noexcept -> reference {
+    JH_INLINE auto runtime_arr<bool>::operator[](const std::size_t i) noexcept -> reference {
         return {storage_[i / BITS], i % BITS};
     }
 
-    JH_INLINE auto runtime_arr<bool>::operator[](const std::uint64_t i) const noexcept -> value_type {
+    JH_INLINE auto runtime_arr<bool>::operator[](const std::size_t i) const noexcept -> value_type {
         return (storage_[i / BITS] >> (i % BITS)) & 1U;
     }
 
-    JH_INLINE auto runtime_arr<bool>::at(const std::uint64_t i) -> reference {
+    JH_INLINE auto runtime_arr<bool>::at(const std::size_t i) -> reference {
         if (i >= size_)
             throw std::out_of_range("jh::runtime_arr<bool>::at(): index out of bounds");
         return operator[](i);
     }
 
-    JH_INLINE auto runtime_arr<bool>::at(const std::uint64_t i) const -> value_type {
+    JH_INLINE auto runtime_arr<bool>::at(const std::size_t i) const -> value_type {
         if (i >= size_)
             throw std::out_of_range("jh::runtime_arr<bool>::at(): index out of bounds");
         return operator[](i);
@@ -2172,7 +2173,7 @@ namespace jh {
 
     // ---- modifiers ----
 
-    JH_INLINE void runtime_arr<bool>::set(const std::uint64_t i, const bool val) {
+    JH_INLINE void runtime_arr<bool>::set(const std::size_t i, const bool val) {
         if (i >= size_) throw std::out_of_range("set(): index out of bounds");
         if (val)
             storage_[i / BITS] |= 1ULL << (i % BITS);
@@ -2180,12 +2181,12 @@ namespace jh {
             storage_[i / BITS] &= ~(1ULL << (i % BITS));
     }
 
-    JH_INLINE void runtime_arr<bool>::unset(const std::uint64_t i) {
+    JH_INLINE void runtime_arr<bool>::unset(const std::size_t i) {
         if (i >= size_) throw std::out_of_range("unset(): index out of bounds");
         storage_[i / BITS] &= ~(1ULL << (i % BITS));
     }
 
-    JH_INLINE auto runtime_arr<bool>::test(const std::uint64_t i) const -> value_type {
+    JH_INLINE auto runtime_arr<bool>::test(const std::size_t i) const -> value_type {
         if (i >= size_) throw std::out_of_range("test(): index out of bounds");
         return (storage_[i / BITS] >> (i % BITS)) & 1U;
     }
@@ -2218,7 +2219,7 @@ namespace jh {
 
     JH_INLINE runtime_arr<bool>::operator std::vector<bool>() && {
         std::vector<bool> vec(size_);
-        for (std::uint64_t i = 0; i < size_; ++i)
+        for (std::size_t i = 0; i < size_; ++i)
             vec[i] = static_cast<bool>((*this)[i]);
 
         size_ = 0;
@@ -2229,7 +2230,7 @@ namespace jh {
     JH_INLINE runtime_arr<bool>::runtime_arr(std::initializer_list<bool> init)
             : size_(init.size()),
               storage_(std::make_unique<std::uint64_t[]>(word_count())) {
-        std::uint64_t i = 0;
+        std::size_t i = 0;
         for (bool v: init)
             set(i++, v);
     }

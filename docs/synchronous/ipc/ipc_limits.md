@@ -55,7 +55,7 @@ The detection logic relies on `jh/macros/platform.h`.
 ### `max_name_length`
 
 ```cpp
-inline constexpr std::uint64_t max_name_length;
+inline constexpr std::size_t max_name_length;
 ```
 
 The compile-time maximum length for IPC object names.
@@ -69,7 +69,7 @@ The compile-time maximum length for IPC object names.
 ### `valid_object_name<S, MaxLen>()`
 
 ```cpp
-template<jh::meta::TStr S, std::uint64_t MaxLen = max_name_length>
+template<jh::meta::TStr S, std::size_t MaxLen = max_name_length>
 consteval bool valid_object_name();
 ```
 

@@ -22,7 +22,7 @@
  *
  * <h3>Design Goals:</h3>
  * <ul>
- *   <li>Fully POD (<code>T* + uint64_t</code>)</li>
+ *   <li>Fully POD (<code>T* + std::size_t</code>)</li>
  *   <li>No dynamic allocation, no STL dependencies</li>
  *   <li>Iteration, slicing, and indexing support</li>
  *   <li>Suitable for arena allocators, mmap, and raw containers</li>
@@ -36,14 +36,15 @@
 
 #pragma once
 
-#include <cstdint>   // for uint64_t
 #include <cstddef>
+#include <cstdint>
 #include <concepts>  // NOLINT for std::convertible_to<>
 #include <type_traits>
 #include <utility>
 
 #include "jh/pods/pod_like.h"
 #include "jh/pods/pair.h"
+#include "jh/metax/expected.h"
 
 namespace jh::pod {
 
@@ -97,18 +98,18 @@ namespace jh::pod {
         consteval len_status compute_len_status() noexcept {
 
             if constexpr (requires([[maybe_unused]] const C &c) {
-                { get_size(c) } -> std::convertible_to<std::uint64_t>;
+                { get_size(c) } -> std::convertible_to<std::size_t>;
             }) {
                 // ADL
                 return len_status::adl;
             } else if constexpr (requires([[maybe_unused]] const C &c) {
                 requires (!std::is_member_function_pointer_v<decltype(&C::len)>);
-                { c.len } -> std::convertible_to<std::uint64_t>;
+                { c.len } -> std::convertible_to<std::size_t>;
             }) {
                 // field
                 return len_status::field;
             } else if constexpr (requires([[maybe_unused]] const C &c) {
-                { c.size() } -> std::convertible_to<std::uint64_t>;
+                { c.size() } -> std::convertible_to<std::size_t>;
             }) {
                 // method
                 return len_status::method;
@@ -195,13 +196,42 @@ namespace jh::pod {
             constexpr auto status = linear_status<C>;
             return status.first != data_status::none && status.second != len_status::none;
         }();
+
+        template<typename C, data_status Status>
+        consteval bool data_access_nothrow() noexcept {
+            if constexpr (Status == data_status::field) {
+                return true;
+            } else if constexpr (Status == data_status::method) {
+                return noexcept(std::declval<C &>().data());
+            } else {
+                return noexcept(get_data(std::declval<C &>()));
+            }
+        }
+
+        template<typename C, len_status Status>
+        consteval bool size_access_nothrow() noexcept {
+            if constexpr (Status == len_status::field) {
+                return noexcept(std::declval<std::size_t &>() = std::declval<C &>().len);
+            } else if constexpr (Status == len_status::method) {
+                return noexcept(std::declval<std::size_t &>() = std::declval<C &>().size());
+            } else {
+                return noexcept(std::declval<std::size_t &>() = get_size(std::declval<C &>()));
+            }
+        }
+
+        template<typename C>
+        consteval bool linear_access_nothrow() noexcept {
+            constexpr auto status = linear_status<C>;
+            return data_access_nothrow<C, status.first>() &&
+                   size_access_nothrow<C, status.second>();
+        }
     } // namespace detail
 
     /**
      * @brief Non-owning typed view over a contiguous memory block.
      *
      * Behaves like a stripped-down <code>std::span</code>, but remains fully POD
-     * (<code>T* + uint64_t</code>).
+     * (<code>T* + std::size_t</code>).
      *
      * <h4>Differences from std::span:</h4>
      * <ul>
@@ -221,12 +251,18 @@ namespace jh::pod {
      */
     template<pod_like T>
     struct span final {
+        /** @brief Failure reasons for checked span operations. */
+        enum class error_code : std::uint8_t {
+            out_of_bounds,
+            null_data
+        };
+
         T *data;           ///< @brief Pointer to the first element.
-        std::uint64_t len; ///< @brief Number of elements.
+        std::size_t len;   ///< @brief Number of elements.
 
         using element_type = T;                                   ///< @brief Element type (alias of <code>T</code>).
         using value_type = std::remove_cv_t<T>;                   ///< @brief Value type without const/volatile.
-        using size_type = std::uint64_t;                          ///< @brief Size type (64-bit).
+        using size_type = std::size_t;                           ///< @brief Native object-size type.
         using difference_type = std::ptrdiff_t;                   ///< @brief Signed difference type.
         using reference = value_type &;                           ///< @brief Reference to element.
         using const_reference = const value_type &;               ///< @brief Const reference to element.
@@ -234,7 +270,7 @@ namespace jh::pod {
         using const_pointer = const value_type *;                 ///< @brief Const pointer to element.
 
         /// @brief Access an element by index (no bounds check).
-        constexpr const_reference operator[](std::uint64_t index) const noexcept {
+        constexpr const_reference operator[](std::size_t index) const noexcept {
             return data[index];
         }
 
@@ -242,7 +278,7 @@ namespace jh::pod {
         [[nodiscard]] constexpr const_pointer begin() const noexcept { return data; }
 
         /// @brief Pointer to one-past-the-end.
-        [[nodiscard]] constexpr const_pointer end() const noexcept { return data + len; }
+        [[nodiscard]] constexpr const_pointer end() const noexcept { return data ? data + len : nullptr; }
 
         /// @brief Number of elements in view.
         [[nodiscard]] constexpr size_type size() const noexcept { return len; }
@@ -254,27 +290,43 @@ namespace jh::pod {
          * @brief Creates a sub-span from <code>offset</code>, with optional <code>count</code> elements.
          *
          * If <code>count == 0</code> (default), the view extends to end.
-         * If <code>offset &gt; len</code>, returns empty span.
+         * Returns <code>out_of_bounds</code> if the requested range does not fit.
+         * Returns <code>null_data</code> if a non-empty span has no backing pointer.
          */
-        [[nodiscard]] constexpr span sub(const std::uint64_t offset,
-                                         const std::uint64_t count = 0) const noexcept {
-            if (offset > len) return {nullptr, 0};
-            const std::uint64_t remaining = len - offset;
-            const std::uint64_t real_len = (count == 0 || count > remaining) ? remaining : count;
-            return {data + offset, real_len};
+        [[nodiscard]] constexpr jh::meta::expected<span, error_code>
+        sub(const std::size_t offset, const std::size_t count = 0) const noexcept {
+            if (offset > len)
+                return jh::meta::unexpected(error_code::out_of_bounds);
+            if (!data && len != 0)
+                return jh::meta::unexpected(error_code::null_data);
+            const std::size_t remaining = len - offset;
+            if (count != 0 && count > remaining)
+                return jh::meta::unexpected(error_code::out_of_bounds);
+            const std::size_t real_len = count == 0 ? remaining : count;
+            return span{data ? data + offset : nullptr, real_len};
         }
 
-        /// @brief Returns the first <code>count</code> elements as a new span.
-        [[nodiscard]] constexpr span first(const std::uint64_t count) const noexcept {
-            if (!count) return {nullptr, 0};
-            return {data, (len > count ? count : len)};
+        /// @brief Returns the first <code>count</code> elements or an error if count exceeds the size.
+        [[nodiscard]] constexpr jh::meta::expected<span, error_code>
+        first(const std::size_t count) const noexcept {
+            if (count > len)
+                return jh::meta::unexpected(error_code::out_of_bounds);
+            if (!data && len != 0)
+                return jh::meta::unexpected(error_code::null_data);
+            if (!count) return span{nullptr, 0};
+            return span{data, count};
         }
 
-        /// @brief Returns the last <code>count</code> elements as a new span.
-        [[nodiscard]] constexpr span last(const std::uint64_t count) const noexcept {
-            if (!count) return {nullptr, 0};
-            if (count >= len) return *this;
-            return {data + len - count, count};
+        /// @brief Returns the last <code>count</code> elements or an error if count exceeds the size.
+        [[nodiscard]] constexpr jh::meta::expected<span, error_code>
+        last(const std::size_t count) const noexcept {
+            if (count > len)
+                return jh::meta::unexpected(error_code::out_of_bounds);
+            if (!data && len != 0)
+                return jh::meta::unexpected(error_code::null_data);
+            if (!count) return span{nullptr, 0};
+            if (count == len) return *this;
+            return span{data + len - count, count};
         }
 
         /**
@@ -292,15 +344,15 @@ namespace jh::pod {
     };
 
     /// @brief Create span from a raw array (<code>T[N]</code>).
-    template<typename T, std::uint64_t N>
+    template<typename T, std::size_t N>
     [[nodiscard]] constexpr span<T> to_span(T (&arr)[N]) noexcept {
-        return {arr, static_cast<std::uint64_t>(N)};
+        return {arr, static_cast<std::size_t>(N)};
     }
 
     /// @brief Create span from a const raw array (<code>const T[N]</code>).
-    template<typename T, std::uint64_t N>
+    template<typename T, std::size_t N>
     [[nodiscard]] constexpr span<const T> to_span(const T (&arr)[N]) noexcept {
-        return {arr, static_cast<std::uint64_t>(N)};
+        return {arr, static_cast<std::size_t>(N)};
     }
 
     /**
@@ -338,12 +390,13 @@ namespace jh::pod {
      *
      * <h4>Return Value</h4>
      * <p>
-     * Returns a non-owning <code>span&lt;Elem&gt;</code> referencing the same
-     * contiguous memory as the source container.
+     * Returns an <code>expected&lt;span&lt;Elem&gt;, span&lt;Elem&gt;::error_code&gt;</code>
+     * referencing the same contiguous memory, or reports <code>null_data</code>
+     * when the source advertises a non-zero size with a null pointer.
      * </p>
      */
     template<detail::linear_container C>
-    [[nodiscard]] constexpr auto to_span(C &c) noexcept {
+    [[nodiscard]] constexpr auto to_span(C &c) noexcept(detail::linear_access_nothrow<C>()) {
         constexpr auto status = jh::pod::detail::linear_status<C>;
 
         using Ref = typename decltype(detail::ref_type_helper<status, C>::get())::type;
@@ -355,7 +408,7 @@ namespace jh::pod {
                 RawElem>;
 
         Elem *ptr{};
-        std::uint64_t len{};
+        std::size_t len{};
 
         if constexpr (status.first == jh::pod::detail::data_status::field)
             ptr = c.data;
@@ -371,6 +424,11 @@ namespace jh::pod {
         else if constexpr (status.second == jh::pod::detail::len_status::adl)
             len = get_size(c);
 
-        return span<Elem>{ptr, len};
+        using result_type = span<Elem>;
+        if (!ptr && len != 0)
+            return jh::meta::expected<result_type, typename result_type::error_code>{
+                jh::meta::unexpected(result_type::error_code::null_data)
+            };
+        return jh::meta::expected<result_type, typename result_type::error_code>{result_type{ptr, len}};
     }
 } // namespace jh::pod

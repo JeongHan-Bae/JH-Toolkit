@@ -40,14 +40,14 @@ ideal for inspecting POD containers, static buffers, or memory-mapped data.
 template<pod_like T>
 struct span final {
     T*            data;
-    std::uint64_t len;
+    std::size_t len;
 };
 ```
 
 | Field  | Type            | Description                 |
 |--------|-----------------|-----------------------------|
 | `data` | `T*`            | Pointer to first element.   |
-| `len`  | `std::uint64_t` | Number of elements in view. |
+| `len`  | `std::size_t`  | Number of elements in view. |
 
 ### Key Properties
 
@@ -63,7 +63,7 @@ struct span final {
 
 ## 🔬 API Breakdown
 
-### 🔹 `operator[](std::uint64_t index) const noexcept`
+### 🔹 `operator[](std::size_t index) const noexcept`
 
 Access an element by index (unchecked).
 
@@ -97,7 +97,7 @@ for (auto& v : sp) std::cout << v << ' ';
 
 | Function  | Return          | Description         |
 |-----------|-----------------|---------------------|
-| `size()`  | `std::uint64_t` | Number of elements. |
+| `size()`  | `std::size_t`  | Number of elements. |
 | `empty()` | `bool`          | True if `len == 0`. |
 
 ---
@@ -109,12 +109,12 @@ Create a sub-span starting at `offset`, optionally limited by `count`.
 | Aspect   | Description                               |
 |----------|-------------------------------------------|
 | Default  | If `count == 0`, extends to end.          |
-| OOB      | Returns `{nullptr, 0}` if `offset > len`. |
+| OOB      | Returns `error_code::out_of_bounds`.       |
 | Behavior | Non-allocating, zero-cost slice.          |
 
 ```cpp
-auto tail = sp.sub(2);      // from element 2 to end
-auto mid  = sp.sub(1, 3);   // view of 3 elements
+auto tail = sp.sub(2);      // check, then read tail.value()
+auto mid  = sp.sub(1, 3);   // check, then read mid.value()
 ```
 
 ---
@@ -125,26 +125,26 @@ Return the first or last `count` elements as a new `span`.
 
 | Function       | Description                                          |
 |----------------|------------------------------------------------------|
-| `first(count)` | Returns prefix of length `count` (clamped to range). |
-| `last(count)`  | Returns suffix of length `count` (clamped to range). |
+| `first(count)` | Returns expected prefix; excessive count is an error. |
+| `last(count)`  | Returns expected suffix; excessive count is an error. |
 
 ```cpp
-auto head = sp.first(4);
-auto tail = sp.last(2);
+auto head = sp.first(4); // check, then read head.value()
+auto tail = sp.last(2);  // check, then read tail.value()
 ```
 
 #### Boundary Behavior
 
-These functions **never trigger out-of-bounds access**:
-if `count` exceeds the span length, it is **automatically truncated**.
+These functions report out-of-range counts instead of silently truncating them.
 
 | Case           | Behavior                                                 |
 |----------------|----------------------------------------------------------|
 | `count == 0`   | Returns `{nullptr, 0}` (empty span).                     |
-| `count >= len` | `first()` returns full span, `last()` returns full span. |
+| `count == len` | Returns the full span.                                    |
 | `count < len`  | Returns the corresponding prefix/suffix view.            |
+| `count > len`  | Returns `out_of_bounds`.                                  |
 
-> ✅ Always safe — truncation ensures that `begin()` and `end()` remain valid.  
+> ✅ Always safe — invalid ranges are returned as errors.
 > ❌ No dynamic allocation or copying occurs.
 
 ---
@@ -177,7 +177,7 @@ jh::pod::to_span(container);
 |--------------------|----------------------------------------------|
 | Raw array          | Creates `span<T>` directly.                  |
 | `const` raw array  | Creates `span<const T>`.                     |
-| `linear_container` | Deduces element type and size automatically. |
+| `linear_container` | Returns expected span; null data with non-zero size is an error. |
 
 ```cpp
 int arr[4] = {1, 2, 3, 4};
@@ -205,9 +205,9 @@ whose *data pointer* and *length* can appear in any **3×3 combination** of acce
 
 ```cpp
 // Valid examples under v1.3.5
-struct A { int* data; std::uint64_t len; };      // POD field form
-struct B { int* data(); std::uint64_t size(); }; // class-style container
-struct C { int* data; std::uint64_t size(); };   // mixed access form
+struct A { int* data; std::size_t len; };      // POD field form
+struct B { int* data(); std::size_t size(); }; // class-style container
+struct C { int* data; std::size_t size(); };   // mixed access form
 struct D {};  // ADL override (get_data, get_size)
 
 auto sa = jh::pod::to_span(a);
@@ -328,7 +328,7 @@ which extracts the unmangled name from `__PRETTY_FUNCTION__`
 | Consteval  | Technically allowed but meaningless — spans reference runtime memory |
 
 > ⚙️ **Explanation:**
-> Unlike `bytes_view` or `optional`, `span` does not perform any reinterpretation or laundering.  
+> Unlike `bytes_view`, `span` does not perform any reinterpretation or laundering.
 > It simply stores a pointer and a count.  
 > However, since the concept of a "view" depends on the existence of live memory,
 > using it in a `consteval` context has no semantic value.

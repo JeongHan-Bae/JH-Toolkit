@@ -10,6 +10,7 @@
  * <ul>
  *   <li><code>char</code> and <code>hash</code> utilities</li>
  *   <li>compile-time Base64 / Base64URL</li>
+ *   <li><code>enum_case</code> state-domain matching</li>
  *   <li><code>flatten_proxy</code> and <code>adl_apply</code></li>
  *   <li><code>lookup_map</code> compile-time table</li>
  *   <li><code>variant_adt</code> checks and transforms</li>
@@ -17,6 +18,8 @@
  */
 
 #include <jh/meta>
+#include <jh/concepts>
+#include <jh/flat_multimap>
 #include "ensure_output.h"
 
 #if IS_WINDOWS
@@ -24,13 +27,60 @@ static EnsureOutput ensure_output_setup;
 #endif
 
 #include <array>
+#include <cstddef>
+#include <algorithm>
 #include <iostream>
+#include <optional>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <unordered_map>
 #include <variant>
 
 namespace example {
+    enum class pre_session_rule {
+        require_active,
+        require_some,
+        ignore_actual,
+        require_none
+    };
+
+    enum class session_state {
+        disconnected,
+        ready,
+        active
+    };
+
+    struct session_action_rule {
+        const char* accepted;
+        const char* rejected;
+    };
+
+    [[nodiscard]] constexpr auto expected_session_case(const pre_session_rule pre)
+            -> jh::meta::enum_case::value_type<session_state> {
+        using C = jh::meta::enum_case;
+
+        switch (pre) {
+            case pre_session_rule::require_active:
+                return C::of<session_state::active>;
+            case pre_session_rule::require_some:
+                return C::some<session_state>;
+            case pre_session_rule::ignore_actual:
+                return C::any<session_state>;
+            case pre_session_rule::require_none:
+                return C::none<session_state>;
+        }
+
+        return C::none<session_state>;
+    }
+
+    [[nodiscard]] constexpr const char* execute_session_rule(
+            const jh::meta::enum_case::value_type<session_state> expected,
+            const session_action_rule& rule,
+            const std::optional<session_state>& actual
+    ) {
+        return expected.matches(actual) ? rule.accepted : rule.rejected;
+    }
 
     void example_char_and_hash() {
         std::cout << "\n===== meta::char / meta::hash =====\n\n";
@@ -49,7 +99,7 @@ namespace example {
         static_assert(jh::meta::flip_case('a') == 'A');
 
         constexpr char text[] = "meta";
-        constexpr std::uint64_t n = 4;
+        constexpr std::size_t n = 4;
 
         constexpr auto h_fnv1a = jh::meta::hash(jh::meta::c_hash::fnv1a64, text, n);
         constexpr auto h_fnv1 = jh::meta::hash(jh::meta::c_hash::fnv1_64, text, n);
@@ -77,8 +127,8 @@ namespace example {
 
         constexpr auto decoded = jh::meta::decode_base64<b64>();
         constexpr auto decoded_url = jh::meta::decode_base64url<b64url>();
-        constexpr auto restored = jh::meta::t_str<decoded.size() + 1>::from_bytes(decoded);
-        constexpr auto restored_url = jh::meta::t_str<decoded_url.size() + 1>::from_bytes(decoded_url);
+        constexpr auto restored = jh::meta::t_str{decoded};
+        constexpr auto restored_url = jh::meta::t_str{decoded_url};
 
         static_assert(restored == jh::meta::t_str{"Hello"});
         static_assert(restored_url == jh::meta::t_str{"Hello"});
@@ -87,6 +137,83 @@ namespace example {
         std::cout << "base64url       : " << b64url << "\n";
         std::cout << "base64url(pad)  : " << b64url_padded << "\n";
         std::cout << "decoded(base64) : " << restored << "\n";
+    }
+
+    void example_enum_case() {
+        std::cout << "\n===== meta::enum_case =====\n\n";
+
+        using C = jh::meta::enum_case;
+        using session_case = C::value_type<session_state>;
+
+        static_assert(C::of<session_state::active>.matches(session_state::active));
+        static_assert(C::some<session_state>.matches(std::optional{session_state::ready}));
+        static_assert(C::none<session_state>.matches(std::optional<session_state>{}));
+        static_assert(C::any<session_state>.matches(std::optional<session_state>{}));
+
+        std::unordered_map<session_case, session_action_rule, jh::hash<session_case>> rule_table{
+                {
+                        expected_session_case(pre_session_rule::require_active),
+                        {"resume workflow", "block until active"}
+                },
+                {
+                        expected_session_case(pre_session_rule::require_some),
+                        {"sync current session", "create new session"}
+                },
+                {
+                        expected_session_case(pre_session_rule::ignore_actual),
+                        {"always audit", "unreachable"}
+                },
+                {
+                        expected_session_case(pre_session_rule::require_none),
+                        {"bootstrap session", "skip bootstrap"}
+                }
+        };
+
+        jh::flat_multimap<session_case, session_action_rule> sorted_rules;
+        sorted_rules.emplace(
+                expected_session_case(pre_session_rule::require_active),
+                session_action_rule{"resume workflow", "block until active"}
+        );
+        sorted_rules.emplace(
+                expected_session_case(pre_session_rule::require_some),
+                session_action_rule{"sync current session", "create new session"}
+        );
+        sorted_rules.emplace(
+                expected_session_case(pre_session_rule::ignore_actual),
+                session_action_rule{"always audit", "unreachable"}
+        );
+        sorted_rules.emplace(
+                expected_session_case(pre_session_rule::require_none),
+                session_action_rule{"bootstrap session", "skip bootstrap"}
+        );
+
+        const std::optional<session_state> actual_active = session_state::active;
+        const std::optional<session_state> actual_ready = session_state::ready;
+        const std::optional<session_state> actual_none{};
+
+        const auto active_case = expected_session_case(pre_session_rule::require_active);
+        const auto some_case = expected_session_case(pre_session_rule::require_some);
+        const auto any_case = expected_session_case(pre_session_rule::ignore_actual);
+        const auto none_case = expected_session_case(pre_session_rule::require_none);
+
+        const auto& active_rule = rule_table.at(active_case);
+        const auto& some_rule = rule_table.at(some_case);
+        const auto& any_rule = rule_table.at(any_case);
+        const auto none_rule = sorted_rules.find(none_case);
+
+        std::cout << "recommended pattern 1: unordered_map<case, rule, jh::hash<case>>\n";
+        std::cout << "pre=require_active, actual=active -> "
+                  << execute_session_rule(active_case, active_rule, actual_active) << "\n";
+        std::cout << "pre=require_active, actual=ready  -> "
+                  << execute_session_rule(active_case, active_rule, actual_ready) << "\n";
+        std::cout << "pre=require_some, actual=nullopt  -> "
+                  << execute_session_rule(some_case, some_rule, actual_none) << "\n";
+        std::cout << "pre=ignore_actual, actual=nullopt -> "
+                  << execute_session_rule(any_case, any_rule, actual_none) << "\n";
+
+        std::cout << "\nrecommended pattern 2: jh::flat_multimap<case, rule>\n";
+        std::cout << "pre=require_none, actual=nullopt  -> "
+                  << execute_session_rule(none_rule->first, none_rule->second, actual_none) << "\n";
     }
 
     void example_flatten_and_adl_apply() {
@@ -188,6 +315,7 @@ namespace example {
 int main() {
     example::example_char_and_hash();
     example::example_base64_round_trip();
+    example::example_enum_case();
     example::example_flatten_and_adl_apply();
     example::example_lookup_map();
     example::example_variant_adt();

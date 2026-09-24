@@ -22,8 +22,13 @@ for meta-programming utilities such as **type reflection**, **compile-time ident
 All implementations are:
 
 * **Heap-free**, **STL-independent**, and **fully `constexpr`-evaluatable**
-* **Deterministic across platforms**
+* **Deterministic for a given algorithm and `std::size_t` width**
 * Designed for **speed and reproducibility**, *not for cryptographic use*
+
+All functions accept lengths and return hash values as `std::size_t`. Algorithms with
+64-bit names retain 64-bit internal arithmetic, while a 32-bit target returns the
+`std::size_t`-width result. Hash values are therefore not guaranteed to match between
+32-bit and 64-bit targets.
 
 ---
 
@@ -77,7 +82,7 @@ Selects which algorithm `hash()` will dispatch at compile time or runtime.
 
 ```cpp
 template<any_char Char>
-constexpr std::uint64_t fnv1a64(const Char* data, std::uint64_t size) noexcept;
+constexpr std::size_t fnv1a64(const Char* data, std::size_t size) noexcept;
 ```
 
 **Description:**
@@ -95,7 +100,7 @@ The **default** algorithm for identifiers and small keys.
 
 ```cpp
 template<any_char Char>
-constexpr std::uint64_t fnv1_64(const Char* data, std::uint64_t size) noexcept;
+constexpr std::size_t fnv1_64(const Char* data, std::size_t size) noexcept;
 ```
 
 **Description:**
@@ -108,7 +113,7 @@ Nearly identical to FNV-1a, but with slightly different avalanche behavior.
 
 ```cpp
 template<any_char Char>
-constexpr std::uint64_t djb2(const Char* data, std::uint64_t size) noexcept;
+constexpr std::size_t djb2(const Char* data, std::size_t size) noexcept;
 ```
 
 **Description:**
@@ -124,7 +129,7 @@ Lightweight compile-time hashing of short strings or identifiers.
 
 ```cpp
 template<any_char Char>
-constexpr std::uint64_t sdbm(const Char* data, std::uint64_t size) noexcept;
+constexpr std::size_t sdbm(const Char* data, std::size_t size) noexcept;
 ```
 
 **Description:**
@@ -137,7 +142,7 @@ Formula: `hash = c + (hash << 6) + (hash << 16) - hash`.
 
 ```cpp
 template<any_char Char>
-constexpr std::uint64_t murmur64(const Char* data, std::uint64_t size) noexcept;
+constexpr std::size_t murmur64(const Char* data, std::size_t size) noexcept;
 ```
 
 **Description:**
@@ -155,7 +160,7 @@ Designed for reproducible compile-time use with small data blocks.
 
 ```cpp
 template<any_char Char>
-constexpr std::uint64_t xxhash64(const Char* data, std::uint64_t size) noexcept;
+constexpr std::size_t xxhash64(const Char* data, std::size_t size) noexcept;
 ```
 
 **Description:**
@@ -172,20 +177,20 @@ A constexpr-safe variant of **xxHash64**, implemented without seeds or heap usag
 
 ```cpp
 template<any_char Char>
-constexpr std::uint64_t hash(c_hash algo, const Char* data, std::uint64_t size) noexcept;
+constexpr std::size_t hash(c_hash algo, const Char* data, std::size_t size) noexcept;
 ```
 
 **Description:**
 Generic dispatcher for all supported algorithms.
 
-| Parameter | Type            | Description             |
-|-----------|-----------------|-------------------------|
-| `algo`    | `c_hash`        | Algorithm selector.     |
-| `data`    | `const Char*`   | Pointer to input bytes. |
-| `size`    | `std::uint64_t` | Input length in bytes.  |
+| Parameter | Type          | Description             |
+|-----------|---------------|-------------------------|
+| `algo`    | `c_hash`      | Algorithm selector.     |
+| `data`    | `const Char*` | Pointer to input bytes. |
+| `size`    | `std::size_t` | Input length in bytes.  |
 
 **Returns:**
-`std::uint64_t` — resulting hash value.
+`std::size_t` — resulting hash value.
 
 **Example:**
 

@@ -26,10 +26,11 @@
 #include <cstdint>
 #include <cstddef>
 #include "jh/pods/pod_like.h"
+#include "jh/metax/expected.h"
 
 namespace jh::pod {
     /// @brief Maximum size of a POD array (16KB). This is a compile-time constant.
-    inline constexpr std::uint16_t max_pod_array_bytes = 16 * 1024;
+    inline constexpr std::size_t max_pod_array_bytes = 16 * 1024;
 
     /**
      * @brief POD-compatible fixed-size array, similar in shape to <code>std::array</code>, but simpler and fully POD.
@@ -51,25 +52,30 @@ namespace jh::pod {
      * <ul>
      *   <li>Memory is fully inline and contiguous (<code>T data[N]</code>)</li>
      *   <li>Compile-time limited to 16KB for safety and portability</li>
-     *   <li>Supports <code>operator[]</code>, range-based for-loops, <code>==</code> comparison</li>
-     *   <li>No bounds checking &mdash; required to preserve POD/constexpr/noexcept semantics.
-     *       Since the layout is trivial, most out-of-bounds cases can be caught at compile-time.</li>
+     *   <li>Supports <code>operator[]</code>, checked <code>at()</code>, range-based for-loops, and <code>==</code> comparison</li>
+     *   <li><code>operator[]</code> remains unchecked; <code>at()</code> reports an out-of-range index
+     *       through <code>expected</code> without throwing.</li>
      * </ul>
      *
      * @note This is <b>not</b> a drop-in replacement for <code>std::array</code>. It has:
      * <ul>
-     *   <li>No <code>.at()</code>, <code>.fill()</code>, <code>.swap()</code> helpers</li>
-     *   <li>No allocator, and bounds safety deliberately omitted to retain POD/constexpr semantics</li>
+     *   <li>No <code>.fill()</code> or <code>.swap()</code> helpers</li>
+     *   <li>No allocator; <code>operator[]</code> remains unchecked for POD/constexpr use cases</li>
      * </ul>
      *
      * @warning Do not use this for large arrays or heap-like buffers.
      */
-    template<cv_free_pod_like T, std::uint16_t N> requires (sizeof(T) * N <= max_pod_array_bytes)
+    template<cv_free_pod_like T, std::size_t N> requires (sizeof(T) * N <= max_pod_array_bytes)
     struct alignas(alignof(T)) array final {
+        /** @brief Failure reasons for checked array access. */
+        enum class error_code : std::uint8_t {
+            out_of_bounds
+        };
+
         T data[N];                             ///< Inline contiguous storage for N elements of type T.
 
         using value_type = T;                           ///< Value type alias.
-        using size_type = std::uint16_t;                ///< Size type alias (16-bit).
+        using size_type = std::size_t;                  ///< Size type alias.
         using difference_type = std::ptrdiff_t;         ///< Difference type alias.
         using reference = value_type &;                 ///< Reference type.
         using const_reference = const value_type &;     ///< Const reference type.
@@ -81,6 +87,20 @@ namespace jh::pod {
 
         /// @brief Access element by index (const, no bounds checking).
         constexpr const_reference operator[](std::size_t i) const noexcept { return data[i]; }
+
+        /** @brief Checked mutable element access. */
+        [[nodiscard]] constexpr jh::meta::expected<T *, error_code>
+        at(std::size_t i) noexcept {
+            if (i >= N) return jh::meta::unexpected(error_code::out_of_bounds);
+            return &data[i];
+        }
+
+        /** @brief Checked const element access. */
+        [[nodiscard]] constexpr jh::meta::expected<const T *, error_code>
+        at(std::size_t i) const noexcept {
+            if (i >= N) return jh::meta::unexpected(error_code::out_of_bounds);
+            return &data[i];
+        }
 
         /// @brief Get pointer to beginning of array.
         constexpr pointer begin() noexcept { return data; }

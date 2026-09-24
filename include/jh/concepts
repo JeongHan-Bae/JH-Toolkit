@@ -53,6 +53,7 @@
 #include "jh/conceptual/closable_container.h"
 #include "jh/conceptual/collectable_container.h"
 #include "jh/conceptual/container_traits.h"
+#include "jh/conceptual/enum.h"
 #include "jh/conceptual/hashable.h"
 #include "jh/conceptual/iterator.h"
 #include "jh/conceptual/mutex_like.h"

@@ -178,7 +178,9 @@ TEST_CASE("POD Payload roundtrip via huff256_canonical (binary o/istringstream)"
 
     // -------- 2) as bytes_view -> string_view --------
     auto bv = make_view(vec.data(), vec.size());
-    std::string_view sv(bv.fetch<char>(), bv.len);
+    const auto source_data = bv.fetch<char>();
+    REQUIRE(source_data);
+    std::string_view sv(source_data.value(), bv.len);
 
     // -------- 3) compress with ostringstream --------
     std::ostringstream out(std::ios::binary);
@@ -194,10 +196,12 @@ TEST_CASE("POD Payload roundtrip via huff256_canonical (binary o/istringstream)"
     // -------- 5) bytes_view -> Payload --------
     jh::pod::bytes_view bv2 = jh::pod::bytes_view::from(decompressed.data(), decompressed.size());
     std::vector<Payload> vec2(N);
+    const auto decoded_data = bv2.fetch<Payload>();
+    REQUIRE(decoded_data);
 
     std::copy(
-            bv2.fetch<Payload>(),
-            bv2.fetch<Payload>() + N,
+            decoded_data.value(),
+            decoded_data.value() + N,
             vec2.data()
     );
 

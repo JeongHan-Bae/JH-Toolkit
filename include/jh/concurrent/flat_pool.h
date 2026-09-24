@@ -413,7 +413,7 @@ namespace jh::conc {
             typename Hash = jh::hash<Key>,
             typename Alloc = std::allocator<detail::value_t<Key, Value>>> requires
     ((requires(const Key &k) {
-        { Hash{}(k) } -> std::convertible_to<size_t>;
+        { Hash{}(k) } -> std::convertible_to<std::size_t>;
     }) &&
      (requires(const Key &a, const Key &b) {
          { a == b } -> std::convertible_to<bool>;
@@ -445,7 +445,7 @@ namespace jh::conc {
         };
 
         std::vector<value_type, allocator_type> storage_;
-        jh::sync::control_buf<std::atomic<std::uint64_t>> refcounts_;
+        jh::sync::control_buf<std::atomic<std::size_t>> refcounts_;
         std::vector<uint8_t> occupation_;
         std::size_t first_candidate_ = static_cast<std::size_t>(-1);
         jh::ordered_set<entry_key> entries_;
@@ -500,14 +500,14 @@ namespace jh::conc {
          * This function assumes required synchronization is handled by the caller
          * and does not adjust reference counts.
          *
-         * @return The storage index if found; otherwise <code>size_t(-1)</code>.
+         * @return The storage index if found; otherwise <code>std::size_t(-1)</code>.
          */
         std::size_t find_idx_no_lock(const Key &key) {
             std::size_t h = Hash{}(key);
             auto it = entries_.lower_bound(entry_key{h, 0});
 
             for (; it != entries_.end() && it->hash == h; ++it) {
-                size_t idx = it->index;
+                std::size_t idx = it->index;
                 if constexpr (jh::typed::monostate_t<Value>) {
                     if (storage_[idx] == key) {
                         return idx;
@@ -558,7 +558,7 @@ namespace jh::conc {
             if (attempt != static_cast<std::size_t>(-1)) return attempt;
 
             // not found -> create new object
-            size_t idx;
+            std::size_t idx;
             if (first_candidate_ != static_cast<std::size_t>(-1)) {
                 idx = first_candidate_;
                 storage_[idx] = k;
@@ -628,7 +628,7 @@ namespace jh::conc {
             if (attempt != static_cast<std::size_t>(-1)) return attempt;
 
             // not found -> create new object
-            size_t idx;
+            std::size_t idx;
             // assign or emplace_back, use extension::value_factory::make to construct Value
             if (first_candidate_ != static_cast<std::size_t>(-1)) {
                 idx = first_candidate_;
@@ -662,10 +662,10 @@ namespace jh::conc {
          * @brief Updates the next reusable slot hint.
          *
          * Advances <code>first_candidate_</code> to the next unoccupied slot,
-         * or sets it to <code>size_t(-1)</code> if no free slot exists.
+         * or sets it to <code>std::size_t(-1)</code> if no free slot exists.
          */
         void update_first_candidate() {
-            for (size_t i = first_candidate_; i < occupation_.size(); ++i) {
+            for (std::size_t i = first_candidate_; i < occupation_.size(); ++i) {
                 if (occupation_[i] == 0) {
                     first_candidate_ = i;
                     return;
@@ -682,7 +682,7 @@ namespace jh::conc {
          *         was successfully incremented; <code>false</code> if the index
          *         is out of range or refers to an unoccupied slot.
          */
-        bool add_ref(size_t index) {
+        bool add_ref(std::size_t index) {
             jh::sync::posix_smtx_shared_lock lk(pool_mtx_);
             if (index >= occupation_.size() || occupation_[index] == 0)
                 return false;
@@ -717,7 +717,7 @@ namespace jh::conc {
          * removed from the hash-ordered index, and becomes eligible for reuse.
          * Slot reuse is tracked by updating <code>first_candidate_</code>.
          */
-        void release_ref(size_t index) {
+        void release_ref(std::size_t index) {
             {
                 jh::sync::posix_smtx_shared_lock lk(pool_mtx_);
                 if (refcounts_[index].fetch_sub(1) > 1)
@@ -729,7 +729,7 @@ namespace jh::conc {
 
             if (occupation_[index] == 1) {
                 occupation_[index] = 0;
-                size_t h;
+                std::size_t h;
                 if constexpr (jh::typed::monostate_t<Value>) {
                     h = Hash{}(storage_[index]);
                 } else {
@@ -744,7 +744,7 @@ namespace jh::conc {
 
     public:
         /// @brief Minimum reserved size for the pool.
-        static std::uint64_t constexpr MIN_RESERVED_SIZE = 16;
+        static std::size_t constexpr MIN_RESERVED_SIZE = 16;
 
         /**
          * @brief Constructs a flat_pool with pre-reserved contiguous storage.
@@ -775,7 +775,7 @@ namespace jh::conc {
          *
          * @param reserve_size Initial number of slots to reserve.
          */
-        explicit flat_pool(std::uint64_t reserve_size = MIN_RESERVED_SIZE) :
+        explicit flat_pool(std::size_t reserve_size = MIN_RESERVED_SIZE) :
                 storage_(), refcounts_(), occupation_(), first_candidate_(static_cast<std::size_t>(-1)), entries_() {
             if (reserve_size < MIN_RESERVED_SIZE)
                 reserve_size = MIN_RESERVED_SIZE;
@@ -834,7 +834,7 @@ namespace jh::conc {
          * @param reserve_size Initial number of slots to reserve.
          * @param alloc        Allocator used for contiguous value storage.
          */
-        [[maybe_unused]] explicit flat_pool(std::uint64_t reserve_size, const allocator_type &alloc)
+        [[maybe_unused]] explicit flat_pool(std::size_t reserve_size, const allocator_type &alloc)
                 : storage_(alloc), refcounts_(), occupation_(), first_candidate_(static_cast<std::size_t>(-1)),
                   entries_() {
             if (reserve_size < MIN_RESERVED_SIZE)
@@ -905,7 +905,7 @@ namespace jh::conc {
             /// @brief Pointer to the owning pool.
             flat_pool *pool_ = nullptr;
             /// @brief Storage index within the pool.
-            size_t index_ = static_cast<std::size_t>(-1);
+            std::size_t index_ = static_cast<std::size_t>(-1);
         public:
             /**
              * @brief Default-constructs a null handle.
@@ -918,7 +918,7 @@ namespace jh::conc {
              * @param p Pointer to the owning pool.
              * @param i Storage index within the pool.
              */
-            ptr(flat_pool *p, size_t i) : pool_(p), index_(i) {
+            ptr(flat_pool *p, std::size_t i) : pool_(p), index_(i) {
                 if (pool_) {
                     pool_->add_ref(index_);
                 }
@@ -1143,7 +1143,7 @@ namespace jh::conc {
          */
         template<typename KArg>
         ptr acquire(KArg &&key) requires(jh::typed::monostate_t<Value>) {
-            size_t idx = emplace(std::forward<KArg &&>(key));
+            std::size_t idx = emplace(std::forward<KArg &&>(key));
             if (idx == static_cast<std::size_t>(-1)) return ptr{nullptr};
             return ptr(this, idx);
         }
@@ -1231,7 +1231,7 @@ namespace jh::conc {
          */
         template<typename KArg, typename... Args>
         ptr acquire(KArg &&key, std::tuple<Args...> args_tuple) requires (!jh::typed::monostate_t<Value>) {
-            size_t idx = emplace(std::forward<KArg &&>(key), std::forward<std::tuple<Args... >>(args_tuple));
+            std::size_t idx = emplace(std::forward<KArg &&>(key), std::forward<std::tuple<Args... >>(args_tuple));
             if (idx == static_cast<std::size_t>(-1)) return ptr{nullptr};
             return ptr(this, idx);
         }
@@ -1410,12 +1410,12 @@ namespace jh::conc {
             // 1. Find last occupied slot
             auto rit = std::find_if(occupation_.rbegin(), occupation_.rend(),
                                     [](uint8_t x) { return x == 1; });
-            size_t last = 0;
+            std::size_t last = 0;
             if (rit != occupation_.rend()) {
                 last = occupation_.size() - 1 - std::distance(occupation_.rbegin(), rit);
             }
-            size_t need = last + 1;
-            size_t new_cap = std::max<size_t>(MIN_RESERVED_SIZE, std::bit_ceil(need));
+            std::size_t need = last + 1;
+            std::size_t new_cap = std::max<std::size_t>(MIN_RESERVED_SIZE, std::bit_ceil(need));
 
             if (storage_.capacity() <= new_cap) return;
 

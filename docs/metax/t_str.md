@@ -286,7 +286,7 @@ auto view = result_str.pod_view();
 ## 🔑 Compile-time Hashing
 
 ```cpp
-constexpr std::uint64_t id =
+constexpr std::size_t id =
     t_str{"user_name"}.hash(); // default: jh::meta::c_hash::fnv1a64
 ```
 
@@ -326,20 +326,19 @@ constexpr auto bytes =
 
 ---
 
-### Bytes → String (⚠️ Correct Usage)
+### Bytes → String
 
-To reconstruct a `t_str` from a byte buffer, **the size must be expressed explicitly**:
+Reconstruct a `t_str` from a byte buffer; CTAD includes the internal null terminator in the deduced size:
 
 ```cpp
-constexpr auto restored =
-    jh::meta::t_str<bytes.size() + 1>::from_bytes(bytes);
+constexpr auto restored = jh::meta::t_str{bytes};
 ```
 
 #### Why this matters
 
 * `bytes` does **not** contain a null terminator
 * `t_str<N>` **always does**
-* Declaring `N` as `bytes.size() + 1` guarantees correctness
+* Class template argument deduction sets `N` to `bytes.size() + 1`.
 
 This pattern remains correct when:
 

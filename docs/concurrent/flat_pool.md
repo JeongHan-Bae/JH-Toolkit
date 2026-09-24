@@ -208,9 +208,9 @@ This enables **lookup-before-construction** and avoids provisional object creati
 
 ### 🔒 Constants
 
-| Member              | Type                 | Description                                     |
-|---------------------|----------------------|-------------------------------------------------|
-| `MIN_RESERVED_SIZE` | `constexpr uint64_t` | Minimum reserved capacity for internal storage. |
+| Member              | Type                    | Description                                     |
+|---------------------|-------------------------|-------------------------------------------------|
+| `MIN_RESERVED_SIZE` | `constexpr std::size_t` | Minimum reserved capacity for internal storage. |
 
 ---
 

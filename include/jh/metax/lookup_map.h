@@ -289,7 +289,7 @@ namespace jh::meta {
              * @tparam N Size of t_str literal.
              * @param v Source t_str.
              */
-            template<std::uint16_t N>
+            template<std::size_t N>
             [[maybe_unused]] static constexpr canonical_type to_canonical(const jh::meta::t_str<N> &v) noexcept {
                 return v.pod_view();
             }

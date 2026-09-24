@@ -258,7 +258,6 @@
 #include <cstring>          // for ::strnlen
 #include <string_view>      // for std::string_view
 #include <cstddef>          // for std::nullptr_t
-#include <cstdint>          // for std::uint64_t
 #include <optional>         // for std::optional
 #include <type_traits>      // for std::remove_cvref_t
 #include <stdexcept>
@@ -589,7 +588,7 @@ namespace jh {
          * Provides a POD-compatible, read-only view over the internal buffer.
          * The returned object has the same layout and semantics as
          * <code>jh::pod::string_view</code> &mdash; that is,
-         * a pair of <code>const char*</code> and <code>uint64_t</code>
+         * a pair of <code>const char*</code> and <code>std::size_t</code>
          * describing a non-owning range of bytes.
          * </p>
          *
@@ -625,7 +624,7 @@ namespace jh {
          *   <li>Safe for concurrent read access.</li>
          * </ul>
          */
-        [[nodiscard]] std::uint64_t size() const noexcept;
+        [[nodiscard]] std::size_t size() const noexcept;
 
         /**
          * @brief Compares two <code>immutable_str</code> instances for equality.
@@ -652,13 +651,13 @@ namespace jh {
          * @brief Computes the cached hash value of the immutable string.
          *
          * <p>
-         * Returns a 64-bit hash derived from the string's contents.
+         * Returns a <code>std::size_t</code> hash derived from the string's contents.
          * The computation is performed lazily &mdash; the first call initializes
          * the cached value in a thread-safe manner, and all subsequent calls
          * return the stored result without recomputation.
          * </p>
          *
-         * @return A 64-bit hash value uniquely representing the string contents.
+         * @return A <code>std::size_t</code> hash value for the string contents.
          *
          * @note
          * <ul>
@@ -667,7 +666,7 @@ namespace jh {
          *   <li>Equivalent calls always return the same value for the same object.</li>
          * </ul>
          */
-        [[nodiscard]] std::uint64_t hash() const noexcept;
+        [[nodiscard]] std::size_t hash() const noexcept;
 
         /**
          * @brief Global flag selecting whether <code>immutable_str</code> performs automatic
@@ -733,9 +732,9 @@ namespace jh {
         [[maybe_unused]] static bool is_static_built();
 
     private:
-        uint64_t size_ = 0;                                       ///< Length of the string
+        std::size_t size_ = 0;                                       ///< Length of the string
         std::unique_ptr<const char[]> data_;                      ///< Immutable string data
-        mutable std::optional<std::uint64_t> hash_{std::nullopt}; ///< Cached hash value
+        mutable std::optional<std::size_t> hash_{std::nullopt}; ///< Cached hash value
         mutable std::once_flag hash_flag_;                        ///< Ensures thread-safe lazy initialization
 
         /**
@@ -759,7 +758,7 @@ namespace jh {
          *   <li>Acts as a private dispatcher &mdash; not intended for direct user invocation.</li>
          * </ul>
          */
-        void init_from_string(const char *input_str, std::uint64_t input_len = static_cast<std::uint64_t>(-1)) {
+        void init_from_string(const char *input_str, std::size_t input_len = static_cast<std::size_t>(-1)) {
 #if defined(JH_IMMUTABLE_STR_AUTO_TRIM) && JH_IMMUTABLE_STR_AUTO_TRIM
             init_from_string_trim(input_str, input_len);
 #else
@@ -767,9 +766,9 @@ namespace jh {
 #endif
         }
 
-        void init_from_string_trim(const char *input_str, std::uint64_t input_len);
+        void init_from_string_trim(const char *input_str, std::size_t input_len);
 
-        void init_from_string_no_trim(const char *input_str, std::uint64_t input_len);
+        void init_from_string_no_trim(const char *input_str, std::size_t input_len);
 
     };
 
@@ -893,7 +892,7 @@ namespace jh {
      *   Input value to hash; may be <code>nullptr</code> (hash result = 0).
      *
      * @return
-     *   64-bit hash derived from string content.
+     *   <code>std::size_t</code> hash derived from string content.
      *
      * @note
      * <ul>
@@ -914,7 +913,7 @@ namespace jh {
 
         template<typename U>
         requires immutable_str_compatible<U>
-        std::uint64_t operator()(const U &value) const noexcept {
+        std::size_t operator()(const U &value) const noexcept {
             if constexpr (std::same_as<std::remove_cvref_t<U>, atomic_str_ptr>) {
                 return value ? value->hash() : 0;
             } else {
@@ -922,8 +921,8 @@ namespace jh {
                     return 0;
                 }
                 if constexpr (immutable_str::auto_trim) {
-                    const std::uint64_t len = std::strlen(value); // Get const char* length
-                    std::uint64_t leading = 0, trailing = len;
+                    const std::size_t len = std::strlen(value); // Get const char* length
+                    std::size_t leading = 0, trailing = len;
                     while (leading < len && detail::is_space_ascii(static_cast<unsigned char>(value[leading]))) {
                         ++leading;
                     }
@@ -1025,8 +1024,8 @@ namespace jh {
         }
 
     private:
-        static std::pair<uint64_t, uint64_t> trim(const char *str) noexcept {
-            std::uint64_t leading = 0, trailing = std::strlen(str);
+        static std::pair<std::size_t, std::size_t> trim(const char *str) noexcept {
+            std::size_t leading = 0, trailing = std::strlen(str);
 
             while (leading < trailing && detail::is_space_ascii(static_cast<unsigned char>(str[leading]))) {
                 ++leading;
@@ -1162,7 +1161,7 @@ namespace jh {
         return {this->c_str(), this->size()};
     }
 
-    JH_INLINE uint64_t immutable_str::size() const noexcept {
+    JH_INLINE std::size_t immutable_str::size() const noexcept {
         return size_;
     }
 
@@ -1170,7 +1169,7 @@ namespace jh {
         return std::strcmp(data_.get(), other.data_.get()) == 0;
     }
 
-    JH_INLINE std::uint64_t immutable_str::hash() const noexcept {
+    JH_INLINE std::size_t immutable_str::hash() const noexcept {
         std::call_once(hash_flag_, [this] {
             hash_.emplace(std::hash<std::string_view>{}(std::string_view(data_.get(), size_)));
         });
@@ -1178,7 +1177,7 @@ namespace jh {
     }
 
     JH_INLINE void immutable_str::init_from_string_trim(const char *input_str,
-                                                        std::uint64_t input_len) {
+                                                        std::size_t input_len) {
         if (!input_str) [[unlikely]] {
             // Initialize an empty string if input is null
             size_ = 0;
@@ -1221,7 +1220,7 @@ namespace jh {
     }
 
     JH_INLINE void immutable_str::init_from_string_no_trim(const char *input_str,
-                                                           std::uint64_t input_len) {
+                                                           std::size_t input_len) {
         if (!input_str) [[unlikely]] {
             // Initialize an empty string if input is null
             size_ = 0;

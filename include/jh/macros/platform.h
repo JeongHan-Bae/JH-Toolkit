@@ -109,15 +109,8 @@
     #error "MSVC is not supported. Please use GCC or Clang."
 #endif
 
-// === Architecture Detection via sizeof ===
-#include <cstddef>
-static_assert(sizeof(std::size_t) == 8,
-              "\U0001F6AB 32-bit targets are not supported.\n"
-              "This library requires a 64-bit architecture (e.g., x86_64 or aarch64) for correct behavior and performance.\n"
-              "Please switch to a 64-bit toolchain and platform."
-);
-// Trust actual ABI over preprocessor macros.
-// This check prevents false positives from macro spoofing or incomplete platform detection.
+// Memory sizes and indices use std::size_t and follow the target ABI width.
+// Fixed-width serialized fields, bit storage, and shared counters declare their width explicitly.
 
 // === Architecture Detection ===
 

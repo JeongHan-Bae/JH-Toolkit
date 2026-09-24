@@ -23,13 +23,12 @@
 ## 🏷️ Overview
 
 `platform.h` is the **foundation of all environment detection** within the JH Toolkit.  
-It validates the toolchain, compiler, and architecture **before any code compiles**,
-preventing unsupported builds at preprocessing stage.
+It validates the compiler and detects the target architecture before platform-specific code is selected.
 
 This submodule provides:
 
 * Minimal and consistent `IS_*` macros for platform traits
-* 64-bit architecture enforcement via `sizeof(std::size_t)`
+* Native-width `std::size_t` for lengths, indices, capacities, and hash values
 * Explicit rejection of **MSVC** toolchains
 * Unified detection of POSIX, Darwin, Linux, Windows, and WASM targets
 
@@ -60,13 +59,13 @@ It is **implicitly included** by all internal components.
 
 ## 🔹 Enforcement Rules
 
-`platform.h` is not merely descriptive — it **actively enforces** runtime constraints at compile time.
+`platform.h` enforces compiler constraints and reports platform traits. It does not require a 64-bit `std::size_t`.
 
-| Enforcement           | Mechanism                                 | Description                                                    |
-|-----------------------|-------------------------------------------|----------------------------------------------------------------|
-| **64-bit only**       | `static_assert(sizeof(std::size_t) == 8)` | Rejects 32-bit platforms immediately.                          |
-| **No MSVC**           | Preprocessor guard on `_MSC_VER`          | If detected without **`clang`** or **`GNUC`**, triggers error. |
-| **Trusted ABI width** | `sizeof(std::size_t)` check               | Ensures actual ABI matches claimed architecture macros.        |
+| Enforcement | Mechanism | Description |
+|-------------|-----------|-------------|
+| **No MSVC** | Preprocessor guard on `_MSC_VER` | If detected without **`clang`** or **`GNUC`**, triggers an error. |
+
+Lengths, indices, capacities, and hash values use `std::size_t`, so their width follows the target ABI. WebAssembly 32-bit is a planned target; its complete platform and module support has not yet been validated.
 
 MSVC detection logic ensures that **MinGW-w64** and **Clang-cl** remain valid:
 
@@ -140,7 +139,7 @@ and is safe on all modern GCC/Clang targets — no `<endian.h>` dependency requi
 ## ⚙️ Design Notes
 
 * No redefinitions — macros are pure constants.  
-* No dependencies beyond `<cstddef>`.  
+* No dependencies beyond compiler-provided platform macros.
 * No namespace exposure — global-only scope.  
 * Prefer preprocessor over `constexpr` for compile-time branching.  
 * Side-effect free: multiple inclusions are harmless.  
@@ -163,9 +162,9 @@ and is safe on all modern GCC/Clang targets — no `<endian.h>` dependency requi
 | Kind                | Pure macro header                         |
 | Namespace           | `/` (global)                              |
 | Supported Compilers | GCC, Clang                                |
-| Unsupported         | MSVC (pure), 32-bit targets               |
-| Architecture        | Enforces 64-bit only                      |
-| Dependencies        | `<cstddef>`                               |
+| Unsupported         | MSVC (pure)                                |
+| Architecture        | Detected; integer widths follow the ABI    |
+| Dependencies        | None                                       |
 | POSIX Support       | Detects POSIX.1b extensions               |
 | ABI Impact          | None                                      |
 | Side Effects        | None                                      |

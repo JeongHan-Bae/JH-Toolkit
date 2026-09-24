@@ -89,7 +89,7 @@ and which should be constructed using **factory helpers (`make_*`)** for clarity
 | `array<T, N>`  | ✅                                | —                 | —                                                     | Fully aggregate-initializable (`array<int, 3> a{1,2,3};`).                                      |
 | `bitflags<N>`  | ⚠️ (empty only)                  | —                 | `jh::pod::from_bytes(array<std::uint8_t, N / 8> arr)` | Aggregate init possible but not recommended — use byte source for clarity.                      |
 | `bytes_view`   | ⚠️                               | —                 | `jh::pod::bytes_view::from(const T &obj)`             | Aggregate init legal but discouraged; prefer explicit `from()` for lifetime clarity.            |
-| `optional<T>`  | ⚠️ (empty only)                  | ✅ `make_optional` | `jh::pod::make_optional(const T &value)`              | Empty optional can be aggregate-initialized; prefer `make_optional()` for value initialization. |
+| `optional<T>`  | ✅                                | ✅ `make_optional` | `jh::pod::make_optional(const T &value)`              | Presence, storage, and fallback access are constexpr-capable. |
 | `pair<T1, T2>` | ✅                                | ✅ `make_pair`     | — / `jh::pod::make_pair(a, b)`                        | Pure aggregate type; `make_pair()` provides readable construction.                              |
 | `tuple<Ts...>` | ✅ (Clang 15+) <br> ⚠️ (GCC ≤ 13) | ✅ `make_tuple`    | `jh::pod::make_tuple(v1, v2, ...)`                    | Clang 15+ supports direct `{}` initialization; GCC ≤ 13 may require `make_tuple()`.             |
 | `span<T>`      | ✅                                | —                 | —                                                     | Aggregate (`{ptr, size}`) or constructed via `to_span()` for containers.                        |
@@ -136,22 +136,20 @@ and which should be constructed using **factory helpers (`make_*`)** for clarity
 
 ---
 
-> 📌 **Target platform:** 64-bit only — all POD types use fixed-width integers (`std::uint*_t`)
-> for layout determinism and cross-platform ABI stability.  
+> 📌 **Size policy:** memory-facing lengths, capacities, and indices use `std::size_t` and follow the target ABI width.
 >
-> 💡 In practice, **two conventions coexist by design**:
+> 💡 Fixed-width integers remain for fields whose width is part of a binary format, bit representation, or shared counter.
+> Normalized `std::size_t` usage prepares the API for planned WASM32 support; full WASM32 support is not yet validated.
 >
-> * For **actual data length and storage fields**, JH Toolkit uses
->   fixed-size integers (`uint32_t`, `uint64_t`) to ensure binary stability
->   and precise control over serialized or mapped layouts.  
+> * For **runtime memory lengths, capacities, and indices**, JH Toolkit uses
+>   `std::size_t` to match addressable storage and standard-library containers.
+> * Compile-time bounds may use narrower non-type template parameters where the API defines an explicit maximum.
 > * For **generic interfaces, structured bindings, and STL interop**,
 >   types such as `jh::pod::tuple` and related utilities
 >   use `std::size_t` to match the expectations of standard algorithms and
 >   trait-based deduction (`tuple_size`, `tuple_element`, ranges, etc.).  
 >
-> Although `std::size_t` and `uint64_t` are both 64-bit on target platforms,
-> they have distinct type identities (`unsigned long` vs `unsigned long long`),
-> which affects only overload resolution — not layout or ABI.  
+> Serialized fields and bit-packed words retain explicitly sized integer types so their representation remains stable.
 >
 > All buffer sizes and POD aggregates remain **statically bounded**;
 > any oversize or non-trivial instantiation triggers a compile-time concept failure.

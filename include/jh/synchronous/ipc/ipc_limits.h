@@ -68,7 +68,7 @@
 
 #include "jh/metax/t_str.h"
 #include "jh/macros/platform.h"
-#include <cstdint>
+#include <cstddef>
 
 /**
  * @brief Controls whether leading "../" segments are allowed in
@@ -100,10 +100,10 @@ namespace jh::sync::ipc::limits {
 
     // BSD-derived systems have strict 31-byte limit (including '/')
 #if IS_DARWIN || IS_FREEBSD || JH_FORCE_SHORT_SEM_NAME
-    inline constexpr std::uint64_t max_name_length = 30;
+    inline constexpr std::size_t max_name_length = 30;
 #else
     // Linux, Windows, WASM: more permissive; keep it conservative but practical
-    inline constexpr std::uint64_t max_name_length = 128;
+    inline constexpr std::size_t max_name_length = 128;
 #endif
 
     namespace detail {
@@ -135,11 +135,11 @@ namespace jh::sync::ipc::limits {
      *
      * @return <code>true</code> if the name is valid, otherwise <code>false</code>.
      */
-    template<jh::meta::TStr S, std::uint64_t MaxLen = max_name_length>
+    template<jh::meta::TStr S, std::size_t MaxLen = max_name_length>
     consteval bool valid_object_name() {
         if (S.size() < 1) return false;
         if (S.size() > MaxLen) return false;
-        for (std::uint64_t i = 0; i < S.size(); ++i)
+        for (std::size_t i = 0; i < S.size(); ++i)
             if (!detail::is_valid_name_char(S.val()[i]))
                 return false;
         return true;
@@ -173,7 +173,7 @@ namespace jh::sync::ipc::limits {
         if (S.size() > 128) return false;
         if (S.val()[0] == '/') return false;   // absolute path forbidden
 
-        std::uint64_t i = 0;
+        std::size_t i = 0;
 
 #if JH_INTERPROCESS_ALLOW_PARENT_PATH     // Allow leading "../" segments
         while (i + 2 < S.size() &&

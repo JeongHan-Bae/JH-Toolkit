@@ -42,6 +42,12 @@ compile_commands.json
 *.ccls-cache/
 *.vscode/
 
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
 # OS-specific files
 .DS_Store
 Thumbs.db

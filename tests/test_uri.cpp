@@ -27,7 +27,9 @@ TEST_CASE("URI Encode/Decode Roundtrip", "[uri]") {
 
             const auto bv = jh::pod::bytes_view::from(input);
 
-            std::string raw(bv.fetch<const char>(), bv.size());
+            const auto raw_result = bv.fetch<const char>();
+            REQUIRE(raw_result);
+            std::string raw(raw_result.value(), bv.size());
 
             const std::string encoded = jh::serio::uri::encode(raw);
             const std::string decoded = jh::serio::uri::decode(encoded);

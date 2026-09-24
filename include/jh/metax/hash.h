@@ -21,8 +21,10 @@
  * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  * @brief constexpr-safe, compile-time hash algorithms for meta utilities.
  *
- * Provides a minimal set of constexpr 64-bit hash functions usable in compile-time
- * contexts, such as type reflection, lookup maps, or <code>consteval</code> identifiers.
+ * Provides constexpr hash functions usable in compile-time contexts, such as type
+ * reflection, lookup maps, or <code>consteval</code> identifiers. The 64-bit algorithms
+ * retain 64-bit arithmetic internally; all public hash results use <code>std::size_t</code>
+ * and therefore follow the target ABI width.
  * All implementations avoid heap and STL dependencies.
  *
  * <h4>Supported constexpr hash algorithms</h4>
@@ -57,6 +59,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <concepts>
 #include "jh/metax/char.h"
@@ -75,9 +78,9 @@ namespace jh::meta {
 
     /// @brief FNV-1a 64-bit hash implementation (default choice)
     template<any_char Char>
-    constexpr std::uint64_t fnv1a64(const Char *data, const std::uint64_t size) noexcept {
+    constexpr std::size_t fnv1a64(const Char *data, const std::size_t size) noexcept {
         std::uint64_t h = 14695981039346656037ull;
-        for (std::uint64_t i = 0; i < size; ++i) {
+        for (std::size_t i = 0; i < size; ++i) {
             h ^= static_cast<std::uint8_t>(data[i]);
             h *= 1099511628211ull;
         }
@@ -86,9 +89,9 @@ namespace jh::meta {
 
     /// @brief FNV-1 64-bit hash (multiply before xor)
     template<any_char Char>
-    constexpr std::uint64_t fnv1_64(const Char *data, const std::uint64_t size) noexcept {
+    constexpr std::size_t fnv1_64(const Char *data, const std::size_t size) noexcept {
         std::uint64_t h = 14695981039346656037ull;
-        for (std::uint64_t i = 0; i < size; ++i) {
+        for (std::size_t i = 0; i < size; ++i) {
             h *= 1099511628211ull;
             h ^= static_cast<std::uint8_t>(data[i]);
         }
@@ -97,9 +100,9 @@ namespace jh::meta {
 
     /// @brief DJB2 hash (hash * 33 + c)
     template<any_char Char>
-    constexpr std::uint64_t djb2(const Char *str, const std::uint64_t size) noexcept {
+    constexpr std::size_t djb2(const Char *str, const std::size_t size) noexcept {
         std::uint64_t hash = 5381;
-        for (std::uint64_t i = 0; i < size; ++i) {
+        for (std::size_t i = 0; i < size; ++i) {
             hash = ((hash << 5) + hash) + static_cast<std::uint8_t>(str[i]);
         }
         return hash;
@@ -107,9 +110,9 @@ namespace jh::meta {
 
     /// @brief SDBM hash (used in several DB engines)
     template<any_char Char>
-    constexpr std::uint64_t sdbm(const Char *str, const std::uint64_t size) noexcept {
+    constexpr std::size_t sdbm(const Char *str, const std::size_t size) noexcept {
         std::uint64_t hash = 0;
-        for (std::uint64_t i = 0; i < size; ++i) {
+        for (std::size_t i = 0; i < size; ++i) {
             hash = static_cast<std::uint8_t>(str[i]) + (hash << 6) + (hash << 16) - hash;
         }
         return hash;
@@ -117,11 +120,11 @@ namespace jh::meta {
 
     /// @brief constexpr MurmurHash-like 64-bit variant (seedless)
     template<any_char Char>
-    constexpr std::uint64_t murmur64(const Char *data, const std::uint64_t size) noexcept {
+    constexpr std::size_t murmur64(const Char *data, const std::size_t size) noexcept {
         std::uint64_t h = 0x87c37b91114253d5ull;
         constexpr std::uint64_t c1 = 0x87c37b91114253d5ull;
         constexpr std::uint64_t c2 = 0x4cf5ad432745937full;
-        for (std::uint64_t i = 0; i < size; ++i) {
+        for (std::size_t i = 0; i < size; ++i) {
             std::uint64_t k = static_cast<std::uint8_t>(data[i]);
             k *= c1;
             k = (k << 31) | (k >> (64 - 31));
@@ -141,14 +144,14 @@ namespace jh::meta {
 
     /// @brief constexpr xxHash-like 64-bit variant (seedless)
     template<any_char Char>
-    constexpr std::uint64_t xxhash64(const Char *data, std::uint64_t len) noexcept {
+    constexpr std::size_t xxhash64(const Char *data, std::size_t len) noexcept {
         constexpr std::uint64_t PRIME1 = 11400714785074694791ull;
         constexpr std::uint64_t PRIME2 = 14029467366897019727ull;
         constexpr std::uint64_t PRIME3 = 1609587929392839161ull;
         constexpr std::uint64_t PRIME5 = 2870177450012600261ull;
         std::uint64_t h64 = PRIME5 + len;
         // no seed, simple accumulation
-        for (std::uint64_t i = 0; i < len; ++i) {
+        for (std::size_t i = 0; i < len; ++i) {
             h64 += static_cast<std::uint8_t>(data[i]) * PRIME5;
             h64 = (h64 << 11) | (h64 >> (64 - 11));
             h64 *= PRIME1;
@@ -164,7 +167,7 @@ namespace jh::meta {
 
     /// @brief Dispatch to selected hash algorithm based on c_hash
     template<any_char Char>
-    constexpr std::uint64_t hash(const c_hash algo, const Char *data, const std::uint64_t size) noexcept {
+    constexpr std::size_t hash(const c_hash algo, const Char *data, const std::size_t size) noexcept {
         switch (algo) {
             case c_hash::fnv1a64:
                 return fnv1a64(data, size);
@@ -179,6 +182,6 @@ namespace jh::meta {
             case c_hash::xxhash64:
                 return xxhash64(data, size);
         }
-        return static_cast<std::uint64_t>(-1); // Illegal
+        return static_cast<std::size_t>(-1); // Illegal
     }
 } // namespace jh::meta

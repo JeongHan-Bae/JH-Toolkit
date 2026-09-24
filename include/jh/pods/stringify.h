@@ -108,10 +108,12 @@
 
 #include "jh/pods/pod_like.h"
 #include <ostream>
+#include <cstddef>
+#include <cstdint>
 #include <sstream>
 #include <iomanip>
 #include "jh/typing/monostate.h"
-#include "jh/serialize_io/base64.h"
+#include "jh/detail/base64_common.h"
 #include "jh/macros/type_name.h"
 #include "jh/pods/array.h"
 #include "jh/pods/bits.h"
@@ -176,14 +178,14 @@ namespace jh::pod {
     !std::is_enum_v<T> &&
     !std::is_pointer_v<T>;
 
-    template<streamable T, std::uint16_t N>
+    template<streamable T, std::size_t N>
     requires(!std::is_same_v<T, char> && // forbid printing char arrays
              requires(std::ostream &os, T v) {
                  { os << v }; // T should be printable
              })
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::array<T, N> &arr) {
         os << "[";
-        for (std::uint16_t i = 0; i < N; ++i) {
+        for (std::size_t i = 0; i < N; ++i) {
             if (i != 0)
                 os << ", ";
             os << arr[i];
@@ -192,10 +194,10 @@ namespace jh::pod {
         return os;
     }
 
-    template<std::uint16_t N>
+    template<std::size_t N>
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::array<char, N> &str) {
         os << '"';  // start escaped JSON string
-        for (std::uint16_t i = 0; i < N && str[i] != '\0'; ++i) {
+        for (std::size_t i = 0; i < N && str[i] != '\0'; ++i) {
             char c = str[i];
             switch (c) {
                 case '\"':
@@ -283,10 +285,43 @@ namespace jh::pod {
 
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::bytes_view bv) {
         // empty view should print as base64''
-        const auto *data = bv.fetch<std::uint8_t>(0);
         os << "base64'";
-        if (data != nullptr) {
-            os << jh::serio::base64::encode(data, bv.len);
+        if (bv.len != 0) {
+            const auto result = bv.fetch<std::uint8_t>(0);
+            if (result) {
+                const auto *data = result.value();
+                const auto &table = jh::detail::base64_common::encode_table;
+                std::size_t i = 0;
+                while (bv.len - i >= 3) {
+                    const std::uint32_t triple =
+                        (static_cast<std::uint32_t>(data[i]) << 16) |
+                        (static_cast<std::uint32_t>(data[i + 1]) << 8) |
+                        static_cast<std::uint32_t>(data[i + 2]);
+                    os.put(table[(triple >> 18) & 0x3F]);
+                    os.put(table[(triple >> 12) & 0x3F]);
+                    os.put(table[(triple >> 6) & 0x3F]);
+                    os.put(table[triple & 0x3F]);
+                    i += 3;
+                }
+                if (i < bv.len) {
+                    const auto remaining = bv.len - i;
+                    std::uint32_t triple = static_cast<std::uint32_t>(data[i]) << 16;
+                    if (remaining == 2)
+                        triple |= static_cast<std::uint32_t>(data[i + 1]) << 8;
+
+                    os.put(table[(triple >> 18) & 0x3F]);
+                    os.put(table[(triple >> 12) & 0x3F]);
+                    if (remaining == 2) {
+                        os.put(table[(triple >> 6) & 0x3F]);
+                        os.put('=');
+                    } else {
+                        os.put('=');
+                        os.put('=');
+                    }
+                }
+            } else {
+                os << "<invalid-view>";
+            }
         }
         os << "'";
         return os;
@@ -295,7 +330,7 @@ namespace jh::pod {
     template<streamable T>
     inline std::ostream &operator<<(std::ostream &os, const span<T> &sp) {
         os << "span<" << macro::type_name<T>() << ">[";
-        for (std::uint64_t i = 0; i < sp.size(); ++i) {
+        for (std::size_t i = 0; i < sp.size(); ++i) {
             if (i != 0) os << ", ";
             os << sp[i];
         }

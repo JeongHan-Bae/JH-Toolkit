@@ -37,6 +37,7 @@
 #include <jh/pod>
 
 #include <array>
+#include <cstddef>
 #include <compare>
 #include <cstdint>
 #include <cstring>
@@ -73,8 +74,8 @@ namespace example {
 
         [[nodiscard]] constexpr const int *data() const noexcept { return storage.data(); }
 
-        [[nodiscard]] constexpr std::uint64_t size() const noexcept {
-            return static_cast<std::uint64_t>(storage.size());
+        [[nodiscard]] constexpr std::size_t size() const noexcept {
+            return storage.size();
         }
     };
 
@@ -88,8 +89,8 @@ namespace example {
             return b.storage.data();
         }
 
-        [[nodiscard]] constexpr std::uint64_t get_size(const buffer &b) noexcept {
-            return static_cast<std::uint64_t>(b.storage.size());
+        [[nodiscard]] constexpr std::size_t get_size(const buffer &b) noexcept {
+            return b.storage.size();
         }
 
     } // namespace adl_span_demo
@@ -176,24 +177,27 @@ namespace example {
         const auto view = pod::bytes_view::from(packet);
 
         const auto id = view.at<std::uint32_t>(0);
-        const auto *len_ptr = view.fetch<std::uint16_t>(sizeof(packet.id));
+        const auto len_result = view.fetch<std::uint16_t>(sizeof(packet.id));
         const auto packet_copy = view.clone<Packet>();
+        const auto hash_result = view.hash();
 
         std::cout << "view.size=" << view.size() << "\n";
         std::cout << "packet.id=0x" << std::hex << id << std::dec
-                  << ", packet.len=" << (len_ptr ? *len_ptr : 0) << "\n";
-        std::cout << "clone.id=0x" << std::hex << packet_copy.id << std::dec
-                  << ", hash=" << view.hash() << "\n";
+                  << ", packet.len=" << (len_result ? *len_result.value() : 0) << "\n";
+        if (packet_copy) {
+            std::cout << "clone.id=0x" << std::hex << packet_copy->id << std::dec << "\n";
+        }
+        if (hash_result) std::cout << "hash=" << hash_result.value() << "\n";
 
         const pod::array<std::uint32_t, 4> words = {10U, 20U, 30U, 40U};
         const auto words_view = pod::bytes_view::from(words.data, words.size());
-        if (const auto *third = words_view.fetch<std::uint32_t>(2U * sizeof(std::uint32_t))) {
-            std::cout << "third word via fetch=" << *third << "\n";
+        if (const auto third = words_view.fetch<std::uint32_t>(2U * sizeof(std::uint32_t)); third) {
+            std::cout << "third word via fetch=" << *third.value() << "\n";
         }
 
         const pod::array<pod::pair<int, int>, 2> points = {{{1, 2}, {3, 4}}};
         const auto flattened = pod::bytes_view::from(points).clone<pod::array<int, 4>>();
-        std::cout << "flattened clone=" << flattened << "\n";
+        if (flattened) std::cout << "flattened clone=" << flattened.value() << "\n";
     }
 
 /**
@@ -228,27 +232,44 @@ namespace example {
         const auto raw_view = pod::to_span(raw);
 
         pod::array<int, 5> pod_arr = {{10, 20, 30, 40, 50}};
-        const auto pod_view = pod::to_span(pod_arr);
+        const auto pod_view_result = pod::to_span(pod_arr);
 
         std::array<int, 5> std_arr = {11, 22, 33, 44, 55};
-        const auto std_view = pod::to_span(std_arr);
+        const auto std_view_result = pod::to_span(std_arr);
 
         std::vector<int> vec = {100, 200, 300, 400, 500};
-        const auto vec_view = pod::to_span(vec);
+        const auto vec_view_result = pod::to_span(vec);
 
         method_buffer method_buf{{7, 14, 21, 28, 35}};
-        const auto method_view = pod::to_span(method_buf);
+        const auto method_view_result = pod::to_span(method_buf);
 
         adl_span_demo::buffer adl_buf{{9, 18, 27, 36}};
-        const auto adl_view = pod::to_span(adl_buf);
+        const auto adl_view_result = pod::to_span(adl_buf);
+
+        if (!pod_view_result || !std_view_result || !vec_view_result ||
+            !method_view_result || !adl_view_result) {
+            std::cout << "container span conversion failed\n";
+            return;
+        }
+        const auto pod_view = pod_view_result.value();
+        const auto std_view = std_view_result.value();
+        const auto vec_view = vec_view_result.value();
+        const auto method_view = method_view_result.value();
+        const auto adl_view = adl_view_result.value();
 
         const pod::span<int> alias_of_raw{raw, 6};
         std::cout << "raw_view == alias_of_raw: " << (raw_view == alias_of_raw) << "\n";
 
-        std::cout << "raw first(3): " << raw_view.first(3) << "\n";
-        std::cout << "pod last(2): " << pod_view.last(2) << "\n";
-        std::cout << "std sub(1,3): " << std_view.sub(1, 3) << "\n";
-        std::cout << "vector sub(2): " << vec_view.sub(2) << "\n";
+        const auto raw_first = raw_view.first(3);
+        const auto pod_last = pod_view.last(2);
+        const auto std_mid = std_view.sub(1, 3);
+        const auto vector_tail = vec_view.sub(2);
+        if (raw_first && pod_last && std_mid && vector_tail) {
+            std::cout << "raw first(3): " << raw_first.value() << "\n";
+            std::cout << "pod last(2): " << pod_last.value() << "\n";
+            std::cout << "std sub(1,3): " << std_mid.value() << "\n";
+            std::cout << "vector sub(2): " << vector_tail.value() << "\n";
+        }
         std::cout << "method size=" << method_view.size() << ", element[2]=" << method_view[2] << "\n";
         std::cout << "adl span=" << adl_view << "\n";
     }
@@ -267,25 +288,28 @@ namespace example {
         constexpr auto hex = "0A0B"_psv;
         constexpr auto b64 = "QUJDRA=="_psv;
 
-        const auto tail = text.sub(4);
+        const auto tail_result = text.sub(4);
         const auto cmp = text.compare("pod_stream"_psv);
         const auto pos = text.find('_');
         const auto ord = text <=> "pod_string"_psv;
+        const auto hash_result = text.hash();
 
         char legacy[16]{};
-        text.copy_to(legacy, sizeof(legacy));
+        const auto copied = text.copy_to(legacy, sizeof(legacy));
 
         std::cout << "text=" << text << ", size=" << text.size() << ", empty=" << text.empty() << "\n";
-        std::cout << "tail=" << tail << ", starts_with(pod)=" << text.starts_with("pod"_psv)
+        if (tail_result) std::cout << "tail=" << tail_result.value() << "\n";
+        std::cout << "starts_with(pod)=" << text.starts_with("pod"_psv)
                   << ", ends_with(ing)=" << text.ends_with("ing"_psv) << "\n";
-        std::cout << "compare(pod_stream)=" << cmp << ", find('_')=" << pos
-                  << ", hash=" << text.hash() << "\n";
+        std::cout << "compare(pod_stream)=" << cmp << ", find('_')=" << pos << "\n";
+        if (hash_result) std::cout << "hash=" << hash_result.value() << "\n";
         std::cout << "digits.is_digit=" << digits.is_digit()
                   << ", number.is_number=" << number.is_number()
                   << ", hex.is_hex=" << hex.is_hex()
                   << ", b64.is_base64=" << b64.is_base64() << "\n";
         std::cout << "ord == equal: " << (ord == std::strong_ordering::equal)
-                  << ", to_std=" << text.to_std() << ", copy_to=" << legacy << "\n";
+                  << ", to_std=" << text.to_std() << ", copied=" << copied.value_or(0)
+                  << ", copy_to=" << legacy << "\n";
     }
 
 /**
@@ -339,20 +363,20 @@ namespace example {
 
         std::cout << "row-wise fetch:\n";
         for (std::size_t row = 0; row < kRows; ++row) {
-            const auto *current = view.fetch<row_type>(row * sizeof(row_type));
-            if (current == nullptr) {
+            const auto current_result = view.fetch<row_type>(row * sizeof(row_type));
+            if (!current_result) {
                 continue;
             }
 
-            for (int v: *current) {
+            for (int v: *current_result.value()) {
                 std::cout << std::setw(2) << v << " ";
             }
             std::cout << "\n";
         }
 
-        if (const auto *matrix = view.fetch<matrix_type>(); matrix != nullptr) {
+        if (const auto matrix = view.fetch<matrix_type>(); matrix) {
             std::cout << "full matrix fetch:\n";
-            for (const auto &row: *matrix) {
+            for (const auto &row: *matrix.value()) {
                 for (int v: row) {
                     std::cout << std::setw(2) << v << " ";
                 }

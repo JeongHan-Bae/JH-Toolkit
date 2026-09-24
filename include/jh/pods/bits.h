@@ -92,7 +92,7 @@ namespace jh::pod {
      * @return <code>array&lt;uint8_t, sizeof(UInt)&gt;</code> encoded in little-endian order.
      */
     template<std_uint UInt>
-    [[nodiscard]] constexpr auto uint_to_bytes(const UInt val) {
+    [[nodiscard]] constexpr auto uint_to_bytes(const UInt val) noexcept {
         // jh::pod::array is a pod_like type -> constexpr friendly
         // Inplace construction + RVO to eliminate for-loop cost
         if constexpr (std::is_same_v<UInt, std::uint8_t>) {
@@ -134,7 +134,7 @@ namespace jh::pod {
      */
     template<std::uint16_t N>
     requires(is_native_bitflags<N * 8>)
-    [[nodiscard]] constexpr auto bytes_to_uint(const array<std::uint8_t, N> &arr) {
+    [[nodiscard]] constexpr auto bytes_to_uint(const array<std::uint8_t, N> &arr) noexcept {
         if constexpr (N == 1) {
             return static_cast<std::uint8_t>(arr[0]);
         } else if constexpr (N == 2) {
@@ -187,7 +187,7 @@ namespace jh::pod {
         struct bitflags_uint {
             T bits;
 
-            static constexpr std::uint16_t size() {
+            static constexpr std::uint16_t size() noexcept {
                 if constexpr (std::is_same_v<T, std::uint8_t>) return 8;
                 if constexpr (std::is_same_v<T, std::uint16_t>) return 16;
                 if constexpr (std::is_same_v<T, std::uint32_t>) return 32;
@@ -265,7 +265,7 @@ namespace jh::pod {
         struct bitflags_bytes {
             std::uint8_t data[NUM_BYTES];
 
-            static constexpr std::uint16_t size() { return NUM_BYTES * 8; }
+            static constexpr std::uint16_t size() noexcept { return NUM_BYTES * 8; }
 
             constexpr void clear() noexcept {
                 *this = bitflags_bytes{}; // better than resetting with a for-loop
@@ -460,11 +460,14 @@ namespace jh::pod {
      */
     template<std::uint16_t N>
     requires (N % 8 == 0)
-    [[nodiscard]] constexpr array<std::uint8_t, N / 8> to_bytes(bitflags<N> f) {
+    [[nodiscard]] constexpr array<std::uint8_t, N / 8> to_bytes(bitflags<N> f) noexcept {
         if constexpr (is_native_bitflags<N>) {
             return uint_to_bytes(f.bits);
         } else {
-            return {f.data}; // trivial copy, constexpr-friendly
+            array<std::uint8_t, N / 8> out{};
+            for (std::uint16_t i = 0; i < N / 8; ++i)
+                out[i] = f.data[i];
+            return out;
         }
     }
 
@@ -473,11 +476,14 @@ namespace jh::pod {
      * @note Only the array's raw content is used. No semantic validation is performed.
      */
     template<std::uint16_t N>
-    constexpr bitflags<N> from_bytes(array<std::uint8_t, N / 8> arr) {
+    constexpr bitflags<N> from_bytes(array<std::uint8_t, N / 8> arr) noexcept {
         if constexpr (is_native_bitflags<N>) {
             return static_cast<bitflags<N>>(detail::bitflags_uint{.bits = bytes_to_uint<N / 8>(arr)});
         } else {
-            return {arr.data}; // pod types -> safe copy
+            bitflags<N> out{};
+            for (std::uint16_t i = 0; i < N / 8; ++i)
+                out.data[i] = arr[i];
+            return out;
         }
     }
 } // namespace jh::pod

@@ -173,12 +173,14 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
 #include <vector>
 #include <queue>
 #include <stack>
 #include <algorithm>
+#include <limits>
 #include "jh/metax/t_str.h"
 #include "jh/pods/array.h"
 #include "jh/pods/pair.h"
@@ -500,6 +502,29 @@ namespace jh::serio {
             }
         }
 
+        static void write_total_bits(std::ostream &os, const std::size_t total_bits) {
+            const std::uint64_t serialized_total_bits = static_cast<std::uint64_t>(total_bits);
+            auto bv = jh::pod::bytes_view::from(serialized_total_bits);
+            const auto bytes = bv.fetch<char>(0);
+            if (!bytes) throw std::runtime_error("Huffman header view is out of bounds");
+            os.write(bytes.value(), sizeof(serialized_total_bits));
+        }
+
+        static std::size_t read_total_bits(std::istream &is) {
+            std::uint64_t serialized_total_bits = 0;
+            auto bv = jh::pod::bytes_view::from(serialized_total_bits);
+            const auto bytes = bv.fetch<char>(0);
+            if (!bytes) throw std::runtime_error("Huffman header view is out of bounds");
+            is.read(const_cast<char *>(bytes.value()), sizeof(serialized_total_bits));
+
+            if constexpr (sizeof(std::size_t) < sizeof(std::uint64_t)) {
+                if (serialized_total_bits > std::numeric_limits<std::size_t>::max())
+                    throw std::runtime_error("Huffman bit count exceeds addressable size");
+            }
+
+            return static_cast<std::size_t>(serialized_total_bits);
+        }
+
         /**
          * @brief Decode bitstream using canonical tables.
          *
@@ -510,7 +535,7 @@ namespace jh::serio {
          * @return Decoded plaintext string.
          */
         static std::string canonical_decode(std::istream &is,
-                                            std::uint64_t total_bits,
+                                            std::size_t total_bits,
                                             const canonical_decoder &dec
         ) requires(is_canonical) {
             std::string out;
@@ -518,7 +543,7 @@ namespace jh::serio {
 
             std::uint8_t buf = 0;
             int cnt = 0;
-            std::uint64_t used = 0;
+            std::size_t used = 0;
 
             std::uint32_t code = 0;
             std::uint32_t L = 0;
@@ -579,7 +604,7 @@ namespace jh::serio {
         ) requires(!is_canonical) = delete;
 
         static std::string canonical_decode(std::istream &is,
-                                            std::uint64_t total_bits,
+                                            std::size_t total_bits,
                                             const canonical_decoder &dec
         ) requires(!is_canonical) = delete;
 
@@ -614,7 +639,9 @@ namespace jh::serio {
 
             if constexpr (!is_canonical) {
                 auto bv = jh::pod::bytes_view::from(freq);
-                os.write(bv.template fetch<char>(0), bv.size());
+                const auto bytes = bv.template fetch<char>(0);
+                if (!bytes) throw std::runtime_error("Huffman frequency view is out of bounds");
+                os.write(bytes.value(), bv.size());
             }
 
             std::vector<node> pool;
@@ -631,14 +658,10 @@ namespace jh::serio {
                 table_t tbl{};
                 build_canonical_codes(len_tbl, tbl);
 
-                std::uint64_t total_bits = 0;
+                std::size_t total_bits = 0;
                 for (unsigned char c: input)
                     total_bits += tbl[c].len;
-
-                {
-                    auto bv = jh::pod::bytes_view::from(total_bits);
-                    os.write(bv.fetch<char>(0), sizeof(total_bits));
-                }
+                write_total_bits(os, total_bits);
 
                 std::uint8_t buf = 0;
                 int cnt = 0;
@@ -663,14 +686,10 @@ namespace jh::serio {
             table_t tbl{};
             build_code_table(pool, root, tbl);
 
-            std::uint64_t total_bits = 0;
+            std::size_t total_bits = 0;
             for (unsigned char c: input)
                 total_bits += tbl[c].len;
-
-            {
-                auto bv = jh::pod::bytes_view::from(total_bits);
-                os.write(bv.fetch<char>(0), sizeof(total_bits));
-            }
+            write_total_bits(os, total_bits);
 
             std::uint8_t buf = 0;
             int cnt = 0;
@@ -709,7 +728,9 @@ namespace jh::serio {
 
             if constexpr (!is_canonical) {
                 auto bv = jh::pod::bytes_view::from(freq);
-                is.read(const_cast<char *>(bv.template fetch<char>(0)), bv.size());
+                const auto bytes = bv.template fetch<char>(0);
+                if (!bytes) throw std::runtime_error("Huffman frequency view is out of bounds");
+                is.read(const_cast<char *>(bytes.value()), bv.size());
             }
 
             std::vector<node> pool;
@@ -730,23 +751,14 @@ namespace jh::serio {
                 canonical_decoder dec;
                 build_canonical_decoder(len_tbl, dec);
 
-                std::uint64_t total_bits = 0;
-                {
-                    auto bv = jh::pod::bytes_view::from(total_bits);
-                    is.read(const_cast<char *>(bv.fetch<char>(0)), sizeof(total_bits));
-                }
-
+                const std::size_t total_bits = read_total_bits(is);
                 return canonical_decode(is, total_bits, dec);
             }
 
             // ---------- Normal huffman Tree ----------
             root = build_tree(freq, pool);
 
-            std::uint64_t total_bits = 0;
-            {
-                auto bv = jh::pod::bytes_view::from(total_bits);
-                is.read(const_cast<char *>(bv.fetch<char>(0)), sizeof(total_bits));
-            }
+            const std::size_t total_bits = read_total_bits(is);
 
             std::string out;
             out.reserve(total_bits / 3);
@@ -757,7 +769,7 @@ namespace jh::serio {
             int node = root;
             std::uint8_t buf = 0;
             int cnt = 0;
-            std::uint64_t used = 0;
+            std::size_t used = 0;
 
             while (used < total_bits) // NOLINT
             {

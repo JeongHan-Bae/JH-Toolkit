@@ -262,12 +262,12 @@ auto path = jh::safe_from(view, m);
 ## 🔹 Thread-Safe Hashing
 
 ```cpp
-std::uint64_t h = shared->hash();
+std::size_t h = shared->hash();
 ```
 
 * The hash is computed once on first access and cached.
 * Uses `std::once_flag` for lock-free thread safety.
-* Identical content → identical hash, guaranteed.
+* Identical content → identical hash on the same target, guaranteed.
 
 ---
 

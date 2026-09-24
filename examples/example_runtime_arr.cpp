@@ -377,6 +377,7 @@ static EnsureOutput ensure_output_setup;
  */
 
 #include <iostream>
+#include <cstddef>
 #include <iomanip>
 #include <concepts>
 #include <jh/pod>
@@ -1482,7 +1483,7 @@ namespace example {
 
             // --- read values ---
             std::cout << "values:\n";
-            for (std::uint64_t i = 0; i < bits.size(); ++i)
+            for (std::size_t i = 0; i < bits.size(); ++i)
                 std::cout << bits.test(i) << " ";
 
             std::cout << "\n";
@@ -1498,7 +1499,7 @@ namespace example {
             std::cout << "raw words: " << bits.raw_word_count() << "\n";
 
             auto *raw = bits.raw_data();
-            for (std::uint64_t i = 0; i < bits.raw_word_count(); ++i)
+            for (std::size_t i = 0; i < bits.raw_word_count(); ++i)
                 std::cout << "word[" << i << "] = " << raw[i] << "\n";
 
             // --- reset ---

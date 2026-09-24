@@ -70,7 +70,7 @@ If your system differs from the CI presets, you can always [build from source](#
 | **CMake (consumer)**         | **3.14+**       | Required when using `find_package(jh-toolkit)` |
 | **CMake (building toolkit)** | **3.21+**       | Required when building JH Toolkit itself       |
 | **Git**                      | Latest          | Required for Debug / FetchContent builds       |
-| **System ABI**               | 64-bit          | 32-bit builds prohibited                       |
+| **System ABI**               | Itanium C++ ABI | `std::size_t` follows target width; WASM32 support is planned |
 
 ---
 
@@ -498,17 +498,17 @@ ctest --test-dir build-debug --output-on-failure
 
 ### ❌ Unsupported Platforms
 
-| Platform                  | Status                | Reason                                                        |
-|---------------------------|-----------------------|---------------------------------------------------------------|
-| **MSVC**                  | ❌                     | Incomplete `concepts`, `ranges`, and coroutine semantics      |
-| **32-bit (x86, ARMv7)**   | ❌                     | `static_assert(sizeof(std::size_t) == 8)` ensures 64-bit only |
-| **Windows ARM64 (MinGW)** | ⚠️ **Not Guaranteed** | Incomplete `std::ranges` and coroutine features               |
+| Platform                  | Status                 | Reason                                                         |
+|---------------------------|------------------------|----------------------------------------------------------------|
+| **MSVC**                  | ❌                      | Incomplete `concepts`, `ranges`, and coroutine semantics       |
+| **32-bit targets**        | ⚠️ **Not Yet Validated** | WASM32 support is planned; platform modules still need validation |
+| **Windows ARM64 (MinGW)** | ⚠️ **Not Guaranteed**  | Incomplete `std::ranges` and coroutine features                |
 
 > ⚠️ For Windows ARM64, use **WSL2 + Ubuntu + GCC** for reliability.
 
 ### 📱 Mobile & Embedded
 
-* ❌ Not intended for embedded or 32-bit.
+* ⚠️ Embedded and 32-bit targets are not yet validated; WASM32 support is planned.
 * ✅ Android/iOS via `add_subdirectory()`.
 * 📦 Use `jh::pod` for minimal deployment.
 
@@ -550,7 +550,7 @@ g++ -std=c++20 -I/usr/local/include main.cpp -o test
 | **Compiler (macOS)**   | LLVM 20+ (`brew install llvm@20`)   |
 | **Compiler (Windows)** | MSYS2 UCRT64 (GCC 14+)              |
 | **CMake**              | ≥ 3.20                              |
-| **System**             | 64-bit only                         |
+| **System**             | Current binaries target Linux x86_64 and macOS ARM64; WASM32 is planned |
 | **Distribution**       | Conan `.tar.gz` via GitHub Releases |
 
 ---

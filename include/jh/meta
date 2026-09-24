@@ -36,6 +36,8 @@
 #include "jh/metax/adl_apply.h"
 #include "jh/metax/base64.h"
 #include "jh/metax/char.h"
+#include "jh/metax/enum_case.h"
+#include "jh/metax/expected.h"
 #include "jh/metax/flatten_proxy.h"
 #include "jh/metax/hash.h"
 #include "jh/metax/lookup_map.h"

@@ -74,8 +74,7 @@
  * constexpr auto decoded = jh::meta::decode_base64&lt;encoded&gt;();
  *
  * // bytes &rarr; t_str
- * constexpr auto restored =
- *     jh::meta::t_str&lt;decoded.size() + 1&gt;::from_bytes(decoded);
+ * constexpr auto restored = jh::meta::t_str{decoded};
  * @endcode
  *
  * <h3>Subsystem role</h3>
@@ -93,6 +92,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include "jh/pods/array.h"
 #include "jh/metax/t_str.h"
@@ -198,7 +198,7 @@ namespace jh::meta {
     requires (S.is_base64())
     constexpr auto decode_base64() {
         constexpr std::uint16_t out_len = detail::decoded_len_base64<S>();
-        constexpr std::uint64_t enc_len = S.size();
+        constexpr std::size_t enc_len = S.size();
 
         jh::pod::array<std::uint8_t, out_len> out{};
 
@@ -240,7 +240,7 @@ namespace jh::meta {
     requires (S.is_base64url())
     constexpr auto decode_base64url() {
         constexpr std::uint16_t out_len = detail::decoded_len_base64url<S>();
-        constexpr std::uint64_t enc_len = S.size();
+        constexpr std::size_t enc_len = S.size();
 
         jh::pod::array<std::uint8_t, out_len> out{};
 
@@ -288,14 +288,14 @@ namespace jh::meta {
      *     A <code>TStr&lt;M&gt;</code> containing the padded Base64 representation,
      *     terminated with a null character.
      */
-    template<std::uint16_t N>
+    template<std::size_t N>
     constexpr auto encode_base64(const jh::pod::array<std::uint8_t, N> &raw) {
-        constexpr std::uint64_t raw_len = N;
-        constexpr std::uint64_t enc_len =
+        constexpr std::size_t raw_len = N;
+        constexpr std::size_t enc_len =
                 jh::detail::base64_common::encoded_len_base64(raw_len);
 
         // total string size = encoded_length + null
-        constexpr std::uint64_t s_len = enc_len + 1;
+        constexpr std::size_t s_len = enc_len + 1;
 
         jh::pod::array<char, s_len> out_char{};
 
@@ -357,18 +357,18 @@ namespace jh::meta {
      *       <li><code>encode_base64url(bytes, std::true_type{})</code> for padded output</li>
      *     </ul>
      */
-    template<std::uint16_t N, class PadT = std::false_type>
+    template<std::size_t N, class PadT = std::false_type>
     constexpr auto encode_base64url(const jh::pod::array<std::uint8_t, N> &raw, PadT = {}) {
-        constexpr std::uint64_t raw_len = N;
+        constexpr std::size_t raw_len = N;
 
-        constexpr std::uint64_t enc_len_pad =
+        constexpr std::size_t enc_len_pad =
                 jh::detail::base64_common::encoded_len_base64(raw_len);
 
-        constexpr std::uint64_t enc_len_nopad =
+        constexpr std::size_t enc_len_nopad =
                 jh::detail::base64_common::encoded_len_base64url_no_pad(raw_len);
 
-        constexpr std::uint64_t enc_len = PadT::value ? enc_len_pad : enc_len_nopad;
-        constexpr std::uint64_t s_len = enc_len + 1;
+        constexpr std::size_t enc_len = PadT::value ? enc_len_pad : enc_len_nopad;
+        constexpr std::size_t s_len = enc_len + 1;
 
         jh::pod::array<char, s_len> out_char{};
 

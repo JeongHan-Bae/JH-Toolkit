@@ -166,15 +166,21 @@ TEST_CASE("Base64 decode into user-provided vector<uint8_t> buffer", "[base64][s
 
     REQUIRE(out == std::vector<std::uint8_t>({'B', 'o', 'b'}));
     REQUIRE(view.size() == out.size());
-    REQUIRE(std::string(view.fetch<const char>(), view.size()) == "Bob");
+    auto data = view.fetch<const char>();
+    REQUIRE(data);
+    REQUIRE(std::string(data.value(), view.size()) == "Bob");
 
     view = decode("TWFu", out); // "Man"
     REQUIRE(out == std::vector<std::uint8_t>({'M', 'a', 'n'}));
-    REQUIRE(std::string(view.fetch<const char>(), view.size()) == "Man");
+    data = view.fetch<const char>();
+    REQUIRE(data);
+    REQUIRE(std::string(data.value(), view.size()) == "Man");
 
     view = decode("QQ==", out); // "A"
     REQUIRE(out == std::vector<std::uint8_t>({'A'}));
-    REQUIRE(std::string(view.fetch<const char>(), view.size()) == "A");
+    data = view.fetch<const char>();
+    REQUIRE(data);
+    REQUIRE(std::string(data.value(), view.size()) == "A");
 }
 
 TEST_CASE("Base64 encode rejects null input when length is non-zero", "[base64][error]") {
@@ -191,11 +197,15 @@ TEST_CASE("Base64URL decode into user-provided vector<uint8_t> buffer", "[base64
     auto view = decode("SGVsbG8", out); // "Hello"
     REQUIRE(out == std::vector<std::uint8_t>({'H', 'e', 'l', 'l', 'o'}));
     REQUIRE(view.size() == out.size());
-    REQUIRE(std::string(view.fetch<const char>(), view.size()) == "Hello");
+    auto data = view.fetch<const char>();
+    REQUIRE(data);
+    REQUIRE(std::string(data.value(), view.size()) == "Hello");
 
     view = decode("QQ", out); // "A"
     REQUIRE(out == std::vector<std::uint8_t>({'A'}));
-    REQUIRE(std::string(view.fetch<const char>(), view.size()) == "A");
+    data = view.fetch<const char>();
+    REQUIRE(data);
+    REQUIRE(std::string(data.value(), view.size()) == "A");
 }
 
 TEST_CASE("Compile-time Base64 / Base64URL correctness", "[constexpr][base64]") {
@@ -268,7 +278,7 @@ TEST_CASE("Compile-time Base64 / Base64URL correctness", "[constexpr][base64]") 
         constexpr auto decoded = jh::jindallae::decode_base64<encoded>();
 
         // bytes → t_str
-        constexpr auto restored = jh::jindallae::t_str<decoded.size() + 1>::from_bytes(decoded);
+        constexpr auto restored = jh::jindallae::t_str{decoded};
 
         STATIC_REQUIRE(restored == str);
     }
@@ -278,7 +288,7 @@ TEST_CASE("Compile-time Base64 / Base64URL correctness", "[constexpr][base64]") 
         constexpr auto bytes = jh::jindallae::decode_base64<"SGVsbG8=">();
 
         // bytes → compile-time t_str<6>("Hello\0")
-        constexpr auto str = jh::jindallae::t_str<bytes.size() + 1>::from_bytes(bytes);
+        constexpr auto str = jh::jindallae::t_str{bytes};
 
         // back to bytes
         constexpr auto again_bytes = str.to_bytes();

@@ -158,8 +158,8 @@ namespace jh::serio {
          *   <li>The view represents a lightweight, read-only window over the decoded text.</li>
          *   <li><strong>Available operations in <code>string_view</code>:</strong></li>
          *   <ul>
-         *     <li><code>operator[](std::uint64_t index)</code> &mdash; direct character access (no bounds checking).</li>
-         *     <li><code>sub(std::uint64_t offset, std::uint64_t length = 0)</code> &mdash; create a substring view.</li>
+         *     <li><code>operator[](std::size_t index)</code> &mdash; direct character access (no bounds checking).</li>
+         *     <li><code>sub(std::size_t offset, std::size_t length = 0)</code> &mdash; create a substring view.</li>
          *     <li><code>compare(const string_view &amp;rhs)</code> &mdash; perform lexical comparison (similar to <code>strcmp</code>).</li>
          *     <li><code>starts_with(const string_view &amp;prefix)</code> &mdash; check if the view starts with the specified prefix.</li>
          *     <li><code>ends_with(const string_view &amp;suffix)</code> &mdash; check if the view ends with the specified suffix.</li>
@@ -263,8 +263,8 @@ namespace jh::serio {
          *   <li>The view represents a lightweight, read-only window over the decoded text.</li>
          *   <li><strong>Available operations in <code>string_view</code>:</strong></li>
          *   <ul>
-         *     <li><code>operator[](std::uint64_t index)</code> &mdash; direct character access (no bounds checking).</li>
-         *     <li><code>sub(std::uint64_t offset, std::uint64_t length = 0)</code> &mdash; create a substring view.</li>
+         *     <li><code>operator[](std::size_t index)</code> &mdash; direct character access (no bounds checking).</li>
+         *     <li><code>sub(std::size_t offset, std::size_t length = 0)</code> &mdash; create a substring view.</li>
          *     <li><code>compare(const string_view &amp;rhs)</code> &mdash; perform lexical comparison (similar to <code>strcmp</code>).</li>
          *     <li><code>starts_with(const string_view &amp;prefix)</code> &mdash; check if the view starts with the specified prefix.</li>
          *     <li><code>ends_with(const string_view &amp;suffix)</code> &mdash; check if the view ends with the specified suffix.</li>

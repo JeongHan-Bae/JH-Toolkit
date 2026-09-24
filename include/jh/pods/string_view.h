@@ -26,7 +26,7 @@
  *
  * <h3>Highlights:</h3>
  * <ul>
- *   <li><b>POD layout</b>: strictly <code>{ const char*, uint64_t }</code></li>
+ *   <li><b>POD layout</b>: strictly <code>{ const char*, std::size_t }</code></li>
  *   <li><b>All operations constexpr</b>: usable in both compile-time (<code>consteval</code>) and runtime contexts</li>
  *   <li><b>Dual-path design</b>:
  *       <ul>
@@ -60,6 +60,7 @@
 
 #include "jh/metax/char.h"
 #include "jh/pods/pod_like.h"
+#include "jh/metax/expected.h"
 #include "jh/detail/base64_common.h"
 #include "jh/metax/hash.h"
 
@@ -70,7 +71,7 @@ namespace jh::pod {
      *
      * Holds a raw pointer and a length (not null-terminated).
      * Provides slicing, comparison, and constexpr hashing, all
-     * while remaining fully POD (<code>const char* + uint64_t</code>).
+     * while remaining fully POD (<code>const char* + std::size_t</code>).
      *
      * <h4>Key differences from std::string_view:</h4>
      * <ul>
@@ -101,11 +102,18 @@ namespace jh::pod {
      * </ul>
      */
     struct string_view final {
+        /** @brief Failure reasons for checked string-view operations. */
+        enum class error_code : std::uint8_t {
+            out_of_bounds,
+            null_data,
+            invalid_buffer
+        };
+
         const char *data;       ///< Pointer to string data (not null-terminated)
-        std::uint64_t len;      ///< Number of valid bytes in the view
+        std::size_t len;      ///< Number of valid bytes in the view
 
         using value_type = char;                                 ///< Character type.
-        using size_type = std::uint64_t;                         ///< Size type (64-bit).
+        using size_type = std::size_t;                           ///< Native object-size type.
         using difference_type = std::ptrdiff_t;                  ///< Difference type.
         using reference = value_type &;                          ///< Reference to character.
         using const_reference = const value_type &;              ///< Const reference to character.
@@ -133,11 +141,11 @@ namespace jh::pod {
         template<std::size_t N>
         requires (N > 0)
         [[nodiscard]] static constexpr string_view from_literal(const char (&lit)[N]) noexcept {
-            return {lit, static_cast<std::uint64_t>(N - 1)};
+            return {lit, static_cast<std::size_t>(N - 1)};
         }
 
         /// @brief Index access (no bounds checking).
-        constexpr const_reference operator[](const std::uint64_t index) const noexcept {
+        constexpr const_reference operator[](const std::size_t index) const noexcept {
             return data[index];
         }
 
@@ -149,13 +157,16 @@ namespace jh::pod {
          *
          * @note This is not null-terminated. Use <code>len</code> for bounds.
          */
-        [[nodiscard]] constexpr const_pointer end() const noexcept { return data + len; }
+        [[nodiscard]] constexpr const_pointer end() const noexcept { return data ? data + len : nullptr; }
 
         /// @brief View length in bytes.
         [[nodiscard]] constexpr size_type size() const noexcept { return len; }
 
         /// @brief Whether the view is empty (<code>len == 0</code>).
         [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }
+
+        /// @brief Whether the view's pointer and length form a readable range.
+        [[nodiscard]] constexpr bool storage_valid() const noexcept { return data != nullptr || len == 0; }
 
         /**
          * @brief Compare two views for byte-wise equality.
@@ -169,9 +180,13 @@ namespace jh::pod {
         constexpr bool operator==(const string_view &rhs) const noexcept {
             if (len != rhs.len)
                 return false;
+            if (len == 0)
+                return true;
+            if (!storage_valid() || !rhs.storage_valid())
+                return false;
 
             if (std::is_constant_evaluated()) {
-                for (std::uint64_t i = 0; i < len; ++i)
+                for (std::size_t i = 0; i < len; ++i)
                     if (data[i] != rhs.data[i])
                         return false;
                 return true;
@@ -181,7 +196,7 @@ namespace jh::pod {
         }
 
         /// @brief Sentinel value representing "no position" or "until the end".
-        static constexpr auto npos = static_cast<std::uint64_t>(-1);
+        static constexpr auto npos = static_cast<std::size_t>(-1);
 
         /**
          * @brief Returns a substring starting at <code>offset</code>, for <code>length</code> bytes.
@@ -189,33 +204,38 @@ namespace jh::pod {
          * <ul>
          *   <li>If <code>length == jh::pod::string_view::npos</code>, the view extends to the end.</li>
          *   <li>If <code>length == 0</code>, the result is an empty view.</li>
-         *   <li>If <code>offset > len</code>, returns an empty view.</li>
+         *   <li>If <code>offset > len</code>, returns <code>out_of_bounds</code>.</li>
+         *   <li>A non-empty view with a null pointer returns <code>null_data</code>.</li>
          * </ul>
          *
          * @param offset Starting byte index (0-based).
          * @param @param length Number of bytes. Use <code>jh::pod::string_view::npos</code>
               to read until the end of the view.
-         * @return A new <code>string_view</code> into the specified subrange.
+         * @return Expected view into the subrange, or the relevant <code>error_code</code>.
          *
          * @note
          * This behavior intentionally mirrors the semantics of
          * <code>std::string_view::substr</code>, where
          * <code>npos</code> represents "read until the end".
          */
-        [[nodiscard]] constexpr string_view
-        sub(std::uint64_t offset, std::uint64_t length = npos) const noexcept {
+        [[nodiscard]] constexpr jh::meta::expected<string_view, error_code>
+        sub(std::size_t offset, std::size_t length = npos) const noexcept {
 
-            if (offset >= len)
-                return {nullptr, 0};
+            if (offset > len)
+                return jh::meta::unexpected(error_code::out_of_bounds);
+            if (!data && len != 0)
+                return jh::meta::unexpected(error_code::null_data);
+            if (offset == len)
+                return string_view{nullptr, 0};
 
-            const std::uint64_t remaining = len - offset;
+            const std::size_t remaining = len - offset;
 
-            const std::uint64_t real_len =
+            const std::size_t real_len =
                     (length == npos || length > remaining)
                     ? remaining
                     : length;
 
-            return {data + offset, real_len};
+            return string_view{data + offset, real_len};
         }
 
         /**
@@ -225,32 +245,48 @@ namespace jh::pod {
          *         <code>&gt;0</code> if <tt>this &gt; rhs</tt>.
          */
         [[nodiscard]] constexpr int compare(const string_view &rhs) const noexcept {
-            const std::uint64_t min_len = len < rhs.len ? len : rhs.len;
+            const std::size_t min_len = len < rhs.len ? len : rhs.len;
+
+            if (!storage_valid() || !rhs.storage_valid()) {
+                if (!storage_valid() && rhs.storage_valid()) return -1;
+                if (storage_valid() && !rhs.storage_valid()) return 1;
+                if (len < rhs.len) return -1;
+                if (len > rhs.len) return 1;
+                return 0;
+            }
 
             if (std::is_constant_evaluated()) {
                 // constexpr path: manual loop
-                for (std::uint64_t i = 0; i < min_len; i++) {
+                for (std::size_t i = 0; i < min_len; i++) {
                     if (data[i] < rhs.data[i]) return -1;
                     if (data[i] > rhs.data[i]) return 1;
                 }
             } else {
                 // runtime path: use memcmp
-                if (int cmp = std::memcmp(data, rhs.data, min_len); cmp != 0) {
-                    return cmp;
+                if (min_len != 0) {
+                    if (int cmp = std::memcmp(data, rhs.data, min_len); cmp != 0) {
+                        return cmp;
+                    }
                 }
             }
 
-            return static_cast<int>(len) - static_cast<int>(rhs.len);
+            if (len < rhs.len) return -1;
+            if (len > rhs.len) return 1;
+            return 0;
         }
 
         /// @brief Check whether this view starts with the given <code>prefix</code>.
         [[nodiscard]] constexpr bool starts_with(const string_view &prefix) const noexcept {
             if (prefix.len > len)
                 return false;
+            if (!storage_valid() || !prefix.storage_valid())
+                return false;
+            if (prefix.len == 0)
+                return true;
 
             if (std::is_constant_evaluated()) {
                 // constexpr path
-                for (std::uint64_t i = 0; i < prefix.len; ++i)
+                for (std::size_t i = 0; i < prefix.len; ++i)
                     if (data[i] != prefix.data[i])
                         return false;
                 return true;
@@ -264,12 +300,16 @@ namespace jh::pod {
         [[nodiscard]] constexpr bool ends_with(const string_view &suffix) const noexcept {
             if (suffix.len > len)
                 return false;
+            if (!storage_valid() || !suffix.storage_valid())
+                return false;
+            if (suffix.len == 0)
+                return true;
 
-            const std::uint64_t offset = len - suffix.len;
+            const std::size_t offset = len - suffix.len;
 
             if (std::is_constant_evaluated()) {
                 // constexpr path
-                for (std::uint64_t i = 0; i < suffix.len; ++i)
+                for (std::size_t i = 0; i < suffix.len; ++i)
                     if (data[offset + i] != suffix.data[i])
                         return false;
                 return true;
@@ -283,29 +323,30 @@ namespace jh::pod {
          * @brief Returns the index of the first occurrence of a character.
          *
          * @param ch Target character to search for.
-         * @return Offset index if found, or <code>-1</code> (as <code>uint64_t</code>) if not found.
+         * @return Offset index if found, or <code>-1</code> (as <code>std::size_t</code>) if not found.
          */
-        [[nodiscard]] constexpr std::uint64_t find(const char ch) const noexcept {
-            for (std::uint64_t i = 0; i < len; ++i)
+        [[nodiscard]] constexpr std::size_t find(const char ch) const noexcept {
+            if (!storage_valid()) return npos;
+            for (std::size_t i = 0; i < len; ++i)
                 if (data[i] == ch) return i;
-            return static_cast<std::uint64_t>(-1); // not found
+            return static_cast<std::size_t>(-1); // not found
         }
 
         /**
          * @brief Hash the view content using a selectable non-cryptographic algorithm.
          *
-         * Provides stable 64-bit hashing over the view contents.
+         * Provides stable hashing over the view contents, returned as <code>std::size_t</code>.
          *
          * @param hash_method Algorithm to use for hashing (default: <code>fnv1a64</code>).
-         * @return 64-bit hash of the view data, or <code>-1</code> if <code>data == nullptr</code>.
+         * @return Expected hash on success, or <code>null_data</code> for a null data pointer.
          *
          * @note
          * <ul>
          *   <li>This is <strong>not cryptographic</strong>; do not use it for security-sensitive logic.</li>
-         *   <li>If <code>data</code> is null, the return value is <code>-1</code> (sentinel).</li>
+         *   <li>This checked form reports invalid view data instead of returning a sentinel.</li>
          *   <li>Hashing is based only on contents and length, not on pointer identity.</li>
          *   <li>
-         *     Unlike <code>bytes_view::hash</code>, this function is <strong>valid in consteval contexts</strong>.
+         *     This function can be evaluated at compile time when given valid literal-backed data.
          *     <ul>
          *       <li><code>bytes_view</code> relies on <code>reinterpret_cast</code>, so it cannot be evaluated at compile time.</li>
          *       <li><code>string_view</code> operates directly on characters, so compile-time hashing of string literals
@@ -314,10 +355,18 @@ namespace jh::pod {
          *     </ul></li>
          * </ul>
          */
-        [[nodiscard]] constexpr std::uint64_t
+        [[nodiscard]] constexpr jh::meta::expected<std::size_t, error_code>
         hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64) const noexcept {
-            if (!data) return static_cast<std::uint64_t>(-1);
+            if (!storage_valid()) return jh::meta::unexpected(error_code::null_data);
             return meta::hash(hash_method, data, len);
+        }
+
+        /**
+         * @brief Alias for <code>hash()</code> emphasizing its checked return type.
+         */
+        [[nodiscard]] constexpr jh::meta::expected<std::size_t, error_code>
+        hash_checked(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64) const noexcept {
+            return hash(hash_method);
         }
 
         /**
@@ -329,8 +378,10 @@ namespace jh::pod {
          * @return true if all characters are digits, false otherwise.
          */
         [[nodiscard]] constexpr bool is_digit() const noexcept {
+            if (!storage_valid()) return false;
+            if (len == 0) return true;
             if (std::is_constant_evaluated()) {
-                for (std::uint64_t i = 0; i < size(); ++i) {
+                for (std::size_t i = 0; i < size(); ++i) {
                     if (!jh::meta::is_digit(data[i]))
                         return false;
                 }
@@ -372,10 +423,11 @@ namespace jh::pod {
          * </ul>
          */
         [[nodiscard]] constexpr bool is_number() const noexcept {
-            const std::uint64_t n = size();
+            const std::size_t n = size();
             if (n == 0) return false;
+            if (!storage_valid()) return false;
 
-            std::uint64_t i = 0;
+            std::size_t i = 0;
             if (data[i] == '+' || data[i] == '-') {
                 ++i;
             }
@@ -420,8 +472,10 @@ namespace jh::pod {
          * @return true if all characters are alphabetic, false otherwise.
          */
         [[nodiscard]] constexpr bool is_alpha() const noexcept {
+            if (!storage_valid()) return false;
+            if (len == 0) return true;
             if (std::is_constant_evaluated()) {
-                for (std::uint64_t i = 0; i < size(); ++i) {
+                for (std::size_t i = 0; i < size(); ++i) {
                     if (!jh::meta::is_alpha(data[i]))
                         return false;
                 }
@@ -442,8 +496,10 @@ namespace jh::pod {
          * @return true if all characters are alphanumeric, false otherwise.
          */
         [[nodiscard]] constexpr bool is_alnum() const noexcept {
+            if (!storage_valid()) return false;
+            if (len == 0) return true;
             if (std::is_constant_evaluated()) {
-                for (std::uint64_t i = 0; i < size(); ++i)
+                for (std::size_t i = 0; i < size(); ++i)
                     if (!jh::meta::is_alnum(data[i]))
                         return false;
                 return true;
@@ -463,8 +519,10 @@ namespace jh::pod {
          * @return true if all characters are in range 0-127, false otherwise.
          */
         [[nodiscard]] constexpr bool is_ascii() const noexcept {
+            if (!storage_valid()) return false;
+            if (len == 0) return true;
             if (std::is_constant_evaluated()) {
-                for (std::uint64_t i = 0; i < size(); ++i)
+                for (std::size_t i = 0; i < size(); ++i)
                     if (!jh::meta::is_ascii(data[i]))
                         return false;
                 return true;
@@ -508,8 +566,10 @@ namespace jh::pod {
          * </ul>
          */
         [[nodiscard]] constexpr bool is_printable_ascii() const noexcept {
+            if (!storage_valid()) return false;
+            if (len == 0) return true;
             if (std::is_constant_evaluated()) {
-                for (std::uint64_t i = 0; i < size(); ++i)
+                for (std::size_t i = 0; i < size(); ++i)
                     if (!jh::meta::is_printable_ascii(data[i]))
                         return false;
                 return true;
@@ -529,7 +589,8 @@ namespace jh::pod {
          * @return true if all characters are valid, false otherwise.
          */
         [[nodiscard]] constexpr bool is_legal() const noexcept {
-            std::uint64_t i = 0;
+            if (!storage_valid()) return false;
+            std::size_t i = 0;
             int remaining = 0;       // how many continuation bytes still expected
             unsigned char lead = 0;  // last leading byte
 
@@ -583,11 +644,13 @@ namespace jh::pod {
          * @return true if valid hex string, false otherwise.
          */
         [[nodiscard]] constexpr bool is_hex() const noexcept {
+            if (!storage_valid()) return false;
+            if (size() == 0) return true;
             if (size() % 2 != 0)
                 return false;
 
             if (std::is_constant_evaluated()) {
-                for (std::uint64_t i = 0; i < size(); ++i)
+                for (std::size_t i = 0; i < size(); ++i)
                     if (!jh::meta::is_hex_char(data[i]))
                         return false;
                 return true;
@@ -608,6 +671,8 @@ namespace jh::pod {
          * @return true if valid Base64, false otherwise.
          */
         [[nodiscard]] constexpr bool is_base64() const noexcept {
+            if (!storage_valid()) return false;
+            if (size() == 0) return true;
             return jh::detail::base64_common::is_base64(data, size());
         }
 
@@ -617,6 +682,8 @@ namespace jh::pod {
          * @return true if valid Base64URL, false otherwise.
          */
         [[nodiscard]] constexpr bool is_base64url() const noexcept {
+            if (!storage_valid()) return false;
+            if (size() == 0) return true;
             return jh::detail::base64_common::is_base64url(data, size());
         }
 
@@ -625,13 +692,21 @@ namespace jh::pod {
          *
          * @warning This is not POD-safe. Intended for debugging or interop only.
          *
-         * @param buffer Output character buffer.
-         * @param max_len Maximum bytes to write (including null terminator).
+         * @param buffer Output character buffer; must not be null.
+         * @param max_len Maximum bytes to write (including null terminator); must be non-zero.
+         * @return Number of copied bytes, or an error code for an invalid buffer/source.
          */
-        void copy_to(char *buffer, const std::uint64_t max_len) const noexcept {
-            const std::uint64_t n = len < max_len - 1 ? len : max_len - 1;
-            std::memcpy(buffer, data, n);
+        [[nodiscard]] constexpr jh::meta::expected<std::size_t, error_code>
+        copy_to(char *buffer, const std::size_t max_len) const noexcept {
+            if (!buffer || max_len == 0)
+                return jh::meta::unexpected(error_code::invalid_buffer);
+            if (!data && len != 0)
+                return jh::meta::unexpected(error_code::null_data);
+            const std::size_t n = len < max_len - 1 ? len : max_len - 1;
+            for (std::size_t i = 0; i < n; ++i)
+                buffer[i] = data[i];
             buffer[n] = '\0';
+            return n;
         }
 
         /**
@@ -664,22 +739,24 @@ namespace jh::pod {
          *   <li>No UTF-8 validation is performed.</li>
          * </ul>
          *
-         * @return Number of Unicode code points in the view,
-         *         or <code>0</code> if the view is empty.
+         * @return Expected number of Unicode code points, or <code>null_data</code> for
+         *         a non-empty view with a null pointer.
          *
          * @note The computation of grapheme clusters will never be provided,
          *       as it is evident that in software development, this is a front-end requirement
          *       rather than a back-end one, and the systems upon which grapheme clusters depend
          *       are excessively cumbersome.
          */
-        [[nodiscard]] constexpr std::uint64_t semantic_len() const noexcept {
-            if (!data || len == 0)
-                return 0;
+        [[nodiscard]] constexpr jh::meta::expected<std::size_t, error_code>
+        semantic_len() const noexcept {
+            if (!data && len != 0)
+                return jh::meta::unexpected(error_code::null_data);
+            if (len == 0) return std::size_t{0};
 
             if (std::is_constant_evaluated()) {
                 // constexpr path: count non-continuation bytes
-                std::uint64_t count = 0;
-                for (std::uint64_t i = 0; i < len; ++i) {
+                std::size_t count = 0;
+                for (std::size_t i = 0; i < len; ++i) {
                     const auto c = static_cast<unsigned char>(data[i]);
                     if ((c & 0b11000000) != 0b10000000)
                         ++count;
@@ -687,7 +764,7 @@ namespace jh::pod {
                 return count;
             } else {
                 // runtime path: use std::count_if for efficiency
-                return static_cast<std::uint64_t>(
+                return static_cast<std::size_t>(
                         std::count_if(
                                 data,
                                 data + len,
@@ -784,6 +861,17 @@ namespace jh::pod {
     };
 } // namespace jh::pod
 
+namespace jh::pod {
+    /**
+     * @brief Size-based ADL hash adapter for generic hashing concepts.
+     * @note Call <code>string_view::hash()</code> directly to observe errors.
+     */
+    [[nodiscard]] constexpr std::size_t hash(const string_view &view) noexcept {
+        const auto result = view.hash();
+        return result ? result.value() : static_cast<std::size_t>(-1);
+    }
+}
+
 static_assert(jh::pod::pod_like<jh::pod::string_view>);
 
 /**
@@ -819,7 +907,7 @@ namespace jh::pod::literals {
      */
     [[nodiscard]] constexpr jh::pod::string_view
     operator ""_psv(const char *str, std::size_t len) noexcept {
-        return {str, static_cast<std::uint64_t>(len)};
+        return {str, static_cast<std::size_t>(len)};
     }
 
 } // namespace jh::pod::literals

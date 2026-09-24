@@ -57,7 +57,6 @@
 #pragma once
 
 #include <concepts>         // NOLINT for concepts
-#include <cstdint>          // for std::uint64_t
 #include <utility>          // for std::ignore
 #include "jh/concurrent/pointer_pool.h"
 #include "jh/conceptual/hashable.h"

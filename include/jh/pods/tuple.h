@@ -222,13 +222,13 @@ namespace jh::pod {
         else return (p.second);
     }
 
-    template<std::size_t I, typename T, std::uint16_t N>
+    template<std::size_t I, typename T, std::size_t N>
     requires (I < N)
     constexpr decltype(auto) get(jh::pod::array<T, N>& a) noexcept {
         return (a.data[I]);
     }
 
-    template<std::size_t I, typename T, std::uint16_t N>
+    template<std::size_t I, typename T, std::size_t N>
     requires (I < N)
     constexpr decltype(auto) get(const jh::pod::array<T, N>& a) noexcept {
         return a.data[I];
@@ -257,10 +257,10 @@ namespace std {
         using type = std::conditional_t<I == 0, T1, T2>;
     };
 
-    template<typename T, std::uint16_t N>
+    template<typename T, std::size_t N>
     struct tuple_size<jh::pod::array<T, N>> : std::integral_constant<std::size_t, N> {};
 
-    template<std::size_t I, typename T, std::uint16_t N>
+    template<std::size_t I, typename T, std::size_t N>
     requires (I < N)
     struct tuple_element<I, jh::pod::array<T, N>> {
         using type = T;

@@ -191,6 +191,7 @@ class huffman;
 * `std::runtime_error("Bad signature")`
 * `std::runtime_error("ASCII only")`
 * `std::runtime_error("huffman code length exceeds 32 bits")`
+* `std::runtime_error("Huffman bit count exceeds addressable size")` when the stored 64-bit bit count does not fit the target's `std::size_t`.
 
 ---
 

@@ -61,6 +61,7 @@
 #pragma once
 
 #include <concepts>
+#include <cstddef>
 #include <functional>
 #include <type_traits>
 #include <utility>
@@ -72,12 +73,12 @@ namespace jh::concepts {
      * @details
      * Equivalent to:
      * @code
-     * { std::hash&lt;T&gt;{}(v) } -> std::convertible_to<size_t>;
+     * { std::hash&lt;T&gt;{}(v) } -> std::convertible_to<std::size_t>;
      * @endcode
      */
     template <typename T>
     concept has_std_hash = requires(const T& v) {
-        { std::hash<T>{}(v) } -> std::convertible_to<size_t>;
+        { std::hash<T>{}(v) } -> std::convertible_to<std::size_t>;
     };
 
     /**
@@ -86,12 +87,12 @@ namespace jh::concepts {
      * This allows user-defined global hash functions to participate in resolution
      * without specializing <code>std::hash</code> or modifying the type.
      * @code
-     * size_t hash(const MyType& t);
+     * std::size_t hash(const MyType& t);
      * @endcode
      */
     template <typename T>
     concept has_adl_hash = requires(const T& v) {
-        { hash(v) } -> std::convertible_to<size_t>;
+        { hash(v) } -> std::convertible_to<std::size_t>;
     };
 
     /**
@@ -99,12 +100,12 @@ namespace jh::concepts {
      * @details
      * Equivalent to:
      * @code
-     * { v.hash() } -> std::convertible_to<size_t>;
+     * { v.hash() } -> std::convertible_to<std::size_t>;
      * @endcode
      */
     template <typename T>
     concept has_mbr_hash = requires(const T& v) {
-        { v.hash() } -> std::convertible_to<size_t>;
+        { v.hash() } -> std::convertible_to<std::size_t>;
     };
 
     /**
@@ -140,6 +141,17 @@ namespace jh::concepts {
 
 namespace jh {
 
+    namespace hash_detail {
+        void hash() = delete;
+
+        template<typename T>
+        constexpr auto invoke_adl_hash(const T &value)
+            noexcept(noexcept(hash(value)))
+            -> decltype(hash(value)) {
+            return hash(value);
+        }
+    }
+
     /**
      * @brief Behaviorally deduced hash functor.
      *
@@ -160,7 +172,7 @@ namespace jh {
     /// @brief Case 1: std::hash<T> is valid.
     template <typename T>
     struct hash<T, std::enable_if_t<jh::concepts::has_std_hash<T>>> {
-        constexpr size_t operator()(const T& v) const noexcept {
+        constexpr std::size_t operator()(const T& v) const noexcept {
             return std::hash<T>{}(v);
         }
     };
@@ -168,8 +180,8 @@ namespace jh {
     /// @brief Case 2: ADL-discovered hash(T)
     template <typename T>
     struct hash<T, std::enable_if_t<!jh::concepts::has_std_hash<T> && jh::concepts::has_adl_hash<T>>> {
-        constexpr size_t operator()(const T& v) const noexcept(noexcept(hash(v))) {
-            return static_cast<size_t>(hash(v));
+        constexpr std::size_t operator()(const T& v) const noexcept(noexcept(hash_detail::invoke_adl_hash(v))) {
+            return static_cast<std::size_t>(hash_detail::invoke_adl_hash(v));
         }
     };
 
@@ -178,8 +190,8 @@ namespace jh {
     struct hash<T, std::enable_if_t<!jh::concepts::has_std_hash<T> &&
                                     !jh::concepts::has_adl_hash<T> &&
                                     jh::concepts::has_mbr_hash<T>>> {
-        constexpr size_t operator()(const T& v) const noexcept(noexcept(v.hash())) {
-            return static_cast<size_t>(v.hash());
+        constexpr std::size_t operator()(const T& v) const noexcept(noexcept(v.hash())) {
+            return static_cast<std::size_t>(v.hash());
         }
     };
 

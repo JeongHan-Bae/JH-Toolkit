@@ -26,7 +26,7 @@
  *
  * <h3>Design Goals:</h3>
  * <ul>
- *   <li>Fully POD (<code>const std::byte*</code> + <code>uint64_t</code>)</li>
+ *   <li>Fully POD (<code>const std::byte*</code> + <code>std::size_t</code>)</li>
  *   <li>No ownership, no destructor, no STL containers</li>
  *   <li>Support for reinterpretation (<code>at</code>, <code>fetch</code>)</li>
  *   <li>Stack-safe and heap-safe cloning (<code>clone</code>)</li>
@@ -47,6 +47,7 @@
 #include <cstring> // for memcmp, memcpy
 
 #include "jh/pods/pod_like.h"
+#include "jh/metax/expected.h"
 #include "jh/metax/hash.h"
 
 namespace jh::pod {
@@ -104,11 +105,18 @@ namespace jh::pod {
      *       relying on these helpers.
      */
     struct bytes_view final {
+        /** @brief Failure reasons for checked byte-view operations. */
+        enum class error_code : std::uint8_t {
+            out_of_bounds,
+            size_mismatch,
+            null_data
+        };
+
         const std::byte *data;  ///< Pointer to the start of the byte range
-        std::uint64_t len;      ///< Number of bytes in the view
+        std::size_t len;      ///< Number of bytes in the view
 
         using value_type = std::byte;                                ///< Value type alias.
-        using size_type = std::uint64_t;                             ///< Size type alias (64-bit).
+        using size_type = std::size_t;                             ///< Native object-size type.
         using difference_type = std::ptrdiff_t;                      ///< Difference type alias.
         using reference = value_type &;                              ///< Reference type.
         using const_reference = const value_type &;                  ///< Const reference type.
@@ -152,7 +160,7 @@ namespace jh::pod {
          *       of at least <code>size</code> elements.
          */
         template<trivial_bytes T>
-        static constexpr bytes_view from(const T *arr, const std::uint64_t size) noexcept {
+        static constexpr bytes_view from(const T *arr, const std::size_t size) noexcept {
             return {
                     reinterpret_cast<const std::byte *>(arr),
                     sizeof(T) * size
@@ -163,9 +171,8 @@ namespace jh::pod {
          * @brief Returns the number of bytes in the view.
          *
          * This is equivalent to the <code>len</code> field and reflects the total size
-         * (in bytes) of the memory region being viewed. The return type is 64-bit
-         * (<code>std::uint64_t</code>), allowing safe representation of large memory
-         * regions.
+         * (in bytes) of the memory region being viewed. The return type is
+         * <code>std::size_t</code>, matching the target's addressable size.
          *
          * @return The length of the view in bytes.
          */
@@ -191,7 +198,7 @@ namespace jh::pod {
          *       caller's responsibility.
          */
         template<trivial_bytes T>
-        constexpr const T &at(const std::uint64_t offset = 0) const noexcept {
+        constexpr const T &at(const std::size_t offset = 0) const noexcept {
             return *std::launder(reinterpret_cast<const T *>(data + offset));
         }
 
@@ -201,8 +208,8 @@ namespace jh::pod {
          * This is the bounds-checked counterpart to <code>at</code>. It reinterprets
          * a subregion of the view as <code>T</code> if the memory range
          * <code>[offset, offset + sizeof(T))</code> is fully contained within the view.
-         * If the range would exceed <code>size()</code>, it returns <code>nullptr</code>
-         * instead of producing undefined behavior.
+         * If the range would exceed <code>size()</code>, or the view has no backing
+         * data, the result carries an <code>error_code</code>.
          *
          * The type <code>T</code> must satisfy <code>trivial_bytes</code>, ensuring POD-safe
          * reinterpretation semantics. Internally it uses <code>std::launder</code> to avoid
@@ -211,13 +218,17 @@ namespace jh::pod {
          *
          * @tparam T Must satisfy <code>trivial_bytes</code>.
          * @param offset Offset in bytes into the view (default 0).
-         * @return Pointer to the reinterpreted value, or <code>nullptr</code> if out of bounds.
+         * @return Expected pointer on success; otherwise <code>out_of_bounds</code> or
+         *         <code>null_data</code>.
          */
         template<trivial_bytes T>
-        constexpr const T *fetch(const std::uint64_t offset = 0) const noexcept {
-            return offset + sizeof(T) <= len
-                   ? std::launder(reinterpret_cast<const T *>(data + offset))
-                   : nullptr;
+        constexpr jh::meta::expected<const T *, error_code>
+        fetch(const std::size_t offset = 0) const noexcept {
+            if (offset > len || sizeof(T) > len - offset)
+                return jh::meta::unexpected(error_code::out_of_bounds);
+            if (!data)
+                return jh::meta::unexpected(error_code::null_data);
+            return std::launder(reinterpret_cast<const T *>(data + offset));
         }
 
         /**
@@ -231,24 +242,26 @@ namespace jh::pod {
          *       trivially copyable, trivially destructible).</li>
          * </ul>
          *
-         * If the size check fails, a default-initialized <code>T{}</code> (zero-initialized POD object)
-         * is returned. Otherwise, this function copies the raw bytes into a local object and returns it
-         * by value, effectively performing a POD copy.
+         * If the size check fails, or the view has no backing data, the returned
+         * <code>expected</code> contains the matching error code. Otherwise, the
+         * reconstructed POD value is returned in its <code>value</code> member.
          *
          * @tparam T Must satisfy <code>cv_free_pod_like</code>.
          *           Using <code>const</code> or <code>volatile</code> qualified types is disallowed,
          *           as this function constructs a writable value of type <code>T</code>.
-         * @return A value reconstructed from the view if sizes match, or a default-initialized
-         *         <code>T{}</code> if size mismatch.
+         * @return <code>expected&lt;T, bytes_view::error_code&gt;</code>.
          */
         template<cv_free_pod_like T>
-        [[nodiscard]] constexpr T clone() const noexcept {
-            if (len != sizeof(T)) return T{};
+        [[nodiscard]] constexpr jh::meta::expected<T, error_code> clone() const noexcept {
+            if (len != sizeof(T))
+                return jh::meta::unexpected(error_code::size_mismatch);
+            if (!data)
+                return jh::meta::unexpected(error_code::null_data);
             return at<T>(0);
         }
 
         /**
-         * @brief Compute a deterministic 64-bit hash of the view contents.
+         * @brief Compute a deterministic hash of the view contents.
          *
          * This function computes a stable, non-cryptographic hash value from the raw
          * bytes in the view. The result depends only on the byte sequence and its length,
@@ -256,16 +269,17 @@ namespace jh::pod {
          * cache keys, or equality grouping.
          *
          * @param hash_method Hash algorithm to use (default: <code>fnv1a64</code>).
-         * @return 64-bit hash of the byte content, or <code>0xFFFFFFFFFFFFFFFF</code> if <code>data == nullptr</code>.
+         * @return Expected hash on success, or <code>null_data</code> for a null pointer
+         *         paired with a non-zero length.
          *
          * @note This hash is not cryptographically secure and must not be used for security-sensitive purposes.
-         * @note If <code>data == nullptr</code>, the return value is <code>0xFFFFFFFFFFFFFFFF</code> (sentinel).
+         * @note Check the result before reading its <code>value</code> member.
          * @note Although declared <code>constexpr</code>, this function cannot be used in <code>consteval</code>
          *       contexts due to its reliance on pointer reinterpretation. It is intended for runtime use.
          */
-        [[nodiscard]] constexpr std::uint64_t
+        [[nodiscard]] constexpr jh::meta::expected<std::size_t, error_code>
         hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64) const noexcept {
-            if (!data) return static_cast<std::uint64_t>(-1);
+            if (!data && len != 0) return jh::meta::unexpected(error_code::null_data);
             return jh::meta::hash(
                     hash_method,
                     reinterpret_cast<const char *>(data),
@@ -284,7 +298,10 @@ namespace jh::pod {
          *         <code>false</code> otherwise.
          */
         constexpr bool operator==(const bytes_view &rhs) const noexcept {
-            return len == rhs.len && std::memcmp(data, rhs.data, len) == 0;
+            if (len != rhs.len) return false;
+            if (len == 0) return true;
+            if (!data || !rhs.data) return false;
+            return std::memcmp(data, rhs.data, len) == 0;
         }
     };
 } // namespace jh::pod

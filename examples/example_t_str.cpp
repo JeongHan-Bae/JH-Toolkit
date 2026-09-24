@@ -133,13 +133,13 @@ namespace example {
         constexpr auto h_with_null = text.hash(jh::meta::c_hash::fnv1a64, true);
 
         constexpr auto bytes = text.to_bytes();
-        constexpr auto restored = jh::meta::t_str<bytes.size() + 1>::from_bytes(bytes);
+        constexpr auto restored = jh::meta::t_str{bytes};
         static_assert(restored == text);
 
         std::cout << "text               : " << text << "\n";
-        std::cout << "hash(default)      : " << h_default << "\n";
-        std::cout << "hash(xxhash64)     : " << h_xx << "\n";
-        std::cout << "hash(include_null) : " << h_with_null << "\n";
+        std::cout << "hash(default)      : " << h_default.value() << "\n";
+        std::cout << "hash(xxhash64)     : " << h_xx.value() << "\n";
+        std::cout << "hash(include_null) : " << h_with_null.value() << "\n";
         std::cout << "bytes.size()       : " << bytes.size() << "\n";
         std::cout << "restored           : " << restored << "\n";
     }
@@ -153,4 +153,3 @@ int main() {
     example::example_hash_and_bytes();
     return 0;
 }
-

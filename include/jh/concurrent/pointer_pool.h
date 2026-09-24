@@ -177,7 +177,7 @@
 #pragma once
 
 #include <atomic>           // NOLINT for std::atomic
-#include <cstdint>          // for std::uint64_t
+#include <cstddef>          // for std::size_t
 #include <algorithm>        // for std::copy_if
 #include <vector>           // for std::vector
 #include <unordered_set>    // for std::unordered_set
@@ -268,7 +268,7 @@ namespace jh::conc {
     template<typename T, typename Hash, typename Eq>
     requires(
         requires(const std::weak_ptr<T>& t) {
-            { Hash{}(t) } -> std::convertible_to<size_t>;
+            { Hash{}(t) } -> std::convertible_to<std::size_t>;
         } &&
         requires(const std::weak_ptr<T>& a, const std::weak_ptr<T>& b) {
             { Eq{}(a, b) } -> std::convertible_to<bool>;
@@ -286,7 +286,7 @@ namespace jh::conc {
          * @note
          * This value is also used as the default reserve size when constructing a new pool.
          */
-        static std::uint64_t constexpr MIN_RESERVED_SIZE = 16;
+        static std::size_t constexpr MIN_RESERVED_SIZE = 16;
 
         /**
          * @brief Constructs a pool with an initial reserved capacity.
@@ -306,7 +306,7 @@ namespace jh::conc {
          * (<tt>16</tt>), ensuring predictable allocation behavior and avoiding
          * frequent reallocation during low-load periods.
          */
-        explicit pointer_pool(std::uint64_t reserve_size = MIN_RESERVED_SIZE)
+        explicit pointer_pool(std::size_t reserve_size = MIN_RESERVED_SIZE)
                 : capacity_(reserve_size) {
             pool_.reserve(capacity_.load());
         }
@@ -506,7 +506,7 @@ namespace jh::conc {
             auto current_reserved = capacity_.load();
 
             const auto low_watermark =
-                    static_cast<std::uint64_t>(static_cast<double>(current_reserved) * LOW_WATERMARK_RATIO);
+                    static_cast<std::size_t>(static_cast<double>(current_reserved) * LOW_WATERMARK_RATIO);
 
             if (current_size <= low_watermark) {
                 capacity_.store(std::max(current_reserved / 2, MIN_RESERVED_SIZE));
@@ -517,7 +517,7 @@ namespace jh::conc {
          * @brief Gets the current number of elements in the pool.
          * @return The number of stored weak_ptrs (including expired ones).
          */
-        [[nodiscard]] std::uint64_t size() const {
+        [[nodiscard]] std::size_t size() const {
             jh::sync::posix_smtx_shared_lock read_lock(pool_mutex_);
             return pool_.size();
         }
@@ -526,7 +526,7 @@ namespace jh::conc {
          * @brief Gets the current reserved size of the pool.
          * @return The reserved size limit before expansion or contraction.
          */
-        [[nodiscard]] std::uint64_t capacity() const {
+        [[nodiscard]] std::size_t capacity() const {
             return capacity_.load();
         }
 
@@ -569,7 +569,7 @@ namespace jh::conc {
 
     private:
         std::unordered_set<std::weak_ptr<T>, Hash, Eq> pool_; ///< Storage for weak_ptr objects.
-        std::atomic<std::uint64_t> capacity_; ///< The dynamically managed reserved size.
+        std::atomic<std::size_t> capacity_; ///< The dynamically managed reserved size.
         mutable std::shared_mutex pool_mutex_; ///< Ensures thread-safe access.
 
         /**
@@ -678,9 +678,9 @@ namespace jh::conc {
             auto current_reserved = capacity_.load();
 
             const auto high_watermark =
-                    static_cast<std::uint64_t>(static_cast<double >(current_reserved) * HIGH_WATERMARK_RATIO);
+                    static_cast<std::size_t>(static_cast<double >(current_reserved) * HIGH_WATERMARK_RATIO);
             const auto low_watermark =
-                    static_cast<std::uint64_t>(static_cast<double >(current_reserved) * LOW_WATERMARK_RATIO);
+                    static_cast<std::size_t>(static_cast<double >(current_reserved) * LOW_WATERMARK_RATIO);
 
             if (current_size >= current_reserved || current_size >= high_watermark) {
                 // Expand if size exceeds the limit or crosses the high watermark.

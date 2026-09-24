@@ -64,11 +64,11 @@
 namespace jh::detail::base64_common {
 
     template<jh::meta::any_char Char>
-    [[nodiscard]] constexpr int base64_check(const Char* src, std::uint64_t n) noexcept {
+    [[nodiscard]] constexpr int base64_check(const Char* src, std::size_t n) noexcept {
         // pad count or -1 if invalid
         if (n == 0 || n % 4 != 0) return -1;
 
-        for (std::uint64_t i = 0; i < n - 2; ++i)
+        for (std::size_t i = 0; i < n - 2; ++i)
             if (!jh::meta::is_base64_core(src[i])) return -1;
 
         const char c3 = src[n - 2];
@@ -82,18 +82,18 @@ namespace jh::detail::base64_common {
     }
 
     template<jh::meta::any_char Char>
-    [[nodiscard]] constexpr bool is_base64(const Char* src, std::uint64_t n) noexcept {
+    [[nodiscard]] constexpr bool is_base64(const Char* src, std::size_t n) noexcept {
         return base64_check(src, n) != -1;
     }
 
     template<jh::meta::any_char Char>
-    [[nodiscard]] constexpr int base64url_check(const Char* src, std::uint64_t n) noexcept {
+    [[nodiscard]] constexpr int base64url_check(const Char* src, std::size_t n) noexcept {
         // pad count or -1 if invalid
 
         if (n == 0) return -1;
 
         if (n % 4 == 0) {
-            for (std::uint64_t i = 0; i < n - 2; i++)
+            for (std::size_t i = 0; i < n - 2; i++)
                 if (!jh::meta::is_base64url_core(src[i])) return -1;
 
             const char c3 = src[n - 2];
@@ -105,13 +105,13 @@ namespace jh::detail::base64_common {
         }
 
         if (n % 4 == 1) return -1;
-        for (std::uint64_t i = 0; i < n; i++)
+        for (std::size_t i = 0; i < n; i++)
             if (!jh::meta::is_base64url_core(src[i])) return -1;
         return 0;
     }
 
     template<jh::meta::any_char Char>
-    [[nodiscard]] constexpr bool is_base64url(const Char* src, std::uint64_t n) noexcept {
+    [[nodiscard]] constexpr bool is_base64url(const Char* src, std::size_t n) noexcept {
         return base64url_check(src, n) != -1;
     }
 
@@ -172,22 +172,22 @@ namespace jh::detail::base64_common {
 
     static constexpr auto decode_table = make_base64_decode_table();
 
-    constexpr std::uint64_t encoded_len_base64(std::uint64_t raw_len) noexcept {
+    constexpr std::size_t encoded_len_base64(std::size_t raw_len) noexcept {
         /// base64 and base64url with pad
         return ((raw_len + 2) / 3) * 4;
     }
 
-    constexpr std::uint64_t encoded_len_base64url_no_pad(std::uint64_t raw_len) noexcept {
+    constexpr std::size_t encoded_len_base64url_no_pad(std::size_t raw_len) noexcept {
         /// base64url with no pad
         return ((raw_len * 4) + 2) / 3;
     }
 
-    constexpr std::uint64_t decoded_len_base64(std::uint64_t enc_len, std::uint8_t pad) noexcept {
+    constexpr std::size_t decoded_len_base64(std::size_t enc_len, std::uint8_t pad) noexcept {
         /// base64 and base64url with pad
         return (enc_len / 4) * 3 - pad;
     }
 
-    constexpr std::uint64_t decoded_len_base64url_no_pad(std::uint64_t enc_len) noexcept {
+    constexpr std::size_t decoded_len_base64url_no_pad(std::size_t enc_len) noexcept {
         /// base64url with no pad
         switch (enc_len % 4) {
             case 0: return (enc_len / 4) * 3;
@@ -198,14 +198,14 @@ namespace jh::detail::base64_common {
     }
 
     template<bool URLMode = false>
-    constexpr std::uint64_t base64_encode_unchecked(
-            const std::uint8_t* src, std::uint64_t n,
+    constexpr std::size_t base64_encode_unchecked(
+            const std::uint8_t* src, std::size_t n,
             char* dst, bool pad = true
     ) noexcept {
         using namespace jh::detail::base64_common;
 
         const auto& table = URLMode ? encode_table_url : encode_table;
-        std::uint64_t i = 0, j = 0;
+        std::size_t i = 0, j = 0;
 
         while (i + 2 < n) {
             const uint32_t triple = (src[i] << 16) | (src[i + 1] << 8) | src[i + 2];
@@ -239,13 +239,13 @@ namespace jh::detail::base64_common {
 
     template<jh::meta::any_char Char>
     constexpr void base64_decode_unchecked(
-            const Char* src, std::uint64_t n,
-            std::uint8_t* dst, std::uint64_t m
+            const Char* src, std::size_t n,
+            std::uint8_t* dst, std::size_t m
     ) noexcept {
         /// any base64 or base64url
         using namespace jh::detail::base64_common;
-        std::uint64_t j = 0;
-        for (std::uint64_t i = 0; i < n; i += 4) {
+        std::size_t j = 0;
+        for (std::size_t i = 0; i < n; i += 4) {
             const uint32_t a = decode_table[src[i]];
             const uint32_t b = decode_table[src[i + 1]];
             const uint32_t c = (i + 2 < n) ? decode_table[src[i + 2]] : 0;

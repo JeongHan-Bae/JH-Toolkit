@@ -16,9 +16,9 @@
 
 ## 🏷️ Overview
 
-`jh::pod::optional<T>` is a **POD-safe, raw-storage form** of `std::optional<T>` —
-it preserves identical logical semantics (presence, equality, fallback),
-but executes entirely without constructors, destructors, or lifetime management.
+`jh::pod::optional<T>` is a **POD-safe optional** for trivially managed values.
+It preserves presence, equality, and fallback behavior while supporting
+`constexpr` storage and access.
 
 The type is **trivially copyable**, **ABI-stable**, and safe for
 **serialization**, **mmap-backed regions**, or **static aggregates**.
@@ -31,7 +31,7 @@ The type is **trivially copyable**, **ABI-stable**, and safe for
 template<cv_free_pod_like T>
 struct optional final {
     alignas(alignof(T))
-    std::byte storage[sizeof(T)];
+    union { T value; std::byte bytes[sizeof(T)]; } storage;
     bool has_value;
 };
 ```
@@ -40,7 +40,7 @@ struct optional final {
 
 | Aspect    | Description                                                     |
 |-----------|-----------------------------------------------------------------|
-| Layout    | Flat POD layout — one byte array + one flag.                    |
+| Layout    | Flat POD layout — one T-sized union + one flag.                 |
 | Alignment | Explicitly `alignas(alignof(T))` for correct pointer alignment. |
 | Size      | ≥ `sizeof(T) + 1` (compiler may add padding).                   |
 | ABI       | Stable across all compilers.                                    |
@@ -60,11 +60,11 @@ Thus, this qualifier-free restriction is **structural**, not semantic.
 
 ### 🔹 `store(const T& value)`
 
-Copies the value bytes into storage and sets presence flag.
+Starts the trivial T lifetime in the storage and sets the presence flag.
 
 | Aspect   | Description                                             |
 |----------|---------------------------------------------------------|
-| Behavior | `memcpy(storage, &value, sizeof(T)); has_value = true;` |
+| Behavior | Uses trivial copy construction; `constexpr`-capable for eligible T. |
 | Safety   | Safe for all valid `T`.                                 |
 | UB       | None.                                                   |
 
@@ -89,7 +89,7 @@ Returns pointer to contained object.
 |--------|------------------------------------------------|
 | Return | Pointer to `T`.                                |
 | Safety | Caller must check `.has()` before dereference. |
-| UB     | Dereferencing when empty.                      |
+| Requirement | Check `.has()` before dereferencing.           |
 
 ---
 
@@ -100,7 +100,7 @@ Returns reference to contained object.
 | Aspect | Description                     |
 |--------|---------------------------------|
 | Return | Reference to stored value.      |
-| UB     | Undefined if `.has() == false`. |
+| Requirement | Check `.has()` before access.     |
 
 ---
 
@@ -132,7 +132,7 @@ Compares two optionals for logical equivalence.
 |-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | Presence        | If `has()` differs → result is `false`.                                                                                                       |
 | Both empty      | Always `true`, regardless of raw storage.                                                                                                     |
-| Both have value | Performs bytewise comparison of storage (`memcmp`).                                                                                           |
+| Both have value | Compares stored value representations; constexpr-capable for supported T.                                                                  |
 | Behavior        | Never calls `T::operator==`. Even for types like `jh::pod::string_view`, comparison is **pointer-and-length equality**, not content equality. |
 
 ```cpp
@@ -155,7 +155,7 @@ Factory helper for constructing a filled optional.
 | Behavior | Returns a fully initialized `jh::pod::optional<T>` with `.has() == true`. |
 | Notes    | Calls `.store(value)` internally. Type deduction is supported.            |
 
-Because of `jh::pod::optional`'s **explicit raw-storage layout**,
+Because of `jh::pod::optional`'s **explicit union-storage layout**,
 it **cannot be directly aggregate-initialized** (e.g. `{ value, true }` is meaningless and unsafe).
 
 Instead, construct an empty optional by default:
@@ -194,8 +194,7 @@ auto b = jh::pod::make_optional<int>(42);
 * `jh::pod::optional<T>` is **POD-stable** — safe for embedding in any other `jh::pod` type.
 * Acts as a **direct ABI substitute** for `std::optional<T>` in binary or mapped memory.
 * Access via `.get()` / `.ref()` is valid only if `.has() == true`.
-* Avoid using inside `consteval` contexts; reinterpretation is runtime-only.
-* Use `jh::pod::pair<T, bool>` instead for constexpr logic.
+* `store()`, `get()`, `ref()`, `value_or()`, `has()`, and `empty()` are constexpr-capable.
 * For serialization or file I/O, always use `sizeof(optional<T>)` (not `sizeof(T) + 1`).
 * Equality is **bytewise** — guarantees deterministic comparison, never invokes `T::operator==`.
 

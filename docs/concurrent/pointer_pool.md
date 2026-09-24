@@ -137,17 +137,17 @@ Hash and equality must reflect **object identity**.
 
 ### 🔢 Constants
 
-| Member              | Type                 | Description                              |
-|---------------------|----------------------|------------------------------------------|
-| `MIN_RESERVED_SIZE` | `constexpr uint64_t` | Minimum reserved capacity (default: 16). |
+| Member              | Type                    | Description                              |
+|---------------------|-------------------------|------------------------------------------|
+| `MIN_RESERVED_SIZE` | `constexpr std::size_t` | Minimum reserved capacity (default: 16). |
 
 ---
 
 ### 🏗 Constructors
 
-| Member                                                        | Description                                       |
-|---------------------------------------------------------------|---------------------------------------------------|
-| `explicit pointer_pool(uint64_t reserve = MIN_RESERVED_SIZE)` | Constructs a pool with initial reserved capacity. |
+| Member                                                          | Description                                       |
+|-----------------------------------------------------------------|---------------------------------------------------|
+| `explicit pointer_pool(std::size_t reserve = MIN_RESERVED_SIZE)` | Constructs a pool with initial reserved capacity. |
 
 **Deleted / Restricted:**
 
@@ -202,10 +202,10 @@ Notes:
 
 ### 📊 Observers
 
-| Member                      | Description                                        |
-|-----------------------------|----------------------------------------------------|
-| `uint64_t size() const`     | Number of stored weak entries (including expired). |
-| `uint64_t capacity() const` | Current reserved capacity limit.                   |
+| Member                         | Description                                        |
+|--------------------------------|----------------------------------------------------|
+| `std::size_t size() const`     | Number of stored weak entries (including expired). |
+| `std::size_t capacity() const` | Current reserved capacity limit.                   |
 
 ---
 

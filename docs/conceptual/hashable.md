@@ -46,7 +46,7 @@ Typical motivations include:
 |----------|---------------------|----------------------------------------------------------------------|
 | **1.**   | `std::hash<T>{}(v)` | Standard hashing; used if specialization is available.               |
 | **2.**   | `hash(v)` (ADL)     | Non-intrusive free function discovered by argument-dependent lookup. |
-| **3.**   | `v.hash()`          | Member function returning a `size_t` hash value.                     |
+| **3.**   | `v.hash()`          | Member function returning a `std::size_t` hash value.                    |
 
 This three-tier chain guarantees:
 
@@ -63,7 +63,7 @@ This three-tier chain guarantees:
 Satisfied when:
 
 ```cpp
-std::hash<T>{}(v) -> std::convertible_to<size_t>;
+std::hash<T>{}(v) -> std::convertible_to<std::size_t>;
 ```
 
 ### `has_adl_hash<T>`
@@ -71,7 +71,7 @@ std::hash<T>{}(v) -> std::convertible_to<size_t>;
 Satisfied when an ADL-discoverable function exists:
 
 ```cpp
-size_t hash(const T&);
+std::size_t hash(const T&);
 ```
 
 ### `has_mbr_hash<T>`
@@ -79,7 +79,7 @@ size_t hash(const T&);
 Satisfied when:
 
 ```cpp
-v.hash() -> std::convertible_to<size_t>;
+v.hash() -> std::convertible_to<std::size_t>;
 ```
 
 ### `extended_hashable<T>`
@@ -116,11 +116,11 @@ the behavior is inferred, not registered.
 
 struct MyType {
     int value;
-    size_t hash() const noexcept { return std::hash<int>{}(value); }
+    std::size_t hash() const noexcept { return std::hash<int>{}(value); }
 };
 
-size_t h1 = jh::hash<int>{}(42);       // uses std::hash<int>
-size_t h2 = jh::hash<MyType>{}({7});   // uses MyType::hash()
+std::size_t h1 = jh::hash<int>{}(42);       // uses std::hash<int>
+std::size_t h2 = jh::hash<MyType>{}({7});   // uses MyType::hash()
 ```
 
 #### Notes

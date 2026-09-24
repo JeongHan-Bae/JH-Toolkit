@@ -30,7 +30,7 @@ instead of iteration.
 ```cpp
 struct {
     const std::byte* data;
-    std::uint64_t    len;
+    std::size_t      len;
 };
 ```
 
@@ -43,17 +43,17 @@ It never owns memory and performs no allocation.
 ```cpp
 struct bytes_view final {
     const std::byte* data;
-    std::uint64_t    len;
+    std::size_t      len;
 };
 ```
 
 | Field  | Type               | Description                               |
 |--------|--------------------|-------------------------------------------|
 | `data` | `const std::byte*` | Pointer to start of the observed memory.  |
-| `len`  | `std::uint64_t`    | Total byte length of the observed region. |
+| `len`  | `std::size_t`      | Total byte length of the observed region. |
 
-`bytes_view` is a trivially copyable POD type (`pointer + uint64_t`),
-with deterministic ABI and no hidden metadata.
+`bytes_view` is a trivially copyable POD type (`pointer + std::size_t`),
+with no hidden metadata. Its size field follows the target ABI width.
 
 ---
 
@@ -146,15 +146,15 @@ auto  c = bv.clone<Vec2>(); // POD copy
 
 ## 🧩 Behavior Overview
 
-| Feature                       | Description                            |
-|-------------------------------|----------------------------------------|
-| **Pointer + length model**    | Describes raw memory, not a container. |
-| **Non-owning**                | Never allocates or frees.              |
-| **Safe reinterpretation**     | via `from()`, `at()`, `fetch()`.       |
-| **Clone support**             | For `cv_free_pod_like` types only.     |
-| **Hashable**                  | Deterministic 64-bit content hash.     |
-| **Constexpr (not consteval)** | Optimizable, not compile-evaluable.    |
-| **Endianness-stable**         | Operates on native raw bytes.          |
+| Feature                       | Description                               |
+|-------------------------------|-------------------------------------------|
+| **Pointer + length model**    | Describes raw memory, not a container.    |
+| **Non-owning**                | Never allocates or frees.                 |
+| **Safe reinterpretation**     | via `from()`, `at()`, `fetch()`.          |
+| **Clone support**             | For `cv_free_pod_like` types only.        |
+| **Hashable**                  | Deterministic `std::size_t` content hash. |
+| **Constexpr (not consteval)** | Optimizable, not compile-evaluable.       |
+| **Endianness-stable**         | Operates on native raw bytes.             |
 
 ---
 
@@ -209,11 +209,11 @@ auto bv = jh::pod::bytes_view::from(t); // observation only
 
 ---
 
-### 🔬 `from(const T* ptr, std::uint64_t count)`
+### 🔬 `from(const T* ptr, std::size_t count)`
 
 ```cpp
 template<trivial_bytes T>
-static constexpr bytes_view from(const T* ptr, std::uint64_t count) noexcept;
+static constexpr bytes_view from(const T* ptr, std::size_t count) noexcept;
 ```
 
 **Purpose:**
@@ -239,7 +239,7 @@ auto bv = jh::pod::bytes_view::from(buf, 4); // 16-byte observation
 
 ```cpp
 template<trivial_bytes T>
-constexpr const T& at(std::uint64_t offset = 0) const noexcept;
+constexpr const T& at(std::size_t offset = 0) const noexcept;
 ```
 
 **Purpose:**  
@@ -264,23 +264,26 @@ auto& n = bv.at<std::uint64_t>(sizeof(double));
 
 ```cpp
 template<trivial_bytes T>
-constexpr const T* fetch(std::uint64_t offset = 0) const noexcept;
+constexpr jh::meta::expected<const T*, bytes_view::error_code>
+fetch(std::size_t offset = 0) const noexcept;
 ```
 
 **Purpose:**
-Bounds-checked variant of `at()` returning a pointer or `nullptr`.
+Bounds-checked variant of `at()`. Check the expected before reading `value`.
 
 | Aspect     | Description                                         |
 |------------|-----------------------------------------------------|
 | Constraint | `T` must satisfy `trivial_bytes`.                   |
-| Behavior   | Returns pointer if range fits, otherwise `nullptr`. |
+| Success    | `value` contains the pointer.                         |
+| Failure    | `out_of_bounds` or `null_data`.                       |
 | UB         | Never — always safe.                                |
 
 **Example:**
 
 ```cpp
-if (auto* v = bv.fetch<std::uint64_t>(sizeof(double)))
-    std::cout << *v;
+auto result = bv.fetch<std::uint64_t>(sizeof(double));
+if (result)
+    std::cout << *result.value();
 ```
 
 ---
@@ -294,7 +297,7 @@ Here’s the updated, clean, final version of the `clone()` section (and its adj
 
 ```cpp
 template<cv_free_pod_like T>
-constexpr T clone() const noexcept;
+constexpr jh::meta::expected<T, bytes_view::error_code> clone() const noexcept;
 ```
 
 **Purpose:**
@@ -305,14 +308,17 @@ Reconstruct a POD-compatible object by copying the entire byte range.
 | Constraint | `T` must satisfy `cv_free_pod_like`.    |
 | Size Rule  | Only succeeds if `sizeof(T) == size()`. |
 | Behavior   | Copies raw bytes into a new `T` value.  |
-| Fallback   | Returns `T{}` if size mismatch.         |
+| Failure    | `size_mismatch` or `null_data`.          |
 
 **Example:**
 
 ```cpp
 PlainPod p{1, 2.71};
 auto bv = jh::pod::bytes_view::from(p);
-auto copy = bv.clone<PlainPod>(); // full POD reconstruction
+auto result = bv.clone<PlainPod>();
+if (result) {
+    auto copy = result.value(); // full POD reconstruction
+}
 ```
 
 **Advanced Semantics:**
@@ -345,18 +351,18 @@ so their internal memory layout is byte-compatible and deterministic.
 ### 🔬 `hash(hash_method = fnv1a64)`
 
 ```cpp
-constexpr std::uint64_t
+constexpr jh::meta::expected<std::size_t, bytes_view::error_code>
 hash(jh::meta::c_hash hash_method = jh::meta::c_hash::fnv1a64) const noexcept;
 ```
 
 **Purpose:**
-Computes a deterministic 64-bit hash of the observed byte region using
+Computes a deterministic hash of the observed byte region and returns it as `std::size_t`, using
 the compile-time algorithms provided by [`jh::meta::hash`](../metax/hash.md).
 
 | Aspect     | Description                                                          |
 |------------|----------------------------------------------------------------------|
 | Input      | Raw bytes (`data`, `len`) only — no type semantics.                  |
-| Return     | 64-bit hash; returns `0xFFFFFFFFFFFFFFFF` if empty.                  |
+| Return     | Expected hash; `null_data` if the backing pointer is null.             |
 | Algorithm  | Selected via `jh::meta::c_hash`.                                     |
 | Default    | `fnv1a64`.                                                           |
 | Evaluation | `constexpr`-enabled, but meaningful only at runtime for live memory. |
@@ -371,6 +377,7 @@ auto bv = jh::pod::bytes_view::from(buffer, 64);
 
 // Default: FNV-1a 64-bit
 auto h1 = bv.hash();
+if (h1) { /* use h1.value() */ }
 
 // Explicit: xxHash64 variant
 auto h2 = bv.hash(jh::meta::c_hash::xxhash64);
@@ -396,8 +403,8 @@ auto h2 = bv.hash(jh::meta::c_hash::xxhash64);
 |-----------|----------------|-------------|-------------------|
 | `from()`  | —              | ❌           | —                 |
 | `at()`    | ❌              | ✅           | UB                |
-| `fetch()` | ✅              | ❌           | `nullptr`         |
-| `clone()` | ✅              | ❌           | `T{}`             |
+| `fetch()` | ✅              | ❌           | `error_code`      |
+| `clone()` | ✅              | ❌           | `error_code`      |
 
 ---
 
@@ -408,8 +415,8 @@ auto bv1 = jh::pod::bytes_view::from(my_pod);
 auto bv2 = jh::pod::bytes_view::from(buffer, count);
 
 auto& hdr = bv1.at<MyHeader>(0);   // unchecked
-auto* ptr = bv2.fetch<MyHeader>(); // bounds-checked
-auto  obj = bv1.clone<MyStruct>(); // reconstruct POD
+auto ptr = bv2.fetch<MyHeader>(); // check before reading ptr.value()
+auto obj = bv1.clone<MyStruct>(); // check before reading obj.value()
 ```
 
 ---
@@ -433,9 +440,9 @@ Observation and reconstruction are **separated**:
 |-------------------------|-----------------------------------|
 | Memory lifetime         | Caller-managed                    |
 | consteval               | ❌ not allowed                     |
-| Clone size mismatch     | Returns default-initialized `T{}` |
+| Clone size mismatch     | Returns `size_mismatch`            |
 | Out-of-bounds `at()`    | Undefined behavior                |
-| Out-of-bounds `fetch()` | Returns `nullptr`                 |
+| Out-of-bounds `fetch()` | Returns `out_of_bounds`            |
 | Endianness              | Native byte order                 |
 | Ownership               | Non-owning, no destructor         |
 
@@ -458,7 +465,7 @@ int main() {
     auto bv = jh::pod::bytes_view::from(p);
 
     std::cout << "Bytes: ";
-    for (std::uint64_t i = 0; i < bv.size(); ++i)
+    for (std::size_t i = 0; i < bv.size(); ++i)
         std::cout << std::hex << static_cast<int>(bv.data[i]) << ' ';
     std::cout << '\n';
 }

@@ -97,10 +97,10 @@ namespace jh::detail::uri_common {
     static constexpr auto hex_decode_table = make_hex_decode_table();
 
     template<jh::meta::any_char Char>
-    constexpr std::uint64_t calculate_encoded_length(const Char *src, std::uint64_t n) noexcept {
-        std::uint64_t non_uri_count = 0;
+    constexpr std::size_t calculate_encoded_length(const Char *src, std::size_t n) noexcept {
+        std::size_t non_uri_count = 0;
 
-        for (std::uint64_t i = 0; i < n; ++i) {
+        for (std::size_t i = 0; i < n; ++i) {
             if (!jh::meta::is_uri_char(src[i]))
                 ++non_uri_count;
         }
@@ -110,12 +110,12 @@ namespace jh::detail::uri_common {
 
     template<jh::meta::any_char Char>
     constexpr void uri_encode_unchecked(
-            const Char *src, std::uint64_t n,
-            std::uint8_t *dst, std::uint64_t m
+            const Char *src, std::size_t n,
+            std::uint8_t *dst, std::size_t m
     ) noexcept {
-        std::uint64_t j = 0;
+        std::size_t j = 0;
 
-        for (std::uint64_t i = 0; i < n; ++i) {
+        for (std::size_t i = 0; i < n; ++i) {
             const Char c = src[i];
 
             if (jh::meta::is_uri_char(c)) {
@@ -138,15 +138,15 @@ namespace jh::detail::uri_common {
     }
 
     template<jh::meta::any_char Char>
-    constexpr std::uint64_t calculate_decoded_length(const Char *src, std::uint64_t n) noexcept {
-        std::uint64_t percent_count = 0;
+    constexpr std::size_t calculate_decoded_length(const Char *src, std::size_t n) noexcept {
+        std::size_t percent_count = 0;
 
-        for (std::uint64_t i = 0; i < n; ++i) {
+        for (std::size_t i = 0; i < n; ++i) {
             const Char c = src[i];
 
             if (c == '%') {
                 if (i + 2 >= n)
-                    return static_cast<std::uint64_t>(-1);
+                    return static_cast<std::size_t>(-1);
 
                 if (jh::meta::is_hex_char(src[i + 1]) &&
                     jh::meta::is_hex_char(src[i + 2])) {
@@ -154,10 +154,10 @@ namespace jh::detail::uri_common {
                     ++percent_count;
                     i += 2;
                 } else {
-                    return static_cast<std::uint64_t>(-1);
+                    return static_cast<std::size_t>(-1);
                 }
             } else if (!jh::meta::is_uri_char(c)) {
-                return static_cast<std::uint64_t>(-1);
+                return static_cast<std::size_t>(-1);
             }
         }
 
@@ -166,12 +166,12 @@ namespace jh::detail::uri_common {
 
     template<jh::meta::any_char Char>
     constexpr void uri_decode_unchecked(
-            const Char *src, std::uint64_t n,
-            std::uint8_t *dst, std::uint64_t m
+            const Char *src, std::size_t n,
+            std::uint8_t *dst, std::size_t m
     ) noexcept {
-        std::uint64_t j = 0;
+        std::size_t j = 0;
 
-        for (std::uint64_t i = 0; i < n; ++i) {
+        for (std::size_t i = 0; i < n; ++i) {
             const Char c = src[i];
 
             if (c == '%') {
