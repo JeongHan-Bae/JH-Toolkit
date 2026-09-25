@@ -90,6 +90,22 @@ TEST_CASE("Runtime Construction (CTAD) with Runtime Verification") {
     }
 }
 
+TEST_CASE("lookup_map accepts runtime TStr and std::string keys") {
+    using namespace std::literals;
+
+    constexpr auto map = jh::meta::make_lookup_map(
+        std::array{
+            std::pair{"red"sv, 1},
+            std::pair{"green"sv, 2},
+            std::pair{"blue"sv, 3},
+        },
+        -1);
+
+    const std::string purple{"purple"};
+    REQUIRE(map[jh::meta::TStr{"green"}] == 2);
+    REQUIRE(map[purple] == -1);
+}
+
 TEST_CASE("Simulated output with ostringstream") {
     using namespace std::literals;
 

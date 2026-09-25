@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 
+#include "jh/macros/platform.h"
 #include "jh/metax/hash.h"
 #include "jh/metax/lookup_map.h"
 #include "jh/metax/t_str.h"
@@ -29,11 +30,18 @@ constexpr auto standard_map = jh::meta::make_lookup_map(
         std::pair{"blue"sv, 3},
     },
     -1);
+constexpr auto green_key = jh::meta::TStr{"green"};
 static_assert(standard_map["red"_psv] == 1);
-static_assert(standard_map[jh::meta::TStr{"green"}] == 2);
 static_assert(standard_map["blue"sv] == 3);
-static_assert(standard_map[std::string{"purple"}] == -1);
+static_assert(standard_map[green_key] == 2);
 static_assert(standard_map[string_view::from_literal("yellow")] == -1);
+
+// The named constexpr TStr key above is tested on every compiler. C++20 also permits
+// temporary lookup keys within constant evaluation; keep that check enabled on Clang.
+#if IS_CLANG
+static_assert(standard_map[jh::meta::TStr{"green"}] == 2);
+static_assert(standard_map[std::string{"purple"}] == -1);
+#endif
 
 using ArrayKey = jh::pod::array<char, 6>;
 constexpr auto explicit_hash_map = jh::meta::make_lookup_map<brute_hash<>>(
@@ -76,4 +84,3 @@ constexpr auto custom_hash_map = jh::meta::lookup_map{
     brute_hash<>{}};
 static_assert(custom_hash_map[ArrayKey{"blue"}] == 3);
 static_assert(custom_hash_map[ArrayKey{"qqqqq"}] == -2);
-

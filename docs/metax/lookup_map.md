@@ -223,6 +223,31 @@ Rules:
 * no insertion ever occurs
 * no exceptions are thrown
 
+### Temporary keys in constant evaluation
+
+`lookup_map` supports querying with temporary keys during constant evaluation,
+including expressions such as `table[t_str{"key"}]` and
+`table[std::string{"key"}]`. The query key is canonicalized into a local
+object and used for hashing and comparison; it is not retained by the table.
+The temporary's lifetime ends with the full-expression, and its destruction is
+part of the constant evaluation.
+
+This follows the C++20 constant-expression rules: objects created during an
+evaluation may be used while alive, and any transient allocation must be
+released before that evaluation completes. `std::basic_string`'s relevant
+operations are `constexpr` in C++20. See the C++20
+[`[expr.const]`](https://timsong-cpp.github.io/cppwp/n4861/expr.const) and
+[`[string.cons]`](https://timsong-cpp.github.io/cppwp/n4861/string.cons)
+specifications.
+
+Some GCC versions reject these valid expressions during constant evaluation.
+This is a compiler limitation, not a limitation of `lookup_map`; the same
+lookup remains supported at runtime on those compilers.
+
+A named `constexpr` key, such as a `constexpr` `t_str` object queried with
+`table[key]`, remains covered by the baseline compile-time tests on GCC. The
+compiler limitation applies to the temporary query expressions above.
+
 ---
 
 ## 🔹 Transparent Lookup via Canonical Form
