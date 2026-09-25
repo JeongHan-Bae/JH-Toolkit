@@ -39,12 +39,10 @@ set(PROJECT_VERSION 1.4.1)
 #    - Setting USE_JH_COMPILE_OPT=OFF disables jh-toolkit's compile option
 #      enforcement when used as a subproject.
 #
-#    - Setting JH_FORCE_RTTI=ON prevents jh-toolkit from disabling RTTI
-#      in Release builds, even when compile option enforcement is active.
-#
 #    Consumers are expected to audit their codebase under this philosophy,
-#    including constraints such as RTTI prohibition and enforced optimization
-#    strategy, unless explicitly opting out through the options above.
+#    including the enforced optimization strategy, unless explicitly opting
+#    out through the above option. RTTI is disabled privately for toolkit-owned
+#    compiled targets and is not propagated to consumers.
 #
 #    If full independence from these policies is desired, the library may
 #    alternatively be consumed via find_package.
@@ -70,10 +68,6 @@ set(PROJECT_VERSION 1.4.1)
 option(USE_JH_COMPILE_OPT
         "Allow jh-toolkit to enforce compile optimization flags when used via add_subdirectory/FetchContent"
         ON)
-
-option(JH_FORCE_RTTI
-        "Do not disable RTTI in Release builds even when jh-toolkit enforces its compile options"
-        OFF)
 
 option(JH_ENABLE_TESTING
         "Build jh-toolkit tests"
@@ -153,10 +147,6 @@ if (JH_APPLY_COMPILE_OPT)
         message(STATUS "Applying extra CPU optimizations for Release build.")
         # Detect architecture-specific -march option
         set(EXTRA_OPT_FLAGS "")
-        set(JH_RTTI_FLAG "-fno-rtti")
-        if (JH_FORCE_RTTI)
-            set(JH_RTTI_FLAG "")
-        endif ()
         if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
             if (NOT CMAKE_CROSSCOMPILING)
                 include(CheckCXXCompilerFlag)
@@ -185,7 +175,6 @@ if (JH_APPLY_COMPILE_OPT)
         add_compile_options(
                 ${EXTRA_OPT_FLAGS}
                 -O3
-                ${JH_RTTI_FLAG}
                 -ftree-vectorize
                 -funroll-loops
                 -fno-omit-frame-pointer
@@ -301,6 +290,11 @@ if (ENABLE_ALL)
 
     # Build the static library (no header-only restriction during build)
     add_library(jh-toolkit-static STATIC ${JH_TOOLKIT_SOURCES})
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(jh-toolkit-static PRIVATE -fno-rtti)
+    elseif (MSVC)
+        target_compile_options(jh-toolkit-static PRIVATE /GR-)
+    endif ()
     target_include_directories(jh-toolkit-static PUBLIC
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>

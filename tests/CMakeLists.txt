@@ -11,6 +11,12 @@ set(ENABLE_BENCHMARK ${ENABLE_BENCHMARK} CACHE BOOL "Enable benchmark tests")
 
 FetchContent_MakeAvailable(Catch2)
 
+# Build the independently consumable Cucumber helper with the test suite.
+add_subdirectory(
+        ${PROJECT_SOURCE_DIR}/simple-cucumber
+        ${CMAKE_CURRENT_BINARY_DIR}/simple-cucumber
+)
+
 # ---------------------------
 # Define test targets in one list
 # Format: target_name source_file linked_library

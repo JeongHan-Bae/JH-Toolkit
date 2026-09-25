@@ -195,7 +195,9 @@ The **`jh::jh-toolkit-static`** target contains **precompiled implementations** 
 * `immutable_str`
 * `runtime_arr` (bit-packed `bool` and byte-based variants)
 
-These are built with the following strict optimization set:
+These are built with the following strict optimization set. RTTI is disabled
+privately for the toolkit's compiled sources; consumers of `jh::jh-toolkit-static`
+do not inherit `-fno-rtti`.
 
 ```bash
 -O3
