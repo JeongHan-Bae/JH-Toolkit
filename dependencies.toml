@@ -39,15 +39,3 @@ On Windows, MinGW (GCC) + MSYS2 (UCRT) is recommended for minimal jitter and vis
 (Generally, it will pull GCC 14.3+ or GCC 15).
 '''
 version = "C++20"
-
-[[dependencies]]
-name = "Catch2"
-platforms = ["Ubuntu", "macOS", "Windows"]
-install = "Fetched automatically via CMake FetchContent in Debug and FastDebug builds"
-version = "v3.5.0"
-condition = '''
-Ubuntu/macOS: CMAKE_BUILD_TYPE=Debug or FastDebug.
-Windows (MinGW-UCRT): Fetched in any non-install build (including Release) to ensure stable testing without debug allocators.
-'''
-fetch_method = "FetchContent from GitHub"
-repository = "https://github.com/catchorg/Catch2.git"
