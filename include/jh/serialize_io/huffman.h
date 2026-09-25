@@ -421,7 +421,9 @@ namespace jh::serio {
                             throw std::runtime_error("huffman code length exceeds 32 bits");
 
                 if (n.is_leaf()) {
-                    len_tbl[n.ch] = depth;
+                    // A one-symbol alphabet still needs a real code bit so the
+                    // canonical stream can preserve the number of occurrences.
+                    len_tbl[n.ch] = depth == 0 ? 1 : static_cast<std::uint8_t>(depth);
                 } else {
                     st.push({n.left, depth + 1});
                     st.push({n.right, depth + 1});
@@ -765,6 +767,11 @@ namespace jh::serio {
 
             if (root < 0) [[unlikely]]
                 return out;
+
+            if (pool[root].is_leaf()) {
+                out.assign(freq[pool[root].ch], char(pool[root].ch));
+                return out;
+            }
 
             int node = root;
             std::uint8_t buf = 0;

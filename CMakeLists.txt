@@ -278,6 +278,7 @@ if (ENABLE_ALL)
     endif ()
     # Define the INTERFACE library for header-only components
     add_library(jh-toolkit INTERFACE)
+    target_compile_features(jh-toolkit INTERFACE cxx_std_20)
     target_include_directories(jh-toolkit INTERFACE
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
