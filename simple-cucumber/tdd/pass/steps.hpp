@@ -1,3 +1,8 @@
+/**
+ * @file simple-cucumber/tdd/pass/steps.hpp
+ * @brief Passing test step definitions for simple-cucumber.
+ */
+
 #pragma once
 
 #include <cstdint>

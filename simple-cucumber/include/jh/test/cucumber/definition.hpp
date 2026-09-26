@@ -1,3 +1,27 @@
+/**
+ * @copyright
+ * Copyright 2025 JeongHan-Bae &lt;mastropseudo\@gmail.com&gt;
+ * <br>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at<br>
+ * <br>
+ *     http://www.apache.org/licenses/LICENSE-2.0<br>
+ * <br>
+ * Unless required by applicable law or agreed to in writing, software<br>
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+ * See the License for the specific language governing permissions and<br>
+ * limitations under the License.<br>
+ * <br>
+ * Full license: <a href="https://github.com/JeongHan-Bae/JH-Toolkit?tab=Apache-2.0-1-ov-file#readme">GitHub</a>
+ */
+/**
+ * @file definition.hpp
+ * @brief Compile-time Cucumber step definitions and dispatch.
+ * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
+ */
+
 #pragma once
 
 #include <array>
@@ -291,47 +315,87 @@ namespace jh::test::cucumber {
         }
     }
 
+    /**
+     * @brief Binds a Gherkin Given step expression to a step callable.
+     * @tparam Expression Compile-time step expression.
+     * @tparam Method Pointer to a void member or static function that handles the step.
+     */
     template<jh::meta::TStr Expression, auto Method>
     struct Given {
+        /// @brief Compile-time expression matched against Given step text.
         static constexpr auto expression = Expression;
+        /// @brief Callable invoked when the expression matches.
         static constexpr auto method = Method;
+        /// @brief Step role associated with this binding.
         static constexpr StepKind kind = StepKind::given;
         static_assert(detail::expression_spec<Expression>.valid,
                       "Invalid Cucumber step expression.");
     };
 
+    /**
+     * @brief Binds a Gherkin When step expression to a step callable.
+     * @tparam Expression Compile-time step expression.
+     * @tparam Method Pointer to a void member or static function that handles the step.
+     */
     template<jh::meta::TStr Expression, auto Method>
     struct When {
+        /// @brief Compile-time expression matched against When step text.
         static constexpr auto expression = Expression;
+        /// @brief Callable invoked when the expression matches.
         static constexpr auto method = Method;
+        /// @brief Step role associated with this binding.
         static constexpr StepKind kind = StepKind::when;
         static_assert(detail::expression_spec<Expression>.valid,
                       "Invalid Cucumber step expression.");
     };
 
+    /**
+     * @brief Binds a Gherkin Then step expression to a step callable.
+     * @tparam Expression Compile-time step expression.
+     * @tparam Method Pointer to a void member or static function that handles the step.
+     */
     template<jh::meta::TStr Expression, auto Method>
     struct Then {
+        /// @brief Compile-time expression matched against Then step text.
         static constexpr auto expression = Expression;
+        /// @brief Callable invoked when the expression matches.
         static constexpr auto method = Method;
+        /// @brief Step role associated with this binding.
         static constexpr StepKind kind = StepKind::then;
         static_assert(detail::expression_spec<Expression>.valid,
                       "Invalid Cucumber step expression.");
     };
 
+    /// @brief Describes the outcome of dispatching a parsed step.
     enum class dispatch_status {
+        /// @brief A matching callable was invoked.
         invoked,
+        /// @brief No binding matched the step role and text.
         undefined_step,
+        /// @brief A matching expression rejected its captured values or table attachment.
         invalid_arguments
     };
 
+    /// @brief Reports the status returned by a step-definition dispatch.
     struct dispatch_result {
+        /// @brief Dispatch outcome.
         dispatch_status status{dispatch_status::undefined_step};
     };
 
+    /// @brief Describes why a step-definition dispatch could not select one binding.
     enum class dispatch_error {
+        /// @brief Multiple bindings accept the same step and its arguments.
         ambiguous_step
     };
 
+    /**
+     * @brief Defines compile-time step bindings and dispatches matching steps to their callables.
+     * @tparam Object Type instantiated to handle each scenario.
+     * @tparam Steps One or more Given, When, or Then bindings.
+     * Each callable must return void and accept the placeholder values in its expression.
+     * It may also accept a trailing <code>const DataTable&amp;</code> followed by a trailing <code>StepContext&amp;</code>.
+     * Duplicate expressions for the same step role and incompatible callable signatures are rejected at compile time.
+     */
     template<class Object, class... Steps>
     struct StepDefinition final {
         static_assert(sizeof...(Steps) > 0, "StepDefinition requires at least one step.");
@@ -340,6 +404,7 @@ namespace jh::test::cucumber {
         static_assert((detail::binding_signature_valid<Object, Steps>() && ...),
                       "Step callable must be a void member or static function whose arguments match its expression and optional attachments.");
 
+        /// @brief Step object type constructed for each scenario.
         using object_type [[maybe_unused]] = Object;
 
     private:
@@ -393,6 +458,13 @@ namespace jh::test::cucumber {
         }
 
     public:
+        /**
+         * @brief Selects and invokes the binding that accepts a parsed step.
+         * @param object Step object used for a non-static callable.
+         * @param step Parsed step to match and dispatch.
+         * @param context Receives assertion and conversion failures from the callable.
+         * @return The dispatch status, or <code>dispatch_error::ambiguous_step</code> when multiple bindings accept the step.
+         */
         [[nodiscard]] static jh::meta::expected<dispatch_result, dispatch_error> dispatch(
             Object& object,
             const Step& step,

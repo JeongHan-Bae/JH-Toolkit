@@ -1,3 +1,8 @@
+/**
+ * @file simple-cucumber/tdd/fail/steps.hpp
+ * @brief Expected-failure test step definitions for simple-cucumber.
+ */
+
 #pragma once
 
 #include <cstddef>
