@@ -12,7 +12,7 @@
 
 ## Installation
 
-`jh-simple-cucumber` depends on the JH-Toolkit headers and `jh::meta::expected`. From a JH-Toolkit checkout, configure and install it as a standalone CMake package:
+`jh-simple-cucumber` depends on the JH-Toolkit headers and `jh::meta::expected`. Its installed CMake target uses the shared `jh::test::` package namespace. From a JH-Toolkit checkout, configure and install it as a standalone CMake package:
 
 ```sh
 cmake -S simple-cucumber -B build/simple-cucumber \

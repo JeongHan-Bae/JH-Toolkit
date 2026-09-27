@@ -1,0 +1,11 @@
+project_static_pass(unique_definitions unique_definitions.cpp)
+
+add_executable(tiny_test_static_pass_auto_main auto_main.cpp)
+target_link_libraries(tiny_test_static_pass_auto_main PRIVATE jh::test::jh-tiny-test)
+target_compile_features(tiny_test_static_pass_auto_main PRIVATE cxx_std_20)
+add_test(NAME tiny_test_static_pass_auto_main COMMAND tiny_test_static_pass_auto_main)
+
+add_executable(tiny_test_static_pass_independent_entry auto_main.cpp)
+target_link_libraries(tiny_test_static_pass_independent_entry PRIVATE jh::test::jh-tiny-test)
+target_compile_features(tiny_test_static_pass_independent_entry PRIVATE cxx_std_20)
+add_test(NAME tiny_test_static_pass_independent_entry COMMAND tiny_test_static_pass_independent_entry)

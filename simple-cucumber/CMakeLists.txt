@@ -117,6 +117,7 @@ if(JH_SIMPLE_CUCUMBER_INSTALL)
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    # Keep this package alongside other JH test packages under jh::test::.
     install(EXPORT jh-simple-cucumber-targets
         FILE jh-simple-cucumber-targets.cmake
         NAMESPACE jh::test::
