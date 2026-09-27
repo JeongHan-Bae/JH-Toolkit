@@ -54,6 +54,7 @@
 #pragma once
 
 #include "jh/conceptual/tuple_like.h"
+#include <functional>
 #include <tuple>
 #include <utility>
 #include <type_traits>
@@ -102,6 +103,135 @@ namespace jh::meta {
         constexpr auto tuple_materialize_impl(const Tuple &t, std::index_sequence<I...>) {
             return std::tuple_cat(flatten_one(get<I>(t))...);
         }
+
+        template<typename T>
+        struct is_reference_wrapper : std::false_type {};
+
+        template<typename T>
+        struct is_reference_wrapper<std::reference_wrapper<T>> : std::true_type {};
+
+        template<typename T, bool IsTuple = jh::concepts::tuple_like<std::remove_cvref_t<T>>>
+        struct contains_reference_wrapper
+                : is_reference_wrapper<std::remove_cv_t<std::remove_reference_t<T>>> {};
+
+        template<typename T>
+        struct contains_reference_wrapper<T, true> {
+        private:
+            using tuple_type = std::remove_cvref_t<T>;
+
+            template<std::size_t... I>
+            static consteval bool check(std::index_sequence<I...>) {
+                return (contains_reference_wrapper<std::tuple_element_t<I, tuple_type>>::value || ...);
+            }
+
+        public:
+            static constexpr bool value = check(
+                std::make_index_sequence<std::tuple_size_v<tuple_type>>{}
+            );
+        };
+
+        template<typename T>
+        inline constexpr bool contains_reference_wrapper_v = contains_reference_wrapper<T>::value;
+
+        template<std::size_t I, typename Tuple>
+        constexpr decltype(auto) tuple_get_forwarded(Tuple &&tuple) {
+            if constexpr (requires { std::forward<Tuple>(tuple).template get<I>(); }) {
+                return std::forward<Tuple>(tuple).template get<I>();
+            } else {
+                return get<I>(std::forward<Tuple>(tuple));
+            }
+        }
+
+        template<typename T>
+        constexpr auto flatten_forward_one(T &&value) {
+            if constexpr (jh::concepts::tuple_like<std::remove_cvref_t<T>>) {
+                constexpr std::size_t N = std::tuple_size_v<std::remove_cvref_t<T>>;
+                return [&]<std::size_t... I>(std::index_sequence<I...>) {
+                    return std::tuple_cat(
+                        flatten_forward_one(
+                            tuple_get_forwarded<I>(std::forward<T>(value))
+                        )...
+                    );
+                }(std::make_index_sequence<N>{});
+            } else if constexpr (is_reference_wrapper<std::remove_cvref_t<T>>::value) {
+                return std::forward_as_tuple(value.get());
+            } else {
+                return std::forward_as_tuple(std::forward<T>(value));
+            }
+        }
+
+        template<bool CopyReferencedValues, typename TargetElement, typename Source>
+        constexpr decltype(auto) flatten_materialization_arg(Source &&source) {
+            if constexpr (CopyReferencedValues &&
+                          !std::is_reference_v<TargetElement> &&
+                          std::is_lvalue_reference_v<Source>) {
+                return std::remove_cvref_t<Source>{source};
+            } else {
+                return std::forward<Source>(source);
+            }
+        }
+
+        template<bool CopyReferencedValues, typename TargetTuple, typename SourceTuple,
+                 std::size_t... I>
+        constexpr TargetTuple flatten_materialize_as_impl(
+                SourceTuple &&source, std::index_sequence<I...>) {
+            return TargetTuple{
+                flatten_materialization_arg<
+                    CopyReferencedValues,
+                    std::tuple_element_t<I, TargetTuple>
+                >(
+                    tuple_get_forwarded<I>(std::forward<SourceTuple>(source))
+                )...
+            };
+        }
+
+        template<bool CopyReferencedValues, typename TargetTuple, typename SourceTuple>
+        constexpr TargetTuple flatten_materialize_as(SourceTuple &&source) {
+            constexpr std::size_t N = std::tuple_size_v<TargetTuple>;
+            return flatten_materialize_as_impl<CopyReferencedValues, TargetTuple>(
+                std::forward<SourceTuple>(source), std::make_index_sequence<N>{}
+            );
+        }
+
+        template<typename TargetTuple, typename SourceTuple, std::size_t... I>
+        consteval bool has_dangling_rvalue_reference_impl(std::index_sequence<I...>) {
+            return ((
+                std::is_reference_v<std::tuple_element_t<I, TargetTuple>> &&
+                std::is_rvalue_reference_v<
+                    std::tuple_element_t<I, std::remove_cvref_t<SourceTuple>>
+                >
+            ) || ...);
+        }
+
+        template<typename TargetTuple, typename SourceTuple>
+        consteval bool has_dangling_rvalue_reference() {
+            if constexpr (
+                std::tuple_size_v<TargetTuple> !=
+                std::tuple_size_v<std::remove_cvref_t<SourceTuple>>
+            ) {
+                return false;
+            } else {
+                return has_dangling_rvalue_reference_impl<TargetTuple, SourceTuple>(
+                    std::make_index_sequence<std::tuple_size_v<TargetTuple>>{}
+                );
+            }
+        }
+
+        template<typename Tuple>
+        using flatten_proxy_lvalue_t = decltype(flatten_forward_one(std::declval<Tuple &>()));
+
+        template<typename Tuple>
+        using flatten_proxy_const_lvalue_t =
+                decltype(flatten_forward_one(std::declval<const Tuple &>()));
+
+        template<typename Tuple>
+        using flatten_proxy_rvalue_t =
+                decltype(flatten_forward_one(std::declval<Tuple &&>()));
+
+        template<typename Tuple>
+        using flatten_proxy_const_rvalue_t =
+                decltype(flatten_forward_one(std::declval<const Tuple &&>()));
+
     } // namespace detail
 
     /**
@@ -124,51 +254,140 @@ namespace jh::meta {
      * <h4>Implicit Conversion</h4>
      * <p>
      * The proxy can be <b>implicitly converted</b> to a fully materialized
-     * <code>std::tuple</code>. During conversion, element category is preserved:
+     * <code>std::tuple</code>. During conversion, element category follows the
+     * proxy's value category: lvalue proxies expose lvalue elements, and rvalue
+     * proxies expose rvalue elements. This lets a destination construct directly
+     * from the source without an intermediate value tuple.
      * <ul>
-     *   <li><code>std::reference_wrapper&lt;T&gt;</code> is transparently propagated</li>
      *   <li>Structured bindings see the flattened members directly</li>
-     *   <li>Target <code>std::tuple</code> can hold value, reference, or wrapper types</li>
+     *   <li>Target <code>std::tuple</code> can hold value and reference types</li>
+     *   <li>Materialized tuples cannot retain <code>std::reference_wrapper</code></li>
+     *   <li>An rvalue proxy cannot produce references into its owned storage</li>
      * </ul>
      * </p>
      *
      * @code
      * int i0 = 1;
-     * jh::meta::flatten_proxy p{ std::tuple{std::ref(i0), std::tuple{2, 3}} };
-     * auto [f0, f1, f2] = p; // reference_wrapper&lt;int&gt;, int, int
-     * std::tuple&lt;std::reference_wrapper&lt;int&gt;, int, int&gt; t_rw = p;
+     * jh::meta::flatten_proxy p{ std::tuple{std::tie(i0), std::tuple{2, 3}} };
      * std::tuple&lt;int&, int, int&gt; t_ref = p;
      * std::tuple&lt;int, int, int&gt; t_val = p;
      * @endcode
      *
      * <h4>Ownership and Evaluation</h4>
      * <p>
-     * All operations are <code>constexpr</code> and non-owning &mdash;
-     * the underlying tuple-like object is never copied or moved unless
-     * materialization is explicitly requested (e.g. via implicit conversion
-     * to <code>std::tuple</code>).
+     * An lvalue source is held by reference and an rvalue source is owned by
+     * the proxy. Materialization constructs the destination tuple directly from
+     * the flattened elements, preserving their reference category.
      * </p>
      */
     template<typename Tuple>
     struct flatten_proxy final {
         Tuple tuple;
 
+        /**
+         * @brief Stores an lvalue tuple-like source by reference or owns an rvalue source.
+         * @param source Tuple-like object to expose through the proxy.
+         */
+        template<typename Source>
+        constexpr explicit flatten_proxy(Source &&source)
+                : tuple(std::forward<Source>(source)) {}
+
+        /// @brief Returns flattened element I as a value.
         template<std::size_t I>
         [[nodiscard]] constexpr auto get() const noexcept {
             return std::get<I>(tuple_materialize(tuple));
         }
 
+        /// @brief Converts a mutable lvalue proxy to a tuple when its elements permit it.
         template<typename... Ts>
-        constexpr operator std::tuple<Ts...>() // NOLINT
-        const {
-            return tuple_materialize(tuple);
+        constexpr operator std::tuple<Ts...>() &
+                requires (!detail::contains_reference_wrapper_v<std::tuple<Ts...>> &&
+                          std::is_constructible_v<
+                                  std::tuple<Ts...>, detail::flatten_proxy_lvalue_t<Tuple>
+                          >) {
+            return detail::flatten_materialize_as<false, std::tuple<Ts...>>(
+                detail::flatten_forward_one(tuple)
+            );
         }
 
-        constexpr operator auto() // NOLINT
-        const {
-            return tuple_materialize(tuple);
+        template<typename... Ts>
+        constexpr operator std::tuple<Ts...>() &
+                requires detail::contains_reference_wrapper_v<std::tuple<Ts...>> = delete;
+
+        /// @brief Converts a const lvalue proxy to a tuple when its elements permit it.
+        template<typename... Ts>
+        constexpr operator std::tuple<Ts...>() const &
+                requires (!detail::contains_reference_wrapper_v<std::tuple<Ts...>> &&
+                          std::is_constructible_v<
+                                  std::tuple<Ts...>, detail::flatten_proxy_const_lvalue_t<Tuple>
+                          >) {
+            return detail::flatten_materialize_as<false, std::tuple<Ts...>>(
+                detail::flatten_forward_one(tuple)
+            );
         }
+
+        template<typename... Ts>
+        constexpr operator std::tuple<Ts...>() const &
+                requires detail::contains_reference_wrapper_v<std::tuple<Ts...>> = delete;
+
+        /// @brief Converts an rvalue proxy to a tuple while forwarding its elements as rvalues.
+        template<typename... Ts>
+        constexpr operator std::tuple<Ts...>() &&
+                requires (!detail::contains_reference_wrapper_v<std::tuple<Ts...>> &&
+                          !detail::has_dangling_rvalue_reference<
+                                  std::tuple<Ts...>, detail::flatten_proxy_rvalue_t<Tuple>
+                          >() &&
+                          std::is_constructible_v<
+                                  std::tuple<Ts...>, detail::flatten_proxy_rvalue_t<Tuple>
+                          >) {
+            return detail::flatten_materialize_as<true, std::tuple<Ts...>>(
+                detail::flatten_forward_one(std::forward<Tuple>(tuple))
+            );
+        }
+
+        template<typename... Ts>
+        constexpr operator std::tuple<Ts...>() &&
+                requires (
+                    detail::contains_reference_wrapper_v<std::tuple<Ts...>> ||
+                    detail::has_dangling_rvalue_reference<
+                        std::tuple<Ts...>, detail::flatten_proxy_rvalue_t<Tuple>
+                    >()
+                ) = delete;
+
+        /// @brief Converts a const rvalue proxy to a tuple while preserving constness.
+        template<typename... Ts>
+        constexpr operator std::tuple<Ts...>() const &&
+                requires (!detail::contains_reference_wrapper_v<std::tuple<Ts...>> &&
+                          !detail::has_dangling_rvalue_reference<
+                                  std::tuple<Ts...>, detail::flatten_proxy_const_rvalue_t<Tuple>
+                          >() &&
+                          std::is_constructible_v<
+                                  std::tuple<Ts...>, detail::flatten_proxy_const_rvalue_t<Tuple>
+                          >) {
+            return detail::flatten_materialize_as<true, std::tuple<Ts...>>(
+                detail::flatten_forward_one(std::forward<const Tuple>(tuple))
+            );
+        }
+
+        template<typename... Ts>
+        constexpr operator std::tuple<Ts...>() const &&
+                requires (
+                    detail::contains_reference_wrapper_v<std::tuple<Ts...>> ||
+                    detail::has_dangling_rvalue_reference<
+                        std::tuple<Ts...>, detail::flatten_proxy_const_rvalue_t<Tuple>
+                    >()
+                ) = delete;
     };
+
+    /// @brief Deduces reference storage for lvalue sources and owned storage for rvalues.
+    template<typename Tuple>
+    flatten_proxy(Tuple &&) -> flatten_proxy<
+            std::conditional_t<
+                    std::is_lvalue_reference_v<Tuple>,
+                    Tuple,
+                    std::remove_cvref_t<Tuple>
+            >
+    >;
 
     template<std::size_t I, typename Tuple>
     constexpr decltype(auto) get(const flatten_proxy<Tuple> &p) noexcept {

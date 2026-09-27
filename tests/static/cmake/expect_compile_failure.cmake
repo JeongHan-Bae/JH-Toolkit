@@ -45,9 +45,20 @@ endif()
 execute_process(
     COMMAND ${build_command}
     RESULT_VARIABLE build_result
-    OUTPUT_QUIET
-    ERROR_QUIET
+    OUTPUT_VARIABLE build_stdout
+    ERROR_VARIABLE build_stderr
 )
 if("${build_result}" STREQUAL "0")
     message(FATAL_ERROR "${STATIC_TEST_NAME} compiled successfully but must be rejected")
+endif()
+
+if(DEFINED STATIC_EXPECT_DIAGNOSTIC AND NOT STATIC_EXPECT_DIAGNOSTIC STREQUAL "")
+    string(CONCAT build_output "${build_stdout}" "${build_stderr}")
+    string(FIND "${build_output}" "${STATIC_EXPECT_DIAGNOSTIC}" diagnostic_position)
+    if(diagnostic_position EQUAL -1)
+        message(FATAL_ERROR
+            "${STATIC_TEST_NAME} failed to compile without the required diagnostic: "
+            "${STATIC_EXPECT_DIAGNOSTIC}\n${build_output}"
+        )
+    endif()
 endif()

@@ -50,8 +50,10 @@ with a [`jh::meta::flatten_proxy`](../../metax/flatten_proxy.md),
 while forwarding all non–tuple-like elements unchanged.
 
 This adaptor is implemented using [`jh::ranges::views::transform`](transform.md),
-and provides a *purely observational* projection — no copying, mutation,
-or eager expansion of elements.  
+and provides a lazy, observational projection: creating the view does not copy
+or mutate elements or eagerly expand them. Explicit conversion of a proxy to
+`std::tuple` materializes the elements and may copy or move them as described
+below.
 It can be used in both **direct** and **pipe** forms.
 
 ---
@@ -124,7 +126,7 @@ since both adaptors already enforce reentrancy constraints.
 | **Transformation model**   | Delegates to `jh::ranges::views::transform`.                    |
 | **Tuple-like detection**   | Determined by `jh::concepts::tuple_like`.                       |
 | **Proxy type**             | Uses `jh::meta::flatten_proxy` for structured tuple expansion.  |
-| **Observational purity**   | No mutation, no copying, no allocation.                         |
+| **Observational purity**   | View creation does not copy or mutate elements; materialization can. |
 | **Consumption semantics**  | Preserved according to transform's dispatch.                    |
 | **Pipeline compatibility** | Fully composable with lazy adaptors (`zip`, `enumerate`, etc.). |
 
@@ -184,17 +186,48 @@ for recursive deconstruction, in accordance with
 Each element returned by `flatten()` is a [`jh::meta::flatten_proxy`](../../metax/flatten_proxy.md) —
 a lightweight proxy that behaves as a structured tuple view.
 
-`flatten_proxy` supports **implicit conversion** to a `std::tuple` value,
-where reference handling follows the rules below:
+`flatten_proxy` supports **implicit conversion** to a `std::tuple`,
+forwarding flattened elements according to the proxy's value category. This
+conversion is the materialization boundary: the resulting tuple contains values
+and/or references, never `std::reference_wrapper` elements.
+Writing `auto result = proxy` only deduces and stores the proxy type; it does
+not request tuple materialization. Declare a `std::tuple<...>` target to test or
+request that conversion.
 
-| Original element type       | Convertible to in tuple                |
-|-----------------------------|----------------------------------------|
-| `T`                         | `T` only                               |
-| `T&`                        | `T&`, `T`                              |
-| `std::reference_wrapper<T>` | `std::reference_wrapper<T>`, `T&`, `T` |
+Fully value-owned nested input also supports constant-evaluated materialization:
 
-Thus, `flatten_proxy` can be materialized as an ordinary `std::tuple`
-without copying underlying elements when they are references.
+```cpp
+constexpr std::tuple<int, int, int> flat =
+    jh::meta::flatten_proxy{
+        std::tuple{std::tuple{1, std::tuple{2}}, std::tuple{3}}
+    };
+static_assert(flat == std::tuple{1, 2, 3});
+```
+
+| Proxy category | Flattened element category |
+|----------------|----------------------------|
+| lvalue         | lvalue                     |
+| rvalue         | rvalue                     |
+
+An lvalue input range is held by reference, and an rvalue input range is owned
+by the proxy. Source elements may be `std::reference_wrapper`; the materialized
+tuple cannot retain wrapper elements. The destination tuple constructs directly
+from the forwarded elements, avoiding an intermediate value tuple:
+
+* Materializing an lvalue or const lvalue proxy into value elements copies from
+  the source, whether the source element is owned, a reference, or a wrapper.
+* Materializing a mutable rvalue proxy moves its owned values into the result.
+  If an element is a reference or wrapper, its referent is copied first and that
+  copy is moved into the result; the original referent is not moved from.
+* A const rvalue proxy follows normal const rvalue construction rules; value
+  elements are copied when they cannot be moved from a const source.
+* Reference elements in the result continue to alias their source, which must
+  outlive the materialized tuple. A proxy cannot return references into its own
+  storage from an rvalue conversion, since those would dangle.
+
+After materialization, later operations on the range or tuple act on those
+resulting values and references. Copies and moves apply to the materialized
+values; reference elements still access their original source objects.
 
 Additionally, the resulting range produced by `flatten`
 is recognized by [`jh::ranges::to`](../to.md)

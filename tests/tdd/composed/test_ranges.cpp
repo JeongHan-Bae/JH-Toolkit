@@ -720,13 +720,13 @@ void tiny_test_case_16() {
     using jh::meta::flatten_proxy;
     using jh::pod::make_tuple;
 
-    constexpr auto t = std::tuple{
+    const auto t = std::tuple{
             std::tuple{1, 2},
             make_tuple(3, 4),
             std::tuple{make_tuple(5, 6), 7},
     };
 
-    constexpr auto fp = flatten_proxy{t};
+    const auto fp = flatten_proxy{t};
 
     std::ostringstream out;
     const auto [a, b, c, d, e, f, g] = fp;
@@ -736,12 +736,12 @@ void tiny_test_case_16() {
 }
 }
 template<>
-struct jh::test::tiny_test::test<"constexpr flatten_proxy recursion and tuple_materialize">
-    : jh::test::tiny_test::test_definition<"constexpr flatten_proxy recursion and tuple_materialize", &::test::tiny_test_case_16> {};
+struct jh::test::tiny_test::test<"flatten_proxy recursion and tuple_materialize">
+    : jh::test::tiny_test::test_definition<"flatten_proxy recursion and tuple_materialize", &::test::tiny_test_case_16> {};
 template<>
 struct jh::test::tiny_test::session<"test module test_ranges case 16">
     : jh::test::tiny_test::session_definition<
-          "test module test_ranges case 16", jh::test::tiny_test::test<"constexpr flatten_proxy recursion and tuple_materialize">
+          "test module test_ranges case 16", jh::test::tiny_test::test<"flatten_proxy recursion and tuple_materialize">
       > {};
 namespace test {
     [[maybe_unused]] const tiny_test::session<"test module test_ranges case 16"> registration_16{};
@@ -1150,4 +1150,3 @@ struct jh::test::tiny_test::session<"test module test_ranges case 24">
 namespace test {
     [[maybe_unused]] const tiny_test::session<"test module test_ranges case 24"> registration_24{};
 }
-

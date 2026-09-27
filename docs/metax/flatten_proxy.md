@@ -84,9 +84,17 @@ is recognized as *tuple-like*.
     * `tuple(tuple(), tuple(tuple()))` → `tuple()`
     * `tuple(ele1, tuple(), ele2)` → `tuple(ele1, ele2)`
 
-6. **Reference preservation**  
-   When elements are references or `std::reference_wrapper`, they are propagated
-   without copy or move. The entire flattening sequence remains constexpr-safe.
+6. **Reference and value-category preservation**
+   Reference elements are forwarded as references. An lvalue proxy exposes
+   lvalue elements; an rvalue proxy exposes rvalue elements. The source proxy
+   may contain `std::reference_wrapper`, but a materialized tuple cannot retain it.
+Moving a proxy moves owned values; referenced values remain lvalues, so they
+are copied into value elements or retained as references in the output tuple.
+An rvalue proxy cannot produce reference elements that would point into its
+owned storage after the proxy is destroyed.
+After conversion, later operations act on the materialized tuple's values or
+references: its values are independent copies or moved objects, while its
+reference elements still alias their sources.
 
 ---
 
@@ -161,7 +169,8 @@ A single-level `std::tuple` containing all recursively expanded elements.
 
 * Compile-time deterministic mapping.
 * Eliminates empty sub-tuples.
-* Preserves element categories (`value`, `reference`, or wrapper).
+* Produces value elements; referenced source elements are read and copied.
+* `flatten_proxy` preserves element references and rejects materialized tuples containing `std::reference_wrapper`.
 
 ---
 
@@ -172,13 +181,23 @@ template<typename Tuple>
 struct flatten_proxy {
     Tuple tuple;
 
+    template<typename Source>
+    constexpr explicit flatten_proxy(Source&& source);
+
     template<std::size_t I>
     [[nodiscard]] constexpr auto get() const noexcept;
 
     template<typename... Ts>
-    constexpr operator std::tuple<Ts...>() const;
+    constexpr operator std::tuple<Ts...>() &;
 
-    constexpr operator auto() const;
+    template<typename... Ts>
+    constexpr operator std::tuple<Ts...>() const &;
+
+    template<typename... Ts>
+    constexpr operator std::tuple<Ts...>() &&;
+
+    template<typename... Ts>
+    constexpr operator std::tuple<Ts...>() const &&;
 };
 ```
 
@@ -187,13 +206,25 @@ struct flatten_proxy {
 It behaves like a flattened tuple, supports **structured binding**,
 and can be **implicitly converted** to a fully materialized `std::tuple`.  
 
-Internally, `flatten_proxy` computes the **recursive mapping** at compile time,
-but delays actual tuple materialization until an implicit conversion occurs.  
+Constructing from an lvalue stores a reference to the source; constructing from
+an rvalue stores it by value. Conversion forwards flattened elements directly
+to the destination tuple, so it does not create an intermediate value tuple.
+`auto result = proxy` keeps the proxy type and does not materialize a tuple;
+declare a `std::tuple<...>` target to request the conversion.
+Fully value-owned nested input can be materialized in a constant expression:
+
+```cpp
+constexpr std::tuple<int, int, int> flat =
+    jh::meta::flatten_proxy{
+        std::tuple{std::tuple{1, std::tuple{2}}, std::tuple{3}}
+    };
+static_assert(flat == std::tuple{1, 2, 3});
+```
 
 **Key Traits:**
 
-* Non-owning, lightweight proxy — no copies or allocations.
-* Reference-safe — preserves references and wrappers.
+* Lightweight proxy — lvalue inputs are held by reference and rvalue inputs are owned.
+* Reference-safe — preserves reference elements and rejects materialized tuples containing `std::reference_wrapper`.
 * Fully usable in `constexpr` / `consteval` contexts.
 * Provides structural compatibility with `std::tuple` via specialization.
 

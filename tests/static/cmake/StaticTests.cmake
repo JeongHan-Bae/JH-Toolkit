@@ -24,7 +24,7 @@ function(project_static_pass name source)
 endfunction()
 
 function(project_static_fail name source)
-    cmake_parse_arguments(STATIC "" "TARGET" "" ${ARGN})
+    cmake_parse_arguments(STATIC "" "TARGET;EXPECT_DIAGNOSTIC" "" ${ARGN})
     if(NOT STATIC_TARGET)
         set(STATIC_TARGET jh-toolkit)
     endif()
@@ -38,6 +38,7 @@ function(project_static_fail name source)
             "-DSTATIC_TOOLKIT_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
             "-DSTATIC_RUNNER_SOURCE_DIR=${CMAKE_CURRENT_FUNCTION_LIST_DIR}/fail_runner"
             "-DSTATIC_RUNNER_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/runner/${name}"
+            "-DSTATIC_EXPECT_DIAGNOSTIC=${STATIC_EXPECT_DIAGNOSTIC}"
             "-DSTATIC_GENERATOR=${CMAKE_GENERATOR}"
             "-DSTATIC_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}"
             "-DSTATIC_GENERATOR_TOOLSET=${CMAKE_GENERATOR_TOOLSET}"
