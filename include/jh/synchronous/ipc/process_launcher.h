@@ -33,7 +33,7 @@
  *     <ul>
  *       <li>Any file with execute permission can be launched (binary or script).</li>
  *       <li><code>fork()</code> creates the child, <code>execl()</code> replaces its image.</li>
- *       <li><code>wait()</code> maps to <code>waitpid()</code>.</li>
+ *       <li><code>wait()</code> uses <code>waitpid()</code> to return normal exit codes or report signal termination.</li>
  *     </ul>
  *   </li>
  *   <li><strong>Windows / MSYS2</strong>:
@@ -41,7 +41,7 @@
  *       <li>Child processes must originate from an <strong>executable image</strong>
  *           (e.g. <code>.exe</code>, <code>.bat</code>, <code>.ps1</code>).</li>
  *       <li><code>CreateProcess()</code> is used for launching.</li>
- *       <li><code>wait()</code> maps to <code>WaitForSingleObject()</code>.</li>
+ *       <li><code>wait()</code> uses <code>WaitForSingleObject()</code> and reads the process exit code.</li>
  *     </ul>
  *   </li>
  * </ul>
@@ -186,8 +186,11 @@
 #endif
 
 #include "jh/macros/platform.h"
+#include "jh/metax/expected.h"
 #include "jh/metax/t_str.h"
 #include "jh/synchronous/ipc/ipc_limits.h"
+#include <cstdint>
+#include <cerrno>
 #include <string>
 #include <stdexcept>
 #include <filesystem>
@@ -196,7 +199,7 @@
 #if IS_WINDOWS
 #include <windows.h>  // STARTUPINFO, PROCESS_INFORMATION, CreateProcess, WaitForSingleObject, CloseHandle
 #elif IS_POSIX
-
+#include <csignal>
 #include <unistd.h>   // fork, execl, _exit
 #include <sys/wait.h> // waitpid
 
@@ -204,6 +207,173 @@
 
 
 namespace jh::sync::ipc {
+
+    /**
+     * @brief Describes why a launched process did not produce a normal exit value.
+     *
+     * On POSIX, a signal termination stores the signal number as the enum value.
+     * The core-dump flag is combined with that number when the system reports one.
+     * Named signal values are provided when the platform defines the corresponding
+     * signal; other signal numbers, including real-time signals, are preserved too.
+     */
+    enum class process_exit_error : std::uint32_t {
+#if IS_POSIX
+        /// @brief POSIX signal number SIGHUP.
+        signal_hangup = SIGHUP,
+        /// @brief POSIX signal number SIGINT.
+        signal_interrupt = SIGINT,
+        /// @brief POSIX signal number SIGQUIT.
+        signal_quit = SIGQUIT,
+        /// @brief POSIX signal number SIGILL.
+        signal_illegal_instruction = SIGILL,
+        /// @brief POSIX signal number SIGABRT.
+        signal_abort = SIGABRT,
+        /// @brief POSIX signal number SIGFPE.
+        signal_floating_point = SIGFPE,
+        /// @brief POSIX signal number SIGKILL.
+        signal_killed = SIGKILL,
+        /// @brief POSIX signal number SIGSEGV.
+        signal_segmentation_fault = SIGSEGV,
+        /// @brief POSIX signal number SIGPIPE.
+        signal_broken_pipe = SIGPIPE,
+        /// @brief POSIX signal number SIGALRM.
+        signal_alarm = SIGALRM,
+        /// @brief POSIX signal number SIGTERM.
+        signal_terminate = SIGTERM,
+        /// @brief POSIX signal number SIGUSR1.
+        signal_user_1 = SIGUSR1,
+        /// @brief POSIX signal number SIGUSR2.
+        signal_user_2 = SIGUSR2,
+        /// @brief POSIX signal number SIGCHLD.
+        signal_child = SIGCHLD,
+        /// @brief POSIX signal number SIGCONT.
+        signal_continue = SIGCONT,
+        /// @brief POSIX signal number SIGSTOP.
+        signal_stop = SIGSTOP,
+        /// @brief POSIX signal number SIGTSTP.
+        signal_terminal_stop = SIGTSTP,
+        /// @brief POSIX signal number SIGTTIN.
+        signal_background_terminal_input = SIGTTIN,
+        /// @brief POSIX signal number SIGTTOU.
+        signal_background_terminal_output = SIGTTOU,
+#ifdef SIGBUS
+        /// @brief POSIX signal number SIGBUS.
+        signal_bus_error = SIGBUS,
+#endif
+#ifdef SIGTRAP
+        /// @brief Platform signal number SIGTRAP.
+        signal_trap = SIGTRAP,
+#endif
+#ifdef SIGURG
+        /// @brief Platform signal number SIGURG.
+        signal_urgent_socket = SIGURG,
+#endif
+#ifdef SIGXCPU
+        /// @brief Platform signal number SIGXCPU.
+        signal_cpu_limit = SIGXCPU,
+#endif
+#ifdef SIGXFSZ
+        /// @brief Platform signal number SIGXFSZ.
+        signal_file_size_limit = SIGXFSZ,
+#endif
+#ifdef SIGVTALRM
+        /// @brief Platform signal number SIGVTALRM.
+        signal_virtual_alarm = SIGVTALRM,
+#endif
+#ifdef SIGPROF
+        /// @brief Platform signal number SIGPROF.
+        signal_profiling_alarm = SIGPROF,
+#endif
+#ifdef SIGWINCH
+        /// @brief Platform signal number SIGWINCH.
+        signal_window_change = SIGWINCH,
+#endif
+#ifdef SIGPOLL
+        /// @brief Platform signal number SIGPOLL.
+        signal_poll = SIGPOLL,
+#endif
+#ifdef SIGSYS
+        /// @brief Platform signal number SIGSYS.
+        signal_bad_system_call = SIGSYS,
+#endif
+#ifdef SIGEMT
+        /// @brief Platform signal number SIGEMT.
+        signal_emulator_trap = SIGEMT,
+#endif
+#ifdef SIGINFO
+        /// @brief Platform signal number SIGINFO.
+        signal_information = SIGINFO,
+#endif
+#ifdef SIGIOT
+        /// @brief Platform signal number SIGIOT.
+        signal_iot = SIGIOT,
+#endif
+#ifdef SIGIO
+        /// @brief Platform signal number SIGIO.
+        signal_io = SIGIO,
+#endif
+#ifdef SIGPWR
+        /// @brief Platform signal number SIGPWR.
+        signal_power_failure = SIGPWR,
+#endif
+#ifdef SIGSTKFLT
+        /// @brief Platform signal number SIGSTKFLT.
+        signal_stack_fault = SIGSTKFLT,
+#endif
+#endif
+        /// @brief The child stopped without returning a normal process exit code.
+        abnormal_termination = 0x7FFFFFFEu,
+        /// @brief The operating system could not provide a child process status.
+        wait_failed = 0x7FFFFFFFu
+    };
+
+#if IS_POSIX
+    /// @brief Bit set in a POSIX process error when the wait status reports a core dump.
+    inline constexpr std::uint32_t process_exit_core_dump_mask = 0x80000000u;
+
+    /**
+     * @brief Return whether an error encodes a POSIX terminating signal.
+     * @param error Process error returned by <code>handle::wait()</code>.
+     * @return <code>true</code> when the error stores a signal number.
+     */
+    [[nodiscard]] inline constexpr bool process_exit_is_signal(const process_exit_error error) noexcept {
+        const auto raw = static_cast<std::uint32_t>(error);
+        const auto signal = raw & ~process_exit_core_dump_mask;
+        return signal != 0 && signal < static_cast<std::uint32_t>(process_exit_error::abnormal_termination);
+    }
+
+    /**
+     * @brief Return the POSIX signal number encoded in a signal termination error.
+     * @param error Process error returned by <code>handle::wait()</code>.
+     * @return The terminating signal number. Call only when
+     *         <code>process_exit_is_signal(error)</code> is true.
+     */
+    [[nodiscard]] inline constexpr std::uint32_t process_exit_signal_number(
+        const process_exit_error error
+    ) noexcept {
+        return static_cast<std::uint32_t>(error) & ~process_exit_core_dump_mask;
+    }
+
+    /**
+     * @brief Return whether the POSIX system reported a core dump for the signal termination.
+     * @param error Process error returned by <code>handle::wait()</code>.
+     * @return <code>true</code> if the signal termination generated a core dump.
+     */
+    [[nodiscard]] inline constexpr bool process_exit_has_core_dump(const process_exit_error error) noexcept {
+        return process_exit_is_signal(error) &&
+               (static_cast<std::uint32_t>(error) & process_exit_core_dump_mask) != 0;
+    }
+#endif
+
+    /**
+     * @brief Normal process exit code or an abnormal termination or wait error.
+     *
+     * The success type is a fixed-width unsigned carrier for every supported
+     * platform. POSIX <code>waitpid()</code> exposes only the low 8 bits of a
+     * normal exit status, while Windows <code>GetExitCodeProcess()</code> returns
+     * a 32-bit unsigned <code>DWORD</code>.
+     */
+    using process_exit_result = jh::meta::expected<std::uint32_t, process_exit_error>;
 
     /**
      * @brief Cross-platform process launcher.
@@ -268,6 +438,25 @@ namespace jh::sync::ipc {
      */
     template<jh::meta::TStr Path, bool IsBinary = true> requires (limits::valid_relative_path<Path>())
     class process_launcher final {
+#if IS_WINDOWS
+    private:
+        static constexpr bool is_abnormal_exit_code(const DWORD code) noexcept {
+            switch (code) {
+                case EXCEPTION_ACCESS_VIOLATION:
+                case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+                case EXCEPTION_ILLEGAL_INSTRUCTION:
+                case EXCEPTION_INT_DIVIDE_BY_ZERO:
+                case EXCEPTION_NONCONTINUABLE_EXCEPTION:
+                case EXCEPTION_PRIV_INSTRUCTION:
+                case EXCEPTION_STACK_OVERFLOW:
+                case 0xC000013Au:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+#endif
+
     public:
         process_launcher() = delete;                                    ///< Not constructible.
         process_launcher(const process_launcher &) = delete;            ///< Not copyable.
@@ -344,22 +533,70 @@ namespace jh::sync::ipc {
             }
 
             /**
-             * @brief Wait for the launched process to finish.
+             * @brief Wait for the process and return its normal exit code.
              *
-             * <p>
-             * Blocks until the child process terminates.
-             * Multiple calls are idempotent.
-             * </p>
+             * A normal exit is a value even when the code is nonzero. Abnormal
+             * termination or a wait-system-call failure is returned as an error.
+             * Repeated waits return the cached result.
+             * On POSIX, signal termination is detected with <code>waitpid()</code>.
+             * A normal POSIX exit value is limited by <code>WEXITSTATUS</code> to
+             * the low 8 bits; Windows returns the full 32-bit process exit code.
+             * On Windows, known structured-exception exit codes are classified as abnormal;
+             * other platform exit codes are returned as normal values.
+             *
+             * @return The process exit code, or a process exit error.
              */
-            void wait() {
-                if (waited_) return;
+            [[nodiscard]] process_exit_result wait() {
+                if (waited_) return exit_result_;
 #if IS_WINDOWS
-                WaitForSingleObject(pi_.hProcess, INFINITE);
-#elif IS_POSIX
-                int status;
-                waitpid(pid_, &status, 0);
-#endif
+                const DWORD wait_status = WaitForSingleObject(pi_.hProcess, INFINITE);
+                if (wait_status != WAIT_OBJECT_0) {
+                    waited_ = true;
+                    exit_result_ = jh::meta::unexpected{process_exit_error::wait_failed};
+                    return exit_result_;
+                }
+
+                DWORD exit_code{};
+                if (!GetExitCodeProcess(pi_.hProcess, &exit_code)) {
+                    waited_ = true;
+                    exit_result_ = jh::meta::unexpected{process_exit_error::wait_failed};
+                    return exit_result_;
+                }
+
                 waited_ = true;
+                if (process_launcher::is_abnormal_exit_code(exit_code)) {
+                    exit_result_ = jh::meta::unexpected{process_exit_error::abnormal_termination};
+                } else {
+                    exit_result_ = static_cast<std::uint32_t>(exit_code);
+                }
+                return exit_result_;
+#elif IS_POSIX
+                int status{};
+                pid_t wait_status{};
+                do {
+                    wait_status = waitpid(pid_, &status, 0);
+                } while (wait_status == -1 && errno == EINTR);
+
+                if (wait_status == -1) {
+                    waited_ = true;
+                    exit_result_ = jh::meta::unexpected{process_exit_error::wait_failed};
+                    return exit_result_;
+                }
+
+                waited_ = true;
+                if (WIFEXITED(status)) {
+                    exit_result_ = static_cast<std::uint32_t>(WEXITSTATUS(status));
+                } else if (WIFSIGNALED(status)) {
+                    std::uint32_t error = static_cast<std::uint32_t>(WTERMSIG(status));
+#ifdef WCOREDUMP
+                    if (WCOREDUMP(status)) error |= process_exit_core_dump_mask;
+#endif
+                    exit_result_ = jh::meta::unexpected{static_cast<process_exit_error>(error)};
+                } else {
+                    exit_result_ = jh::meta::unexpected{process_exit_error::abnormal_termination};
+                }
+                return exit_result_;
+#endif
             }
 
         private:
@@ -380,6 +617,7 @@ namespace jh::sync::ipc {
             {}
 
             bool waited_{false};
+            process_exit_result exit_result_{};
 
 #if IS_WINDOWS
             PROCESS_INFORMATION pi_{};
@@ -406,6 +644,7 @@ namespace jh::sync::ipc {
                 // mark source as waited
                 waited_ = false;
                 other.waited_ = true;
+                other.exit_result_ = jh::meta::unexpected{process_exit_error::wait_failed};
             }
         };
 

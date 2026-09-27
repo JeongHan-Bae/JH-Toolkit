@@ -1,4 +1,9 @@
-#include <catch2/catch_all.hpp>
+#define TINY_TEST_MAIN
+#include "jh/test/tiny_test/tiny_test.hpp"
+
+namespace test::tiny_test {
+    using namespace jh::test::tiny_test;
+}
 
 #include <sstream>
 #include <vector>
@@ -6,7 +11,9 @@
 
 #include "jh/async"
 
-TEST_CASE("Basic Order") {
+
+namespace test {
+void tiny_test_case_1() {
     std::ostringstream out;
 
     auto test_basic_order = [&](int id) -> jh::async::fiber {
@@ -54,10 +61,26 @@ TEST_CASE("Basic Order") {
             "[basic] fiber 2 finished\n"
             "[basic] fiber 3 finished\n";
 
-    REQUIRE(out.str() == expected);
+    jh::test::tiny_test::expect(static_cast<bool>((out.str() == expected)), "out.str() == expected");
+
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Basic Order">
+    : jh::test::tiny_test::test_definition<"Basic Order", &::test::tiny_test_case_1> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_fiber case 1">
+    : jh::test::tiny_test::session_definition<
+          "test module test_fiber case 1", jh::test::tiny_test::test<"Basic Order">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_fiber case 1"> registration_1{};
 }
 
-TEST_CASE("Early End") {
+
+
+namespace test {
+void tiny_test_case_2() {
     std::ostringstream out;
 
     auto test_early_end = [&](int x) -> jh::async::fiber {
@@ -106,10 +129,26 @@ TEST_CASE("Early End") {
             "[early] step 4, x=1(32)\n"
             "[early] finished normally\n";
 
-    REQUIRE(out.str() == expected);
+    jh::test::tiny_test::expect(static_cast<bool>((out.str() == expected)), "out.str() == expected");
+
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Early End">
+    : jh::test::tiny_test::test_definition<"Early End", &::test::tiny_test_case_2> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_fiber case 2">
+    : jh::test::tiny_test::session_definition<
+          "test module test_fiber case 2", jh::test::tiny_test::test<"Early End">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_fiber case 2"> registration_2{};
 }
 
-TEST_CASE("Move Semantics") {
+
+
+namespace test {
+void tiny_test_case_3() {
     std::ostringstream out;
 
     auto test_move = [&]() -> jh::async::fiber {
@@ -134,10 +173,26 @@ TEST_CASE("Move Semantics") {
             "[move] B\n"
             "[move] done\n";
 
-    REQUIRE(out.str() == expected);
+    jh::test::tiny_test::expect(static_cast<bool>((out.str() == expected)), "out.str() == expected");
+
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Move Semantics">
+    : jh::test::tiny_test::test_definition<"Move Semantics", &::test::tiny_test_case_3> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_fiber case 3">
+    : jh::test::tiny_test::session_definition<
+          "test module test_fiber case 3", jh::test::tiny_test::test<"Move Semantics">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_fiber case 3"> registration_3{};
 }
 
-TEST_CASE("Multi Step") {
+
+
+namespace test {
+void tiny_test_case_4() {
     std::ostringstream out;
 
     auto test_multi = [&](int id) -> jh::async::fiber {
@@ -172,10 +227,26 @@ TEST_CASE("Multi Step") {
             "[multi] fiber 1 step 2\n"
             "[multi] fiber 2 step 2\n";
 
-    REQUIRE(out.str() == expected);
+    jh::test::tiny_test::expect(static_cast<bool>((out.str() == expected)), "out.str() == expected");
+
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Multi Step">
+    : jh::test::tiny_test::test_definition<"Multi Step", &::test::tiny_test_case_4> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_fiber case 4">
+    : jh::test::tiny_test::session_definition<
+          "test module test_fiber case 4", jh::test::tiny_test::test<"Multi Step">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_fiber case 4"> registration_4{};
 }
 
-TEST_CASE("Lambda Fiber") {
+
+
+namespace test {
+void tiny_test_case_5() {
     std::ostringstream out;
 
     auto lambda_f1 = [out_copy = std::ref(out)]() -> jh::async::fiber {
@@ -222,5 +293,19 @@ TEST_CASE("Lambda Fiber") {
             "[lambda] loop 2\n"
             "[lambda] finished\n";
 
-    REQUIRE(out.str() == expected);
+    jh::test::tiny_test::expect(static_cast<bool>((out.str() == expected)), "out.str() == expected");
+
 }
+}
+template<>
+struct jh::test::tiny_test::test<"Lambda Fiber">
+    : jh::test::tiny_test::test_definition<"Lambda Fiber", &::test::tiny_test_case_5> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_fiber case 5">
+    : jh::test::tiny_test::session_definition<
+          "test module test_fiber case 5", jh::test::tiny_test::test<"Lambda Fiber">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_fiber case 5"> registration_5{};
+}
+

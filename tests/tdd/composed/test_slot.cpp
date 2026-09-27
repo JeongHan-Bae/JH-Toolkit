@@ -1,4 +1,9 @@
-#include <catch2/catch_all.hpp>
+#define TINY_TEST_MAIN
+#include "jh/test/tiny_test/tiny_test.hpp"
+
+namespace test::tiny_test {
+    using namespace jh::test::tiny_test;
+}
 
 #include "jh/async"
 #include "jh/macros/platform.h"
@@ -11,7 +16,9 @@
 #include <sstream>
 #include <tuple>
 
-TEST_CASE("Basic Test") {
+
+namespace test {
+void tiny_test_case_1() {
     using namespace std::chrono_literals;
     using jh::async::slot;
     using jh::async::slot_hub;
@@ -58,22 +65,38 @@ TEST_CASE("Basic Test") {
     emit_int.join();
     auto log = out.str();
 
-    REQUIRE(log.find("[slot coro] started") != std::string::npos);
+    jh::test::tiny_test::expect(static_cast<bool>((log.find("[slot coro] started") != std::string::npos)), "log.find(\"[slot coro] started\") != std::string::npos");
 
     for (int i = 0; i < 5; ++i) {
         std::string emit_tag = "[emit-int] emit(" + std::to_string(i) + ")\n";
         std::string slot_tag = "[slot coro] int = " + std::to_string(i) + "\n";
 
         auto pos_emit = log.find(emit_tag);
-        REQUIRE(pos_emit != std::string::npos);
+        jh::test::tiny_test::expect(static_cast<bool>((pos_emit != std::string::npos)), "pos_emit != std::string::npos");
 
         auto pos_slot = log.find(slot_tag, pos_emit);
-        REQUIRE(pos_slot != std::string::npos);
+        jh::test::tiny_test::expect(static_cast<bool>((pos_slot != std::string::npos)), "pos_slot != std::string::npos");
     }
 
+
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Basic Test">
+    : jh::test::tiny_test::test_definition<"Basic Test", &::test::tiny_test_case_1> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_slot case 1">
+    : jh::test::tiny_test::session_definition<
+          "test module test_slot case 1", jh::test::tiny_test::test<"Basic Test">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_slot case 1"> registration_1{};
 }
 
-TEST_CASE("Conditional Start Test") {
+
+
+namespace test {
+void tiny_test_case_2() {
     using namespace std::chrono_literals;
     using jh::async::slot;
     using jh::async::slot_hub;
@@ -138,17 +161,17 @@ TEST_CASE("Conditional Start Test") {
 
     const std::string log = out.str();
 
-    REQUIRE(log.find("[slot coro] started") != std::string::npos);
+    jh::test::tiny_test::expect(static_cast<bool>((log.find("[slot coro] started") != std::string::npos)), "log.find(\"[slot coro] started\") != std::string::npos");
 
     std::string tag10 = "[slot coro] int = 10";
     size_t pos_first10 = log.find(tag10);
-    REQUIRE(pos_first10 != std::string::npos);
+    jh::test::tiny_test::expect(static_cast<bool>((pos_first10 != std::string::npos)), "pos_first10 != std::string::npos");
 
     std::string log_before10 = log.substr(0, pos_first10);
 
     for (int k = 0; k <= 5; k++) {
         std::string t = "[slot coro] int = " + std::to_string(k);
-        REQUIRE(log_before10.find(t) == std::string::npos);
+        jh::test::tiny_test::expect(static_cast<bool>((log_before10.find(t) == std::string::npos)), "log_before10.find(t) == std::string::npos");
     }
 
     auto count_occ = [&](const std::string &needle) {
@@ -162,18 +185,34 @@ TEST_CASE("Conditional Start Test") {
 
     for (int k = 0; k <= 5; k++) {
         std::string t = "[slot coro] int = " + std::to_string(k) + "\n";
-        REQUIRE(count_occ(t) == 1);
+        jh::test::tiny_test::expect(static_cast<bool>((count_occ(t) == 1)), "count_occ(t) == 1");
     }
 
     for (int k = 6; k <= 9; k++) {
         std::string t = "[slot coro] int = " + std::to_string(k) + "\n";
-        REQUIRE(count_occ(t) == 2);
+        jh::test::tiny_test::expect(static_cast<bool>((count_occ(t) == 2)), "count_occ(t) == 2");
     }
 
-    REQUIRE(count_occ("[slot coro] int = 10\n") == 1);
+    jh::test::tiny_test::expect(static_cast<bool>((count_occ("[slot coro] int = 10\n") == 1)), "count_occ(\"[slot coro] int = 10\\n\") == 1");
+
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Conditional Start Test">
+    : jh::test::tiny_test::test_definition<"Conditional Start Test", &::test::tiny_test_case_2> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_slot case 2">
+    : jh::test::tiny_test::session_definition<
+          "test module test_slot case 2", jh::test::tiny_test::test<"Conditional Start Test">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_slot case 2"> registration_2{};
 }
 
-TEST_CASE("Multi-Signal Single-Listener Test") {
+
+
+namespace test {
+void tiny_test_case_3() {
     using namespace std::chrono_literals;
 
     using jh::async::slot;
@@ -244,7 +283,7 @@ TEST_CASE("Multi-Signal Single-Listener Test") {
 
     const std::string log = out.str();
 
-    REQUIRE(log.find("[slot coro] started") != std::string::npos);
+    jh::test::tiny_test::expect(static_cast<bool>((log.find("[slot coro] started") != std::string::npos)), "log.find(\"[slot coro] started\") != std::string::npos");
 
     // ---- For signal 1 (0..4), expect int1 = N ----
     for (int v = 0; v < 5; v++) {
@@ -254,14 +293,14 @@ TEST_CASE("Multi-Signal Single-Listener Test") {
 
         // emit must appear
         auto pos_emit = log.find(emit_tag);
-        REQUIRE(pos_emit != std::string::npos);
+        jh::test::tiny_test::expect(static_cast<bool>((pos_emit != std::string::npos)), "pos_emit != std::string::npos");
 
         // valid slot output must appear AFTER corresponding emit
         auto pos_slot = log.find(slot_tag, pos_emit);
-        REQUIRE(pos_slot != std::string::npos);
+        jh::test::tiny_test::expect(static_cast<bool>((pos_slot != std::string::npos)), "pos_slot != std::string::npos");
 
         // impossible output must *never* appear anywhere
-        REQUIRE(log.find(impossible_slot_tag) == std::string::npos);
+        jh::test::tiny_test::expect(static_cast<bool>((log.find(impossible_slot_tag) == std::string::npos)), "log.find(impossible_slot_tag) == std::string::npos");
     }
 
     // ---- For signal 2 (10..14), expect int2 = N ----
@@ -272,19 +311,35 @@ TEST_CASE("Multi-Signal Single-Listener Test") {
 
         // emit must appear
         auto pos_emit = log.find(emit_tag);
-        REQUIRE(pos_emit != std::string::npos);
+        jh::test::tiny_test::expect(static_cast<bool>((pos_emit != std::string::npos)), "pos_emit != std::string::npos");
 
         // valid slot output must appear AFTER corresponding emit
         auto pos_slot = log.find(slot_tag, pos_emit);
-        REQUIRE(pos_slot != std::string::npos);
+        jh::test::tiny_test::expect(static_cast<bool>((pos_slot != std::string::npos)), "pos_slot != std::string::npos");
 
         // impossible output must *never* appear anywhere
-        REQUIRE(log.find(impossible_slot_tag) == std::string::npos);
+        jh::test::tiny_test::expect(static_cast<bool>((log.find(impossible_slot_tag) == std::string::npos)), "log.find(impossible_slot_tag) == std::string::npos");
     }
 
+
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Multi-Signal Single-Listener Test">
+    : jh::test::tiny_test::test_definition<"Multi-Signal Single-Listener Test", &::test::tiny_test_case_3> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_slot case 3">
+    : jh::test::tiny_test::session_definition<
+          "test module test_slot case 3", jh::test::tiny_test::test<"Multi-Signal Single-Listener Test">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_slot case 3"> registration_3{};
 }
 
-TEST_CASE("Different-Type Event Test") {
+
+
+namespace test {
+void tiny_test_case_4() {
     using namespace std::chrono_literals;
 
     using jh::async::slot;
@@ -393,15 +448,31 @@ TEST_CASE("Different-Type Event Test") {
 
     const std::string log = out.str();
 
-    REQUIRE(log.find("[slot coro] started") != std::string::npos);
+    jh::test::tiny_test::expect(static_cast<bool>((log.find("[slot coro] started") != std::string::npos)), "log.find(\"[slot coro] started\") != std::string::npos");
 
     // compare vectors (strict equality)
-    REQUIRE(vec_int1 == expected_int1);
-    REQUIRE(vec_int2 == expected_int2);
-    REQUIRE(vec_str == expected_str);
+    jh::test::tiny_test::expect(static_cast<bool>((vec_int1 == expected_int1)), "vec_int1 == expected_int1");
+    jh::test::tiny_test::expect(static_cast<bool>((vec_int2 == expected_int2)), "vec_int2 == expected_int2");
+    jh::test::tiny_test::expect(static_cast<bool>((vec_str == expected_str)), "vec_str == expected_str");
+
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Different-Type Event Test">
+    : jh::test::tiny_test::test_definition<"Different-Type Event Test", &::test::tiny_test_case_4> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_slot case 4">
+    : jh::test::tiny_test::session_definition<
+          "test module test_slot case 4", jh::test::tiny_test::test<"Different-Type Event Test">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_slot case 4"> registration_4{};
 }
 
-TEST_CASE("Two-Listener Switch Test") {
+
+
+namespace test {
+void tiny_test_case_5() {
     using namespace std::chrono_literals;
 
     using jh::async::slot;
@@ -501,9 +572,23 @@ TEST_CASE("Two-Listener Switch Test") {
 
     const std::string log = out.str();
 
-    REQUIRE(log.find("[slot coro] started") != std::string::npos);
+    jh::test::tiny_test::expect(static_cast<bool>((log.find("[slot coro] started") != std::string::npos)), "log.find(\"[slot coro] started\") != std::string::npos");
 
     // vector match
-    REQUIRE(vec_int == expected_ints);
-    REQUIRE(vec_str == expected_strs);
+    jh::test::tiny_test::expect(static_cast<bool>((vec_int == expected_ints)), "vec_int == expected_ints");
+    jh::test::tiny_test::expect(static_cast<bool>((vec_str == expected_strs)), "vec_str == expected_strs");
+
 }
+}
+template<>
+struct jh::test::tiny_test::test<"Two-Listener Switch Test">
+    : jh::test::tiny_test::test_definition<"Two-Listener Switch Test", &::test::tiny_test_case_5> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_slot case 5">
+    : jh::test::tiny_test::session_definition<
+          "test module test_slot case 5", jh::test::tiny_test::test<"Two-Listener Switch Test">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_slot case 5"> registration_5{};
+}
+

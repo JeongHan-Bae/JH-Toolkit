@@ -174,8 +174,8 @@ void run_mutex_launcher_example() {
     auto writer = writer_launcher_t::start();
     auto reader = reader_launcher_t::start();
 
-    writer.wait();
-    reader.wait();
+    [[maybe_unused]] const auto writer_result = writer.wait();
+    [[maybe_unused]] const auto reader_result = reader.wait();
 
     std::cout << "Mutex demo finished, unlinking named semaphore...\n";
     priv_mutex_t::unlink();
@@ -209,7 +209,7 @@ void run_counter_example() {
     }
 
     for (auto &h : handles) {
-        h.wait();
+        [[maybe_unused]] const auto result = h.wait();
     }
 
     const auto total = counter_t::instance().load_strong();
@@ -254,9 +254,9 @@ void run_cond_var_example() {
     const auto start = steady_clock::now();
     auto awaker = awaker_launcher_t::start();
 
-    awaker.wait();
+    [[maybe_unused]] const auto awaker_result = awaker.wait();
     for (auto &h : handles) {
-        h.wait();
+        [[maybe_unused]] const auto result = h.wait();
     }
 
     const auto elapsed_ms = duration_cast<milliseconds>(steady_clock::now() - start).count();
@@ -311,7 +311,7 @@ void run_shared_pod_example() {
     }
 
     for (auto &w : writers) {
-        w.wait();
+        [[maybe_unused]] const auto result = w.wait();
     }
 
     shm.flush_acquire();

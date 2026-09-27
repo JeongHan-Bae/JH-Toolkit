@@ -77,27 +77,20 @@ option(JH_ENABLE_EXAMPLES
         "Build jh-toolkit examples"
         OFF)
 
-# Auto-enable development features (only top-level)
+# Auto-enable tests for development builds (only top-level)
 if (PROJECT_IS_TOP_LEVEL)
 
     if (WIN32 AND
-    (CMAKE_BUILD_TYPE STREQUAL "Release" OR
+        (CMAKE_BUILD_TYPE STREQUAL "Release" OR
             CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
         set(JH_ENABLE_TESTING ON CACHE BOOL "" FORCE)
-        set(JH_ENABLE_EXAMPLES ON CACHE BOOL "" FORCE)
     endif ()
 
     if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR
             CMAKE_BUILD_TYPE STREQUAL "FastDebug")
         set(JH_ENABLE_TESTING ON CACHE BOOL "" FORCE)
-        set(JH_ENABLE_EXAMPLES ON CACHE BOOL "" FORCE)
     endif ()
 
-endif ()
-
-if (JH_ENABLE_TESTING AND NOT JH_ENABLE_EXAMPLES)
-    message(STATUS "Enabling examples because testing requires them.")
-    set(JH_ENABLE_EXAMPLES ON CACHE BOOL "" FORCE)
 endif ()
 
 set(JH_APPLY_COMPILE_OPT TRUE)

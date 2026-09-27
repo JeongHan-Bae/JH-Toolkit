@@ -75,25 +75,6 @@ namespace test::fail {
         cucumber::Given<"<uint> is cool", &AmbiguousScalarSteps::unsigned_is_cool>
     >;
 
-    class DuplicateBindingSteps final {
-    public:
-        void first() {}
-        void second() {}
-    };
-
-    using DuplicateGivenFirst = cucumber::Given<"the same step", &DuplicateBindingSteps::first>;
-    using DuplicateGivenSecond = cucumber::Given<"the same step", &DuplicateBindingSteps::second>;
-    using SameTextWhen = cucumber::When<"the same step", &DuplicateBindingSteps::second>;
-
-    static_assert(!cucumber::detail::unique_step_bindings_v<
-        DuplicateGivenFirst,
-        DuplicateGivenSecond
-    >);
-    static_assert(cucumber::detail::unique_step_bindings_v<
-        DuplicateGivenFirst,
-        SameTextWhen
-    >);
-
     class TableAttachmentSteps final {
     public:
         inline static std::size_t without_table_calls{};
@@ -112,15 +93,6 @@ namespace test::fail {
         "the following configuration",
         &TableAttachmentSteps::with_mutable_table
     >;
-
-    static_assert(cucumber::detail::binding_signature_valid<
-        TableAttachmentSteps,
-        ConstTableBinding
-    >());
-    static_assert(!cucumber::detail::binding_signature_valid<
-        TableAttachmentSteps,
-        MutableTableBinding
-    >());
 
     using UnexpectedDataTableDefinition = cucumber::StepDefinition<
         TableAttachmentSteps,

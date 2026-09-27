@@ -1405,7 +1405,7 @@ namespace jh {
      * <ul>
      *   <li>Array sizes: 1,024 and 1,000,000 elements</li>
      *   <li>Bernoulli(0.5) data distribution</li>
-     *   <li>Catch2 microbenchmark harness</li>
+     *   <li>Single-threaded microbenchmark harness</li>
      *   <li>Single-threaded, in-cache workload</li>
      * </ul>
      *

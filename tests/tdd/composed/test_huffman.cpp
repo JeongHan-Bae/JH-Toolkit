@@ -1,6 +1,12 @@
+#define TINY_TEST_MAIN
+#include "jh/test/tiny_test/tiny_test.hpp"
+
+namespace test::tiny_test {
+    using namespace jh::test::tiny_test;
+}
+
 #include <random>
 #include <stdexcept>
-#include <catch2/catch_all.hpp>
 #include "jh/serio"
 #include "jh/pod"
 
@@ -42,7 +48,7 @@ static void verify_correctness_once(size_t n, bool ascii) {
     HUF::compress(ss, input);
     ss.seekg(0);
 
-    REQUIRE(HUF::decompress(ss) == input);
+    jh::test::tiny_test::expect(static_cast<bool>((HUF::decompress(ss) == input)), "HUF::decompress(ss) == input");
 }
 
 // run correctness 4 times with different random inputs
@@ -61,7 +67,7 @@ static void verify_single_symbol_roundtrip() {
     HUF::compress(stream, input);
     stream.seekg(0);
 
-    REQUIRE(HUF::decompress(stream) == input);
+    jh::test::tiny_test::expect(static_cast<bool>((HUF::decompress(stream) == input)), "HUF::decompress(stream) == input");
 }
 
 JH_POD_STRUCT(Payload,
@@ -88,30 +94,80 @@ Payload random_payload(std::mt19937 &rng) {
     return p;
 }
 
-TEST_CASE("Huffman ASCII correctness") {
+
+namespace test {
+void tiny_test_case_1() {
     constexpr size_t N = 256;
 
     verify_correctness_4<"serio_huff128", jh::serio::huff_algo::huff128>(N);
     verify_correctness_4<"serio_huff128can", jh::serio::huff_algo::huff128_canonical>(N);
     verify_correctness_4<"serio_huff256", jh::serio::huff_algo::huff256>(N);
     verify_correctness_4<"serio_huff256can", jh::serio::huff_algo::huff256_canonical>(N);
+
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Huffman ASCII correctness">
+    : jh::test::tiny_test::test_definition<"Huffman ASCII correctness", &::test::tiny_test_case_1> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_huffman case 1">
+    : jh::test::tiny_test::session_definition<
+          "test module test_huffman case 1", jh::test::tiny_test::test<"Huffman ASCII correctness">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_huffman case 1"> registration_1{};
 }
 
-TEST_CASE("Huffman BYTE correctness") {
+
+
+namespace test {
+void tiny_test_case_2() {
     constexpr size_t N = 256;
 
     verify_correctness_4<"serio_huff256", jh::serio::huff_algo::huff256>(N, false);
     verify_correctness_4<"serio_huff256can", jh::serio::huff_algo::huff256_canonical>(N, false);
+
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Huffman BYTE correctness">
+    : jh::test::tiny_test::test_definition<"Huffman BYTE correctness", &::test::tiny_test_case_2> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_huffman case 2">
+    : jh::test::tiny_test::session_definition<
+          "test module test_huffman case 2", jh::test::tiny_test::test<"Huffman BYTE correctness">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_huffman case 2"> registration_2{};
 }
 
-TEST_CASE("Huffman preserves a payload containing one repeated symbol") {
+
+
+namespace test {
+void tiny_test_case_3() {
     verify_single_symbol_roundtrip<"single_huff128", jh::serio::huff_algo::huff128>();
     verify_single_symbol_roundtrip<"single_huff128_canonical", jh::serio::huff_algo::huff128_canonical>();
     verify_single_symbol_roundtrip<"single_huff256", jh::serio::huff_algo::huff256>();
     verify_single_symbol_roundtrip<"single_huff256_canonical", jh::serio::huff_algo::huff256_canonical>();
+
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Huffman preserves a payload containing one repeated symbol">
+    : jh::test::tiny_test::test_definition<"Huffman preserves a payload containing one repeated symbol", &::test::tiny_test_case_3> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_huffman case 3">
+    : jh::test::tiny_test::session_definition<
+          "test module test_huffman case 3", jh::test::tiny_test::test<"Huffman preserves a payload containing one repeated symbol">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_huffman case 3"> registration_3{};
 }
 
-TEST_CASE("Base64 + Huff128Canonical roundtrip") {
+
+
+namespace test {
+void tiny_test_case_4() {
     constexpr size_t N = 256;
 
     for (int i = 0; i < 4; i++) {
@@ -140,11 +196,27 @@ TEST_CASE("Base64 + Huff128Canonical roundtrip") {
         std::string raw_out;
         jh::serio::base64::decode(b64_out, raw_out);
 
-        REQUIRE(raw_out == raw);
+        jh::test::tiny_test::expect(static_cast<bool>((raw_out == raw)), "raw_out == raw");
     }
+
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Base64 + Huff128Canonical roundtrip">
+    : jh::test::tiny_test::test_definition<"Base64 + Huff128Canonical roundtrip", &::test::tiny_test_case_4> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_huffman case 4">
+    : jh::test::tiny_test::session_definition<
+          "test module test_huffman case 4", jh::test::tiny_test::test<"Base64 + Huff128Canonical roundtrip">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_huffman case 4"> registration_4{};
 }
 
-TEST_CASE("Huffman signature mismatch is rejected") {
+
+
+namespace test {
+void tiny_test_case_5() {
     using Compress = jh::serio::huffman<"sig_one", jh::serio::huff_algo::huff256_canonical>;
     using Decompress = jh::serio::huffman<"sig_two", jh::serio::huff_algo::huff256_canonical>;
 
@@ -152,15 +224,31 @@ TEST_CASE("Huffman signature mismatch is rejected") {
     Compress::compress(ss, "signature check");
     ss.seekg(0);
 
-    REQUIRE_THROWS_AS(Decompress::decompress(ss), std::runtime_error);
+    jh::test::tiny_test::expect_throw<std::runtime_error>([&]() { (void)(Decompress::decompress(ss)); }, "throws std::runtime_error: Decompress::decompress(ss)");
+
 }
+}
+template<>
+struct jh::test::tiny_test::test<"Huffman signature mismatch is rejected">
+    : jh::test::tiny_test::test_definition<"Huffman signature mismatch is rejected", &::test::tiny_test_case_5> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_huffman case 5">
+    : jh::test::tiny_test::session_definition<
+          "test module test_huffman case 5", jh::test::tiny_test::test<"Huffman signature mismatch is rejected">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_huffman case 5"> registration_5{};
+}
+
 
 __attribute__((noinline))
 static jh::pod::bytes_view make_view(Payload* data, size_t n) {
     return jh::pod::bytes_view::from(data, n);
 }
 
-TEST_CASE("POD Payload roundtrip via huff256_canonical (binary o/istringstream)") {
+
+namespace test {
+void tiny_test_case_6() {
     using HUF = jh::serio::huffman<
             "payload_demo",
             jh::serio::huff_algo::huff256_canonical
@@ -177,7 +265,7 @@ TEST_CASE("POD Payload roundtrip via huff256_canonical (binary o/istringstream)"
     // -------- 2) as bytes_view -> string_view --------
     auto bv = make_view(vec.data(), vec.size());
     const auto source_data = bv.fetch<char>();
-    REQUIRE(source_data);
+    jh::test::tiny_test::expect(static_cast<bool>((source_data)), "source_data");
     std::string_view sv(source_data.value(), bv.len);
 
     // -------- 3) compress with ostringstream --------
@@ -189,13 +277,13 @@ TEST_CASE("POD Payload roundtrip via huff256_canonical (binary o/istringstream)"
     std::istringstream in(compressed, std::ios::binary);
     std::string decompressed = HUF::decompress(in);
 
-    REQUIRE(decompressed.size() == bv.len);
+    jh::test::tiny_test::expect(static_cast<bool>((decompressed.size() == bv.len)), "decompressed.size() == bv.len");
 
     // -------- 5) bytes_view -> Payload --------
     jh::pod::bytes_view bv2 = jh::pod::bytes_view::from(decompressed.data(), decompressed.size());
     std::vector<Payload> vec2(N);
     const auto decoded_data = bv2.fetch<Payload>();
-    REQUIRE(decoded_data);
+    jh::test::tiny_test::expect(static_cast<bool>((decoded_data)), "decoded_data");
 
     std::copy(
             decoded_data.value(),
@@ -204,5 +292,19 @@ TEST_CASE("POD Payload roundtrip via huff256_canonical (binary o/istringstream)"
     );
 
     // -------- 6) compare --------
-    REQUIRE(vec == vec2);
+    jh::test::tiny_test::expect(static_cast<bool>((vec == vec2)), "vec == vec2");
+
 }
+}
+template<>
+struct jh::test::tiny_test::test<"POD Payload roundtrip via huff256_canonical (binary o/istringstream)">
+    : jh::test::tiny_test::test_definition<"POD Payload roundtrip via huff256_canonical (binary o/istringstream)", &::test::tiny_test_case_6> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_huffman case 6">
+    : jh::test::tiny_test::session_definition<
+          "test module test_huffman case 6", jh::test::tiny_test::test<"POD Payload roundtrip via huff256_canonical (binary o/istringstream)">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_huffman case 6"> registration_6{};
+}
+

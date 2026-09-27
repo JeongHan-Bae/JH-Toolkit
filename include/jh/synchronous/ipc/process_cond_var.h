@@ -105,6 +105,7 @@
 #include "jh/synchronous/ipc/ipc_limits.h"
 
 #include <chrono>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 
@@ -336,8 +337,11 @@ namespace jh::sync::ipc {
             if (ok) ::ResetEvent(event_);
             return ok;
 #else
-            auto secs = std::chrono::time_point_cast<std::chrono::seconds>(tp);
-            auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(tp - secs);
+            const auto system_deadline = std::chrono::time_point_cast<
+                std::chrono::system_clock::duration
+            >(tp - Clock::now() + std::chrono::system_clock::now());
+            auto secs = std::chrono::time_point_cast<std::chrono::seconds>(system_deadline);
+            auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(system_deadline - secs);
             timespec ts{};
             ts.tv_sec = static_cast<time_t>(secs.time_since_epoch().count());
             ts.tv_nsec = static_cast<long>(nsec.count());
@@ -346,6 +350,54 @@ namespace jh::sync::ipc {
             int rc = pthread_cond_timedwait(&data_->cond, &data_->mutex, &ts);
             pthread_mutex_unlock(&data_->mutex);
             return (rc == 0);
+#endif
+        }
+
+        /**
+         * @brief Wait with a lock that protects the condition predicate.
+         *
+         * The lock is released atomically with entering the wait and reacquired
+         * before this function returns. Callers should update the predicate and
+         * notify while holding the same lock to prevent missed notifications.
+         *
+         * @tparam Lock Lockable type managed by <code>std::unique_lock</code>.
+         * @tparam Clock Clock type used by the absolute deadline.
+         * @tparam Duration Duration type used by the absolute deadline.
+         * @param lock An owning lock protecting the condition predicate.
+         * @param tp Absolute time point until which the caller should wait.
+         * @return <code>true</code> if signaled before timeout, otherwise <code>false</code>.
+         * @throw std::runtime_error If reacquiring the associated process mutex fails.
+         */
+        template<typename Lock, typename Clock, typename Duration>
+        bool wait_until(
+            std::unique_lock<Lock> &lock,
+            const std::chrono::time_point<Clock, Duration> &tp
+        ) {
+#if IS_WINDOWS
+            auto rel = std::chrono::duration_cast<std::chrono::milliseconds>(tp - Clock::now());
+            DWORD timeout = (rel.count() > 0) ? static_cast<DWORD>(rel.count()) : 0;
+            lock.unlock();
+            const DWORD result = ::WaitForSingleObject(event_, timeout);
+            const bool signaled = result == WAIT_OBJECT_0;
+            if (signaled) ::ResetEvent(event_);
+            lock.lock();
+            return signaled;
+#else
+            const auto system_deadline = std::chrono::time_point_cast<
+                std::chrono::system_clock::duration
+            >(tp - Clock::now() + std::chrono::system_clock::now());
+            const auto secs = std::chrono::time_point_cast<std::chrono::seconds>(system_deadline);
+            const auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(system_deadline - secs);
+            timespec ts{};
+            ts.tv_sec = static_cast<time_t>(secs.time_since_epoch().count());
+            ts.tv_nsec = static_cast<long>(nsec.count());
+
+            pthread_mutex_lock(&data_->mutex);
+            lock.unlock();
+            const int rc = pthread_cond_timedwait(&data_->cond, &data_->mutex, &ts);
+            pthread_mutex_unlock(&data_->mutex);
+            lock.lock();
+            return rc == 0;
 #endif
         }
 

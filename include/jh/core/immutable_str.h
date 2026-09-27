@@ -170,7 +170,7 @@
  *   <li>Constant-time string comparison and hash access after first computation.</li>
  *   <li>Optimized for concurrent, read-dominant workloads.</li>
  *   <li>Minimal memory footprint: pointer + cached hash + length field.</li>
- *   <li><b>Benchmark:</b> In controlled micro-benchmarks (LLVM&#64;20, Catch2, 1024&times; iterations), <br>
+ *   <li><b>Benchmark:</b> In controlled micro-benchmarks (LLVM&#64;20, 1024&times; iterations), <br>
  *       <code>jh::immutable_str</code> shows performance essentially identical to
  *       <code>std::string</code> &mdash; sometimes slower by about <b>1%</b>,
  *       sometimes faster by up to <b>2%</b>, typically fluctuating within

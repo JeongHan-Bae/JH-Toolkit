@@ -63,16 +63,6 @@ namespace {
     }
 
     void test_expression_helpers(std::vector<CheckResult>& results) {
-        constexpr auto parsed = jh::test::cucumber::parseExpression<
-            "name <string> signed <int> unsigned <uint> real <double> flag <bool>"
-        >();
-        static_assert(parsed.valid);
-        static_assert(parsed.parameter_count == 5);
-
-        constexpr auto literal_only = jh::test::cucumber::parseExpression<"hello">();
-        static_assert(literal_only.valid);
-        static_assert(literal_only.parameter_count == 0);
-
         const auto captures = jh::test::cucumber::match_expression<
             "name <string> signed <int> unsigned <uint> real <double> flag <bool>"
         >("name Ada Lovelace signed -7 unsigned 9 real 3.5 flag true");

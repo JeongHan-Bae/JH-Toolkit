@@ -169,9 +169,9 @@ For complete build instructions, supported toolchains, and Conan packaging notes
 
 > Covers: toolchains, CMake targets, Conan `.tar.gz` releases, and the dual-mode header design.
 
-The project has **no runtime dependencies**.  
-Its **only build-time requirement** is a conforming **C++20 standard library**.  
-Testing uses **Catch2**.  
+The JH-Toolkit library has **no runtime dependencies**.
+Its **build requirement** is a conforming **C++20 standard library**.
+Repository tests use CMake compile checks, TinyTest unit/composed tests, and simple-cucumber behavior scenarios.
 For version details, see: [Dependencies](dependencies.toml).
 
 ---
