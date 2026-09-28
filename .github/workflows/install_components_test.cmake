@@ -260,9 +260,15 @@ _jh_write_consumer("union-all" "all"
     "base;jh-no-throw;jh-test-enabled;jh-ipcs;all" "" 1)
 
 _jh_install("base" "install-clean-base" ON)
-if (EXISTS "${_jh_prefix}/include/jh/ipc"
-        OR EXISTS "${_jh_prefix}/include/jh/synchronous/ipc.h")
-    message(FATAL_ERROR "Explicit clean install left IPC headers in the prefix")
+set(_jh_remaining_ipc_headers "")
+foreach (_jh_ipc_header IN ITEMS jh/ipc jh/synchronous/ipc.h)
+    if (EXISTS "${_jh_prefix}/include/${_jh_ipc_header}")
+        list(APPEND _jh_remaining_ipc_headers "include/${_jh_ipc_header}")
+    endif ()
+endforeach ()
+if (_jh_remaining_ipc_headers)
+    message(FATAL_ERROR
+        "Explicit clean install left IPC headers in the prefix: ${_jh_remaining_ipc_headers}")
 endif ()
 _jh_write_consumer("clean-base" "base"
     "base;jh-no-throw;jh-test-enabled" "jh-ipcs;all" 0)

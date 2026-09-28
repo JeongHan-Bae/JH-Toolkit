@@ -124,10 +124,15 @@ endfunction()
 
 function(_jh_install_header_files)
     foreach (_jh_header IN LISTS ARGN)
+        if (IS_ABSOLUTE "${_jh_header}")
+            set(_jh_header_path "${_jh_header}")
+        else ()
+            set(_jh_header_path "${PROJECT_SOURCE_DIR}/include/${_jh_header}")
+        endif ()
         file(RELATIVE_PATH _jh_relative_header
-            "${PROJECT_SOURCE_DIR}/include" "${_jh_header}")
+            "${PROJECT_SOURCE_DIR}/include" "${_jh_header_path}")
         get_filename_component(_jh_header_directory "${_jh_relative_header}" DIRECTORY)
-        install(FILES "${_jh_header}"
+        install(FILES "${_jh_header_path}"
             DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${_jh_header_directory}")
     endforeach ()
 endfunction()
@@ -218,11 +223,7 @@ if (_jh_has_all OR (_jh_has_base AND _jh_has_ipcs))
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
         PATTERN ".DS_Store" EXCLUDE)
 elseif (_jh_has_base)
-    install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/"
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-        PATTERN ".DS_Store" EXCLUDE
-        PATTERN "ipc" EXCLUDE
-        PATTERN "ipc.h" EXCLUDE)
+    _jh_install_header_files(${JH_TOOLKIT_BASE_HEADERS})
 else ()
     if (_jh_selected_headers)
         _jh_install_header_files(${_jh_selected_headers})
