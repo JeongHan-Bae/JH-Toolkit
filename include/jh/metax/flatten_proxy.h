@@ -47,7 +47,7 @@
  *       for structured binding compatibility.</li>
  * </ul>
  *
- * @version <pre>1.3.x</pre>
+ * @version <pre>1.4.x</pre>
  * @date <pre>2025</pre>
  */
 
@@ -247,9 +247,20 @@ namespace jh::meta {
      * @brief Proxy wrapper that lazily exposes flattened tuple access.
      *
      * @details
-     * This proxy encapsulates any tuple-like object and exposes a
+     * This proxy encapsulates any type that models
+     * <code>jh::concepts::tuple_like</code> and exposes a
      * flattened <code>get&lt;I&gt;</code> interface compatible with
      * structured bindings and <code>std::tuple</code> introspection.
+     * The accepted source types include <code>std::tuple</code>,
+     * <code>std::pair</code>, <code>std::array</code>, and custom tuple-like
+     * types that satisfy the concept; the source does not have to be a
+     * <code>std::tuple</code>.
+     *
+     * @tparam Tuple Type of the tuple-like object held by the proxy. It may be
+     *         a reference type for a borrowed lvalue source or an object type
+     *         for an owned rvalue source. Class template argument deduction
+     *         selects this storage type automatically. The type must model
+     *         <code>jh::concepts::tuple_like</code>.
      *
      * <h4>Implicit Conversion</h4>
      * <p>
@@ -281,6 +292,7 @@ namespace jh::meta {
      * </p>
      */
     template<typename Tuple>
+    requires jh::concepts::tuple_like<Tuple>
     struct flatten_proxy final {
         Tuple tuple;
 
@@ -289,6 +301,9 @@ namespace jh::meta {
          * @param source Tuple-like object to expose through the proxy.
          */
         template<typename Source>
+        requires (!std::is_same_v<std::remove_cvref_t<Source>, flatten_proxy> &&
+                  jh::concepts::tuple_like<Source> &&
+                  std::is_constructible_v<Tuple, Source&&>)
         constexpr explicit flatten_proxy(Source &&source)
                 : tuple(std::forward<Source>(source)) {}
 
@@ -381,6 +396,7 @@ namespace jh::meta {
 
     /// @brief Deduces reference storage for lvalue sources and owned storage for rvalues.
     template<typename Tuple>
+    requires jh::concepts::tuple_like<Tuple>
     flatten_proxy(Tuple &&) -> flatten_proxy<
             std::conditional_t<
                     std::is_lvalue_reference_v<Tuple>,
@@ -399,11 +415,13 @@ namespace jh::meta {
 namespace std {
 
     template<typename Tuple>
+    requires jh::concepts::tuple_like<Tuple>
     struct tuple_size<jh::meta::flatten_proxy<Tuple>>
             : std::tuple_size<decltype(jh::meta::detail::flatten_one(std::declval<Tuple>()))> {
     };
 
     template<std::size_t I, typename Tuple>
+    requires jh::concepts::tuple_like<Tuple>
     struct tuple_element<I, jh::meta::flatten_proxy<Tuple>>
             : std::tuple_element<I, decltype(jh::meta::detail::flatten_one(std::declval<Tuple>()))> {
     };
