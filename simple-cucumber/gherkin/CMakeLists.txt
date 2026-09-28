@@ -70,9 +70,5 @@ target_link_libraries(jh_test_cucumber_gherkin
         "$<INSTALL_INTERFACE:jh::jh-toolkit>"
     PRIVATE cucumber::gherkin
 )
-if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    # Keep the MinGW C++ runtime requirement on both build-tree and installed static targets.
-    target_link_libraries(jh_test_cucumber_gherkin PUBLIC stdc++)
-endif()
 set_target_properties(jh_test_cucumber_gherkin PROPERTIES
     EXPORT_NAME "jh-simple-cucumber-gherkin")

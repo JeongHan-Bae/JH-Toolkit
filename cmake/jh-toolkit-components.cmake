@@ -2,6 +2,8 @@ if (POLICY CMP0177)
     cmake_policy(SET CMP0177 NEW)
 endif ()
 
+include("${PROJECT_SOURCE_DIR}/cmake/jh-toolkit-ipc-paths.cmake")
+
 set(JH_TOOLKIT_COMPONENTS "all" CACHE STRING
     "Semicolon-separated components: base, jh-no-throw, jh-test-enabled, jh-ipcs, all")
 set_property(CACHE JH_TOOLKIT_COMPONENTS PROPERTY STRINGS
@@ -148,7 +150,7 @@ file(GLOB_RECURSE _jh_test_package_headers
 _jh_collect_header_closure(_jh_test_headers
     jh/metax/expected.h jh/metax/t_str.h ${_jh_test_package_headers})
 _jh_filter_toolkit_headers(_jh_test_headers ${_jh_test_headers})
-_jh_collect_header_closure(_jh_ipc_headers jh/sync jh/ipc)
+_jh_collect_header_closure(_jh_ipc_headers jh/sync ${JH_TOOLKIT_IPC_FORWARD_AGGREGATE})
 _jh_relative_header_list(JH_TOOLKIT_NO_THROW_HEADERS ${_jh_no_throw_headers})
 _jh_relative_header_list(JH_TOOLKIT_TEST_HEADERS ${_jh_test_headers})
 _jh_relative_header_list(JH_TOOLKIT_IPC_HEADERS ${_jh_ipc_headers})
@@ -161,15 +163,27 @@ list(FILTER _jh_source_headers EXCLUDE REGEX "(^|/)\\.DS_Store$")
 set(JH_TOOLKIT_ALL_HEADERS ${_jh_source_headers})
 set(JH_TOOLKIT_BASE_HEADERS "")
 foreach (_jh_header IN LISTS _jh_source_headers)
-    if (_jh_header STREQUAL "jh/ipc"
-            OR _jh_header STREQUAL "jh/synchronous/ipc.h"
-            OR _jh_header MATCHES "^jh/synchronous/ipc/")
+    if (_jh_header IN_LIST JH_TOOLKIT_IPC_OWNED_PATHS
+            OR _jh_header MATCHES "^${JH_TOOLKIT_IPC_IMPLEMENTATION_DIRECTORY}/")
         continue()
     endif ()
     list(APPEND JH_TOOLKIT_BASE_HEADERS "${_jh_header}")
 endforeach ()
 list(REMOVE_DUPLICATES JH_TOOLKIT_ALL_HEADERS)
 list(REMOVE_DUPLICATES JH_TOOLKIT_BASE_HEADERS)
+
+# Exclude the IPC forward aggregate and its two implementation paths from base.
+# Shared dependencies found in the IPC include closure remain part of base.
+foreach (_jh_ipc_header IN LISTS JH_TOOLKIT_IPC_HEADERS)
+    if (_jh_ipc_header IN_LIST JH_TOOLKIT_IPC_OWNED_PATHS
+            OR _jh_ipc_header MATCHES "^${JH_TOOLKIT_IPC_IMPLEMENTATION_DIRECTORY}/")
+        continue()
+    endif ()
+    if (NOT _jh_ipc_header IN_LIST JH_TOOLKIT_BASE_HEADERS)
+        message(FATAL_ERROR
+            "The base component must retain IPC dependency '${_jh_ipc_header}'")
+    endif ()
+endforeach ()
 
 add_library(jh-toolkit INTERFACE)
 add_library(jh::jh-toolkit ALIAS jh-toolkit)
@@ -212,10 +226,16 @@ else ()
     _jh_relative_header_list(JH_TOOLKIT_CURRENT_HEADERS ${_jh_selected_headers})
 endif ()
 
+if (JH_TOOLKIT_CLEAN_INSTALL)
+    set(_jh_clean_install_numeric 1)
+else ()
+    set(_jh_clean_install_numeric 0)
+endif ()
 configure_file(
     "${PROJECT_SOURCE_DIR}/cmake/jh-toolkit-pre-install.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/jh-toolkit-pre-install.cmake"
     @ONLY)
+unset(_jh_clean_install_numeric)
 install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/jh-toolkit-pre-install.cmake")
 
 if (_jh_has_all OR (_jh_has_base AND _jh_has_ipcs))

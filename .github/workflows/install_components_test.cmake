@@ -4,6 +4,7 @@ endif ()
 
 get_filename_component(JH_SOURCE_DIR "${JH_SOURCE_DIR}" REALPATH)
 get_filename_component(JH_TEST_ROOT "${JH_TEST_ROOT}" ABSOLUTE)
+include("${JH_SOURCE_DIR}/cmake/jh-toolkit-ipc-paths.cmake")
 file(REMOVE_RECURSE "${JH_TEST_ROOT}")
 file(MAKE_DIRECTORY "${JH_TEST_ROOT}")
 
@@ -28,7 +29,7 @@ function(_jh_install profile build_name clean)
     _jh_run("${build_name} configure"
         "${CMAKE_COMMAND}" -S "${JH_SOURCE_DIR}" -B "${_jh_build_dir}"
         -G "${_jh_generator}"
-        -DCMAKE_BUILD_TYPE=MinSizeRel
+        -DCMAKE_BUILD_TYPE=Release
         -DCMAKE_INSTALL_INCLUDEDIR=include
         -DCMAKE_INSTALL_LIBDIR=lib
         -DCMAKE_INSTALL_PREFIX=${_jh_prefix}
@@ -158,7 +159,7 @@ function(_jh_install_local_test_package name source_dir parser_fetch)
     _jh_run("${name} local-source configure"
         "${CMAKE_COMMAND}" -S "${source_dir}" -B "${_jh_build_dir}"
         -G "${_jh_generator}"
-        -DCMAKE_BUILD_TYPE=MinSizeRel
+        -DCMAKE_BUILD_TYPE=Release
         -DCMAKE_INSTALL_PREFIX=${_jh_prefix}
         -DCMAKE_PREFIX_PATH=${_jh_prefix}
         -DCMAKE_FIND_ROOT_PATH=${_jh_prefix}
@@ -173,9 +174,9 @@ function(_jh_install_local_test_package name source_dir parser_fetch)
         -DJH_SIMPLE_CUCUMBER_BUILD_STATIC_TESTS=OFF
         -DJH_SIMPLE_CUCUMBER_FETCH_PARSER_DEPS=${parser_fetch})
     _jh_run("${name} local-source build"
-        "${CMAKE_COMMAND}" --build "${_jh_build_dir}" --config MinSizeRel)
+        "${CMAKE_COMMAND}" --build "${_jh_build_dir}" --config Release)
     _jh_run("${name} local-source install"
-        "${CMAKE_COMMAND}" --install "${_jh_build_dir}" --config MinSizeRel)
+        "${CMAKE_COMMAND}" --install "${_jh_build_dir}" --config Release)
 endfunction()
 
 function(_jh_build_package_consumer name)
@@ -261,7 +262,7 @@ _jh_write_consumer("union-all" "all"
 
 _jh_install("base" "install-clean-base" ON)
 set(_jh_remaining_ipc_headers "")
-foreach (_jh_ipc_header IN ITEMS jh/ipc jh/synchronous/ipc.h)
+foreach (_jh_ipc_header IN LISTS JH_TOOLKIT_IPC_OWNED_PATHS)
     if (EXISTS "${_jh_prefix}/include/${_jh_ipc_header}")
         list(APPEND _jh_remaining_ipc_headers "include/${_jh_ipc_header}")
     endif ()

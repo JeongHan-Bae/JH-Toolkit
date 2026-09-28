@@ -74,6 +74,12 @@ Use this exact order and content for a non-aggregate header that provides valid 
 - Develop on the latest `<version>-dev` branch. Do not make direct source changes on `main` or `*-LTS`.
 - Keep changes focused and production-relevant. Follow `CONTRIBUTING.md` for project-specific design, naming, documentation, and verification requirements.
 
+## GitHub Actions diagnostics
+
+- Do not use GitHub Actions workflows or workflow-invoked scripts to debug failures. Do not add temporary logs, probes, diagnostic steps, or debug-only builds to them.
+- Investigate with the logs already produced, local reproductions, and local toolchain inspection.
+- Permanent workflow checks that verify documented behavior are tests, not debug instrumentation, and may be added when required by the project.
+
 ## Commits
 
 - Never run `git commit` without the developer's explicit confirmation of the proposed message.

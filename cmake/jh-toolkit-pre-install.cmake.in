@@ -1,4 +1,4 @@
-if (NOT @JH_TOOLKIT_CLEAN_INSTALL@)
+if (NOT @_jh_clean_install_numeric@)
     return()
 endif ()
 
@@ -20,6 +20,9 @@ endif ()
 # inventory. Remove only headers known to this source tree.
 foreach (_jh_header IN ITEMS @JH_TOOLKIT_ALL_HEADERS@)
     list(APPEND _jh_files_to_remove "${_jh_include_root}/${_jh_header}")
+endforeach ()
+foreach (_jh_ipc_path IN ITEMS @JH_TOOLKIT_IPC_OWNED_PATHS@)
+    list(APPEND _jh_files_to_remove "${_jh_include_root}/${_jh_ipc_path}")
 endforeach ()
 
 file(GLOB_RECURSE _jh_package_files
