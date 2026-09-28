@@ -50,7 +50,7 @@ elseif(TARGET jh::jh-toolkit)
     set(JH_TINY_TEST_TOOLKIT_TARGET jh::jh-toolkit)
 else()
     if(NOT JH_TINY_TEST_TOOLKIT_SOURCE_ROOT)
-        find_package(jh-toolkit CONFIG REQUIRED)
+        find_package(jh-toolkit CONFIG REQUIRED COMPONENTS jh-test-enabled)
         set(JH_TINY_TEST_TOOLKIT_TARGET jh::jh-toolkit)
     else()
         # Source-only embedding exposes the checkout root to tiny-test builds.
@@ -58,6 +58,16 @@ else()
         target_include_directories(jh_tiny_test_toolkit_source
             INTERFACE "${JH_TINY_TEST_TOOLKIT_SOURCE_ROOT}/include")
         set(JH_TINY_TEST_TOOLKIT_TARGET jh_tiny_test_toolkit_source)
+    endif()
+endif()
+
+if(TARGET ${JH_TINY_TEST_TOOLKIT_TARGET})
+    get_target_property(_jh_tiny_toolkit_components
+        ${JH_TINY_TEST_TOOLKIT_TARGET} JH_TOOLKIT_AVAILABLE_COMPONENTS)
+    if(_jh_tiny_toolkit_components
+            AND NOT "jh-test-enabled" IN_LIST _jh_tiny_toolkit_components)
+        message(FATAL_ERROR
+            "jh-tiny-test requires JH-Toolkit component jh-test-enabled")
     endif()
 endif()
 

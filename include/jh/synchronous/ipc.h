@@ -83,6 +83,10 @@
  */
 #pragma once
 
+#if !defined(JH_TOOLKIT_ENABLE_IPCS)
+#error "The jh-ipcs component is not enabled for this target"
+#endif
+
 #include "jh/synchronous/ipc/ipc_limits.h"
 #include "jh/synchronous/ipc/process_mutex.h"
 #include "jh/synchronous/ipc/process_cond_var.h"

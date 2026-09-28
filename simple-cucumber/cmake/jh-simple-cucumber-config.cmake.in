@@ -1,7 +1,7 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
-find_dependency(jh-toolkit CONFIG REQUIRED)
+find_dependency(jh-toolkit CONFIG REQUIRED COMPONENTS jh-test-enabled)
 find_dependency(cucumber_messages CONFIG REQUIRED)
 find_dependency(cucumber_gherkin CONFIG REQUIRED)
 

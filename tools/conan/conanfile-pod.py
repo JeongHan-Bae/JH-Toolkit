@@ -17,7 +17,7 @@ class JHToolkitPOD(ConanFile):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["TAR"] = "POD"
+        tc.variables["JH_TOOLKIT_COMPONENTS"] = "jh-no-throw"
         tc.generate()
 
     def build(self):

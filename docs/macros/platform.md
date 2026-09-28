@@ -172,9 +172,9 @@ and is safe on all modern GCC/Clang targets — no `<endian.h>` dependency requi
 ---
 
 > **Design Philosophy**  
-> `platform` serves as the first line of validation across the toolkit.  
+> `platform` serves as the first line of validation across the toolkit.
 > It ensures **deterministic compilation**, a **verified ABI environment**,
-> and prevents undefined cross-platform states before any targets as `jh::jh-toolkit-pod`, `jh::jh-toolkit`,
-> or `jh::jh-toolkit-static` target is compiled.  
+> and prevents undefined cross-platform states before the `jh::jh-toolkit` or
+> `jh::jh-toolkit-static` target is compiled.
 >
 > All subsequent layers rely on the guarantees established by this submodule.

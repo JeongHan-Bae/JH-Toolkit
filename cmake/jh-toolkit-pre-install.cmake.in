@@ -1,0 +1,38 @@
+if (NOT @JH_TOOLKIT_CLEAN_INSTALL@)
+    return()
+endif ()
+
+set(_jh_prefix "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}")
+set(_jh_include_root "${_jh_prefix}/@CMAKE_INSTALL_INCLUDEDIR@")
+set(_jh_package_directory
+    "${_jh_prefix}/@CMAKE_INSTALL_LIBDIR@/cmake/jh-toolkit")
+set(_jh_manifest "${_jh_package_directory}/jh-toolkit-installed-files.cmake")
+set(_jh_files_to_remove "")
+
+if (EXISTS "${_jh_manifest}")
+    include("${_jh_manifest}")
+    foreach (_jh_file IN LISTS JH_TOOLKIT_INSTALLED_FILES)
+        list(APPEND _jh_files_to_remove "${_jh_prefix}/${_jh_file}")
+    endforeach ()
+endif ()
+
+# Also recognize headers installed by earlier versions that predate the file
+# inventory. Remove only headers known to this source tree.
+foreach (_jh_header IN ITEMS @JH_TOOLKIT_ALL_HEADERS@)
+    list(APPEND _jh_files_to_remove "${_jh_include_root}/${_jh_header}")
+endforeach ()
+
+file(GLOB_RECURSE _jh_package_files
+    LIST_DIRECTORIES FALSE
+    "${_jh_package_directory}/*")
+list(APPEND _jh_files_to_remove ${_jh_package_files})
+file(GLOB _jh_static_libraries
+    "${_jh_prefix}/@CMAKE_INSTALL_LIBDIR@/@CMAKE_STATIC_LIBRARY_PREFIX@jh-toolkit-static*")
+list(APPEND _jh_files_to_remove ${_jh_static_libraries})
+list(REMOVE_DUPLICATES _jh_files_to_remove)
+
+foreach (_jh_file IN LISTS _jh_files_to_remove)
+    if (EXISTS "${_jh_file}" AND NOT IS_DIRECTORY "${_jh_file}")
+        file(REMOVE "${_jh_file}")
+    endif ()
+endforeach ()

@@ -16,7 +16,7 @@ class JHToolkitFull(ConanFile):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["TAR"] = "ALL"
+        tc.variables["JH_TOOLKIT_COMPONENTS"] = "all"
         tc.generate()
 
     def build(self):

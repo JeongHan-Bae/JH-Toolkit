@@ -43,6 +43,10 @@
 
 #pragma once
 
+#if !defined(JH_TOOLKIT_ENABLE_IPCS)
+#error "The jh-ipcs component is not enabled for this target"
+#endif
+
 #include "jh/synchronous/ipc.h"
 
 /**

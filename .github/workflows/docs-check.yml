@@ -51,7 +51,7 @@ jobs:
       run_presence: ${{ steps.decide.outputs.run_presence }}
       run_hygiene:  ${{ steps.decide.outputs.run_hygiene }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 2
 
@@ -105,7 +105,7 @@ jobs:
     if: needs.gate.outputs.run_presence == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -121,7 +121,7 @@ jobs:
     if: needs.gate.outputs.run_hygiene == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v5

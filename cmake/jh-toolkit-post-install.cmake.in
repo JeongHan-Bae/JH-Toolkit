@@ -1,0 +1,57 @@
+set(_jh_prefix "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}")
+set(_jh_include_root "${_jh_prefix}/@CMAKE_INSTALL_INCLUDEDIR@")
+
+set(_jh_package_directory "${_jh_prefix}/@CMAKE_INSTALL_LIBDIR@/cmake/jh-toolkit")
+file(MAKE_DIRECTORY "${_jh_package_directory}")
+
+set(_jh_installed_files "")
+set(_jh_manifest "${_jh_package_directory}/jh-toolkit-installed-files.cmake")
+if (EXISTS "${_jh_manifest}")
+    include("${_jh_manifest}")
+    list(APPEND _jh_installed_files ${JH_TOOLKIT_INSTALLED_FILES})
+endif ()
+
+foreach (_jh_header IN ITEMS @JH_TOOLKIT_CURRENT_HEADERS@)
+    set(_jh_file "${_jh_include_root}/${_jh_header}")
+    if (EXISTS "${_jh_file}")
+        file(RELATIVE_PATH _jh_relative_file "${_jh_prefix}" "${_jh_file}")
+        list(APPEND _jh_installed_files "${_jh_relative_file}")
+    endif ()
+endforeach ()
+
+file(GLOB_RECURSE _jh_package_files
+    LIST_DIRECTORIES FALSE
+    RELATIVE "${_jh_prefix}"
+    "${_jh_package_directory}/*")
+list(APPEND _jh_installed_files ${_jh_package_files})
+file(RELATIVE_PATH _jh_manifest_relative "${_jh_prefix}" "${_jh_manifest}")
+list(APPEND _jh_installed_files "${_jh_manifest_relative}")
+file(GLOB _jh_static_libraries
+    LIST_DIRECTORIES FALSE
+    RELATIVE "${_jh_prefix}"
+    "${_jh_prefix}/@CMAKE_INSTALL_LIBDIR@/@CMAKE_STATIC_LIBRARY_PREFIX@jh-toolkit-static*")
+list(APPEND _jh_installed_files ${_jh_static_libraries})
+list(REMOVE_DUPLICATES _jh_installed_files)
+
+set(_jh_existing_files "")
+foreach (_jh_file IN LISTS _jh_installed_files)
+    if (EXISTS "${_jh_prefix}/${_jh_file}"
+            OR _jh_file STREQUAL _jh_manifest_relative)
+        list(APPEND _jh_existing_files "${_jh_file}")
+    endif ()
+endforeach ()
+list(SORT _jh_existing_files)
+
+set(_jh_manifest_content "set(JH_TOOLKIT_INSTALLED_FILES\n")
+foreach (_jh_file IN LISTS _jh_existing_files)
+    string(APPEND _jh_manifest_content "    \"${_jh_file}\"\n")
+endforeach ()
+string(APPEND _jh_manifest_content ")\n")
+if (EXISTS "${_jh_manifest}")
+    file(READ "${_jh_manifest}" _jh_old_manifest_content)
+else ()
+    set(_jh_old_manifest_content "")
+endif ()
+if (NOT _jh_old_manifest_content STREQUAL _jh_manifest_content)
+    file(WRITE "${_jh_manifest}" "${_jh_manifest_content}")
+endif ()

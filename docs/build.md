@@ -13,7 +13,7 @@ Conan packages are distributed **as `.tar.gz` archives** attached to **GitHub Re
 
 **Available (v<VERSION>):**
 
-* 🧩 `jh-toolkit-pod` — Header-only (platform independent)
+* 🧩 `jh-toolkit-pod` — Conan archive for the `jh-no-throw` header profile
 * 🛠️ `jh-toolkit` — Full builds for:
 
     * Linux x86_64
@@ -38,7 +38,7 @@ Conan packages are distributed **as `.tar.gz` archives** attached to **GitHub Re
 
 | Package Name              | Platform Dependent | Compiler Dependent | Description                                  |
 |---------------------------|--------------------|--------------------|----------------------------------------------|
-| `jh-toolkit-pod`          | ❌                  | ❌                  | Header-only, platform-agnostic POD module    |
+| `jh-toolkit-pod`          | ❌                  | ❌                  | Minimal meta/POD headers; exports `jh::jh-toolkit` |
 | `jh-toolkit-linux-x86_64` | ✅                  | ✅ (GCC 13+)        | Built on `ubuntu-latest` using GCC toolchain |
 | `jh-toolkit-macos-arm64`  | ✅                  | ✅ (LLVM 20+)       | Built on `macos-latest` with Homebrew LLVM   |
 
@@ -125,68 +125,73 @@ git clone --branch 1.4.x-LTS --depth=1 https://github.com/JeongHan-Bae/jh-toolki
 
 ## ⚙️ Building from Source
 
-### 🔹 Full Build (default)
+### 🔹 Full Install (default)
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+  -DJH_TOOLKIT_COMPONENTS=all
 cmake --build build
 sudo cmake --install build
 ```
 
-Installs both:
+Every installation exports the same header target, `jh::jh-toolkit`. The full profile also provides the optional
+`jh::jh-toolkit-static` target for the precompiled implementation.
 
-* `jh::jh-toolkit` — header-only interface (pure templates)
-* `jh::jh-toolkit-static` — optimized static library for critical components
+### 🧩 Selectable Components
 
----
+`JH_TOOLKIT_COMPONENTS` accepts a semicolon-separated list. Repeated entries are harmless; overlapping component
+requests are merged. The default is `all`.
 
-### 🔸 Header-Only Build (POD System)
+| Component | Installed content |
+| --- | --- |
+| `base` | All non-IPC headers. Includes the complete `jh::meta`, `jh::pod`, and test-dependency headers. |
+| `jh-no-throw` | Complete `<jh/meta>` and `<jh/pod>` include closures, including `expected`, `TStr`, `monostate`, and transitive headers. |
+| `jh-test-enabled` | The `expected`, `TStr`, `monostate`, and transitive headers required by tiny-test/simple-cucumber. |
+| `jh-ipcs` | `<jh/sync>`, `<jh/ipc>`, and the IPC header dependency closure. |
+| `all` | Every JH-Toolkit public header, including IPC. |
 
-```bash
-cmake -B build-pod -DCMAKE_BUILD_TYPE=Release -DTAR=POD
-cmake --build build-pod
-sudo cmake --install build-pod
-```
-
-Installs only:
-
-* `jh::jh-toolkit-pod` — pure header-only module
-
-> Ideal for embedding or constrained deployment.
-
----
-
-### 🧩 Modular Build Modes
+Examples:
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DTAR=POD,ALL
+# Small POD/meta package, but with all headers needed by <jh/pod>.
+cmake -S . -B build-no-throw -DCMAKE_BUILD_TYPE=Release \
+  -DJH_TOOLKIT_COMPONENTS=jh-no-throw
+
+# Non-IPC toolkit, including tiny-test/simple-cucumber dependencies.
+cmake -S . -B build-base -DCMAKE_BUILD_TYPE=Release \
+  -DJH_TOOLKIT_COMPONENTS=base
+
+# Combine components. The same component may be listed more than once.
+cmake -S . -B build-tests-ipc -DCMAKE_BUILD_TYPE=Release \
+  -DJH_TOOLKIT_COMPONENTS="jh-test-enabled;jh-ipcs;jh-test-enabled"
 ```
 
-> **Note:** `TAR` is a comma-separated list of build modes, by default `ALL` (full build, no "Pod-only" mode).
+`base` excludes the IPC headers. In that profile, `<jh/sync>` remains the same installed header but does not include the IPC aggregate because the target does not define `JH_TOOLKIT_ENABLE_IPCS`. Selecting `jh-ipcs` or `all` makes the target define it. IPC tests and examples are omitted when IPC is disabled; the default `all` profile enables them.
 
-| TAR Value | Description                                            |
-|-----------|--------------------------------------------------------|
-| `POD`     | Header-only POD-only module `jh::jh-toolkit-pod`       |
-| `ALL`     | Full build: `jh::jh-toolkit` + `jh::jh-toolkit-static` |
-| `POD,ALL` | Builds both; all targets available                     |
+### 📦 Additive Install Prefixes
 
----
+Normal installs add or update the selected files in the prefix. They do not remove files installed by an earlier profile. After each install, the package records the actual installed file paths and derives component support from files present on disk. For example, installing `all` and then installing `jh-test-enabled` keeps IPC available if its headers remain in the prefix.
 
-### 📦 Installed CMake Targets
+To intentionally replace the tracked JH-Toolkit installation with the current selection, configure with:
 
-| Mode          | Targets Installed                         | Description                                                               |
-|---------------|-------------------------------------------|---------------------------------------------------------------------------|
-| `TAR=ALL`     | `jh::jh-toolkit`, `jh::jh-toolkit-static` | Full toolkit: headers + optimized static objects                          |
-| `TAR=POD`     | `jh::jh-toolkit-pod`                      | Header-only POD-only library                                              |
-| `TAR=POD,ALL` | All of the above                          | Provides full modular access for development and distribution flexibility |
+```bash
+-DJH_TOOLKIT_CLEAN_INSTALL=ON
+```
 
-> **Note:**
-> `TAR=POD` does **not** install `jh::jh-toolkit` or `jh::jh-toolkit-static`,  
-> it intentionally provides only the POD module for users who want a minimal pod-only support.  
-> `jh::jh-toolkit-pod` only guarantees the usage of one public header (`<jh/pod>`) and does not include the full API
-> surface of `jh::jh-toolkit`.
+This removes the previously tracked toolkit files before installing the newly selected files.
 
----
+Installed consumers always link the same target:
+
+```cmake
+find_package(jh-toolkit CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE jh::jh-toolkit)
+```
+
+Test libraries can request their required subset and CMake checks the installed files:
+
+```cmake
+find_package(jh-toolkit CONFIG REQUIRED COMPONENTS jh-test-enabled)
+```
 
 ### ⚙️ About `jh::jh-toolkit-static`
 
@@ -339,7 +344,7 @@ If your project relies on the **full behavioral guarantees of JH Toolkit**:
 
 If you only rely on a **restricted subset**, such as:
 
-* `jh-toolkit-pod`
+* the `jh-no-throw` component profile
 * POD types and layout-stable utilities
 
 then Windows usage is generally acceptable.
@@ -351,21 +356,21 @@ intended for development convenience rather than semantic identity.
 
 ## 🧩 Unified CMake Target Semantics
 
-Although JH Toolkit can be built and distributed in multiple forms
-(header-only, static, or pod-only),
-**these variants do not represent different user-facing libraries**.
+JH-Toolkit component selections change which headers are installed, not the
+name of the user-facing interface target.
 
 From the user's perspective, they all expose the **same public API surface**.
 
 ### One API — Multiple Delivery Forms
 
-The following build artifacts:
+The CMake targets are:
 
 - `jh-toolkit`
-- `jh-toolkit-pod`
 - `jh-toolkit-static`
 
-exist for **distribution, performance, and build-control reasons only**.
+The interface target is always exported as `jh::jh-toolkit`, including minimal
+component profiles. `jh::jh-toolkit-static` is also exported when the `base`
+component is installed. There is no separate `jh::jh-toolkit-pod` target.
 
 They do **not** require different usage patterns at the CMake level.
 
@@ -384,9 +389,8 @@ target_link_libraries(my_project PRIVATE jh::jh-toolkit)
 
 This applies **equally** to:
 
-* Header-only builds (which provide `jh::jh-toolkit` as a header-only target)
-* POD-only builds (which provide `jh::jh-toolkit-pod` as a header-only target)
-* Precompiled static builds (which provide `jh::jh-toolkit-static` as a static library target)
+* Full and component-limited installs, which provide `jh::jh-toolkit`
+* Installs containing `base` or `all`, which also provide `jh::jh-toolkit-static`
 
 The specific internal composition is resolved automatically.
 
@@ -406,17 +410,16 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(JH_Toolkit)
 
-target_link_libraries(my_project PRIVATE jh-toolkit)
+target_link_libraries(my_project PRIVATE jh::jh-toolkit)
 ```
 
 In this mode:
 
-* the target name is **`jh-toolkit`** (no `jh::` namespace)
+* both `jh-toolkit` and its alias `jh::jh-toolkit` are available
 * the toolkit is treated as an **in-tree dependency**
 * no lookup via an installed package root is required
 
-Despite the different target name, the **API surface and semantics are identical**
-to the installed / Conan-based usage.
+The same `jh::jh-toolkit` target can be used for installed and FetchContent builds.
 
 ---
 
@@ -425,7 +428,7 @@ to the installed / Conan-based usage.
 | Acquisition Method | Target to Link   | Notes                                |
 |--------------------|------------------|--------------------------------------|
 | Install / Conan    | `jh::jh-toolkit` | Standard installed package semantics |
-| FetchContent       | `jh-toolkit`     | In-tree / vendored usage (1.4.0+)    |
+| FetchContent       | `jh::jh-toolkit` | In-tree / vendored usage (1.4.0+)    |
 
 > **Do not choose targets based on API differences.**
 > The choice only affects **how the toolkit is obtained**, not **how it is used**.
@@ -444,9 +447,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(jh-toolkit REQUIRED)
 
 add_executable(my_project main.cpp)
-target_link_libraries(my_project PRIVATE jh::jh-toolkit)          # Header-only mode
+target_link_libraries(my_project PRIVATE jh::jh-toolkit)          # Selected header components
 # or
-target_link_libraries(my_project PRIVATE jh::jh-toolkit-static)   # Optimized static linkage
+target_link_libraries(my_project PRIVATE jh::jh-toolkit-static)   # Available with base/all
 ```
 
 ---

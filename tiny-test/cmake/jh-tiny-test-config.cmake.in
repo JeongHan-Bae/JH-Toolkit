@@ -1,6 +1,6 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
-find_dependency(jh-toolkit CONFIG REQUIRED)
+find_dependency(jh-toolkit CONFIG REQUIRED COMPONENTS jh-test-enabled)
 
 include("${CMAKE_CURRENT_LIST_DIR}/jh-tiny-test-targets.cmake")

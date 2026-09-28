@@ -58,10 +58,16 @@ The library's own behavior suite is in `simple-cucumber/tdd` and runs through CT
 
 ```sh
 cmake -S simple-cucumber -B build/simple-cucumber \
-  -DJH_SIMPLE_CUCUMBER_BUILD_TDD=ON
-cmake --build build/simple-cucumber --target jh_simple_cucumber_tdd
+  -DJH_SIMPLE_CUCUMBER_BUILD_TDD=ON \
+  -DJH_SIMPLE_CUCUMBER_BUILD_STATIC_TESTS=ON
+cmake --build build/simple-cucumber
 ctest --test-dir build/simple-cucumber --output-on-failure
 ```
+
+The build target `jh_simple_cucumber_tdd` produces the runtime test executable. The `3/3` shown by CTest counts
+three test entries: `simple_cucumber_tdd`, `simple_cucumber_static_passes`, and
+`simple_cucumber_static_failures`. The two static-check entries compile their cases when they run; they are not
+additional runtime test executables.
 
 Passing scenarios and their step definitions live in `tdd/pass/`; expected failures are in `tdd/fail/`. The suite covers scalar conversion, type-aware candidate selection, exponent-form doubles, constructor-injected services, `And`, Scenario Outlines, per-scenario state, DataTables, undefined steps, conversion failures, and ambiguous definitions. `JH_SIMPLE_CUCUMBER_BUILD_TDD` defaults on for standalone builds and when JH-Toolkit tests are enabled.
 

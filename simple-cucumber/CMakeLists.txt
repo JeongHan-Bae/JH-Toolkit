@@ -61,8 +61,18 @@ else()
             INTERFACE "${JH_SIMPLE_CUCUMBER_SOURCE_ROOT}/include")
         set(JH_SIMPLE_CUCUMBER_TOOLKIT_TARGET jh_simple_cucumber_toolkit_source)
     else()
-        find_package(jh-toolkit CONFIG REQUIRED)
+        find_package(jh-toolkit CONFIG REQUIRED COMPONENTS jh-test-enabled)
         set(JH_SIMPLE_CUCUMBER_TOOLKIT_TARGET jh::jh-toolkit)
+    endif()
+endif()
+
+if(TARGET ${JH_SIMPLE_CUCUMBER_TOOLKIT_TARGET})
+    get_target_property(_jh_simple_cucumber_toolkit_components
+        ${JH_SIMPLE_CUCUMBER_TOOLKIT_TARGET} JH_TOOLKIT_AVAILABLE_COMPONENTS)
+    if(_jh_simple_cucumber_toolkit_components
+            AND NOT "jh-test-enabled" IN_LIST _jh_simple_cucumber_toolkit_components)
+        message(FATAL_ERROR
+            "jh-simple-cucumber requires JH-Toolkit component jh-test-enabled")
     endif()
 endif()
 

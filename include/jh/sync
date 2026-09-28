@@ -5,6 +5,8 @@
  * <p>
  * This header aggregates all synchronous facilities under the
  * <code>jh::sync</code> namespace.
+ * The IPC aggregate is included when the consuming target defines
+ * <code>JH_TOOLKIT_ENABLE_IPCS</code>.
  * </p>
  *
  * <pre><code>#include &lt;jh/sync&gt;</code></pre>
@@ -25,7 +27,9 @@
  */
 #pragma once
 
+#if defined(JH_TOOLKIT_ENABLE_IPCS)
 #include "jh/synchronous/ipc.h"
+#endif
 #include "jh/synchronous/const_lock.h"
 #include "jh/synchronous/control_buf.h"
 #include "jh/synchronous/strong_lock.h"

@@ -1,0 +1,93 @@
+name: Install Component Integration
+
+on:
+  push:
+    branches:
+      - '*dev'
+      - 'dev*'
+    paths: &install_paths
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'tiny-test/CMakeLists.txt'
+      - 'tiny-test/**/CMakeLists.txt'
+      - 'tiny-test/cmake/**'
+      - 'tiny-test/**/cmake/**'
+      - 'simple-cucumber/CMakeLists.txt'
+      - 'simple-cucumber/**/CMakeLists.txt'
+      - 'simple-cucumber/cmake/**'
+      - 'simple-cucumber/**/cmake/**'
+      - '.github/workflows/install-components.yml'
+      - '.github/workflows/install_components_test.cmake'
+  pull_request:
+    paths: *install_paths
+  workflow_dispatch:
+
+jobs:
+  install-components:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux (Ubuntu / GCC)
+            os: ubuntu-latest
+          - name: Darwin (macOS / LLVM 20)
+            os: macos-latest
+          - name: Windows (MSYS2 UCRT64 / MinGW-w64)
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Linux tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++
+
+      - name: Set up macOS tools
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install llvm@20 cmake ninja
+          echo "CC=/opt/homebrew/opt/llvm@20/bin/clang" >> "$GITHUB_ENV"
+          echo "CXX=/opt/homebrew/opt/llvm@20/bin/clang++" >> "$GITHUB_ENV"
+
+      - name: Set up Windows tools
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+          msystem: UCRT64
+
+      - name: Verify install, merge, and clean behavior
+        if: runner.os != 'Windows'
+        env:
+          CXX: ${{ runner.os == 'Linux' && 'g++' || '/opt/homebrew/opt/llvm@20/bin/clang++' }}
+          CC: ${{ runner.os == 'Linux' && 'gcc' || '/opt/homebrew/opt/llvm@20/bin/clang' }}
+          JH_FETCH_REPOSITORY: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.clone_url || format('{0}/{1}.git', github.server_url, github.repository) }}
+          JH_FETCH_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+        run: >-
+          cmake
+          -DJH_SOURCE_DIR="$GITHUB_WORKSPACE"
+          -DJH_TEST_ROOT="$RUNNER_TEMP/jh-toolkit-install-components"
+          -P .github/workflows/install_components_test.cmake
+
+      - name: Verify install, merge, and clean behavior (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        env:
+          CC: gcc
+          CXX: g++
+          JH_FETCH_REPOSITORY: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.clone_url || format('{0}/{1}.git', github.server_url, github.repository) }}
+          JH_FETCH_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+        run: >-
+          cmake
+          -DJH_SOURCE_DIR="$GITHUB_WORKSPACE"
+          -DJH_TEST_ROOT="$RUNNER_TEMP/jh-toolkit-install-components"
+          -P .github/workflows/install_components_test.cmake

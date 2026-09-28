@@ -80,12 +80,20 @@ For static registration across translation units, create one session object in e
 
 ## Self-checks
 
-Build the behavior suite and the positive compile-time case, then run the CTest checks:
+For a standalone checkout, explicitly enable the runtime and compile-time checks, build the configured targets,
+then run all CTest checks:
 
 ```sh
-cmake -S tiny-test -B build/tiny-test -DCMAKE_BUILD_TYPE=Debug
+cmake -S tiny-test -B build/tiny-test \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DJH_TINY_TEST_BUILD_TDD=ON \
+  -DJH_TINY_TEST_BUILD_STATIC_TESTS=ON
 cmake --build build/tiny-test
 ctest --test-dir build/tiny-test --output-on-failure
 ```
 
-The `static_tests/fail` cases verify that duplicate test/session specializations and duplicate names in a session or suite are rejected by the compiler. Separate multi-translation-unit executables verify that repeated test names or session names in one executable fail registration, while two independent executables can use the same names successfully.
+CTest runs the runtime suite, two positive registration executables, and the expected-failure compile checks. The
+`static_tests/fail` cases verify that duplicate test/session specializations and duplicate names in a session or
+suite are rejected by the compiler. Separate multi-translation-unit executables verify that repeated test names
+or session names in one executable fail registration, while two independent executables can use the same names
+successfully.
