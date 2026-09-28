@@ -65,6 +65,8 @@ ctest --test-dir build/simple-cucumber --output-on-failure
 
 Passing scenarios and their step definitions live in `tdd/pass/`; expected failures are in `tdd/fail/`. The suite covers scalar conversion, type-aware candidate selection, exponent-form doubles, constructor-injected services, `And`, Scenario Outlines, per-scenario state, DataTables, undefined steps, conversion failures, and ambiguous definitions. `JH_SIMPLE_CUCUMBER_BUILD_TDD` defaults on for standalone builds and when JH-Toolkit tests are enabled.
 
+Compile-time API contracts live in `static_tests/pass/` and `static_tests/fail/`. They run through separate pass and fail CTest runners; the fail runner collects all rejected-compilation checks before reporting mismatches. They are controlled by `JH_SIMPLE_CUCUMBER_BUILD_STATIC_TESTS`, which defaults on alongside the TDD checks.
+
 ## Usage
 
 ### Basic API

@@ -15,3 +15,5 @@ project_static_fail(
     concepts/flatten_proxy_rejects_dangling_const_lvalue_reference.cpp
     EXPECT_DIAGNOSTIC "deleted"
 )
+
+project_static_fail_finalize()

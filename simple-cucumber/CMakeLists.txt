@@ -15,6 +15,10 @@ option(JH_SIMPLE_CUCUMBER_BUILD_TDD
     "Build the simple-cucumber self-tests"
     "${_jh_simple_cucumber_tdd_default}"
 )
+option(JH_SIMPLE_CUCUMBER_BUILD_STATIC_TESTS
+    "Build simple-cucumber compile-time tests"
+    "${_jh_simple_cucumber_tdd_default}"
+)
 unset(_jh_simple_cucumber_tdd_default)
 
 option(JH_SIMPLE_CUCUMBER_INSTALL
@@ -91,6 +95,10 @@ set_target_properties(jh_test_cucumber PROPERTIES EXPORT_NAME "jh-simple-cucumbe
 
 if(JH_SIMPLE_CUCUMBER_BUILD_TDD)
     add_subdirectory(tdd)
+endif()
+
+if(JH_SIMPLE_CUCUMBER_BUILD_STATIC_TESTS)
+    add_subdirectory(static_tests)
 endif()
 
 if(JH_SIMPLE_CUCUMBER_INSTALL)

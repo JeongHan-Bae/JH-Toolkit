@@ -7,5 +7,11 @@ set(USE_JH_COMPILE_OPT OFF CACHE BOOL "" FORCE)
 
 add_subdirectory("${STATIC_TOOLKIT_SOURCE_DIR}" "${CMAKE_BINARY_DIR}/jh-toolkit")
 
-add_library(static_fail_translation_unit OBJECT "${STATIC_TEST_SOURCE}")
-target_link_libraries(static_fail_translation_unit PRIVATE "${STATIC_TEST_TARGET}")
+include("${STATIC_FAIL_CASES_FILE}")
+
+foreach(case_file IN LISTS STATIC_FAIL_CASE_FILES)
+    include("${case_file}")
+    set(target "static_fail_translation_unit_${STATIC_TEST_NAME}")
+    add_library("${target}" OBJECT "${STATIC_TEST_SOURCE}")
+    target_link_libraries("${target}" PRIVATE "${STATIC_TEST_TARGET}")
+endforeach()

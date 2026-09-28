@@ -1,0 +1,2 @@
+project_static_pass(contracts simple_cucumber_contracts.cpp)
+project_static_pass_finalize()

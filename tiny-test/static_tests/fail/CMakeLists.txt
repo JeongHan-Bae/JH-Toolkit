@@ -10,8 +10,6 @@ add_executable(tiny_test_static_fail_duplicate_test_across_tus
 )
 target_link_libraries(tiny_test_static_fail_duplicate_test_across_tus PRIVATE jh::test::jh-tiny-test)
 target_compile_features(tiny_test_static_fail_duplicate_test_across_tus PRIVATE cxx_std_20)
-add_test(NAME tiny_test_static_fail_duplicate_test_across_tus
-    COMMAND tiny_test_static_fail_duplicate_test_across_tus test)
 
 add_executable(tiny_test_static_fail_duplicate_session_across_tus
     duplicate_registration_main.cpp
@@ -20,5 +18,8 @@ add_executable(tiny_test_static_fail_duplicate_session_across_tus
 )
 target_link_libraries(tiny_test_static_fail_duplicate_session_across_tus PRIVATE jh::test::jh-tiny-test)
 target_compile_features(tiny_test_static_fail_duplicate_session_across_tus PRIVATE cxx_std_20)
-add_test(NAME tiny_test_static_fail_duplicate_session_across_tus
-    COMMAND tiny_test_static_fail_duplicate_session_across_tus session)
+
+project_static_fail_finalize(
+    tiny_test_static_fail_duplicate_test_across_tus
+    tiny_test_static_fail_duplicate_session_across_tus
+)

@@ -14,4 +14,5 @@ project_static_pass(generator_contracts concepts/generator_contracts.cpp)
 project_static_pass(flatten_proxy_constexpr constexpr/flatten_proxy.cpp)
 project_static_pass(immutable_str_contracts concepts/immutable_str_contracts.cpp TARGET jh-toolkit-static)
 project_static_pass(runtime_api_contracts concepts/runtime_api_contracts.cpp)
-project_static_pass(simple_cucumber_contracts cucumber/simple_cucumber_contracts.cpp TARGET jh_test_cucumber)
+
+project_static_pass_finalize()
