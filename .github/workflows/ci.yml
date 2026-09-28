@@ -109,17 +109,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Configure (Release, clean)
+      - name: Configure (FastDebug)
         run: |
-          rm -rf build-release
-          cmake -B build-release \
-            -DCMAKE_BUILD_TYPE=Release \
+          rm -rf build-fastdebug
+          cmake -B build-fastdebug \
+            -DCMAKE_BUILD_TYPE=FastDebug \
             -G Ninja \
             -DCMAKE_C_COMPILER=gcc \
             -DCMAKE_CXX_COMPILER=g++
 
       - name: Build
-        run: cmake --build build-release -v
+        run: cmake --build build-fastdebug -v
 
       - name: Run tests
-        run: ctest --test-dir build-release --output-on-failure
+        run: ctest --test-dir build-fastdebug --output-on-failure

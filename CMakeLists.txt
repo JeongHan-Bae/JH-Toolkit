@@ -69,29 +69,21 @@ option(USE_JH_COMPILE_OPT
         "Allow jh-toolkit to enforce compile optimization flags when used via add_subdirectory/FetchContent"
         ON)
 
+set(_jh_enable_testing_default OFF)
+if (PROJECT_IS_TOP_LEVEL)
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR
+            CMAKE_BUILD_TYPE STREQUAL "FastDebug")
+        set(_jh_enable_testing_default ON)
+    endif ()
+endif ()
 option(JH_ENABLE_TESTING
         "Build jh-toolkit tests"
-        OFF)
+        "${_jh_enable_testing_default}")
+unset(_jh_enable_testing_default)
 
 option(JH_ENABLE_EXAMPLES
         "Build jh-toolkit examples"
         OFF)
-
-# Auto-enable tests for development builds (only top-level)
-if (PROJECT_IS_TOP_LEVEL)
-
-    if (WIN32 AND
-        (CMAKE_BUILD_TYPE STREQUAL "Release" OR
-            CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
-        set(JH_ENABLE_TESTING ON CACHE BOOL "" FORCE)
-    endif ()
-
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR
-            CMAKE_BUILD_TYPE STREQUAL "FastDebug")
-        set(JH_ENABLE_TESTING ON CACHE BOOL "" FORCE)
-    endif ()
-
-endif ()
 
 set(JH_APPLY_COMPILE_OPT TRUE)
 
