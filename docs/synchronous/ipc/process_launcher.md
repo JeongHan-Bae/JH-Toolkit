@@ -229,6 +229,8 @@ Multiple launches yield independent handles, all of which must be waited.
 ## ⚠️ Error Handling
 
 * Process creation failures throw `std::runtime_error`
+* On POSIX, `start()` detects both `fork()` and `exec()` failures before returning a handle
+* A successfully executed program that exits with code `1` is returned as the normal value `1`
 * Handle misuse results in `std::terminate()`
 * These are **programming errors**, not recoverable conditions
 

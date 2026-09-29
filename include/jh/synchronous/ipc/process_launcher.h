@@ -189,10 +189,12 @@
 #include "jh/metax/expected.h"
 #include "jh/metax/t_str.h"
 #include "jh/synchronous/ipc/ipc_limits.h"
+#include <cstddef>
 #include <cstdint>
 #include <cerrno>
 #include <string>
 #include <stdexcept>
+#include <system_error>
 #include <filesystem>
 #include <iostream>   // for std::cerr
 
@@ -200,13 +202,28 @@
 #include <windows.h>  // STARTUPINFO, PROCESS_INFORMATION, CreateProcess, WaitForSingleObject, CloseHandle
 #elif IS_POSIX
 #include <csignal>
-#include <unistd.h>   // fork, execl, _exit
+#include <fcntl.h>    // fcntl, FD_CLOEXEC
+#include <unistd.h>   // close, fork, execl, read, write, _exit
 #include <sys/wait.h> // waitpid
 
 #endif
 
 
 namespace jh::sync::ipc {
+
+#if IS_POSIX
+    namespace detail {
+        template<class Fork>
+        [[nodiscard]] pid_t fork_or_throw(Fork &&fork_operation) {
+            const pid_t pid = fork_operation();
+            if (pid < 0) {
+                const int error = errno;
+                throw std::system_error(error, std::generic_category(), "fork");
+            }
+            return pid;
+        }
+    }
+#endif
 
     /**
      * @brief Describes why a launched process did not produce a normal exit value.
@@ -656,6 +673,9 @@ namespace jh::sync::ipc {
          * explicitly <code>wait()</code>-ed.
          * </p>
          *
+         * On POSIX, both <code>fork()</code> and <code>exec()</code> failures
+         * are reported synchronously before a handle is returned.
+         *
          * @throw std::runtime_error if process creation fails.
          */
         static handle start() {
@@ -693,12 +713,83 @@ namespace jh::sync::ipc {
             return handle{pi};
 #elif IS_POSIX
             auto exe = jh::meta::TStr{"./"} + Path;
-            pid_t pid = fork();
+            int exec_pipe[2]{};
+            if (::pipe(exec_pipe) == -1) {
+                const int error = errno;
+                throw std::system_error(error, std::generic_category(), "pipe");
+            }
+
+            for (const int fd : exec_pipe) {
+                const int descriptor_flags = ::fcntl(fd, F_GETFD);
+                if (descriptor_flags == -1 ||
+                    ::fcntl(fd, F_SETFD, descriptor_flags | FD_CLOEXEC) == -1) {
+                    const int error = errno;
+                    ::close(exec_pipe[0]);
+                    ::close(exec_pipe[1]);
+                    throw std::system_error(error, std::generic_category(), "fcntl(FD_CLOEXEC)");
+                }
+            }
+
+            pid_t pid = detail::fork_or_throw([] { return fork(); });
+
             if (pid == 0) {
-                execl(exe.val(), exe.val(), nullptr);
-                // exec failed: safely terminate only the child process (avoid atexit/DTOR)
+                ::close(exec_pipe[0]);
+                ::execl(exe.val(), exe.val(), static_cast<char *>(nullptr));
+
+                const int error = errno;
+                const auto *error_bytes = reinterpret_cast<const char *>(&error);
+                std::size_t bytes_remaining = sizeof(error);
+                while (bytes_remaining > 0) {
+                    const ssize_t bytes_written = ::write(exec_pipe[1], error_bytes, bytes_remaining);
+                    if (bytes_written == -1 && errno == EINTR) continue;
+                    if (bytes_written <= 0) break;
+                    error_bytes += bytes_written;
+                    bytes_remaining -= static_cast<std::size_t>(bytes_written);
+                }
                 _exit(1);
             }
+
+            ::close(exec_pipe[1]);
+
+            int exec_error{};
+            auto *error_bytes = reinterpret_cast<char *>(&exec_error);
+            std::size_t bytes_read{};
+            int read_error{};
+            while (bytes_read < sizeof(exec_error)) {
+                const ssize_t count = ::read(
+                    exec_pipe[0], error_bytes + bytes_read, sizeof(exec_error) - bytes_read);
+                if (count == -1 && errno == EINTR) continue;
+                if (count == -1) {
+                    read_error = errno;
+                    break;
+                }
+                if (count == 0) break;
+                bytes_read += static_cast<std::size_t>(count);
+            }
+            ::close(exec_pipe[0]);
+
+            const auto reap_child = [pid](const bool terminate) noexcept {
+                if (terminate) static_cast<void>(::kill(pid, SIGKILL));
+                int status{};
+                pid_t waited{};
+                do {
+                    waited = ::waitpid(pid, &status, 0);
+                } while (waited == -1 && errno == EINTR);
+            };
+
+            if (read_error != 0) {
+                reap_child(true);
+                throw std::system_error(read_error, std::generic_category(), "read exec status");
+            }
+            if (bytes_read == sizeof(exec_error)) {
+                reap_child(false);
+                throw std::system_error(exec_error, std::generic_category(), "exec " + std::string{exe.val()});
+            }
+            if (bytes_read != 0) {
+                reap_child(true);
+                throw std::system_error(EIO, std::generic_category(), "incomplete exec status");
+            }
+
             return handle{pid};
 #endif
         }
