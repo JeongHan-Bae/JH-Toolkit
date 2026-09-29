@@ -1,7 +1,7 @@
 #include "jh/runtime_arr"
 
-int main()
-{
-    jh::runtime_arr<bool> bits(8);
-    return static_cast<int>(bits.data() != nullptr);
+#include <utility>
+
+namespace {
+    using invalid_data_access = decltype(std::declval<jh::runtime_arr<bool> &>().data());
 }
