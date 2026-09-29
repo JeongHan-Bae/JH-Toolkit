@@ -1,62 +1,9 @@
 # 🧰 Build & Platform Guide
 
-This document provides a complete reference for building **JH Toolkit**, including supported toolchains, Conan
-packaging, CMake targets, and platform-specific notes.
+This document provides a complete reference for building **JH Toolkit**, including supported toolchains, CMake
+targets, component installation, FetchContent usage, and platform-specific notes.
 
 [![Back to README](https://img.shields.io/badge/%20Back%20to%20README-blue?style=for-the-badge)](../README.md)
-
----
-
-## 📦 Conan Packaging via GitHub Releases
-
-Conan packages are distributed **as `.tar.gz` archives** attached to **GitHub Release Assets**.
-
-**Available (v<VERSION>):**
-
-* 🧩 `jh-toolkit-pod` — Conan archive for the `jh-no-throw` header profile
-* 🛠️ `jh-toolkit` — Full builds for:
-
-    * Linux x86_64
-    * macOS ARM64
-
----
-
-### ⚙️ General Notes
-
-* ✅ Uses **Conan 2.x** with modern profile & CMake toolchain support.
-* 📦 **GitHub Packages** is **not used** (Conan 2.x incompatible).
-* ⛔ **Windows builds excluded** — Conan 2.x under MSYS2/UCRT64 may inject MSVC dependencies.
-* 🚫 **Linux ARM64 skipped in CI** — due to missing native runners or fully stable QEMU.
-
----
-
-### 📦 Conan `.tar.gz` Archive — Usage
-
-> All `.tar.gz` packages are pre-built via GitHub CI for each tagged release.
-
-#### Dependency Matrix
-
-| Package Name              | Platform Dependent | Compiler Dependent | Description                                  |
-|---------------------------|--------------------|--------------------|----------------------------------------------|
-| `jh-toolkit-pod`          | ❌                  | ❌                  | Minimal meta/POD headers; exports `jh::jh-toolkit` |
-| `jh-toolkit-linux-x86_64` | ✅                  | ✅ (GCC 13+)        | Built on `ubuntu-latest` using GCC toolchain |
-| `jh-toolkit-macos-arm64`  | ✅                  | ✅ (LLVM 20+)       | Built on `macos-latest` with Homebrew LLVM   |
-
-#### Manual Cache Extraction
-
-```bash
-# Download from GitHub Releases
-wget https://github.com/JeongHan-Bae/JH-Toolkit/releases/download/JH-Toolkit-<VERSION>/jh-toolkit-linux-x86_64-<VERSION>.tar.gz
-
-# Inject into local Conan 2.x cache
-mkdir -p ~/.conan2/p/jh-toolkit
-tar -xzf jh-toolkit-linux-x86_64-<VERSION>.tar.gz -C ~/.conan2/p/jh-toolkit
-```
-
-> Replace `<VERSION>` with the desired release tag (e.g. `1.3.2`, `1.4.0`, etc.)
-> Inspect cache layout using `conan list` or `conan cache path`.
-
-If your system differs from the CI presets, you can always [build from source](#-building-from-source).
 
 ---
 
@@ -370,16 +317,15 @@ The CMake targets are:
 
 The interface target is always exported as `jh::jh-toolkit`, including minimal
 component profiles. `jh::jh-toolkit-static` is also exported when the `base`
-component is installed. There is no separate `jh::jh-toolkit-pod` target.
+component is installed.
 
 They do **not** require different usage patterns at the CMake level.
 
 ---
 
-### Installed / Conan-Based Usage
+### Installed Package Usage
 
-When JH Toolkit is **installed** (via Conan, system install, or package manager),
-it is consumed as a standard CMake package:
+After installing JH Toolkit from a source build, consume it as a standard CMake package:
 
 ```cmake
 find_package(jh-toolkit REQUIRED)
@@ -425,10 +371,10 @@ The same `jh::jh-toolkit` target can be used for installed and FetchContent buil
 
 ### Summary
 
-| Acquisition Method | Target to Link   | Notes                                |
-|--------------------|------------------|--------------------------------------|
-| Install / Conan    | `jh::jh-toolkit` | Standard installed package semantics |
-| FetchContent       | `jh::jh-toolkit` | In-tree / vendored usage (1.4.0+)    |
+| Acquisition Method | Target to Link   | Notes                                      |
+|--------------------|------------------|--------------------------------------------|
+| CMake install      | `jh::jh-toolkit` | Source-built package installed to a prefix |
+| FetchContent       | `jh::jh-toolkit` | In-tree / vendored usage (1.4.0+)          |
 
 > **Do not choose targets based on API differences.**
 > The choice only affects **how the toolkit is obtained**, not **how it is used**.
@@ -555,8 +501,8 @@ g++ -std=c++20 -I/usr/local/include main.cpp -o test
 | **Compiler (macOS)**   | LLVM 20+ (`brew install llvm@20`)   |
 | **Compiler (Windows)** | MSYS2 UCRT64 (GCC 14+)              |
 | **CMake**              | ≥ 3.20                              |
-| **System**             | Current binaries target Linux x86_64 and macOS ARM64; WASM32 is planned |
-| **Distribution**       | Conan `.tar.gz` via GitHub Releases |
+| **System**             | C++20 toolchain required; WASM32 support is planned |
+| **Distribution**       | CMake source install or FetchContent |
 
 ---
 

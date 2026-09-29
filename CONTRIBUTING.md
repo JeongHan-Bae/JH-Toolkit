@@ -149,7 +149,7 @@ Examples:
 ```yaml
 name: "Cross-Platform CI"
 name: "Documentation Integrity Check"
-name: "Release Conan Packages"
+name: "Install Component Integration"
 ```
 
 `cross-platform` is treated as a single hyphenated word, so both parts are capitalized.

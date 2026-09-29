@@ -164,10 +164,10 @@ The project builds with **GCC 13+ or Clang 15+**, with **GCC 14+ or LLVM 20** st
 performance and language support.
 **MSVC is not supported.**
 
-For complete build instructions, supported toolchains, and Conan packaging notes, refer to the
+For complete build instructions, supported toolchains, component installation, and FetchContent usage, refer to the
 [Build & Platform Guide](./docs/build.md).
 
-> Covers: toolchains, CMake targets, Conan `.tar.gz` releases, and the dual-mode header design.
+> Covers: toolchains, CMake targets, source installation, FetchContent, and the dual-mode header design.
 
 The JH-Toolkit library has **no runtime dependencies**.
 Its **build requirement** is a conforming **C++20 standard library**.

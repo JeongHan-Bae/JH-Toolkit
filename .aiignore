@@ -87,9 +87,6 @@ src/
 # The test includes boundary tests; these syntaxes may cause erroneous heuristics in the AI.
 tests/
 
-# Conan related files
-tools/
-
 # Git, Linguist, and Shield files
 .gitignore
 .gitattributes
