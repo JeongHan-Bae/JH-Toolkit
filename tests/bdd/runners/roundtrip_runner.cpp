@@ -4,6 +4,7 @@
 #include "huffman_roundtrip_steps.hpp"
 #include "mutable_enumeration_steps.hpp"
 #include "pod_payload_roundtrip_steps.hpp"
+#include "pattern_matcher_controller_steps.hpp"
 #include "runtime_arr_bool_roundtrip_steps.hpp"
 #include "uri_binary_roundtrip_steps.hpp"
 #include "uri_roundtrips_steps.hpp"
@@ -37,6 +38,7 @@ int main()
     passed = run_feature<jh_toolkit_bdd::HuffmanDefinition>("huffman_roundtrip.feature") && passed;
     passed = run_feature<jh_toolkit_bdd::Base64HuffmanDefinition>("base64_huffman_roundtrip.feature") && passed;
     passed = run_feature<jh_toolkit_bdd::PodPayloadDefinition>("pod_payload_roundtrip.feature") && passed;
+    passed = run_feature<jh_toolkit_bdd::PatternMatcherControllerDefinition>("pattern_matcher_controller.feature") && passed;
     passed = run_feature<jh_toolkit_bdd::RuntimeArrBoolDefinition>("runtime_arr_bool_roundtrip.feature") && passed;
     passed = run_feature<jh_toolkit_bdd::BitflagsDefinition>("bitflags_roundtrip.feature") && passed;
     passed = run_feature<jh_toolkit_bdd::MutableEnumerationDefinition>("mutable_enumeration.feature") && passed;
