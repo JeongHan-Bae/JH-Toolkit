@@ -861,3 +861,31 @@ namespace test {
     [[maybe_unused]] const tiny_test::session<"test module test_runtime_arr case 32"> registration_32{};
 }
 
+
+namespace test {
+void runtime_arr_default_empty() {
+    jh::runtime_arr<int> empty;
+    tiny_test::expect(empty.size() == 0 && empty.empty() && empty.data() == nullptr,
+                      "default-constructed array is empty and owns no element storage");
+    jh::runtime_arr<int> values{1, 2, 3};
+    empty = std::move(values);
+    tiny_test::expect(empty.size() == 3 && empty[0] == 1 && empty[2] == 3,
+                      "default-constructed array accepts move assignment");
+
+    jh::runtime_arr<bool> empty_bits;
+    tiny_test::expect(empty_bits.size() == 0 && empty_bits.empty() &&
+                      empty_bits.raw_data() == nullptr,
+                      "default-constructed packed boolean array is empty");
+}
+}
+template<>
+struct jh::test::tiny_test::test<"runtime_arr default empty">
+    : jh::test::tiny_test::test_definition<"runtime_arr default empty", &::test::runtime_arr_default_empty> {};
+template<>
+struct jh::test::tiny_test::session<"runtime_arr default construction">
+    : jh::test::tiny_test::session_definition<
+          "runtime_arr default construction",
+          jh::test::tiny_test::test<"runtime_arr default empty">> {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"runtime_arr default construction"> registered_default_empty{};
+}

@@ -1,0 +1,8 @@
+/**
+ * @file pattern_matcher
+ * @brief Canonical include for <code>jh::pattern_matcher</code>.
+ */
+
+#pragma once
+
+#include "jh/core/pattern_matcher.h"

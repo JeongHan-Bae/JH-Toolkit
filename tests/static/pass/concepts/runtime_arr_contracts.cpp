@@ -41,6 +41,9 @@ struct test_allocator {
 using jh::runtime_arr;
 using jh::runtime_arr_helper::bool_flat_alloc;
 
+static_assert(std::default_initializable<runtime_arr<int>>);
+static_assert(std::default_initializable<runtime_arr<bool>>);
+static_assert(std::default_initializable<runtime_arr<bool, bool_flat_alloc>>);
 static_assert(has_mutable_data<runtime_arr<int>>);
 static_assert(has_mutable_span<runtime_arr<int>>);
 static_assert(has_const_span<runtime_arr<int>>);

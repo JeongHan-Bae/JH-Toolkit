@@ -49,6 +49,7 @@ It does **not** behave like `std::vector` — once created, the array size is fi
 
 ```cpp
 jh::runtime_arr<int> arr{5}; // single element [5]
+jh::runtime_arr<int> empty; // size 0, no element storage
 jh::runtime_arr<int> arr(5); // 5 default-initialized elements [0,0,0,0,0]
 jh::runtime_arr<int> arr(5, jh::runtime_arr<int>::uninitialized);
 // 5 uninitialized elements (POD only) [?,?,?,?,?]
@@ -73,6 +74,7 @@ jh::runtime_arr<int, std::pmr::polymorphic_allocator<int>> arr(v.begin(), v.end(
 From 1.4.0+, `runtime_arr` supports initialization from `std::initializer_list<T>`.
 
 * `runtime_arr<T>(2)` → 2 default-initialized elements
+* `runtime_arr<T>()` → empty array with size 0 and no element storage; the packed `bool` specialization is empty too
 * `runtime_arr<T>{2}` → single element with value 2
 
 Same as `std::vector` behavior.
@@ -174,7 +176,8 @@ Features:
 
 | Category       | Member                                                     | Description                               |
 |----------------|------------------------------------------------------------|-------------------------------------------|
-| Construction   | `runtime_arr(std::size_t n)`                               | Allocates `n` elements                    |
+| Construction   | `runtime_arr()`                                    | Empty array with size 0 and null data     |
+|                | `runtime_arr(std::size_t n)`                               | Allocates `n` elements                    |
 |                | `runtime_arr(std::size_t n, uninitialized_t)`              | POD-only raw allocation                   |
 |                | `runtime_arr(std::size_t n, const Alloc& alloc)`           | Uses custom allocator                     |
 |                | `runtime_arr(std::vector<T>&& vec)`                        | Move-construct from vector                |

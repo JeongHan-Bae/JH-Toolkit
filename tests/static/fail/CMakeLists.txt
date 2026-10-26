@@ -50,4 +50,15 @@ project_static_fail(
     EXPECT_DIAGNOSTIC "constraints not satisfied"
 )
 
+project_static_fail(
+    pattern_matcher_rejects_duplicate_rule_ranks
+    core/pattern_matcher_rejects_duplicate_rule_ranks.cpp
+    EXPECT_DIAGNOSTIC "unique_rule_ranks"
+)
+project_static_fail(
+    pattern_matcher_builder_rejects_duplicate_rule_ranks
+    core/pattern_matcher_builder_rejects_duplicate_rule_ranks.cpp
+    EXPECT_DIAGNOSTIC "unique_rule_ranks"
+)
+
 project_static_fail_finalize()

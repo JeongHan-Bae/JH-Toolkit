@@ -412,6 +412,14 @@ namespace jh {
         static constexpr uninitialized_t uninitialized{};
 
         /**
+         * @brief Constructs an empty array without allocating element storage.
+         *
+         * The array has <code>size() == 0</code> and <code>data() == nullptr</code>.
+         * It can later receive storage through move assignment.
+         */
+        runtime_arr() = default;
+
+        /**
          * @brief Constructs an uninitialized array of POD-like elements.
          * @param size The number of elements to allocate.
          *
@@ -1480,6 +1488,13 @@ namespace jh {
         }
 
     public:
+        /**
+         * @brief Constructs an empty bit-packed array without allocating storage.
+         * The array has <code>size() == 0</code> and
+         * <code>raw_data() == nullptr</code>.
+         */
+        runtime_arr() noexcept = default;
+
         /**
          * @brief Internal reference proxy for single bit access.
          *

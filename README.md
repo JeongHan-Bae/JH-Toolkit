@@ -294,6 +294,11 @@ AI-generated guesses that are not grounded in the documented contracts.
       <td><a href="docs/entry_points/ordered_map.md">Entry Header Guide</a></td>
     </tr>
     <tr>
+      <td><code>&lt;jh/pattern_matcher&gt;</code></td>
+      <td align="center">🧩</td>
+      <td><a href="docs/entry_points/pattern_matcher.md">Entry Header Guide</a></td>
+    </tr>
+    <tr>
       <td><code>&lt;jh/pod&gt;</code></td>
       <td align="center">🧊</td>
       <td><a href="docs/entry_points/pod.md">Entry Header Guide</a></td>

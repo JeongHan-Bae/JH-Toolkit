@@ -1,4 +1,5 @@
 project_static_pass(enum_contracts concepts/enum_contracts.cpp)
+project_static_pass(pattern_matcher_contracts concepts/pattern_matcher_contracts.cpp)
 project_static_pass(runtime_arr_contracts concepts/runtime_arr_contracts.cpp)
 project_static_pass(pod_sequence concepts/pod_sequence.cpp)
 project_static_pass(sequence_iterator_contracts concepts/sequence_iterator_contracts.cpp)

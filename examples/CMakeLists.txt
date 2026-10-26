@@ -11,6 +11,7 @@ set(EXAMPLE_SOURCES
         example_meta.cpp
         example_occ_box.cpp
         example_ordered_map.cpp
+        example_pattern_matcher.cpp
         example_pod.cpp
         example_pool.cpp
         example_ranges.cpp
