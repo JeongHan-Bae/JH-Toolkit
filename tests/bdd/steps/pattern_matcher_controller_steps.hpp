@@ -193,6 +193,13 @@ namespace jh_toolkit_bdd::controller_sim {
         static void order(const Request&, Response& response, const Captures& captures) {
             if (captures.size() != 1) { reject(response, 400, "capture-count"); return; }
             response.json["order_id"] = captures[0];
+            response.json["route"] = "numeric";
+        }
+
+        static void order_by_name(const Request&, Response& response, const Captures& captures) {
+            if (captures.size() != 1) { reject(response, 400, "capture-count"); return; }
+            response.json["order_id"] = captures[0];
+            response.json["route"] = "string";
         }
 
         static void item(const Request&, Response& response, const Captures& captures) {
@@ -242,6 +249,7 @@ namespace jh_toolkit_bdd::controller_sim {
     >>;
     using CatalogRegistration = Registry<CatalogController, "/api/catalog", Routes<
         Route<&CatalogController::order, "GET", Url<"/orders/:number", "numeric">>,
+        Route<&CatalogController::order_by_name, "GET", Url<"/orders/:name", "str">>,
         Route<&CatalogController::item, "GET", Url<"/items/:name", "str">>,
         Route<&CatalogController::featured_item, "GET", Url<"/items/special">>,
         Route<&CatalogController::note, "POST", Url<"/notes/:number", "numeric">>

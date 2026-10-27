@@ -11,12 +11,25 @@ Feature: Three controllers share verb-specific immutable pattern matchers
     Examples:
       | url                                                       | field     | value                                |
       | /api/auth/status                                          | status    | ready                                |
-      | /api/catalog/orders/42                                    | order_id  | 42                                   |
       | /api/users/550e8400-e29b-41d4-a716-446655440000         | user_id   | 550e8400-e29b-41d4-a716-446655440000 |
       | /api/users/550E8400-E29B-41D4-A716-446655440000         | user_id   | 550E8400-E29B-41D4-A716-446655440000 |
       | /api/users/550e8400-e29b-41d4-a716-446655440000/details | detail_id | 550e8400-e29b-41d4-a716-446655440000 |
       | /api/catalog/items/special                                | item      | special                              |
       | /api/catalog/items/other                                  | item      | other                                |
+
+  Scenario Outline: Numeric and string order routes are tried by ascending rank value
+    Given three stateless controllers registered once
+    And an empty request entity
+    When a GET request for /api/catalog/orders/<key> is dispatched
+    Then the response status is 200
+    And the JSON response field order_id is <key>
+    And the JSON response field route is <route>
+
+    Examples:
+      | key          | route   |
+      | 42           | numeric |
+      | 007          | numeric |
+      | not-a-number | string  |
 
   Scenario: An exact item path wins over the string wildcard
     Given three stateless controllers registered once
@@ -63,7 +76,7 @@ Feature: Three controllers share verb-specific immutable pattern matchers
       | verb | url                                                        |
       | GET  | /api/auth/login/john_doe                                   |
       | POST | /api/auth/status                                           |
-      | GET  | /api/catalog/orders/not-a-number                           |
+      | GET  | /api/catalog/orders/                                       |
       | GET  | /api/users/550e8400-e29b-41d4-a716-44665544000G         |
       | GET  | /api/users/550e8400-e29b-41d4-a716-446655440000x        |
       | GET  | /api/users/550e8400-e29b-41d4-a716-446655440000x/details |

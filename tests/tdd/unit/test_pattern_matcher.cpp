@@ -40,6 +40,15 @@ namespace test {
         }
     };
 
+    template<std::size_t Rank>
+    struct overlapping_rule {
+        [[maybe_unused]] static constexpr std::size_t rank = Rank;
+
+        static constexpr std::pair<bool, std::size_t> match(std::string_view input) {
+            return segment_rule::match(input);
+        }
+    };
+
     using builder = pattern_matcher_builder<int, 512, number_rule{}, segment_rule{}>;
 
     void routes_and_captures() {
@@ -63,7 +72,7 @@ namespace test {
         auto numeric = tree.match("/api/123/info");
         tiny_test::expect(numeric && numeric.value().second == 2 &&
                           numeric.value().first.size() == 1 && numeric.value().first[0] == "123",
-                          "lower-rank numeric rule wins");
+                          "rank 10 numeric rule precedes rank 20 segment rule");
         auto segment = tree.match("/api/abc/info");
         tiny_test::expect(segment && segment.value().second == 3 &&
                           segment.value().first.size() == 1 && segment.value().first[0] == "abc",
@@ -109,6 +118,37 @@ namespace test {
         tiny_test::expect(matched && matched.value().second == 2 &&
                           matched.value().first.size() == 1 && matched.value().first[0] == "123",
                           "one backtrack reaches the second rule");
+    }
+
+    template<std::size_t Limit>
+    auto overlapping_routes() {
+        pattern_matcher_builder<int, Limit,
+                                overlapping_rule<10>{}, overlapping_rule<20>{},
+                                overlapping_rule<30>{}, overlapping_rule<40>{}> routes;
+        routes.insert({{{"/overlap/", rule_tag<overlapping_rule<10>{}>{}},
+                        {"/a", none{}}}, 1});
+        routes.insert({{{"/overlap/", rule_tag<overlapping_rule<20>{}>{}},
+                        {"/b", none{}}}, 2});
+        routes.insert({{{"/overlap/", rule_tag<overlapping_rule<30>{}>{}},
+                        {"/c", none{}}}, 3});
+        routes.insert({{{"/overlap/", rule_tag<overlapping_rule<40>{}>{}},
+                        {"/d", none{}}}, 4});
+        return std::move(routes).build();
+    }
+
+    void backtrack_limit_across_candidates() {
+        auto limited = overlapping_routes<2>();
+        auto exhausted = limited.match("/overlap/token/d");
+        tiny_test::expect(!exhausted &&
+                          exhausted.error() == match_error::backtrack_limit_exceeded,
+                          "three failed candidates exhaust a two-switch limit");
+
+        auto allowed = overlapping_routes<3>();
+        auto matched = allowed.match("/overlap/token/d");
+        tiny_test::expect(matched && matched.value().second == 4 &&
+                          matched.value().first.size() == 1 &&
+                          matched.value().first[0] == "token",
+                          "three switches reach the fourth candidate without stale captures");
     }
 
     struct nonmovable {
@@ -201,6 +241,23 @@ namespace test {
                           "catch-all handles input rejected by complete custom rule");
     }
 
+    void literal_branch_falls_back_to_rule() {
+        pattern_matcher_builder<int, 512, segment_rule{}> routes;
+        routes.insert({{{"/items/special/edit", none{}}}, 1});
+        routes.insert({{{"/items/", rule_tag<segment_rule{}>{}},
+                        {"/info", none{}}}, 2});
+        auto matcher = std::move(routes).build();
+
+        auto literal = matcher.match("/items/special/edit");
+        tiny_test::expect(literal && literal.value().second == 1,
+                          "literal branch matches its complete pattern");
+        auto fallback = matcher.match("/items/special/info");
+        tiny_test::expect(fallback && fallback.value().second == 2 &&
+                          fallback.value().first.size() == 1 &&
+                          fallback.value().first[0] == "special",
+                          "partially matching literal branch falls back to a rule");
+    }
+
     void empty_and_moved_results() {
         pattern_matcher_builder<int> routes;
         routes.insert({{{"", none{}}}, 1});
@@ -272,6 +329,9 @@ template<>
 struct jh::test::tiny_test::test<"backtracking">
     : jh::test::tiny_test::test_definition<"backtracking", &::test::backtracking> {};
 template<>
+struct jh::test::tiny_test::test<"backtrack limit across candidates">
+    : jh::test::tiny_test::test_definition<"backtrack limit across candidates", &::test::backtrack_limit_across_candidates> {};
+template<>
 struct jh::test::tiny_test::test<"reference query">
     : jh::test::tiny_test::test_definition<"reference query", &::test::reference_query> {};
 template<>
@@ -283,6 +343,9 @@ struct jh::test::tiny_test::test<"invalid routes">
 template<>
 struct jh::test::tiny_test::test<"precedence">
     : jh::test::tiny_test::test_definition<"precedence", &::test::precedence> {};
+template<>
+struct jh::test::tiny_test::test<"literal branch fallback">
+    : jh::test::tiny_test::test_definition<"literal branch fallback", &::test::literal_branch_falls_back_to_rule> {};
 template<>
 struct jh::test::tiny_test::test<"empty and moved results">
     : jh::test::tiny_test::test_definition<"empty and moved results", &::test::empty_and_moved_results> {};
@@ -298,10 +361,12 @@ struct jh::test::tiny_test::session<"pattern matcher">
           "pattern matcher",
           jh::test::tiny_test::test<"routes and captures">,
           jh::test::tiny_test::test<"backtracking">,
+          jh::test::tiny_test::test<"backtrack limit across candidates">,
           jh::test::tiny_test::test<"reference query">,
           jh::test::tiny_test::test<"literal and empty trees">,
           jh::test::tiny_test::test<"invalid routes">,
           jh::test::tiny_test::test<"precedence">,
+          jh::test::tiny_test::test<"literal branch fallback">,
           jh::test::tiny_test::test<"empty and moved results">,
           jh::test::tiny_test::test<"input views and repeated queries">,
           jh::test::tiny_test::test<"moved matchers">> {};
