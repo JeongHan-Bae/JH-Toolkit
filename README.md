@@ -1,7 +1,13 @@
 <h1 align="center">
   <span>
-    <img src="https://upload.wikimedia.org/wikipedia/commons/1/18/ISO_C%2B%2B_Logo.svg" 
+    <img src="docs/img/cpp.skill.svg"
          alt="C++ Logo" 
+         width="72" valign="middle">
+  </span>
+  <span style="font-size: x-large;">&nbsp;</span>
+  <span>
+    <img src="docs/img/skill.svg"
+         alt="JH Toolkit Skill Icon"
          width="72" valign="middle">
   </span>
   <span style="font-size: x-large;">&nbsp;JH Toolkit</span>
