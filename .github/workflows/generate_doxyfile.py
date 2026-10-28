@@ -21,14 +21,14 @@ def normalize_repo(repo_env: str) -> str:
 
 
 def get_project_version() -> str:
-    script_path = pathlib.Path(".github/workflows/generate_dependencies.py")
+    script_path = pathlib.Path(".github/workflows/scripts/generate_dependencies.ts")
 
     if not script_path.exists():
         return "unknown"
 
     try:
         result = subprocess.run(
-            [sys.executable, str(script_path), "--get-version"],
+            ["node", str(script_path), "--get-version"],
             capture_output=True,
             text=True,
             check=True,

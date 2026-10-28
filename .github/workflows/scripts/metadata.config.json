@@ -1,0 +1,46 @@
+{
+  "project": {
+    "description": "An engineering-oriented C++20 toolkit with duck-typed concepts, header-only, RTTI-free, and concurrency-friendly."
+  },
+  "components": [
+    {
+      "dir": ".",
+      "kind": "toolkit",
+      "badge": {
+        "file": "version_badge.json",
+        "schemaVersion": 1,
+        "label": "JH-Toolkit",
+        "labelColor": "#555555",
+        "namedLogo": "github",
+        "color": "#559900",
+        "style": "flat"
+      }
+    },
+    {
+      "dir": "simple-cucumber",
+      "kind": "framework",
+      "badge": {
+        "file": "simple_cucumber_version_badge.json",
+        "schemaVersion": 1,
+        "label": "jh-simple-cucumber",
+        "labelColor": "#555555",
+        "namedLogo": "github",
+        "color": "#559900",
+        "style": "flat"
+      }
+    },
+    {
+      "dir": "tiny-test",
+      "kind": "framework",
+      "badge": {
+        "file": "tiny_test_version_badge.json",
+        "schemaVersion": 1,
+        "label": "jh-tiny-test",
+        "labelColor": "#555555",
+        "namedLogo": "github",
+        "color": "#559900",
+        "style": "flat"
+      }
+    }
+  ]
+}

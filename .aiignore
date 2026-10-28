@@ -78,7 +78,7 @@ Doxyfile.tmp
 .git/
 
 # Non-semantic parts
-docs/img/
+assets/img/
 docs/doxy_settings/
 
 # precompilation helpers, no actual semantics

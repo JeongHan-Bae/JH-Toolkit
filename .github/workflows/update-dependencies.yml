@@ -7,94 +7,86 @@ on:
       - '*dev'
       - 'dev*'
     paths:
-      - 'CMakeLists.txt'
-      - '.github/workflows/generate_dependencies.py'
+      - '**/CMakeLists.txt'
+      - '**/*.cmake'
+      - 'include/**'
+      - 'tiny-test/include/**'
+      - 'simple-cucumber/include/**'
+      - 'simple-cucumber/gherkin/include/**'
+      - 'dependencies.toml'
+      - '.github/workflows/scripts/**'
+      - '.github/workflows/ci.yml'
       - '.github/workflows/update-dependencies.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-cmake-metadata-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  extract-dependencies:
+  generate:
+    # Preserve repository's existing policy: only the owner can push auto-updates.
+    if: github.actor == 'JeongHan-Bae'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
-          persist-credentials: false
           ref: ${{ github.ref_name }}
+          persist-credentials: true
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-node@v5
         with:
-          python-version: '3.x'
+          node-version: '24'
+          package-manager-cache: false
 
-      - name: Install Python dependencies
+      - name: Install metadata parser dependencies
+        run: npm ci --prefix .github/workflows/scripts --no-audit --no-fund
+
+      - name: Verify metadata parser
         run: |
-          pip install -r requirements.txt || echo "No Python dependencies"
+          npm run typecheck --prefix .github/workflows/scripts
+          npm test --prefix .github/workflows/scripts
 
-      - name: Generate Version Files
-        run: python .github/workflows/generate_dependencies.py
-
-      - name: Check if Version Files changed
-        id: check_diff
-        run: |
-          git add dependencies.toml version_badge.json
-          if git diff --cached --quiet; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Check if author is allowed to update
-        id: check_author
-        run: |
-          if [[ "${{ github.actor }}" == "JeongHan-Bae" ]]; then
-            echo "authorized=true" >> $GITHUB_OUTPUT
-          else
-            echo "Not authorized to commit. Actor is ${{ github.actor }}."
-            echo "authorized=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Exit if not triggered, not changed, or unauthorized
-        if: >
-          steps.check_diff.outputs.changed != 'true' ||
-          steps.check_author.outputs.authorized != 'true'
-        run: |
-          echo "Skipping update due to unmet conditions (trigger, change, or authorization)."
-          exit 0
-
-      - name: Extract project version from dependencies.toml
-        id: version
-        run: |
-          version=$(awk '
-          $0=="[project]" { in_proj=1; next }
-          /^\[/ && $0!="[project]" { in_proj=0 }
-          in_proj && /^version/ { gsub(/"/,""); split($0,a,"="); print a[2]; exit }
-          ' dependencies.toml | xargs)
-          echo "project_version=$version" >> $GITHUB_OUTPUT
-
-      - name: Set up SSH Signing Key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_SIGNING_KEY }}" > ~/.ssh/id_ed25519_signing
-          chmod 600 ~/.ssh/id_ed25519_signing
-          ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/id_ed25519_signing
-
-      - name: Configure Git for Signed Commits
-        run: |
-          git config --global gpg.format ssh
-          git config --global user.signingkey ~/.ssh/id_ed25519_signing
-          git config --global commit.gpgsign true
-          git config --global user.name "JeongHan-Bae"
-          git config --global user.email "mastropseudo@gmail.com"
-
-      - name: Commit and push Version Files
+      - name: Generate dependencies and badges
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JH_REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: node .github/workflows/scripts/generate_dependencies.ts
+
+      - name: Detect changes
+        id: diff
         run: |
-          git add dependencies.toml version_badge.json
-          git commit -S -m "auto-update(version): ${{ steps.version.outputs.project_version }}" || echo "No commit needed"
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git || echo "No changes to push"
+          git add dependencies.toml \
+            assets/metadata/version_badge.json \
+            assets/metadata/simple_cucumber_version_badge.json \
+            assets/metadata/tiny_test_version_badge.json
+          if git diff --cached --quiet; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure commit identity and optional SSH signing
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          SSH_SIGNING_KEY: ${{ secrets.SSH_SIGNING_KEY }}
+        run: |
+          git config user.name 'JeongHan-Bae'
+          git config user.email 'mastropseudo@gmail.com'
+          if [ -n "$SSH_SIGNING_KEY" ]; then
+            mkdir -p ~/.ssh
+            printf '%s\n' "$SSH_SIGNING_KEY" > ~/.ssh/id_ed25519_signing
+            chmod 600 ~/.ssh/id_ed25519_signing
+            git config gpg.format ssh
+            git config user.signingkey ~/.ssh/id_ed25519_signing
+            git config commit.gpgsign true
+          fi
+
+      - name: Commit and push metadata
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          version=$(node .github/workflows/scripts/generate_dependencies.ts --get-version)
+          git commit -m "auto-update(version): ${version}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

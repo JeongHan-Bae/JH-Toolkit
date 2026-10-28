@@ -1,0 +1,25 @@
+{
+  "name": "jh-toolkit-workflow-metadata",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "generate": "node generate_dependencies.ts",
+    "check": "node generate_dependencies.ts --check",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test cmake_pipeline.test.ts"
+  },
+  "dependencies": {
+    "cmake-file-api": "0.1.2",
+    "tree-sitter-wasm": "2.0.4",
+    "web-tree-sitter": "0.27.1",
+    "smol-toml": "1.9.1",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "7.0.2"
+  }
+}

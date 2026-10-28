@@ -1,16 +1,17 @@
 <h1 align="center">
   <span>
-    <img src="docs/img/cpp.skill.svg"
-         alt="C++ Logo" 
+    <img src="assets/img/cpp.skill.svg"
+         alt="C++ Skill Icon"
          width="72" valign="middle">
   </span>
   <span style="font-size: x-large;">&nbsp;</span>
   <span>
-    <img src="docs/img/skill.svg"
+    <img src="assets/img/skill.svg"
          alt="JH Toolkit Skill Icon"
          width="72" valign="middle">
   </span>
-  <span style="font-size: x-large;">&nbsp;JH Toolkit</span>
+  <span style="font-size: x-large;">&nbsp;</span>
+  <span style="font-size: x-large;">JH Toolkit</span>
 </h1>
 
 <p align="center">
@@ -88,7 +89,7 @@ performance, and enhanced security.
 
 <div align="center">
   <img
-    src="https://raw.githubusercontent.com/JeongHan-Bae/JH-Toolkit/main/docs/img/Oree.svg"
+    src="https://raw.githubusercontent.com/JeongHan-Bae/JH-Toolkit/main/assets/img/Oree.svg"
     alt="Oree mascot"
     width="128"
   >

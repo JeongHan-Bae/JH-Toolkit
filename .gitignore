@@ -10,6 +10,7 @@ bin/
 lib/
 obj/
 dist/
+node_modules/
 CMakeFiles/
 CMakeCache.txt
 Makefile

@@ -1,18 +1,23 @@
-# Ignore auxiliary directories from GitHub Linguist stats
-.github/** linguist-vendored
-tools/** linguist-vendored
-docs/** linguist-vendored
+# Normalize text in the repository and check it out with LF line endings.
+* text=auto eol=lf
 
-# Explicitly ignore experimental/ which is not ignored by default
-experimental/** linguist-vendored
+# Repository-owned support files are excluded from language statistics.
+.github/** -linguist-detectable
+docs/** -linguist-detectable
 
-# Force all headers in include/jh/ to be treated as C++
+# Generated metadata.
+dependencies.toml linguist-generated
+assets/metadata/version_badge.json linguist-generated
+assets/metadata/simple_cucumber_version_badge.json linguist-generated
+assets/metadata/tiny_test_version_badge.json linguist-generated
+
+# Force public implementation headers to be treated as C++.
 include/jh/**/*.h linguist-language=C++
 
-# Force all aggregation headers in include/jh/ to be treated as C++
+# Aggregate headers under include/jh/ have no extension.
 include/jh/* linguist-language=C++
 include/jh/*.* -linguist-language
 
-# Explicitly force all examples and tests too
+# Force examples and tests to be treated as C++.
 examples/**/*.h linguist-language=C++
 tests/**/*.h linguist-language=C++

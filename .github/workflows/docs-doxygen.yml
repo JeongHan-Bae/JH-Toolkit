@@ -27,6 +27,14 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install metadata parser dependencies
+        run: npm ci --prefix .github/workflows/scripts --no-audit --no-fund
+
       - name: Generate Doxyfile
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
