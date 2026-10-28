@@ -1,0 +1,151 @@
+[project]
+name = "jh-toolkit"
+version = "1.4.1"
+cxx_standard = "20"
+description = "An engineering-oriented C++20 toolkit with duck-typed concepts, header-only, RTTI-free, and concurrency-friendly."
+supported_platforms = [ "ubuntu", "macos", "windows" ]
+
+[project.source]
+repository = "https://github.com/JeongHan-Bae/JH-Toolkit"
+download = "git clone https://github.com/JeongHan-Bae/JH-Toolkit.git"
+
+[[components]]
+name = "jh-toolkit"
+version = "1.4.1"
+major_version = 1
+cmake = "CMakeLists.txt"
+
+[[components.selectable]]
+name = "base"
+files = [ "include/jh/async", "include/jh/concepts", "include/jh/concurrency", "include/jh/flat_multimap", "include/jh/generator", "include/jh/immutable_str", "include/jh/jindallae", "include/jh/meta", "include/jh/ordered_map", "include/jh/pattern_matcher", "include/jh/pod", "include/jh/pool", "include/jh/ranges_ext", "include/jh/runtime_arr", "include/jh/serio", "include/jh/sync", "include/jh/synchronous/const_lock.h", "include/jh/synchronous/control_buf.h", "include/jh/synchronous/strong_lock.h", "include/jh/typed", "include/jh/views" ]
+directories = [ "include/jh/asynchronous/", "include/jh/conceptual/", "include/jh/concurrent/", "include/jh/core/", "include/jh/detail/", "include/jh/macros/", "include/jh/metax/", "include/jh/pods/", "include/jh/ranges/", "include/jh/serialize_io/", "include/jh/typing/" ]
+
+[[components.selectable]]
+name = "jh-no-throw"
+files = [ "include/jh/conceptual/enum.h", "include/jh/conceptual/hashable.h", "include/jh/conceptual/mutex_like.h", "include/jh/conceptual/tuple_like.h", "include/jh/concurrent/observe_pool.h", "include/jh/concurrent/pointer_pool.h", "include/jh/core/immutable_str.h", "include/jh/detail/base64_common.h", "include/jh/meta", "include/jh/pod", "include/jh/synchronous/const_lock.h", "include/jh/synchronous/strong_lock.h", "include/jh/typing/monostate.h" ]
+directories = [ "include/jh/macros/", "include/jh/metax/", "include/jh/pods/" ]
+
+[[components.selectable]]
+name = "jh-test-enabled"
+files = [ "include/jh/conceptual/enum.h", "include/jh/detail/base64_common.h", "include/jh/macros/platform.h", "include/jh/metax/char.h", "include/jh/metax/expected.h", "include/jh/metax/hash.h", "include/jh/metax/t_str.h", "include/jh/pods/array.h", "include/jh/pods/optional.h", "include/jh/pods/pod_like.h", "include/jh/pods/string_view.h", "include/jh/typing/monostate.h" ]
+
+[[components.selectable]]
+name = "jh-ipcs"
+files = [ "include/jh/conceptual/container_traits.h", "include/jh/conceptual/enum.h", "include/jh/conceptual/iterator.h", "include/jh/conceptual/mutex_like.h", "include/jh/conceptual/range_traits.h", "include/jh/conceptual/sequence.h", "include/jh/detail/base64_common.h", "include/jh/ipc", "include/jh/macros/platform.h", "include/jh/metax/char.h", "include/jh/metax/expected.h", "include/jh/metax/hash.h", "include/jh/metax/t_str.h", "include/jh/pods/array.h", "include/jh/pods/optional.h", "include/jh/pods/pod_like.h", "include/jh/pods/string_view.h", "include/jh/ranges/range_adaptor.h", "include/jh/sync" ]
+directories = [ "include/jh/synchronous/" ]
+
+[[components.selectable]]
+name = "all"
+directories = [ "include/" ]
+
+[[components.targets]]
+name = "jh-toolkit"
+type = "INTERFACE"
+aliases = [ "jh::jh-toolkit" ]
+standards = [ "20" ]
+file = "cmake/jh-toolkit-components.cmake"
+line = 188
+
+[[components.targets]]
+name = "jh-toolkit-static"
+type = "STATIC"
+file = "cmake/jh-toolkit-components.cmake"
+line = 255
+condition = "(_jh_has_base)"
+
+[[components.targets.links]]
+name = "jh-toolkit"
+scope = "PUBLIC"
+file = "cmake/jh-toolkit-components.cmake"
+line = 265
+condition = "(_jh_has_base)"
+
+[[components]]
+name = "jh-simple-cucumber"
+version = "0.1.0"
+major_version = 0
+cmake = "simple-cucumber/CMakeLists.txt"
+
+[[components.targets]]
+name = "jh_test_cucumber"
+type = "INTERFACE"
+aliases = [ "jh::test::jh-simple-cucumber" ]
+standards = [ "20" ]
+file = "simple-cucumber/CMakeLists.txt"
+line = 86
+
+[[components.targets.links]]
+name = "jh::test::jh-simple-cucumber-gherkin"
+scope = "INTERFACE"
+file = "simple-cucumber/CMakeLists.txt"
+line = 93
+
+[[components.targets]]
+name = "jh_test_cucumber_gherkin"
+type = "STATIC"
+aliases = [ "jh::test::jh-simple-cucumber-gherkin" ]
+standards = [ "20" ]
+file = "simple-cucumber/gherkin/CMakeLists.txt"
+line = 47
+
+[[components.targets.links]]
+name = "jh::jh-toolkit"
+scope = "PUBLIC"
+file = "simple-cucumber/gherkin/CMakeLists.txt"
+line = 67
+
+[[components.targets.links]]
+name = "cucumber::gherkin"
+scope = "PRIVATE"
+file = "simple-cucumber/gherkin/CMakeLists.txt"
+line = 67
+
+[[components.dependencies]]
+name = "cucumber_gherkin"
+method = "FetchContent"
+repository = "https://github.com/cucumber/gherkin.git"
+ref = "v42.0.0"
+source_subdir = "cpp"
+file = "simple-cucumber/gherkin/CMakeLists.txt"
+line = 21
+
+[[components.dependencies]]
+name = "jh-toolkit"
+method = "linked_target"
+file = "simple-cucumber/gherkin/CMakeLists.txt"
+line = 67
+
+[[components.dependencies]]
+name = "nlohmann_json"
+method = "find_package"
+version = "3.12.0"
+required = false
+condition = "(JH_SIMPLE_CUCUMBER_FETCH_PARSER_DEPS)"
+file = "simple-cucumber/gherkin/CMakeLists.txt"
+line = 13
+
+[[components]]
+name = "jh-tiny-test"
+version = "0.1.0"
+major_version = 0
+cmake = "tiny-test/CMakeLists.txt"
+
+[[components.targets]]
+name = "jh_test_tiny_test"
+type = "INTERFACE"
+aliases = [ "jh::test::jh-tiny-test" ]
+standards = [ "20" ]
+file = "tiny-test/CMakeLists.txt"
+line = 74
+
+[[components.targets.links]]
+name = "jh::jh-toolkit"
+scope = "INTERFACE"
+file = "tiny-test/CMakeLists.txt"
+line = 89
+
+[[components.dependencies]]
+name = "jh-toolkit"
+method = "linked_target"
+file = "tiny-test/CMakeLists.txt"
+line = 89
