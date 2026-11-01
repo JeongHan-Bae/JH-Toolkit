@@ -1,11 +1,11 @@
 <h1 align="center">
-  <span style="font-size: x-large;">&nbsp;</span>
   <span>
-    <img src="https://raw.githubusercontent.com/cucumber/cucumber-js/46a5a78107be27e99c6e044c69b6e8f885ce456c/docs/images/logo.svg"
-         alt="Cucumber"
-         width="68" valign="middle">
+    <img src="../assets/img/simple-cucumber.skill.svg"
+         alt="JH-Simple-Cucumber Skill Icon"
+         width="72" valign="middle">
   </span>
-  <span style="font-size: x-large;">&nbsp;JH Simple Cucumber</span>
+  <span style="font-size: x-large;">&nbsp;</span>
+  <span style="font-size: x-large;">JH-Simple-Cucumber</span>
 </h1>
 
 <font size="4"><code>jh-simple-cucumber</code></font> is a small C++20 test library for typed Cucumber step definitions and Gherkin feature files. Its C++ API lives in `jh::test::cucumber`; the Gherkin C++ parser is fetched from the official Cucumber Gherkin project.

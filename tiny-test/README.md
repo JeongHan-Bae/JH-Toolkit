@@ -1,5 +1,11 @@
 <h1 align="center">
-  <span style="font-size: x-large;">JH Tiny Test</span>
+  <span>
+    <img src="../assets/img/tiny-test.skill.svg"
+         alt="JH-Tiny-Test Skill Icon"
+         width="72" valign="middle">
+  </span>
+  <span style="font-size: x-large;">&nbsp;</span>
+  <span style="font-size: x-large;">JH-Tiny-Test</span>
 </h1>
 
 <font size="4"><code>jh-tiny-test</code></font> is a small C++20 runtime test library in the `jh::test::tiny_test` namespace. Define application tests under `test::tiny_test` and import the library API there. Test and session identities use `jh::meta::TStr`. Defining the same explicit specialization twice in one translation unit is a compile error. At runtime, names registered more than once in the same executable are ambiguous and make the global runner fail before running tests. Separate executable entry points have independent registries and may reuse names. Duplicate test names within a session and duplicate names in a suite are rejected by `static_assert`.

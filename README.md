@@ -67,29 +67,16 @@ performance, and enhanced security.
 <!-- ✅ Core Info -->
 [![License](https://img.shields.io/github/license/JeongHan-Bae/JH-Toolkit.svg?labelColor=3E434A&color=1F6FEB&logo=github)](https://github.com/JeongHan-Bae/JH-Toolkit/tree/main?tab=Apache-2.0-1-ov-file#readme)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-violet.svg)](https://en.cppreference.com/w/cpp/20)
-![Header-Only](https://img.shields.io/badge/header--only-supported-green)
 
 <!-- ✅ CI / Contributors / Wiki -->
 [![CI](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/JeongHan-Bae/JH-Toolkit/actions/workflows/ci.yml)
 [![Contributors](https://img.shields.io/github/contributors/JeongHan-Bae/JH-Toolkit.svg?color=darkcyan)](https://github.com/JeongHan-Bae/JH-Toolkit/graphs/contributors)
 [![Wiki](https://img.shields.io/badge/wiki-overview-3A7DFF)](https://github.com/JeongHan-Bae/JH-Toolkit/wiki)
-
-<!-- ✅ Feature Highlights -->
-![Pooling](https://img.shields.io/badge/pooling-powerful-brown)
-![Immutable Strings](https://img.shields.io/badge/immutable--strings-safe-brown)
-![Async](https://img.shields.io/badge/async%20%28coroutines%29-zero--boilerplate-brown)
-![POD System](https://img.shields.io/badge/plain--old--data-primitive-brown)
-
-![Duck Concepts](https://img.shields.io/badge/duck--concepts-smart-brown)
-![Meta Programming](https://img.shields.io/badge/metaprogramming-compile--time-brown)
-![Ranges and Views](https://img.shields.io/badge/ranges%20%26%20views-semantically--rich-brown)
-![IPC](https://img.shields.io/badge/inter--process%20coordination-simple-brown)
-![Serialization](https://img.shields.io/badge/serialization-stable-brown)
 </div>
 
 <div align="center">
   <img
-    src="https://raw.githubusercontent.com/JeongHan-Bae/JH-Toolkit/main/assets/img/Oree.svg"
+    src="assets/img/Oree.svg"
     alt="Oree mascot"
     width="128"
   >
@@ -115,9 +102,9 @@ performance, and enhanced security.
 
 ---
 
-## Why C++20 Is Used (Brief)
+## C++20 Baseline
 
-JH Toolkit uses **C++20** as a *baseline*, not as a showcase.
+We use C++20 as our baseline.
 
 The choice is driven by the need for **foundational language guarantees and tooling support**, including:
 
