@@ -238,6 +238,22 @@ void tiny_test_case_4() {
     transfer_probe original{17};
     flatten_proxy lvalue_proxy{std::tie(original)};
 
+    std::tuple nested_probes{std::tuple{transfer_probe{11}, transfer_probe{13}}, 0};
+    flatten_proxy selective_proxy{nested_probes};
+    transfer_probe::copies = 0;
+    transfer_probe::moves = 0;
+    auto selected = selective_proxy.get<0>();
+    jh::test::tiny_test::expect(
+        static_cast<bool>((selected.value == 11 && transfer_probe::copies == 1 &&
+                           transfer_probe::moves == 0)),
+        "get copies only its selected element"
+    );
+    selective_proxy.get_ref<1>().value = 19;
+    jh::test::tiny_test::expect(
+        static_cast<bool>((std::get<1>(std::get<0>(nested_probes)).value == 19)),
+        "get_ref accesses the original element"
+    );
+
     transfer_probe::copies = 0;
     transfer_probe::moves = 0;
     std::tuple<transfer_probe> copied = lvalue_proxy;

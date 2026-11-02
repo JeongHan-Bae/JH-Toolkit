@@ -170,6 +170,8 @@ A single-level `std::tuple` containing all recursively expanded elements.
 * Compile-time deterministic mapping.
 * Eliminates empty sub-tuples.
 * Produces value elements; referenced source elements are read and copied.
+* Its exception specification follows all nested element accesses, value
+  construction, and the library's `std::tuple_cat` exception specification.
 * `flatten_proxy` preserves element references and rejects materialized tuples containing `std::reference_wrapper`.
 
 ---
@@ -185,7 +187,13 @@ struct flatten_proxy {
     constexpr explicit flatten_proxy(Source&& source);
 
     template<std::size_t I>
-    [[nodiscard]] constexpr auto get() const noexcept;
+    [[nodiscard]] constexpr auto get() const;
+
+    template<std::size_t I>
+    [[nodiscard]] constexpr decltype(auto) get_ref() &;
+
+    template<std::size_t I>
+    [[nodiscard]] constexpr decltype(auto) get_ref() const &;
 
     template<typename... Ts>
     constexpr operator std::tuple<Ts...>() &;
@@ -209,6 +217,13 @@ and can be **implicitly converted** to a fully materialized `std::tuple`.
 Constructing from an lvalue stores a reference to the source; constructing from
 an rvalue stores it by value. Conversion forwards flattened elements directly
 to the destination tuple, so it does not create an intermediate value tuple.
+`get<I>()` copies only the selected flattened element and returns a value;
+it does not materialize the other elements. Its `noexcept` condition includes
+each tuple-like access on the selected path and construction of the value.
+`get_ref<I>()` accesses the selected element through a reference when every
+tuple-like access on that path returns a stable lvalue reference. It is
+available only on lvalue proxies. The source must remain alive while the
+returned reference is used; a proxy that owns its source must also remain alive.
 `auto result = proxy` keeps the proxy type and does not materialize a tuple;
 declare a `std::tuple<...>` target to request the conversion.
 Fully value-owned nested input can be materialized in a constant expression:

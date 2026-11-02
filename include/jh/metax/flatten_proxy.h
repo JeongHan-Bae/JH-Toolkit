@@ -61,6 +61,11 @@
 
 namespace jh::meta {
 
+    namespace detail {
+        template<typename Tuple>
+        consteval bool tuple_materialize_noexcept();
+    }
+
     /**
      * @brief Flattens a tuple-like object into a fully materialized std::tuple.
      *
@@ -73,12 +78,23 @@ namespace jh::meta {
      * @return A <code>std::tuple</code> with all nested contents expanded.
      */
     template<typename Tuple>
-    constexpr auto tuple_materialize(const Tuple &t);
+    constexpr auto tuple_materialize(const Tuple &t)
+            noexcept(detail::tuple_materialize_noexcept<Tuple>());
 
     namespace detail {
 
         /// @brief unwrap_ref &mdash; extract value from reference-like wrappers
-        constexpr decltype(auto) unwrap_ref(auto &&x) {
+        template<typename T>
+        consteval bool unwrap_ref_noexcept() {
+            if constexpr (requires { std::declval<std::remove_reference_t<T> &>().get(); }) {
+                return noexcept(std::declval<std::remove_reference_t<T> &>().get());
+            } else {
+                return true;
+            }
+        }
+
+        constexpr decltype(auto) unwrap_ref(auto &&x)
+                noexcept(unwrap_ref_noexcept<decltype(x)>()) {
             if constexpr (requires { x.get(); })
                 return x.get();
             else
@@ -87,7 +103,19 @@ namespace jh::meta {
 
         /// @brief flatten_one &mdash; flattens a single element
         template<typename T>
-        constexpr auto flatten_one(T &&x) {
+        consteval bool flatten_one_noexcept() {
+            using U = std::remove_cvref_t<T>;
+            if constexpr (jh::concepts::tuple_like<U>) {
+                return tuple_materialize_noexcept<U>();
+            } else {
+                return noexcept(std::tuple<std::remove_cvref_t<std::unwrap_reference_t<T>>>{
+                    unwrap_ref(std::declval<T>())
+                });
+            }
+        }
+
+        template<typename T>
+        constexpr auto flatten_one(T &&x) noexcept(flatten_one_noexcept<T>()) {
             using U = std::remove_cvref_t<T>;
             if constexpr (jh::concepts::tuple_like<U>) {
                 return jh::meta::tuple_materialize(std::forward<T>(x));
@@ -100,8 +128,17 @@ namespace jh::meta {
 
         /// @brief tuple_materialize_impl &mdash; implementation detail with index sequence
         template<typename Tuple, std::size_t... I>
-        constexpr auto tuple_materialize_impl(const Tuple &t, std::index_sequence<I...>) {
+        constexpr auto tuple_materialize_impl(const Tuple &t, std::index_sequence<I...>)
+                noexcept(noexcept(std::tuple_cat(flatten_one(get<I>(t))...))) {
             return std::tuple_cat(flatten_one(get<I>(t))...);
+        }
+
+        template<typename Tuple>
+        consteval bool tuple_materialize_noexcept() {
+            return noexcept(tuple_materialize_impl(
+                std::declval<const Tuple &>(),
+                std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<Tuple>>>{}
+            ));
         }
 
         template<typename T>
@@ -134,11 +171,173 @@ namespace jh::meta {
         inline constexpr bool contains_reference_wrapper_v = contains_reference_wrapper<T>::value;
 
         template<std::size_t I, typename Tuple>
-        constexpr decltype(auto) tuple_get_forwarded(Tuple &&tuple) {
+        consteval bool tuple_get_forwarded_noexcept() {
+            if constexpr (requires { std::declval<Tuple>().template get<I>(); }) {
+                return noexcept(std::declval<Tuple>().template get<I>());
+            } else {
+                return noexcept(get<I>(std::declval<Tuple>()));
+            }
+        }
+
+        template<std::size_t I, typename Tuple>
+        constexpr decltype(auto) tuple_get_forwarded(Tuple &&tuple)
+                noexcept(tuple_get_forwarded_noexcept<I, Tuple &&>()) {
             if constexpr (requires { std::forward<Tuple>(tuple).template get<I>(); }) {
                 return std::forward<Tuple>(tuple).template get<I>();
             } else {
                 return get<I>(std::forward<Tuple>(tuple));
+            }
+        }
+
+        template<typename T>
+        consteval std::size_t flattened_size() {
+            if constexpr (jh::concepts::tuple_like<std::remove_cvref_t<T>>) {
+                return []<std::size_t... I>(std::index_sequence<I...>) {
+                    return (flattened_size<decltype(tuple_get_forwarded<I>(std::declval<T>()))>()
+                            + ... + 0);
+                }(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<T>>>{});
+            } else {
+                return 1;
+            }
+        }
+
+        template<std::size_t I, typename T>
+        consteval bool flatten_at_noexcept();
+
+        template<std::size_t I, std::size_t J, typename T>
+        consteval bool flatten_at_tuple_noexcept() {
+            using element = decltype(tuple_get_forwarded<J>(std::declval<T>()));
+            constexpr auto count = flattened_size<element>();
+            if constexpr (I < count) {
+                return tuple_get_forwarded_noexcept<J, T>() &&
+                       flatten_at_noexcept<I, element>();
+            } else {
+                return flatten_at_tuple_noexcept<I - count, J + 1, T>();
+            }
+        }
+
+        template<std::size_t I, typename T>
+        consteval bool flatten_at_noexcept() {
+            if constexpr (jh::concepts::tuple_like<std::remove_cvref_t<T>>) {
+                static_assert(I < flattened_size<T>());
+                return flatten_at_tuple_noexcept<I, 0, T>();
+            } else if constexpr (is_reference_wrapper<std::remove_cvref_t<T>>::value) {
+                static_assert(I == 0);
+                return noexcept(std::declval<std::remove_reference_t<T> &>().get());
+            } else {
+                static_assert(I == 0);
+                return true;
+            }
+        }
+
+        template<std::size_t I, typename T>
+        constexpr decltype(auto) flatten_at(T &&value)
+                noexcept(flatten_at_noexcept<I, T &&>());
+
+        template<std::size_t I, std::size_t J, typename T>
+        constexpr decltype(auto) flatten_at_tuple(T &&value)
+                noexcept(flatten_at_tuple_noexcept<I, J, T &&>()) {
+            using element = decltype(tuple_get_forwarded<J>(std::declval<T>()));
+            constexpr auto count = flattened_size<element>();
+            if constexpr (I < count) {
+                return flatten_at<I>(tuple_get_forwarded<J>(std::forward<T>(value)));
+            } else {
+                return flatten_at_tuple<I - count, J + 1>(std::forward<T>(value));
+            }
+        }
+
+        template<std::size_t I, typename T>
+        constexpr decltype(auto) flatten_at(T &&value)
+                noexcept(flatten_at_noexcept<I, T &&>()) {
+            if constexpr (jh::concepts::tuple_like<std::remove_cvref_t<T>>) {
+                return flatten_at_tuple<I, 0>(std::forward<T>(value));
+            } else if constexpr (is_reference_wrapper<std::remove_cvref_t<T>>::value) {
+                return value.get();
+            } else {
+                return std::forward<T>(value);
+            }
+        }
+
+        template<std::size_t I, typename T>
+        consteval bool stable_flatten_reference();
+
+        template<std::size_t I, std::size_t J, typename T>
+        consteval bool stable_flatten_tuple_reference() {
+            using element = decltype(tuple_get_forwarded<J>(std::declval<T>()));
+            constexpr auto count = flattened_size<element>();
+            if constexpr (I < count) {
+                return std::is_lvalue_reference_v<element> &&
+                       stable_flatten_reference<I, element>();
+            } else {
+                return stable_flatten_tuple_reference<I - count, J + 1, T>();
+            }
+        }
+
+        template<std::size_t I, typename T>
+        consteval bool stable_flatten_reference() {
+            if constexpr (jh::concepts::tuple_like<std::remove_cvref_t<T>>) {
+                return stable_flatten_tuple_reference<I, 0, T>();
+            } else {
+                return std::is_lvalue_reference_v<T>;
+            }
+        }
+
+        template<std::size_t I, typename T>
+        consteval bool flatten_value_at_noexcept();
+
+        template<std::size_t I, std::size_t J, typename T>
+        consteval bool flatten_value_tuple_noexcept() {
+            using element = decltype(tuple_get_forwarded<J>(std::declval<T>()));
+            constexpr auto count = flattened_size<element>();
+            if constexpr (I < count) {
+                return tuple_get_forwarded_noexcept<J, T>() &&
+                       flatten_value_at_noexcept<I, element>();
+            } else {
+                return flatten_value_tuple_noexcept<I - count, J + 1, T>();
+            }
+        }
+
+        template<std::size_t I, typename T>
+        consteval bool flatten_value_at_noexcept() {
+            if constexpr (jh::concepts::tuple_like<std::remove_cvref_t<T>>) {
+                static_assert(I < flattened_size<T>());
+                return flatten_value_tuple_noexcept<I, 0, T>();
+            } else if constexpr (is_reference_wrapper<std::remove_cvref_t<T>>::value) {
+                static_assert(I == 0);
+                using reference = decltype(std::declval<std::remove_reference_t<T> &>().get());
+                return noexcept(std::declval<std::remove_reference_t<T> &>().get()) &&
+                       std::is_nothrow_constructible_v<std::remove_cvref_t<reference>, reference>;
+            } else {
+                static_assert(I == 0);
+                return std::is_nothrow_constructible_v<std::remove_cvref_t<T>, T>;
+            }
+        }
+
+        template<std::size_t I, typename T>
+        constexpr auto flatten_value_at(T &&value)
+                noexcept(flatten_value_at_noexcept<I, T &&>());
+
+        template<std::size_t I, std::size_t J, typename T>
+        constexpr auto flatten_value_tuple(T &&value)
+                noexcept(flatten_value_tuple_noexcept<I, J, T &&>()) {
+            using element = decltype(tuple_get_forwarded<J>(std::declval<T>()));
+            constexpr auto count = flattened_size<element>();
+            if constexpr (I < count) {
+                return flatten_value_at<I>(tuple_get_forwarded<J>(std::forward<T>(value)));
+            } else {
+                return flatten_value_tuple<I - count, J + 1>(std::forward<T>(value));
+            }
+        }
+
+        template<std::size_t I, typename T>
+        constexpr auto flatten_value_at(T &&value)
+                noexcept(flatten_value_at_noexcept<I, T &&>()) {
+            if constexpr (jh::concepts::tuple_like<std::remove_cvref_t<T>>) {
+                return flatten_value_tuple<I, 0>(std::forward<T>(value));
+            } else if constexpr (is_reference_wrapper<std::remove_cvref_t<T>>::value) {
+                return value.get();
+            } else {
+                return std::forward<T>(value);
             }
         }
 
@@ -238,7 +437,8 @@ namespace jh::meta {
      * @brief Public entry point for tuple flattening.
      */
     template<typename Tuple>
-    constexpr auto tuple_materialize(const Tuple &t) {
+    constexpr auto tuple_materialize(const Tuple &t)
+            noexcept(detail::tuple_materialize_noexcept<Tuple>()) {
         constexpr std::size_t N = std::tuple_size_v<std::remove_cvref_t<Tuple>>;
         return detail::tuple_materialize_impl(t, std::make_index_sequence<N>{});
     }
@@ -307,11 +507,46 @@ namespace jh::meta {
         constexpr explicit flatten_proxy(Source &&source)
                 : tuple(std::forward<Source>(source)) {}
 
-        /// @brief Returns flattened element I as a value.
+        /**
+         * @brief Copies one flattened element into a value.
+         * @tparam I Index in the flattened sequence.
+         * @return A value independent of the proxy and its source.
+         */
         template<std::size_t I>
-        [[nodiscard]] constexpr auto get() const noexcept {
-            return std::get<I>(tuple_materialize(tuple));
+        [[nodiscard]] constexpr auto get() const
+                noexcept(noexcept(detail::flatten_value_at<I>(tuple))) {
+            return detail::flatten_value_at<I>(tuple);
         }
+
+        /**
+         * @brief Accesses one flattened element through a mutable lvalue proxy.
+         * @tparam I Index in the flattened sequence.
+         * @return A reference to the source element, which must outlive its use.
+         */
+        template<std::size_t I>
+        [[nodiscard]] constexpr decltype(auto) get_ref() &
+                noexcept(noexcept(detail::flatten_at<I>(tuple)))
+                requires (detail::stable_flatten_reference<I, Tuple &>()) {
+            return detail::flatten_at<I>(tuple);
+        }
+
+        /**
+         * @brief Accesses one flattened element through a const lvalue proxy.
+         * @tparam I Index in the flattened sequence.
+         * @return A reference to the source element, which must outlive its use.
+         */
+        template<std::size_t I>
+        [[nodiscard]] constexpr decltype(auto) get_ref() const &
+                noexcept(noexcept(detail::flatten_at<I>(tuple)))
+                requires (detail::stable_flatten_reference<I, const Tuple &>()) {
+            return detail::flatten_at<I>(tuple);
+        }
+
+        template<std::size_t I>
+        constexpr void get_ref() && = delete;
+
+        template<std::size_t I>
+        constexpr void get_ref() const && = delete;
 
         /// @brief Converts a mutable lvalue proxy to a tuple when its elements permit it.
         template<typename... Ts>
@@ -406,7 +641,8 @@ namespace jh::meta {
     >;
 
     template<std::size_t I, typename Tuple>
-    constexpr decltype(auto) get(const flatten_proxy<Tuple> &p) noexcept {
+    constexpr decltype(auto) get(const flatten_proxy<Tuple> &p)
+            noexcept(noexcept(p.template get<I>())) {
         return p.template get<I>();
     }
 

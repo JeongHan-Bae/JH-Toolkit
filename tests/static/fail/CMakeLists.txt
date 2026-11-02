@@ -19,6 +19,16 @@ project_static_fail(
     concepts/flatten_proxy_rejects_dangling_const_lvalue_reference.cpp
     EXPECT_DIAGNOSTIC "deleted"
 )
+project_static_fail(
+    flatten_proxy_rejects_temporary_get_ref
+    concepts/flatten_proxy_rejects_temporary_get_ref.cpp
+    EXPECT_DIAGNOSTIC "deleted"
+)
+project_static_fail(
+    flatten_proxy_rejects_value_returning_get_ref
+    concepts/flatten_proxy_rejects_value_returning_get_ref.cpp
+    EXPECT_DIAGNOSTIC "constraints not satisfied"
+)
 
 project_static_fail(
     immutable_str_rejects_implicit_c_string
