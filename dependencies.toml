@@ -17,7 +17,7 @@ cmake = "CMakeLists.txt"
 
 [[components.selectable]]
 name = "base"
-files = [ "include/jh/async", "include/jh/concepts", "include/jh/concurrency", "include/jh/flat_multimap", "include/jh/generator", "include/jh/immutable_str", "include/jh/jindallae", "include/jh/meta", "include/jh/ordered_map", "include/jh/pattern_matcher", "include/jh/pod", "include/jh/pool", "include/jh/ranges_ext", "include/jh/runtime_arr", "include/jh/serio", "include/jh/sync", "include/jh/synchronous/const_lock.h", "include/jh/synchronous/control_buf.h", "include/jh/synchronous/strong_lock.h", "include/jh/typed", "include/jh/views" ]
+files = [ "include/jh/async", "include/jh/bloom_filter", "include/jh/concepts", "include/jh/concurrency", "include/jh/flat_multimap", "include/jh/generator", "include/jh/immutable_str", "include/jh/jindallae", "include/jh/meta", "include/jh/ordered_map", "include/jh/pattern_matcher", "include/jh/pod", "include/jh/pool", "include/jh/ranges_ext", "include/jh/runtime_arr", "include/jh/serio", "include/jh/sync", "include/jh/synchronous/const_lock.h", "include/jh/synchronous/control_buf.h", "include/jh/synchronous/strong_lock.h", "include/jh/typed", "include/jh/views" ]
 directories = [ "include/jh/asynchronous/", "include/jh/conceptual/", "include/jh/concurrent/", "include/jh/core/", "include/jh/detail/", "include/jh/macros/", "include/jh/metax/", "include/jh/pods/", "include/jh/ranges/", "include/jh/serialize_io/", "include/jh/typing/" ]
 
 [[components.selectable]]
