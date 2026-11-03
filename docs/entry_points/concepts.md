@@ -19,6 +19,7 @@
 - [`jh::concepts::iterator`](../conceptual/iterator.md)
 - [`jh::concepts::sequence`](../conceptual/sequence.md)
 - [`jh::concepts::tuple_like`](../conceptual/tuple_like.md)
+- [`jh::concepts::serializable`](../conceptual/serializable.md)
 - [`jh::concepts::range_traits`](../conceptual/range_traits.md)
 - [`jh::concepts::container_traits`](../conceptual/container_traits.md)
 - [`jh::concepts::closable_container`](../conceptual/closable_container.md)

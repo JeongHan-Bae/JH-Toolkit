@@ -44,6 +44,7 @@
  *   <li><code>pod_concepts.h</code> &mdash; fundamental POD and trivial-type recognition concepts.</li>
  *   <li><code>range_traits.h</code> &mdash; provides callable validation and storage policy traits for ranges.</li>
  *   <li><code>sequence.h</code> &mdash; defines duck-typed sequence semantics and <code>to_range()</code> support.</li>
+ *   <li><code>serializable.h</code> &mdash; recognizes complete String or Stream round trips.</li>
  *   <li><code>tuple_like.h</code> &mdash; structural validation for tuple-compatible and proxy types.</li>
  * </ul>
  */
@@ -60,6 +61,7 @@
 #include "jh/conceptual/pod_concepts.h"
 #include "jh/conceptual/range_traits.h"
 #include "jh/conceptual/sequence.h"
+#include "jh/conceptual/serializable.h"
 #include "jh/conceptual/tuple_like.h"
 
 /**

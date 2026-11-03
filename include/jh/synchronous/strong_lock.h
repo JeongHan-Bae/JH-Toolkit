@@ -19,72 +19,22 @@
 /**
  * @file strong_lock.h
  * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
- * @brief Strong ordering adapters for read-write mutex-like synchronization primitives.
+ * @brief RAII lock adapters with sequentially-consistent fences at lock boundaries.
  *
- * <p>
- * On POSIX platforms (e.g., Linux or Darwin),
- * <code>std::shared_mutex</code> is commonly implemented on top of
- * <code>pthread_rwlock</code> or futex-based primitives.
- * In practice:
- * </p>
+ * <p><code>strong_unique_lock</code> and <code>strong_shared_lock</code>
+ * acquire their mutex, execute a <code>seq_cst</code> fence, and execute
+ * another fence before releasing the mutex. The aliases
+ * <code>posix_smtx_&#42;_lock</code> select these adapters on Windows and
+ * standard library lock adapters on other platforms.</p>
  *
- * <ul>
- *   <li><code>std::unique_lock&lt;std::shared_mutex&gt;</code>
- *       behaves similarly to <code>pthread_rwlock_wrlock()</code> /
- *       <code>pthread_rwlock_unlock()</code>.</li>
- *   <li><code>std::shared_lock&lt;std::shared_mutex&gt;</code>
- *       behaves similarly to <code>pthread_rwlock_rdlock()</code> /
- *       <code>pthread_rwlock_unlock()</code>.</li>
- * </ul>
- *
- * <p>
- * However, ISO C++ does not strictly guarantee identical global ordering
- * semantics compared to POSIX implementations.
- * In particular, acquire-release semantics alone may be insufficient
- * when locks and atomics are mixed under high concurrency.
- * </p>
- * <p>
- * Even when atomics use <code>memory_order_seq_cst</code>,
- * observable reordering may still occur under combinations of:
- * high concurrency, debug builds, and intrusive test frameworks.
- * The strong variants aim to reduce such cross-domain ordering anomalies.
- * </p>
- * <p>
- * This header introduces two strengthening adapters:
- * </p>
- *
- * <ul>
- *   <li><code>strong_unique_lock</code> requires
- *       <code>jh::concepts::basic_lockable</code>.</li>
- *   <li><code>strong_shared_lock</code> requires
- *       <code>jh::concepts::shared_lockable</code>.</li>
- * </ul>
- *
- * <ul>
- *   <li>
- *     <code>strong_unique_lock</code> and <code>strong_shared_lock</code><br>
- *     They enforce a global ordering barrier via
- *     <code>std::atomic_thread_fence(std::memory_order_seq_cst)</code>
- *     immediately after acquisition and immediately before release.
- *   </li>
- *   <li>
- *     <code>posix_smtx_&#42;_lock</code><br>
- *     On Windows, aliases the strong variants to approximate POSIX-style
- *     behavior. On POSIX systems, aliases the standard library lock types.
- *   </li>
- * </ul>
- *
- * @note
- * This facility does not address lifecycle inconsistencies
- * introduced by test frameworks that intercept or wrap
- * <code>std::thread</code> handles.
- * Such issues originate from thread management semantics,
- * not from <code>std::shared_mutex</code> itself.
- *
- * @note
- * The primary target platform remains POSIX.
- * The Windows strengthening path exists to provide a bounded,
- * practical approximation for cross-platform engineering scenarios.
+ * <p>The project has measured a high-contention gap at the interaction
+ * boundary between the C++ standard library and Windows runtime
+ * implementations. The Windows alias path adds fences as a mitigation for
+ * that observed behavior. The pool data-structure algorithms have complete
+ * synchronization coverage and are data-race-free under the ISO C++ model.
+ * A lock plus these fences cannot complete a missing library/runtime
+ * synchronization path for every independent atomic operation. See the
+ * <code>strong_lock</code> reference for details.</p>
  *
  * @version <pre>1.4.1</pre>
  * @date <pre>2026</pre>
@@ -168,59 +118,21 @@ namespace jh::sync {
 #if IS_WINDOWS
 
     /**
-     * @brief POSIX-style strong exclusive lock alias (Windows approximation).
+     * @brief Windows exclusive-lock alias with fences at lock boundaries.
      *
-     * On Windows platforms this aliases strong_unique_lock in order to
-     * approximate the stronger global ordering behavior commonly observed
-     * on POSIX systems.
-     *
-     * This strengthening operates strictly at the ISO C++ memory model level
-     * by inserting sequentially-consistent fences around lock boundaries.
-     *
-     * <p>It does NOT:</p>
-     * <ul>
-     *   <li>Guarantee prevention of CPU-level reordering,</li>
-     *   <li>Provide a true hardware-enforced global total order,</li>
-     *   <li>Fully replicate POSIX rwlock implementation semantics.</li>
-     * </ul>
-     *
-     * <p>The effect is a bounded, practical mitigation that may:</p>
-     * <ul>
-     *   <li>Reduce cross-domain lock/atomic ordering anomalies,</li>
-     *   <li>Delay or raise the observable contention threshold on Windows,</li>
-     *   <li>Improve behavioral convergence under high concurrency.</li>
-     * </ul>
-     *
-     * It should be regarded as a language-level strengthening adapter,
-     * not a formal cross-platform equivalence guarantee.
-     *
-     * @note
-     * On POSIX systems, this alias uses std::unique_lock directly.
+     * Selects <code>strong_unique_lock</code> on Windows. The extra fences
+     * are used as a mitigation for the measured high-contention gap between
+     * Windows implementations.
      */
     template<jh::concepts::basic_lockable Mtx>
     using posix_smtx_unique_lock = strong_unique_lock<Mtx>;
 
     /**
-     * @brief POSIX-style strong shared lock alias (Windows approximation).
+     * @brief Windows shared-lock alias with fences at lock boundaries.
      *
-     * On Windows platforms this aliases strong_shared_lock to approximate
-     * POSIX-style shared mutex ordering characteristics.
-     *
-     * The inserted seq_cst fences strengthen ordering only within the
-     * C++ abstract machine.
-     *
-     * <p>They do NOT:</p>
-     * <ul>
-     *   <li>Eliminate hardware-level reordering effects,</li>
-     *   <li>Establish a strict global total order equivalent to
-     *       typical pthread_rwlock behavior.</li>
-     * </ul>
-     *
-     * This adapter provides a pragmatic mitigation strategy rather than
-     * strict semantic equivalence.
-     *
-     * @note
-     * On POSIX systems, this alias uses std::shared_lock directly.
+     * Selects <code>strong_shared_lock</code> on Windows. The extra fences
+     * are used as a mitigation for the measured high-contention gap between
+     * Windows implementations.
      */
     template<jh::concepts::shared_lockable Mtx>
     using posix_smtx_shared_lock = strong_shared_lock<Mtx>;
@@ -228,31 +140,17 @@ namespace jh::sync {
 #else
 
     /**
-     * @brief POSIX native exclusive lock alias.
+     * @brief Standard exclusive-lock alias on non-Windows platforms.
      *
-     * On POSIX systems this aliases std::unique_lock directly,
-     * relying on the underlying pthread-based implementation.
-     *
-     * No additional language-level strengthening is applied.
-     *
-     * @note
-     * On Windows, this alias uses strong_unique_lock to approximate
-     * POSIX-style behavior.
+     * Selects <code>std::unique_lock</code> directly.
      */
     template<jh::concepts::basic_lockable Mtx>
     using posix_smtx_unique_lock = std::unique_lock<Mtx>;
 
     /**
-     * @brief POSIX native shared lock alias.
+     * @brief Standard shared-lock alias on non-Windows platforms.
      *
-     * On POSIX systems this aliases std::shared_lock directly,
-     * relying on the native pthread-backed shared mutex semantics.
-     *
-     * No additional language-level strengthening is applied.
-     *
-     * @note
-     * On Windows, this alias uses strong_shared_lock to approximate
-     * POSIX-style behavior.
+     * Selects <code>std::shared_lock</code> directly.
      */
     template<jh::concepts::shared_lockable Mtx>
     using posix_smtx_shared_lock = std::shared_lock<Mtx>;

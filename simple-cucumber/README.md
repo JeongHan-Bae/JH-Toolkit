@@ -66,8 +66,8 @@ ctest --test-dir build/simple-cucumber --output-on-failure
 
 The build target `jh_simple_cucumber_tdd` produces the runtime test executable. The `3/3` shown by CTest counts
 three test entries: `simple_cucumber_tdd`, `simple_cucumber_static_passes`, and
-`simple_cucumber_static_failures`. The two static-check entries compile their cases when they run; they are not
-additional runtime test executables.
+`simple_cucumber_static_failures`. The first runs the test executable; the
+other two compile their static cases during CTest execution.
 
 Passing scenarios and their step definitions live in `tdd/pass/`; expected failures are in `tdd/fail/`. The suite covers scalar conversion, type-aware candidate selection, exponent-form doubles, constructor-injected services, `And`, Scenario Outlines, per-scenario state, DataTables, undefined steps, conversion failures, and ambiguous definitions. `JH_SIMPLE_CUCUMBER_BUILD_TDD` defaults on for standalone builds and when JH-Toolkit tests are enabled.
 
@@ -89,11 +89,11 @@ The built-in placeholders map to these C++ argument types:
 | `<double>` | `double` |
 | `<bool>` | `bool` |
 
-The optional trailing parameters are `const DataTable&` and `StepContext&`, in that order. Bindings support const and non-const, static and non-static, `constexpr`, `noexcept`, and `noexcept(false)` functions. `<string>` refers to the current step text without copying; copy it into `std::string` if it must outlive the feature run.
+The optional trailing parameters are `const DataTable&` and `StepContext&`, in that order. Bindings support const and non-const, static and non-static, `constexpr`, `noexcept`, and `noexcept(false)` functions. `<string>` borrows the current step text. Copy it into `std::string` for use after the feature run.
 
-Within one `StepDefinition`, the same `StepKind` cannot bind the same expression twice; that duplicate is rejected at compile time. A DataTable binding must take `const DataTable&` (optionally followed by `StepContext&`). If a parsed step has a table but its binding does not accept one, or its binding requires a table that the step lacks, execution records a step failure in `RunResult` and does not call the bound function. A mismatch across separate `StepDefinition`s is independent; each definition is checked only against the feature run that uses it.
+Within one `StepDefinition`, each `StepKind` and expression pair must be unique; a duplicate fails compilation. A DataTable binding takes `const DataTable&`, optionally followed by `StepContext&`. A table mismatch records a step failure in `RunResult` before callable invocation. Each `StepDefinition` is checked for the feature run that uses it.
 
-Without constructor arguments, `run<Definition>(feature)` and `run_file<Definition>(path)` default-construct the step object. Here is a basic definition for the user feature:
+Calls to `run<Definition>(feature)` and `run_file<Definition>(path)` default-construct each scenario's step object. Here is a basic definition for the user feature:
 
 ```cpp
 class BasicUserSteps {
@@ -189,15 +189,59 @@ const auto in_memory = jh::test::cucumber::run_file<InMemoryDefinition>(
 }
 ```
 
-All three calls use `run_file` with the same feature path; each definition can run that feature independently without switching APIs. `run<Definition>(feature, args...)` accepts the same constructor arguments when the feature has already been parsed. The two adapter-specific definitions have independent binding sets, so they can use the same Gherkin expressions without conflicting. This supports port-and-adapter designs, including hexagonal architecture. The runner creates a fresh step object for each scenario and supplies the run-scoped arguments each time; the arguments are used only during the synchronous run and are not retained in `RunResult`.
+All three calls use the same feature path. `run<Definition>(feature, args...)`
+accepts the same constructor arguments for an already parsed feature. Each
+definition has its own binding set, so the adapters can use the same Gherkin
+expressions. This supports port-and-adapter designs.
 
-The application configures its shared `database::handle` before the run and injects it by reference through `DatabaseUserService`. Resource setup and cleanup belong to the handle or its owner; no Cucumber before/after hooks are required. The TDD uses a small service with constructor/destructor log entries to verify that a run-scoped dependency can bracket feature execution.
+### Fixture and step lifetimes
 
-Run a parsed feature or a feature file with `run<Definition>(feature)` or `run_file<Definition>(path)`. Both return `jh::meta::expected<RunResult, run_error>`. Parse errors, undefined steps, assertion failures, and scalar conversion failures are reported inside `RunResult`; check `passed()` and use `format_report()` to print details. If multiple definitions accept the same step, the runner returns `jh::meta::unexpected(run_error::ambiguous_step)` because it cannot select a single binding.
+`run_file` parses the feature and runs it synchronously. `run` executes a
+feature supplied by the caller. Both pass their constructor arguments as
+lvalues to a new step object for each scenario. The step object lives through
+that scenario's steps and is destroyed at the end of the scenario scope.
+Its members hold scenario-local state. Each expanded `Scenario Outline`
+example receives the same per-scenario lifetime.
+The parsed feature inside `run_file` stays alive through execution, so
+`<string>` captures can borrow its step text during the call. A step can copy
+text it needs to retain after the call.
+
+Constructor arguments live through the synchronous call. A temporary adapter
+such as `InMemoryUserService{}` lives through the call expression; the runner
+passes it to each scenario's step constructor. A step class can hold a
+reference to the same run-scoped service across scenarios, so service state
+can persist while step-object state starts fresh. The application owns an
+injected lvalue such as `global_db_handle` and controls its lifetime.
+
+RAII owners acquire resources before execution and release them when their
+scope ends. In the database example, `database::link` brackets the call, and
+`DatabaseUserService` holds a reference to the configured handle. The TDD
+verifies a service constructor and destructor bracketing a run.
+
+The runner creates a `StepContext` for each step. A `Then` binding can call
+`context.expect` to record an assertion; the runner copies its messages into
+the scenario result and ends that scenario's step sequence. A step callable's
+exception propagates to the caller while C++ stack unwinding destroys the
+scenario object and run-scoped temporaries. A rejection scenario can catch
+its expected exception in a `When` binding, store the outcome in the step
+object, and check it in a later `Then` binding.
+
+`run<Definition>(feature)` and `run_file<Definition>(path)` return
+`jh::meta::expected<RunResult, run_error>`. Parse errors, undefined steps,
+assertion failures, and scalar conversion failures appear in `RunResult`;
+`passed()` summarizes the outcome and `format_report()` formats it. Ambiguous
+bindings return `jh::meta::unexpected(run_error::ambiguous_step)`. `RunResult`
+owns the recorded names and failure messages; the caller retains ownership
+of injected lvalue fixtures.
 
 The scalar helpers `asString`, `asInt`, `asUint`, `asDouble`, and `asBool` are also available, along with the typed `as<T>` helper. Conversions that can fail return `jh::meta::expected`. `asString` makes an owned copy and is useful for values such as DataTable cells that must persist beyond their source view.
 
-`format_report(const RunResult&)` returns a report string; it does not print to a stream. For a passing run it includes the feature and file names followed by a `PASS` line for each scenario. For a failing run it prints `FAIL` for failed scenarios and includes step locations, step text, and failure messages. The top-level `RunResult::failures` contains feature or parse failures, while each scenario's `failures` contains step failures. If the outer `expected` has no value because of an ambiguous definition, handle `run_error` separately because there is no `RunResult` to format.
+`format_report(const RunResult&)` returns a report string for the caller to
+display or log. It includes feature and file names, a `PASS` or `FAIL` line
+for each scenario, and step locations and messages for failures. The top-level
+`RunResult::failures` holds feature and parse failures; each scenario holds
+its own step failures. An ambiguous binding returns `run_error` through the
+outer `expected`.
 
 You can build another format from the public result fields and then print it, send it to a logger, or convert it to a structured report:
 
@@ -319,7 +363,7 @@ tests/
         └── storage_main.cpp
 ```
 
-Each runner can define its own `StepDefinition` by composing bindings from its subsystem's step classes. Link each BDD executable to `jh::test::jh-simple-cucumber`, register it with CTest, and pass feature paths from the source tree so tests do not depend on the process working directory. For example, in `tests/bdd/CMakeLists.txt`:
+Each runner can define its own `StepDefinition` by composing bindings from its subsystem's step classes. Link each BDD executable to `jh::test::jh-simple-cucumber`, register it with CTest, and use source-tree feature paths for consistent execution from any working directory. For example, in `tests/bdd/CMakeLists.txt`:
 
 ```cmake
 target_link_libraries(calculator_bdd PRIVATE jh::test::jh-simple-cucumber)

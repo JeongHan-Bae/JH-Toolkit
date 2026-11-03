@@ -1082,7 +1082,7 @@ void tiny_test_case_23() {
     jh::test::tiny_test::expect(static_cast<bool>((generator.next())), "generator.next()");
     jh::test::tiny_test::expect(static_cast<bool>((generator.value().value() == 0)), "generator.value().value() == 0");
 
-    [&]() { bool did_not_throw = true; try { generator.send(1); } catch (...) { did_not_throw = false; } jh::test::tiny_test::expect(did_not_throw, "does not throw: generator.send(1)"); }();
+    generator.send(1);
 
     jh::test::tiny_test::expect(static_cast<bool>((generator.value().value() == 0)), "generator.value().value() == 0");
 
@@ -1100,7 +1100,7 @@ void tiny_test_case_23() {
     jh::test::tiny_test::expect(static_cast<bool>((generator2.next())), "generator2.next()");
     jh::test::tiny_test::expect(static_cast<bool>((generator2.value().value() == 0)), "generator2.value().value() == 0");
 
-    [&]() { bool did_not_throw = true; try { generator2.next(); } catch (...) { did_not_throw = false; } jh::test::tiny_test::expect(did_not_throw, "does not throw: generator2.next()"); }();
+    static_cast<void>(generator2.next());
 
     jh::test::tiny_test::expect_throw<std::runtime_error>([&]() { (void)(generator2.send(42)); }, "throws std::runtime_error: generator2.send(42)");
 
@@ -1144,17 +1144,20 @@ void tiny_test_case_24() {
 
     int count = 0;
 
-    try {
-        for (int v : generator) {
-            jh::test::tiny_test::expect(static_cast<bool>((v == count)), "v == count");
-            ++count;
+    std::string error_message;
+    jh::test::tiny_test::expect_throw<std::runtime_error>([&] {
+        try {
+            for (int v : generator) {
+                jh::test::tiny_test::expect(static_cast<bool>((v == count)), "v == count");
+                ++count;
+            }
+        } catch (const std::runtime_error& e) {
+            error_message = e.what();
+            throw;
         }
-        jh::test::tiny_test::expect(false, ("Exception expected but not thrown"));
-    }
-    catch (const std::runtime_error& e) {
-        jh::test::tiny_test::expect(static_cast<bool>((std::string(e.what()) == "end fail")), "std::string(e.what()) == \"end fail\"");
-        jh::test::tiny_test::expect(static_cast<bool>((count == 3)), "count == 3");
-    }
+    }, "range traversal propagates the generator error");
+    jh::test::tiny_test::expect(error_message == "end fail", "generator error message");
+    jh::test::tiny_test::expect(count == 3, "three values precede the error");
 
 }
 }

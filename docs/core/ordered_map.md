@@ -524,8 +524,6 @@ data.erase(unique(data.begin(), data.end()), data.end());
 auto m = jh::ordered_map<K,V>::from_sorted(data);
 ```
 
-This is not a workaround — it is the **intended engineering path**.
-
 ---
 
 ### Erase is intentionally not optimized for bulk deletion

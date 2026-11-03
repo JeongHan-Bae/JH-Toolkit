@@ -217,9 +217,8 @@ This enables **lookup-before-construction** and avoids provisional object creati
 ### 📝 Notes
 
 * `flat_pool` internally relies on a **hash-ordered, contiguous index structure** based on `ordered_set`.
-* `ordered_set` is itself a **public, reusable component** and is documented separately.
-
-👉 See: [`ordered_set`](../core/ordered_set.md)
+* `ordered_set` is a public component documented in the
+  [`ordered_map` and `ordered_set` reference](../core/ordered_map.md).
 
 ---
 
@@ -669,54 +668,12 @@ jh::conc::flat_pool<Key, std::unique_ptr<V>>
 
 ---
 
-### Windows-Specific Note
+### Platform support
 
-On POSIX platforms (macOS, Linux GCC ≥13), `std::shared_mutex` implementations are typically backed by
-`pthread_rwlock` or equivalent primitives that, in practice, exhibit strong global ordering behavior.
-Under these environments, `flat_pool` does **not** introduce additional fences.
-
-On Windows, the situation differs:
-
-The ISO C++ standard does **not** require `std::shared_mutex` to establish a global total order.
-It only guarantees acquire–release semantics.
-
-To approximate POSIX-style behavior, `flat_pool` introduces:
-
-```cpp
-std::atomic_thread_fence(std::memory_order_seq_cst);
-```
-
-around shared mutex boundaries (via <code>posix_smtx_&#42;_lock</code>).
-
-This is the strongest ordering primitive available within ISO C++.
-
-However:
-
-* It operates strictly within the C++ abstract machine.
-* It cannot strengthen ordering inside Windows runtime or kernel-level primitives.
-* It cannot eliminate hardware-level propagation delays.
-
-As a result:
-
-* The implementation is **algorithmically DRF**.
-* Undefined behavior (UB) risks have been eliminated at the ISO C++ level.
-* All inter-thread interactions respect the C++ memory model.
-
-Nevertheless, empirical behavior on certain Windows configurations
-(MinGW toolchains + MSVCRT/UCRT) may still exhibit rare instability
-under extreme contention.
-
-This does **not** indicate undefined behavior in `flat_pool`,
-but rather reflects environmental memory-model characteristics
-that do not provide POSIX-level closure.
-
-In summary:
-
-* POSIX platforms: strong practical ordering, no additional fences required.
-* Windows: language-level strengthening applied.
-* Full global ordering equivalence is not guaranteed in practice.
-* The design remains DRF and standards-compliant, but runtime behavior
-  may not fully match theoretical expectations under stress.
+On Windows, `flat_pool` uses the `posix_smtx_*_lock` adapters, which add
+`seq_cst` fences at lock boundaries. The
+[pool platform support note](overview.md#pool-platform-support) explains the
+standard mutex contract and the project's Windows support policy.
 
 ---
 

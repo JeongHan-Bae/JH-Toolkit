@@ -6,6 +6,9 @@
 #include <jh/pod>
 ```
 
+This aggregate header includes the POD types, tuple integration for structured
+bindings, and `stringify` support for stream output.
+
 ## Examples
 
 - [`examples/example_pod.cpp`](../../examples/example_pod.cpp)

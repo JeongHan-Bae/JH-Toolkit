@@ -1,0 +1,9 @@
+/**
+ * @file bloom_filter
+ * @brief Aggregate entry point for Bloom filtering and fixed-layout persistence.
+ */
+
+#pragma once
+
+#include "jh/core/bloom_filter.h"
+#include "jh/core/bloom_persistence.h"

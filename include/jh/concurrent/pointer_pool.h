@@ -241,29 +241,14 @@ namespace jh::conc {
      * <code>jh::observe_pool</code>, these are automatically derived from <code>std::hash&lt;T&gt;()</code> or
      * adl <code>hash(t)</code> or <code>t.hash()</code>, and <code>operator==()</code> to ensure consistent behavior.
      *
-     * @warning
-     * On Windows platforms (MinGW-w64 / MinGW-clang with UCRT or MSVCRT),
-     * additional <code>std::atomic_thread_fence(std::memory_order_seq_cst)</code>
-     * barriers are inserted to strengthen ordering at the language level.
-     * This eliminates ISO-level UB risks and preserves correctness within
-     * the C++ abstract machine.
-     * <br>
-     * However, certain Windows runtime and system-level synchronization
-     * implementations (e.g. SRWLock-backed <code>std::shared_mutex</code>)
-     * do not necessarily provide POSIX-equivalent global ordering behavior.
-     * Under extreme multi-core contention, rare visibility or reordering
-     * phenomena may still be observed.
-     * <br>
-     * These effects are platform characteristics rather than violations of
-     * the C++ standard and do not indicate undefined behavior in the pool
-     * implementations. <code>pointer_pool</code> may expose such behavior
-     * more readily due to heavier synchronization and hash-table interaction,
-     * but the underlying limitation applies to all concurrent pools in
-     * this module.
-     * <br>
-     * Windows builds are therefore considered compatible but not validated
-     * for extreme high-contention workloads. POSIX platforms remain the
-     * primary supported and reference environments.
+     * @note The data-structure algorithm has complete synchronization coverage
+     * and is data-race-free under the ISO C++ model. The project has measured
+     * a high-contention gap between the C++ standard library and Windows
+     * runtime implementations. On Windows, the pool
+     * uses lock adapters that add
+     * <code>std::atomic_thread_fence(std::memory_order_seq_cst)</code> at lock
+     * boundaries as a measured mitigation. See the pool platform support
+     * documentation for details.
      */
     template<typename T, typename Hash, typename Eq>
     requires(

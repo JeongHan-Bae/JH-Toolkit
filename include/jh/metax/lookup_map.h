@@ -165,8 +165,7 @@
  *
  * <h4>Philosophy</h4>
  * <p>
- * The goal is not to provide a generic container, but to formalize a
- * deterministic dispatch pipeline:
+ * This component formalizes a deterministic dispatch pipeline:
  * </p>
  *
  * <pre>External input

@@ -136,4 +136,4 @@ This component provides the foundation for upcoming type utilities, including:
 
 > **Note:**  
 > `jh::typed::monostate` is purely *structural*, not a runtime null marker like `std::nullopt_t`.  
-> It exists only to represent the *absence of data*, not the *absence of meaning*.
+> It represents the absence of stored data.

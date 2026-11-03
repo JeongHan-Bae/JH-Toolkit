@@ -37,6 +37,7 @@ It does **not** provide object serialization frameworks or schema-based formats.
 | [`base64`](base64.md)   | `<jh/serialize_io/base64.h>`  | ✅ Stable | Binary-to-text encoding using Base64 / Base64URL (RFC 4648). Output is ASCII-safe and **universally decodable** by any compliant Base64 implementation.                     |
 | [`uri`](uri.md)         | `<jh/serialize_io/uri.h>`     | ✅ Stable | URI percent-encoding and decoding utilities (RFC 3986). Provides **basic APIs** and **UTF-8 validated APIs** for safely encoding textual data within URI components.        |
 | [`huffman`](huffman.md) | `<jh/serialize_io/huffman.h>` | ✅ Stable | Binary compression codec implementing standard and canonical Huffman algorithms. Streams are **signature-bound** and must be decoded using the same `Signature` definition. |
+| [`value_conversion`](value_conversion.md) | `<jh/serialize_io/value_conversion.h>` | ✅ Stable | Complete String or Stream round-trip conversion for serializable values. |
 
 ---
 

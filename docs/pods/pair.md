@@ -174,11 +174,7 @@ Pair: {1, 3.14}
 Modified: {1, 2.71}
 ```
 
-> 💡 Include `<jh/pod>` to enable all features:
->
-> * Structured bindings (tuple integration)
-> * Stream printing (`stringify`)
-> * Full POD safety and constexpr compatibility
+For aggregate-header features, see [`<jh/pod>`](../entry_points/pod.md).
 
 ---
 
@@ -233,7 +229,6 @@ All checks happen at compile time and are visible in Clangd diagnostics.
 
 > 📌 **Design Philosophy**
 >
-> `jh::pod::pair` is not a lightweight `std::pair` clone —  
-> it is a *transparent two-value aggregate* that guarantees
+> `jh::pod::pair` is a *transparent two-value aggregate* that guarantees
 > POD layout, constexpr safety, and ABI determinism  
 > for low-level or binary-oriented code.

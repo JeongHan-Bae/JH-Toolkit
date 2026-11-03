@@ -475,8 +475,8 @@ Advanced users may implement custom schemes, such as:
 * Seqlock-style protocols
 * CAS-like update patterns
 
-`process_shm_obj` provides **explicit visibility primitives**;
-correctness is achieved by **protocol design, not hidden magic**.
+`process_shm_obj` provides **explicit visibility primitives**. Custom protocols
+must define when writers publish changes and when readers observe them.
 
 ---
 
@@ -484,8 +484,6 @@ correctness is achieved by **protocol design, not hidden magic**.
 
 > Locks define *who may modify*.
 > Flush defines *what others may observe*.
-
-This separation is intentional and fundamental.
 
 ---
 

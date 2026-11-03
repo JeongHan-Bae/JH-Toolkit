@@ -16,21 +16,11 @@
 
 ## 🧭 Introduction
 
-`jh::async` is built on top of C++ coroutines, but does **not** expose them in their fully unrestricted form.
-Instead of offering raw coroutine primitives directly, it deliberately **constrains the coroutine boundary**
-and **narrows the semantic surface**.
+`jh::async` provides coroutine-based components with defined execution and
+suspension behavior. Its interfaces encapsulate awaiter and promise types.
 
-By fixing execution boundaries, contracting semantics, and encapsulating complex coroutine behaviors
-— especially those involving awaiter types, promise types, and suspension mechanics —
-`jh::async` presents users with **well-defined, outer-layer semantic structures only**.
-
-The goal is not maximal flexibility, but to provide **engineering-oriented asynchronous components**
-that are easier to reason about, compose, and adopt in real-world codebases.
-
-Users can declare their coroutine logic within lambda or asynchronous functions, while more complex encapsulated
-components are handled by libraries. Coroutine logic is subject to certain constraints, yet its expressive power remains
-sufficient (for example, when constructing a generator, your coroutine body should behave as expected for a generator).
-We have abstracted common coroutine business logic into pre-built models for users.
+Users write coroutine bodies in lambdas or functions and use the generator,
+fiber, and slot interfaces for their corresponding execution models.
 
 ---
 
@@ -46,8 +36,6 @@ We have abstracted common coroutine business logic into pre-built models for use
 
 ## 🧩 Module Summary
 
-* **Design goal:** Provide a unified coroutine-based abstraction for asynchronous flow and cooperative concurrency.
-* **Core primitives:** `generator<T, U>`, `fiber`, and `slot`, all implemented as **header-only coroutine constructs**.
 * **Stability:** All listed components are considered **API-stable** as of v1.4.0.
 * **Aggregated header `<jh/async>`:**
   Introduced in **v1.4.0** as the recommended entry point.

@@ -56,153 +56,49 @@ pools, include `<jh/pool>` so that `jh::observe_pool`/`jh::resource_pool` sit di
 
 ---
 
-## 🎍 Pool Module (Windows Semantics Notice)
+## Pool platform support
 
-📁 **Module:** `<jh/pool>`  
-📦 **Namespace:** `jh`  
-📍 **Location:** `jh/concurrent/`
+The pool components use standard C++ mutexes for synchronization. A conforming
+mutex synchronizes a release with a later successful acquisition on the same
+mutex; see the [C++ mutex requirements](https://eel.is/c++draft/thread.mutex.requirements)
+and [shared-mutex requirements](https://eel.is/c++draft/thread.sharedmutex.requirements.general).
+Correctly protected data has the corresponding visibility guarantees on every
+conforming platform.
 
-`<jh/pool>` re-exports alias-based pools (`observe_pool`, `resource_pool`, etc.) directly under `jh::`.  
-These helpers are engineered around POSIX-style behavioral assumptions.
+The pool data-structure algorithms have complete synchronization coverage and
+are data-race-free under the ISO C++ model. The project has measured
+high-contention instability on Windows MinGW builds at the boundary between
+the C++ standard library and the Windows runtime implementations. The library
+and runtime paths each assume the other supplies part of the lock/atomic
+ordering, leaving an implementation gap in the tested configurations. This is
+an implementation-integration problem, independent of the standard's mutex
+contract and the pool algorithms' lock coverage. The exact faulty step within
+that boundary has not been isolated.
 
-As of 1.4.x, **Windows is treated as a compatibility platform, not a fully supported concurrency baseline** for the
-entire `jh/pool` module.
+Windows provides [slim reader/writer (SRW) locks](https://learn.microsoft.com/en-us/windows/win32/sync/slim-reader-writer--srw--locks)
+as lightweight, single-process synchronization objects. Microsoft describes
+them as [typically operating in user mode, with a possible kernel transition
+under contention](https://learn.microsoft.com/en-us/windows/win32/sync/about-synchronization).
+Their implementation and scheduling behavior differ from POSIX reader/writer
+locks. This platform distinction is relevant to the measured Windows gap; the
+exact backend selected by a particular C++ standard library must be checked
+for that build.
 
----
+On Windows, the pool implementations use `posix_smtx_*_lock` aliases, which
+select RAII adapters that add `seq_cst` fences at lock boundaries. Testing has
+shown that these fences improve behavior on the affected configurations. They
+cannot complete a missing library/runtime synchronization path for independent
+atomic operations: a fence alone does not create a release/acquire relationship
+for an unrelated atomic value. This limit concerns the Windows implementation
+boundary, not a missing lock in the pool algorithm. The mitigation does not
+guarantee every high-contention workload. Other platforms use standard lock
+adapters. The
+[`strong_lock` reference](../synchronous/strong_lock.md) describes the
+adapter behavior. The [C++ fence rules](https://eel.is/c++draft/atomics.fences)
+specify when fences participate in synchronization through atomic operations.
 
-### ⚠️ Windows Memory-Model Limitation
-
-We introduced:
-
-```cpp
-std::atomic_thread_fence(std::memory_order_seq_cst);
-```
-
-around `shared_mutex` boundaries (via <code>posix_smtx_&#42;_lock</code>).
-
-This is the strongest ordering primitive available in ISO C++ at the language level.
-
-However, it does **not** fully close the visibility gaps observed under:
-
-* MinGW toolchains (MinGW-w64 / MinGW-clang)
-* Windows runtimes (MSVCRT / UCRT)
-* Interaction with OS-level primitives (e.g., SRWLock)
-
-The behavior remains **data-race-free (DRF)** at the algorithmic level.  
-The instability arises from environmental constraints beyond the abstract C++ model.
-
-*Note:*  
-On Windows, inserting
-`std::atomic_thread_fence(std::memory_order_seq_cst);`
-around `shared_mutex` boundaries measurably improves practical stability under contention.
-It raises the threshold at which race-like symptoms manifest and delays instability in stress scenarios.
-However, it cannot fully eliminate the underlying visibility gaps nor guarantee POSIX-level behavioral equivalence.
-
----
-
-### 1️⃣ Fence Jurisdiction Limitation
-
-`std::atomic_thread_fence` can only constrain memory operations:
-
-* Emitted by the current compiler
-* Within the C++ abstract machine
-* Visible in user-space generated code
-
-It **cannot**:
-
-* Control hidden synchronization inside system DLLs
-* Strengthen ordering inside kernel-implemented locks
-* Inject barriers into opaque runtime components
-
-On Windows, primitives such as `SRWLock` are implemented inside system libraries (e.g., `ntdll.dll`).  
-If their internal memory ordering is optimized without full fences, user-inserted `seq_cst` cannot retroactively enforce
-stronger guarantees.
-
-The fence does not cross the ABI boundary.
-
----
-
-### 2️⃣ Atomicity ≠ Global Visibility
-
-Atomic operations guarantee:
-
-* **Atomicity** — operations are indivisible.
-* **Ordering (within abstract machine)** — relative sequencing.
-
-They do **not** guarantee:
-
-* Immediate global visibility across CPU cores.
-* Hardware-level total ordering.
-
-Modern CPUs use:
-
-* Store buffers
-* Cache-coherence protocols (e.g., MESI)
-* Speculative execution
-
-Even with `seq_cst`, there can be a physical delay between:
-
-* Atomic write completion on CPU A
-* Cache-line propagation to CPU B
-
-If the Windows lock implementation does not enforce a bus-lock–grade synchronization boundary, extremely high-frequency
-contention may expose transient visibility windows.
-
-This is a hardware-level constraint, not a C++ bug.
-
----
-
-### 3️⃣ Compiler / Runtime Coupling Effects
-
-In the MinGW + UCRT/MSVCRT environment:
-
-* The compiler may assume system calls imply sufficient ordering.
-* The runtime may assume atomic operations are independently ordered.
-* `std::shared_ptr` (atomic refcount) and `std::shared_mutex` (system lock) may not form a strongly coupled ordering
-  chain at the machine-code level.
-
-This weak cross-domain coupling can expose rare race-like symptoms under stress.
-
----
-
-### Why We Do Not Escalate Further
-
-Once `std::memory_order_seq_cst` is insufficient, only two paths remain:
-
-1. Insert hardware-specific instructions (`MFENCE`, `LOCK` prefixes, inline assembly).
-2. Accept that the environment cannot provide POSIX-level closure.
-
-Option 1 destroys portability and maintainability.  
-Option 2 is engineering reality.
-
-If the strongest ISO C++ ordering primitive cannot bridge the gap, the issue is systemic, not algorithmic.
-
----
-
-### Official Position
-
-* `jh/pool` implementations remain **algorithmically DRF**.
-* POSIX platforms (macOS, Linux GCC ≥13) define the reference behavior.
-* On Windows:
-
-    * API availability is guaranteed.
-    * Single-threaded or low-pressure multi-threaded usage is recommended.
-    * Full POSIX-equivalent global ordering is not guaranteed.
-
-The inserted fences:
-
-* Raise the instability threshold.
-* Delay manifestation under contention.
-* Improve convergence in practice.
-
-They:
-
-* Do **not** eliminate hardware-level reordering.
-* Do **not** establish a true global total order.
-
-This is a boundary where software cannot defeat hardware and platform policy.
-
-Accordingly, the entire `<jh/pool>` module does **not** provide full Windows concurrency support.
+The [contribution guide](../../CONTRIBUTING.md) defines the minimum Windows
+support requirement and separately reports occasional Windows CI runner freezes.
 
 ---
 

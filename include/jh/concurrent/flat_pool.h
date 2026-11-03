@@ -174,30 +174,14 @@
  * then a pointer-based pool should be used instead.
  * </p>
  *
- * @note
- * The implementation of <code>flat_pool</code> is algorithmically
- * data-race-free (DRF) and does not rely on undefined behavior
- * under the ISO C++ memory model.
- * <br>
- * Additional <code>std::atomic_thread_fence(std::memory_order_seq_cst)</code>
- * barriers are introduced on Windows builds to strengthen ordering at
- * the language level. This removes ISO-level UB risks and preserves
- * correctness within the C++ abstract machine.
- * <br>
- * However, Windows runtime and system-level synchronization primitives
- * (e.g. SRWLock-based <code>std::shared_mutex</code> implementations)
- * do not necessarily provide POSIX-equivalent global ordering behavior.
- * Under extreme multi-core contention, rare visibility or reordering
- * phenomena may still be observed.
- * <br>
- * Such behavior is not a violation of the C++ standard and does not
- * indicate undefined behavior in <code>flat_pool</code>; rather, it reflects
- * platform-level memory ordering characteristics outside the control
- * of the library.
- * <br>
- * Accordingly, while API correctness is preserved, Windows builds
- * are not guaranteed to exhibit the same high-pressure stability
- * characteristics as POSIX systems.
+ * @note The data-structure algorithm has complete synchronization coverage
+ * and is data-race-free under the ISO C++ model. The project has measured a
+ * high-contention gap between the C++ standard library and Windows runtime
+ * implementations. On Windows, pool operations
+ * use lock adapters that add
+ * <code>std::atomic_thread_fence(std::memory_order_seq_cst)</code> at lock
+ * boundaries as a measured mitigation. See the pool platform support
+ * documentation for details.
  *
  * @version <pre>1.4.x</pre>
  * @date <pre>2025</pre>

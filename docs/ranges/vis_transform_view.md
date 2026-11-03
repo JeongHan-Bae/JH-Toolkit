@@ -48,7 +48,7 @@ and applies a callable `F` lazily upon dereference, without consuming elements.
 | Aspect                  | Description                                                                                                        |
 |-------------------------|--------------------------------------------------------------------------------------------------------------------|
 | **Purpose**             | Provides a view that applies a callable to elements for observation, without consuming or mutating the base range. |
-| **Callable constraint** | The function `F` must satisfy [`jh::concepts::vis_function_for<F, R>`](../conceptual/vis_function_for.md).         |
+| **Callable constraint** | The function `F` must satisfy [`jh::concepts::vis_function_for<F, R>`](../conceptual/range_traits.md#-concept--vis_function_forf-r).         |
 | **Reentrancy**          | Fully reentrant — iteration can be repeated safely if the underlying range itself is reentrant.                    |
 | **Laziness**            | Evaluation occurs only on dereference; no storage, allocation, or copying of results.                              |
 | **Const behavior**      | All operations are const-qualified; the callable is stored immutably and invoked per iteration.                    |

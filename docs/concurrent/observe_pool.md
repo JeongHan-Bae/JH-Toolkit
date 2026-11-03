@@ -29,9 +29,6 @@ and provides **duck-typed convenience** by automatically selecting:
 All **concurrency, lifetime, cleanup, and resizing semantics** are inherited
 *unchanged* from `pointer_pool`.
 
-> `observe_pool` is **not a new abstraction**,
-> it is the **intended user entry point** for pointer-based interning.
-
 ---
 
 ## Aggregate Header Availability
@@ -70,24 +67,14 @@ using observe_pool =
     >;
 ```
 
-However, this is **not** a trivial alias in spirit.
-
 ### What Is Fixed
 
 * Hashing is performed on `std::weak_ptr<T>`
 * Equality is performed on `std::weak_ptr<T>`
 * Both delegate to **logical content of `T`**
 
-### What Is *Not* Changed
-
-* construct-first lookup model
-* weak observation (no ownership)
-* adaptive capacity management
-* cleanup behavior
-* concurrency guarantees
-* platform limitations
-
-For **all semantic questions**, refer to: [`jh::conc::pointer_pool`](pointer_pool.md)
+Construction, ownership, cleanup, capacity, and concurrency behavior follow
+[`jh::conc::pointer_pool`](pointer_pool.md).
 
 ---
 
@@ -202,56 +189,12 @@ Consequences:
 * Deduplication is atomic
 * Returned `shared_ptr` objects remain valid regardless of pool lifetime
 
-### Windows-Specific Warning (Critical)
+### Platform notes
 
-On POSIX platforms, `pointer_pool` / `observe_pool` behavior is generally stable in practice,
-as `std::shared_mutex` implementations tend to exhibit strong global ordering characteristics.
+`observe_pool` uses the same locking and pointer-lifetime behavior as
+`pointer_pool`. See its [platform notes](pointer_pool.md#platform-notes-windows)
+and the [pool platform support note](overview.md#pool-platform-support).
 
-On Windows, however:
-
-* ISO C++ guarantees only acquire–release semantics for `std::shared_mutex`.
-* `std::weak_ptr` / `std::shared_ptr` rely on atomic reference counting.
-* `unordered_map` introduces additional internal synchronization and rehash behavior.
-
-The interaction between:
-
-* atomic reference-count operations (`shared_ptr` control blocks),
-* `std::shared_mutex`,
-* and `unordered_map` bucket management,
-
-creates a more complex memory-ordering surface than `flat_pool`.
-
-Even though:
-
-* `std::atomic_thread_fence(std::memory_order_seq_cst)` is inserted around lock boundaries,
-* the implementation is algorithmically **DRF**,
-* no undefined behavior exists at the ISO C++ level,
-
-empirical testing shows that:
-
-* pointer-based pools (`pointer_pool` / `observe_pool`)
-  are **more sensitive to Windows runtime + MinGW coupling**
-  than contiguous-storage `flat_pool` / `resource_pool`.
-* Under extreme contention, instability manifests earlier than in `flat_pool`.
-
-This is likely due to:
-
-* additional indirection layers,
-* `weak_ptr` lock operations,
-* `unordered_map` rehash activity,
-* and weaker cross-domain ordering between atomics and system locks.
-
-Important:
-
-* Neither `observe_pool` nor `flat_pool` guarantees high-pressure stability on Windows.
-* Both remain standards-compliant and DRF.
-* Behavior may degrade under extreme multi-core contention.
-
-Official guidance:
-
-* Windows is treated as a **compatibility platform**, not a strong-ordering baseline.
-* Use low to moderate concurrency levels on Windows.
-* For maximum robustness under heavy load, prefer POSIX platforms.
 ---
 
 ## Intended Use Cases
@@ -281,7 +224,8 @@ Do **not** use `observe_pool` if:
 * objects are copyable or movable → use `flat_pool`
 * large-scale storage is required
 * cache locality is critical
-* high-concurrency workloads are expected
+* high-contention workloads require a platform review; see the
+  [pool platform support note](overview.md#pool-platform-support)
 
 In many cases, a better alternative is:
 
@@ -290,20 +234,3 @@ jh::resource_pool<Key, std::shared_ptr<T>>
 ```
 
 This preserves pointer stability while moving identity to a key.
-
----
-
-## Design Summary
-
-* `observe_pool` is **not a simplification**
-* it is a **semantic specialization**
-* hash / eq are lifted to `weak_ptr` level
-* all constraints and limits remain
-* construct-first cost is fundamental
-
----
-
-## One-Sentence Summary
-
-> **`jh::observe_pool` is the user-facing, content-based interning pool for immutable objects, built on `pointer_pool`,
-fixing weak-pointer hashing and equality while preserving all semantic constraints and limitations.**

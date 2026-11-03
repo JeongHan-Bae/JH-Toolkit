@@ -19,6 +19,7 @@
 - [`jh::serio::base64`](../serialize_io/base64.md)
 - [`jh::serio::uri`](../serialize_io/uri.md)
 - [`jh::serio::huffman`](../serialize_io/huffman.md)
+- [`jh::serio` value conversion](../serialize_io/value_conversion.md)
 
 ## API References
 

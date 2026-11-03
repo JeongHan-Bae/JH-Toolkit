@@ -88,8 +88,6 @@ Why this is fast:
 * `stable_sort` naturally minimizes movement,
 * no per-node allocation or rebalancing occurs.
 
-This is not a workaround — it is the **fast path by design**.
-
 ---
 
 ## API Overview

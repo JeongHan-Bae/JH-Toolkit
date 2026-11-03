@@ -66,17 +66,15 @@ namespace test {
 void tiny_test_case_2() {
     auto& mtx = test_mutex_t::instance();
 
-    [&]() { bool did_not_throw = true; try { [&] {
-        mtx.lock_shared();
-        mtx.lock_shared();
-        mtx.unlock_shared();
-        mtx.unlock_shared();
+    mtx.lock_shared();
+    mtx.lock_shared();
+    mtx.unlock_shared();
+    mtx.unlock_shared();
 
-        mtx.lock();
-        mtx.lock();
-        mtx.unlock();
-        mtx.unlock();
-    }(); } catch (...) { did_not_throw = false; } jh::test::tiny_test::expect(did_not_throw, "does not throw: [&] {\n        mtx.lock_shared();\n        mtx.lock_shared();\n        mtx.unlock_shared();\n        mtx.unlock_shared();\n\n        mtx.lock();\n        mtx.lock();\n        mtx.unlock();\n        mtx.unlock();\n    }()"); }();
+    mtx.lock();
+    mtx.lock();
+    mtx.unlock();
+    mtx.unlock();
 
 
     jh::test::tiny_test::expect(static_cast<bool>((active_readers.load() == 0)), "active_readers.load() == 0");

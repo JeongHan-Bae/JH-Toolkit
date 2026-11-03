@@ -17,21 +17,9 @@
 
 ## 🧭 Introduction
 
-The **Views Module** (`jh::views`) provides the **range adaptor layer** of the JH Toolkit —
-an engineering-grade extension of the C++20/23 view model.  
-It redefines the adaptor framework with explicit control over
-**traversal semantics**, **projection purity**, and **compositional interoperability**.
-
-Unlike the purely syntactic model of `std::views`,
-`jh::views` emphasizes **semantic augmentation**:  
-it enhances rather than imitates the standard,
-introducing a unified mechanism capable of expressing
-non-consuming, reentrant, and structure-aware pipelines
-within the same range ecosystem.
-
-This design allows a single adaptor layer to normalize,
-combine, and preserve the behaviors of both classical ranges
-and extended iterable abstractions from heterogeneous sources.
+The **Views Module** (`jh::views`) provides range adaptors for C++20/23 pipelines.
+Its adaptors express traversal, projection, consumption, and reentrancy behavior
+through their interfaces.
 
 ---
 
@@ -50,9 +38,6 @@ and extended iterable abstractions from heterogeneous sources.
 
 ## 🔹 Design Semantics
 
-`jh::views` acts as a **semantic bridge layer**,
-extending the standard adaptor model with additional expressive and structural guarantees.
-
 ### Key design features
 
 * **Semantic augmentation** — strengthens and clarifies the intent of traversal and projection.
@@ -63,11 +48,6 @@ extending the standard adaptor model with additional expressive and structural g
 * **Behavioral preservation** — propagation of consumption or reentrancy semantics is explicit and deterministic.
 * **Pipeline completeness** — provides missing pipe-form adaptors in certain standard library implementations (e.g.
   libc++).
-
-As a result, `jh::views` offers not a forward port but a **semantic evolution**
-of the standard view model — maintaining full syntactic familiarity
-while delivering a more precise and interoperable behavioral foundation
-for large-scale range-driven architectures.
 
 ---
 

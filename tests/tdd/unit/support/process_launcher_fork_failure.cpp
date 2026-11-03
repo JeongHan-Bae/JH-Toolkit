@@ -13,14 +13,17 @@ namespace test::tiny_test {
 namespace test {
     void process_launcher_fork_failure_contracts() {
         int observed_error{};
-        try {
-            static_cast<void>(jh::sync::ipc::detail::fork_or_throw([] {
-                errno = EAGAIN;
-                return static_cast<pid_t>(-1);
-            }));
-        } catch (const std::system_error &error) {
-            observed_error = error.code().value();
-        }
+        jh::test::tiny_test::expect_throw<std::system_error>([&] {
+            try {
+                static_cast<void>(jh::sync::ipc::detail::fork_or_throw([] {
+                    errno = EAGAIN;
+                    return static_cast<pid_t>(-1);
+                }));
+            } catch (const std::system_error &error) {
+                observed_error = error.code().value();
+                throw;
+            }
+        }, "fork failure throws std::system_error");
 
         jh::test::tiny_test::expect(observed_error == EAGAIN, "fork failure preserves errno");
     }

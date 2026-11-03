@@ -16,17 +16,10 @@ namespace {
 
 namespace test {
     void process_launcher_exec_failure_contracts() {
-        bool missing_executable_threw = false;
-        try {
+        jh::test::tiny_test::expect_throw<std::runtime_error>([&] {
             auto missing_executable = missing_launcher::start();
             (void) missing_executable.wait();
-        } catch (const std::runtime_error &) {
-            missing_executable_threw = true;
-        }
-        jh::test::tiny_test::expect(
-            missing_executable_threw,
-            "start throws when exec cannot find the requested executable"
-        );
+        }, "start throws when exec cannot find the requested executable");
 
         auto exit_one = exit_one_launcher::start();
         const auto result = exit_one.wait();

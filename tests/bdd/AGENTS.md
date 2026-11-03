@@ -5,6 +5,6 @@ when they are part of the API contract. Use Scenario Outlines or DataTables for 
 operation in a roundtrip its own `When`/`And` step.
 
 Keep each Gherkin feature paired with its own `steps/<feature>_steps.hpp` file. Define that feature's step class and
-single `StepDefinition` in the header, with step bodies inline. Do not add `.cpp` step files or combine unrelated
-features in one step header. Keep implementation details and load/stress testing in their appropriate suites. The
-runner loads each feature with its matching definition.
+single `StepDefinition` in the header, with step bodies inline. Use `.hpp` for step headers and one feature per header.
+Place implementation details and load/stress testing in their appropriate suites. The runner loads each feature with
+its matching definition.

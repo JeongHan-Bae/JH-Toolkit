@@ -322,5 +322,4 @@ This is **static extension**, not dynamic polymorphism.
 * No vtables, no RTTI, no dynamic extension
 * Predictable memory, predictable control flow
 
-> **ADT is not a coding style.
-> It is a machine-level design choice.**
+> **ADT is a machine-level design choice.**

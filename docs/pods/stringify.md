@@ -147,7 +147,8 @@ The recursive structure is resolved entirely through concept matching (`streamab
   for visual inspection only.
 
 > ⚠️ These are **textual diagnostics**, not serialization formats.
-> For stable, versioned encoding, use [`jh::utils::base64`](../utils/base64.md) directly.
+> For binary-to-text encoding, use [`jh::serio::base64`](../serialize_io/base64.md).
+> The application defines any required format versioning.
 
 ---
 

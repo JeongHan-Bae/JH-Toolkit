@@ -310,8 +310,7 @@ namespace jh::ranges::views {
      * auto z2 = a | jh::ranges::views::zip_pipe(b,c); // extended multi-sequence form
      * @endcode
      *
-     * Conceptually, <code>zip_pipe</code> is not a new feature, but a semantic resolution:
-     * it restores closure semantics for multi-argument zip operations
+     * <code>zip_pipe</code> provides closure semantics for multi-argument zip operations
      * while maintaining full compatibility with the C++23 range adaptor model.
      */
     inline constexpr detail::zip_pipe_fn zip_pipe{};

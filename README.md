@@ -88,16 +88,13 @@ performance, and enhanced security.
 
 <p align="center" style="font-size: medium;">
   <em>Oree</em>, the green-headed duck whose name comes from the Korean word "오리",<br>
-  embodies the philosophy of the <strong>JH Toolkit</strong> — a world where<br>
+  represents the <strong>JH Toolkit</strong>'s duck-typing approach:<br>
   <strong>if it behaves like a duck, it is a duck.</strong>
 </p>
 
 <p align="center" style="font-size: medium;">
   Instead of enforcing inheritance, the toolkit follows <strong>behavioral compatibility</strong>:<br>
-  every type belongs by what it <em>can do</em>, not by what it <em>inherits</em>.<br>
-  <br>
-  Oree represents freedom, adaptability, and elegance —<br>
-  just like modern C++ itself.
+  types are accepted based on supported operations rather than inheritance.
 </p>
 
 ---
@@ -122,9 +119,8 @@ More importantly, C++20 enables **SFINAE + concepts–based constraints**, which
 
 This improves both **safety** and **performance**, often by eliminating entire classes of misuse before code generation.
 
-C++20 is therefore adopted as an **engineering tool**, not as a language feature showcase.
-The goal is not to demonstrate what "modern C++" can express, but to use the language to **constrain behavior, reduce
-ambiguity, and support reliable system design**.
+C++20 is an **engineering tool** for constraining behavior, reducing ambiguity,
+and supporting reliable system design.
 
 
 > **Modern C++ is already a strong fit for software development workloads.**  
@@ -241,6 +237,11 @@ AI-generated guesses that are not grounded in the documented contracts.
       <td><code>&lt;jh/async&gt;</code></td>
       <td align="center">🌀</td>
       <td><a href="docs/entry_points/async.md">Entry Header Guide</a></td>
+    </tr>
+    <tr>
+      <td><code>&lt;jh/bloom_filter&gt;</code></td>
+      <td align="center">🧱</td>
+      <td><a href="docs/entry_points/bloom_filter.md">Entry Header Guide</a></td>
     </tr>
     <tr>
       <td><code>&lt;jh/concepts&gt;</code></td>
@@ -427,10 +428,6 @@ Implementation details are documented only when necessary.
 The focus is on **how the library is intended to be used correctly and safely**, not on how it happens to be implemented
 at a particular point in time.
 
-In short:
-
-**Doxygen explains the design and intent; implementations merely realize it.**
-
 ---
 
 ## Recommended IDE for Best Source Code + Doxygen Experience
@@ -537,8 +534,8 @@ It is oriented toward practice rather than language experimentation, with the ex
 * adopt modern C++20 idioms naturally,
 * and reduce the friction of moving from prototypes to robust systems.
 
-The library is not about showing what modern C++ *can* do—it is about helping engineers do what they *need* to do,
-correctly and sustainably.
+The library helps engineers use modern C++ to build systems correctly and
+sustainably.
 
 ---
 

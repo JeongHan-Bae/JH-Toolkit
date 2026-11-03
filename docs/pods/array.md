@@ -419,11 +419,7 @@ int main() {
 }
 ```
 
-> 💡 Include `<jh/pod>` to enable all features:
->
-> * Structured bindings (tuple integration)
-> * Stream printing (`stringify`)
-> * Full POD safety and constexpr compatibility
+For aggregate-header features, see [`<jh/pod>`](../entry_points/pod.md).
 
 ---
 
@@ -443,8 +439,7 @@ int main() {
 
 > 📌 **Design Philosophy**
 >
-> `jh::pod::array` is a **predictable, low-level** array abstraction —
-> not a safer `std::array`, but a more *transparent* one.  
+> `jh::pod::array` is a **predictable, low-level** array with a transparent layout.
 > It gives you exactly what `T[N]` provides,
 > while ensuring strong compile-time validation,
 > modern range interoperability, and optimal layout alignment.

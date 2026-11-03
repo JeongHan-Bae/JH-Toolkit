@@ -18,7 +18,7 @@
  * <h4>Overview</h4>
  * <ul>
  *   <li>Defines <code>jh::serio</code> as the user-facing namespace for serialization helpers.</li>
- *   <li>Aggregates all Serialization I/O codecs (e.g. Base64, Base64URL, and future formats).</li>
+ *   <li>Aggregates Serialization I/O codecs and fixed-layout persistence helpers.</li>
  *   <li>Focuses on type-safe, constexpr-enabled, and cross-language serialization utilities.</li>
  * </ul>
  *
@@ -34,6 +34,7 @@
 #include "jh/serialize_io/base64.h"
 #include "jh/serialize_io/huffman.h"
 #include "jh/serialize_io/uri.h"
+#include "jh/serialize_io/value_conversion.h"
 
 /**
  * @brief Aggregated entry point for serialization and codec utilities.

@@ -248,8 +248,7 @@ All bitwise operations are constexpr and no longer require explicit wrapping.
 
 > 📌 **Design Philosophy**
 >
-> `jh::pod::bitflags` is not a reimplementation of `std::bitset`,
-> but a **compile-time–bounded, POD-based bitfield abstraction**.
+> `jh::pod::bitflags` is a **compile-time–bounded, POD-based bitfield abstraction**.
 > It compresses Boolean sequences into fixed binary form
 > while maintaining strict layout predictability and full constexpr semantics.
 >
