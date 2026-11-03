@@ -92,11 +92,13 @@ namespace test {
     }
 
     void test_stream_protocol() {
+        const std::string numeric_text = "42 \t";
+        const std::string invalid_numeric_text = "42x";
         jh::test::tiny_test::expect(jh::serio::serialize(42) == "42" &&
-                                   jh::serio::deserialize<int>("42 \t") == 42,
+                                   jh::serio::deserialize<int>(numeric_text) == 42,
                                    "Stream protocol returns a string and consumes its input stream");
         jh::test::tiny_test::expect_throw<std::runtime_error>([&] {
-            (void)jh::serio::deserialize<int>("42x");
+            (void)jh::serio::deserialize<int>(invalid_numeric_text);
         }, "Stream protocol rejects trailing content");
 
         immovable_stream_value extracted;

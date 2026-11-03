@@ -18,4 +18,5 @@ A reconstructed value may borrow its input string;
 callers must keep that string alive while using the value. A Stream-protocol
 result must remain valid after the temporary input stream is destroyed. See
 [borrowed results and lifetime](../serialize_io/value_conversion.md#borrowed-results-and-lifetime)
-for the source-storage contract.
+for the source-storage contract. The concept checks available operations; it
+cannot infer whether a user-defined type borrows its input.

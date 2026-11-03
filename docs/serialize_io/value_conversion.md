@@ -20,10 +20,9 @@ the Stream protocol attaches an `std::istream` to a read-only buffer borrowing
 the string's characters. Thus a Stream-only round trip passes through
 `ostream` &rarr; `std::string` &rarr; `istream`, with the string as the public
 interchange value and no second payload copy for input. The input string
-remains intact. Stream extraction
-must succeed and consume the stream contents apart from trailing whitespace;
-failure throws
-`std::runtime_error`. A String protocol controls its own input validation.
+remains intact. Stream extraction must succeed and consume all content apart
+from trailing whitespace; failure throws `std::runtime_error`. A String
+protocol controls its own input validation.
 
 For a Stream-only type that cannot be moved, use
 `deserialize(text, existing_value)`. The destination is default constructed by
@@ -43,12 +42,18 @@ and the Stream adapter reads the same characters through a read-only buffer.
 This is why a view-containing result can use the caller's string as its backing
 storage without a second input string allocation.
 
-When `T` contains `std::string_view` or another borrowed view, the caller keeps
-the source string alive and its character storage stable for every use of the
-result. The reference parameter does not extend that lifetime after the call.
-`deserialize<std::string_view>` rejects a temporary `std::string` at compile
-time; arbitrary user-defined view-containing types still need this caller
-contract. Moving such a type may also affect its own borrowing invariants.
+In C++, a `const std::string&` parameter can bind a temporary. Both
+`deserialize` overloads therefore delete their `std::string&&` and
+`const std::string&&` forms for every supported `T`. Calls with a temporary
+string, including an implicit temporary created from a string literal, fail at
+compile time. Use a named `std::string` as the source.
+
+When `T` contains `std::string_view` or another borrowed view, keep that
+source string alive and its character storage stable for every use of the
+result. Rejecting rvalues prevents immediate dangling from a temporary; it
+cannot enforce the caller's later scope or detect borrowing inside a custom
+type. Moving a view-containing type may also affect its own borrowing
+invariants.
 
 ```cpp
 const std::string text = "customer:42";

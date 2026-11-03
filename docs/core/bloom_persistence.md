@@ -62,7 +62,8 @@ never stores reduced bit indices. The signature string stays alive until all
 sentinel hashes have been read, so a String-protocol sentinel may borrow it
 during those calls. The sentinel is constructed in place, never moved, and
 destroyed before its signature string. This keeps `string_view` members in
-view-like sentinel types valid throughout synchronous hasher evaluation.
+view-like sentinel types valid throughout synchronous hasher evaluation when
+those members borrow the signature string.
 
 ## Validation and failure
 

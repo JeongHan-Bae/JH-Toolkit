@@ -31,7 +31,6 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <type_traits>
 
 namespace jh::serio {
 
@@ -75,7 +74,10 @@ namespace jh::serio {
      * A string-protocol result may borrow <code>text</code>; the caller must
      * keep the input alive with stable character storage while using such a
      * result. The reference parameter does not extend the input's lifetime
-     * after this call. A stream-protocol result
+     * after this call. Rvalue string inputs are rejected for every result
+     * type, so a caller supplies named backing storage. Borrowing inside
+     * user-defined types still requires that storage to outlive the result's
+     * use. A stream-protocol result
      * must remain valid after the local input stream is destroyed.
      */
     template<jh::concepts::serializable T>
@@ -111,14 +113,24 @@ namespace jh::serio {
         if (!in.eof()) throw std::runtime_error("value stream has trailing data");
     }
 
-    /// @brief Rejects a temporary string that cannot outlive a returned view.
+    /// @brief Rejects a temporary string as deserialization backing storage.
     template<jh::concepts::serializable T>
-    requires std::same_as<std::remove_cv_t<T>, std::string_view>
     T deserialize(std::string &&) = delete;
 
-    /// @brief Rejects a const temporary string that cannot outlive a returned view.
+    /// @brief Rejects a const temporary string as deserialization backing storage.
     template<jh::concepts::serializable T>
-    requires std::same_as<std::remove_cv_t<T>, std::string_view>
     T deserialize(const std::string &&) = delete;
+
+    /// @brief Rejects temporary backing storage for Stream extraction into an object.
+    template<typename T>
+    requires (jh::concepts::detail::stream_roundtrip<T> &&
+              !jh::concepts::detail::string_roundtrip<T>)
+    void deserialize(std::string &&, T &) = delete;
+
+    /// @brief Rejects const temporary backing storage for Stream extraction.
+    template<typename T>
+    requires (jh::concepts::detail::stream_roundtrip<T> &&
+              !jh::concepts::detail::string_roundtrip<T>)
+    void deserialize(const std::string &&, T &) = delete;
 
 } // namespace jh::serio

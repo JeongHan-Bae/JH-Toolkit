@@ -29,6 +29,12 @@ struct string_input_only {
     explicit string_input_only(const std::string &) {}
 };
 
+struct borrowed_string_type {
+    std::string_view view;
+    explicit borrowed_string_type(const std::string &text) : view(text) {}
+    explicit operator std::string() const { return std::string{view}; }
+};
+
 struct stream_output_only {};
 std::ostream &operator<<(std::ostream &out, const stream_output_only &);
 
@@ -53,6 +59,7 @@ static_assert(!jh::concepts::serializable<stream_output_only>);
 static_assert(!jh::concepts::serializable<stream_input_only>);
 static_assert(jh::concepts::serializable<immovable_stream>);
 static_assert(jh::concepts::serializable<std::string_view>);
+static_assert(jh::concepts::serializable<borrowed_string_type>);
 
 template<typename T>
 concept deserializes_lvalue_string = requires(const std::string &text) {
@@ -67,10 +74,16 @@ concept deserializes_literal_string = requires {
     jh::serio::deserialize<T>("key");
 };
 static_assert(deserializes_lvalue_string<string_only>);
+static_assert(deserializes_lvalue_string<std::string>);
+static_assert(deserializes_lvalue_string<int>);
 static_assert(deserializes_lvalue_string<std::string_view>);
+static_assert(deserializes_lvalue_string<borrowed_string_type>);
 static_assert(!deserializes_lvalue_string<immovable_stream>);
-static_assert(deserializes_temporary_string<std::string>);
+static_assert(!deserializes_temporary_string<std::string>);
+static_assert(!deserializes_temporary_string<int>);
 static_assert(!deserializes_temporary_string<std::string_view>);
+static_assert(!deserializes_temporary_string<borrowed_string_type>);
+static_assert(!deserializes_literal_string<int>);
 static_assert(!deserializes_literal_string<std::string_view>);
 
 template<typename T>
@@ -78,6 +91,11 @@ concept deserializes_into_existing = requires(const std::string &text, T &value)
     jh::serio::deserialize(text, value);
 };
 static_assert(deserializes_into_existing<immovable_stream>);
+template<typename T>
+concept deserializes_temporary_into_existing = requires(T &value) {
+    jh::serio::deserialize(std::string{"key"}, value);
+};
+static_assert(!deserializes_temporary_into_existing<immovable_stream>);
 
 struct invalid_type_hash {
     auto operator()(const string_output_only &) const {

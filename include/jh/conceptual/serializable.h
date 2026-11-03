@@ -57,7 +57,9 @@ namespace jh::concepts {
      * protocol has priority. A reconstructed value that borrows the
      * input string requires that string to outlive the value's use. A stream
      * extraction result must remain valid after the temporary input stream
-     * used by <code>jh::serio::deserialize</code> is destroyed.
+     * used by <code>jh::serio::deserialize</code> is destroyed. This concept
+     * checks expressions and cannot detect borrowing inside a user-defined
+     * type.
      */
     template<typename T>
     concept serializable = detail::string_roundtrip<T> || detail::stream_roundtrip<T>;

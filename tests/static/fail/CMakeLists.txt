@@ -1,5 +1,15 @@
 project_static_fail(enum_case_rejects_unscoped_enum concepts/enum_case_rejects_unscoped_enum.cpp)
 project_static_fail(
+    serializable_rejects_temporary_borrowed_string
+    concepts/serializable_rejects_temporary_borrowed_string.cpp
+    EXPECT_DIAGNOSTIC "deleted"
+)
+project_static_fail(
+    serializable_rejects_temporary_stream_input
+    concepts/serializable_rejects_temporary_stream_input.cpp
+    EXPECT_DIAGNOSTIC "deleted"
+)
+project_static_fail(
     runtime_arr_bool_has_no_data
     concepts/runtime_arr_bool_has_no_data.cpp
     EXPECT_DIAGNOSTIC "deleted"
