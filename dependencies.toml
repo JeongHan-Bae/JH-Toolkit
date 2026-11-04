@@ -17,13 +17,13 @@ cmake = "CMakeLists.txt"
 
 [[components.selectable]]
 name = "base"
-files = [ "include/jh/async", "include/jh/bloom_filter", "include/jh/concepts", "include/jh/concurrency", "include/jh/flat_multimap", "include/jh/generator", "include/jh/immutable_str", "include/jh/jindallae", "include/jh/meta", "include/jh/ordered_map", "include/jh/pattern_matcher", "include/jh/pod", "include/jh/pool", "include/jh/ranges_ext", "include/jh/runtime_arr", "include/jh/serio", "include/jh/sync", "include/jh/synchronous/const_lock.h", "include/jh/synchronous/control_buf.h", "include/jh/synchronous/strong_lock.h", "include/jh/typed", "include/jh/views" ]
-directories = [ "include/jh/asynchronous/", "include/jh/conceptual/", "include/jh/concurrent/", "include/jh/core/", "include/jh/detail/", "include/jh/macros/", "include/jh/metax/", "include/jh/pods/", "include/jh/ranges/", "include/jh/serialize_io/", "include/jh/typing/" ]
+files = [ "include/jh/async", "include/jh/atomic_ptr", "include/jh/bloom_filter", "include/jh/concepts", "include/jh/concurrency", "include/jh/flat_multimap", "include/jh/generator", "include/jh/immutable_str", "include/jh/jindallae", "include/jh/meta", "include/jh/ordered_map", "include/jh/pattern_matcher", "include/jh/pod", "include/jh/pool", "include/jh/ranges_ext", "include/jh/runtime_arr", "include/jh/serio", "include/jh/sync", "include/jh/synchronous/const_lock.h", "include/jh/synchronous/control_buf.h", "include/jh/synchronous/strong_lock.h", "include/jh/typed", "include/jh/views" ]
+directories = [ "include/jh/asynchronous/", "include/jh/atomic/", "include/jh/conceptual/", "include/jh/concurrent/", "include/jh/core/", "include/jh/detail/", "include/jh/macros/", "include/jh/metax/", "include/jh/pods/", "include/jh/ranges/", "include/jh/serialize_io/", "include/jh/typing/" ]
 
 [[components.selectable]]
 name = "jh-no-throw"
 files = [ "include/jh/conceptual/enum.h", "include/jh/conceptual/hashable.h", "include/jh/conceptual/mutex_like.h", "include/jh/conceptual/tuple_like.h", "include/jh/concurrent/observe_pool.h", "include/jh/concurrent/pointer_pool.h", "include/jh/core/immutable_str.h", "include/jh/detail/base64_common.h", "include/jh/meta", "include/jh/pod", "include/jh/synchronous/const_lock.h", "include/jh/synchronous/strong_lock.h", "include/jh/typing/monostate.h" ]
-directories = [ "include/jh/macros/", "include/jh/metax/", "include/jh/pods/" ]
+directories = [ "include/jh/atomic/", "include/jh/macros/", "include/jh/metax/", "include/jh/pods/" ]
 
 [[components.selectable]]
 name = "jh-test-enabled"
