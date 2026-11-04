@@ -173,21 +173,14 @@ namespace jh {
      * @note
      * <strong>Platform guidance:</strong>
      * <br>
-     * All concurrent pools under <code>&lt;jh/pool&gt;</code> are designed
-     * primarily for POSIX platforms and rely on POSIX-style ordering
-     * semantics for their performance characteristics.
-     * <br>
-     * Windows (MinGW-w64 / MinGW-clang with UCRT or MSVCRT) is treated
-     * as a secondary platform. API compatibility is provided, but
-     * concurrency guarantees are not equivalent to POSIX builds.
-     * High-contention workloads are not recommended on Windows.
-     * <br>
-     * If your final deployment target is a POSIX system (Linux / Darwin),
-     * the pool implementations may be used as intended under full
-     * concurrency.
+     * Concurrent <code>acquire()</code> uses the underlying pool's RW mutex
+     * for capacity checks and insertion. The selected mutex must provide
+     * cross-thread synchronization. A custom RW mutex can be supplied for a
+     * platform configuration whose default mutex exhibits a measured gap.
+     * @tparam Mutex Shared-lockable synchronization type used by the underlying pool.
      */
-    template<typename T>
+    template<typename T, typename Mutex = std::shared_mutex>
     using observe_pool =
-            conc::pointer_pool<T, weak_ptr_hash<T>, weak_ptr_eq<T>>;
+            conc::pointer_pool<T, weak_ptr_hash<T>, weak_ptr_eq<T>, Mutex>;
 
 } // namespace jh

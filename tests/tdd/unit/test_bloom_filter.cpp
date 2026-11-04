@@ -182,9 +182,11 @@ namespace test {
             const int call = concurrent_calls.fetch_add(1);
             if (call == 0) {
                 query_entered.store(true);
-                while (!release_query.load()) std::this_thread::yield();
+                query_entered.notify_one();
+                release_query.wait(false);
             } else if (call == 1) {
                 writer_hashed.store(true);
+                writer_hashed.notify_one();
             }
             return std::tuple{static_cast<std::size_t>(value),
                               static_cast<std::size_t>(value + 64)};
@@ -354,10 +356,11 @@ namespace test {
         bool before_insert = true;
 
         std::thread reader([&] { before_insert = filter.possibly_contains(7); });
-        while (!query_entered.load()) std::this_thread::yield();
+        query_entered.wait(false);
         std::thread writer([&] { filter.insert(7); });
-        while (!writer_hashed.load()) std::this_thread::yield();
+        writer_hashed.wait(false);
         release_query.store(true);
+        release_query.notify_one();
         reader.join();
         writer.join();
 

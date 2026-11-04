@@ -234,6 +234,11 @@ AI-generated guesses that are not grounded in the documented contracts.
 <table>
   <tbody>
     <tr>
+      <td><code>&lt;jh/atomic_ptr&gt;</code></td>
+      <td align="center">⚛️</td>
+      <td><a href="docs/entry_points/atomic_ptr.md">Entry Header Guide</a></td>
+    </tr>
+    <tr>
       <td><code>&lt;jh/async&gt;</code></td>
       <td align="center">🌀</td>
       <td><a href="docs/entry_points/async.md">Entry Header Guide</a></td>

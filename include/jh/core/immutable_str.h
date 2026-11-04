@@ -23,15 +23,15 @@
  *
  * <h3>Overview</h3>
  * <p>
- * <code>jh::immutable_str</code> provides a <b>true immutable</b> string type in modern C++.
- * It guarantees <b>memory-level immutability</b> and <b>thread safety</b> &mdash; once created,
- * the string data can never be modified. This makes it ideal for concurrent environments,
+ * <code>jh::immutable_str</code> provides a read-only string API in modern C++.
+ * The library exposes no mutation operation after construction, so instances
+ * support concurrent reads. This makes it useful for concurrent environments,
  * global configuration caches, or static metadata storage.
  * </p>
  *
  * <h4>Key Characteristics</h4>
  * <ul>
- *   <li>Strict immutability at the memory level &mdash; no API allows modification.</li>
+ *   <li>No public operation modifies the character data after construction.</li>
  *   <li>Thread-safe by design &mdash; multiple threads can safely share instances.</li>
  *   <li>Optional <b>automatic whitespace trimming</b> during construction.</li>
  *   <li>Compact, zero-reallocation model using <code>unique_ptr&lt;const char[]&gt;</code>.</li>
@@ -41,17 +41,16 @@
  *
  * <h3>Motivation</h3>
  * <p>
- * In C++, <code>std::string</code> remains mutable even when declared <code>const</code>.
- * This permits unintended modification via <code>const_cast</code> or aliasing, leading to
- * race conditions and subtle data corruption. <code>jh::immutable_str</code> eliminates these
- * risks by enforcing immutability both at the type level and memory level.
+ * A non-const <code>std::string</code> exposes mutation and may have writable
+ * aliases that require coordination across threads. <code>jh::immutable_str</code>
+ * exposes only read access to its owned character data after construction.
  * </p>
  *
- * <h3>Comparison with <code>const std::string</code></h3>
+ * <h3>Comparison with <code>std::string</code></h3>
  * <table>
- *   <tr><th>Feature</th><th><code>jh::immutable_str</code></th><th><code>const std::string</code></th></tr>
- *   <tr><td>Memory-level immutability</td><td>&#9989; True</td><td>&#10060; False</td></tr>
- *   <tr><td>Thread safety</td><td>&#9989; Safe by design</td><td>&#10060; Mutable buffer</td></tr>
+ *   <tr><th>Feature</th><th><code>jh::immutable_str</code></th><th><code>std::string</code></th></tr>
+ *   <tr><td>Public mutation API</td><td>&#10060; None</td><td>&#9989; Available</td></tr>
+ *   <tr><td>Concurrent reads</td><td>&#9989; Safe by design</td><td>&#9989; Safe without concurrent mutation</td></tr>
  *   <tr><td>Reallocation risk</td><td>&#10060; None</td><td>&#9989; Possible</td></tr>
  *   <tr><td>Hashing</td><td>&#9989; Cached, thread-safe</td><td>&#10060; Recomputed each time</td></tr>
  *   <tr><td>Storage model</td><td>Compact (unique_ptr)</td><td>Dynamic capacity-managed</td></tr>
@@ -59,10 +58,10 @@
  *
  * <h3>Core Features</h3>
  * <ul>
- *   <li><b>Immutable Data:</b> Stored via <code>unique_ptr&lt;const char[]&gt;</code>, preventing mutation.</li>
+ *   <li><b>Read-only Data:</b> Exposed through const access to an owned character array.</li>
  *   <li><b>Thread-Safe Hashing:</b> Lazy-evaluated via <code>std::once_flag</code> to ensure safe caching.</li>
  *   <li><b>Auto Trimming:</b> Optional compile-time whitespace removal (controlled by <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>).</li>
- *   <li><b>Shared Ownership:</b> Distributed through <code>jh::atomic_str_ptr</code> (<code>shared_ptr</code> alias).</li>
+ *   <li><b>Shared Ownership:</b> Distributed through copyable <code>jh::shared_str_ptr</code> handles; publish with <code>jh::atomic_str_slot</code>.</li>
  *   <li><b>Interop:</b> Compatible with <code>std::string_view</code> and C-string APIs.</li>
  *   <li><b>Custom Hash &amp; Eq:</b> Support for transparent <code>unordered_map</code> lookup via <code>const char*</code>.</li>
  * </ul>
@@ -180,7 +179,7 @@
  * <h3>See Also</h3>
  * <ul>
  *   <li><code>jh::observe_pool</code> &mdash; efficient pooling system compatible with immutable_str.</li>
- *   <li><code>jh::atomic_str_ptr</code> &mdash; shared-pointer alias for efficient immutable string sharing.</li>
+ *   <li><code>jh::atomic_str_slot</code> &mdash; atomic storage for a shared string handle.</li>
  * </ul>
  *
  * @version <pre>1.3.x</pre>
@@ -188,6 +187,8 @@
  */
 
 #pragma once
+
+#include "jh/atomic/weak_ptr.h"
 
 /**
  * @brief Controls whether <code>jh::immutable_str</code> performs automatic
@@ -288,10 +289,10 @@ namespace jh {
      *
      * <h4>Design Goals</h4>
      * <ul>
-     *   <li>Guarantee memory-level immutability with zero write access after initialization.</li>
+     *   <li>Expose no write operation after initialization.</li>
      *   <li>Provide deterministic lifetime ownership using <code>unique_ptr&lt;const char[]&gt;</code>.</li>
      *   <li>Support concurrent reads safely without synchronization overhead.</li>
-     *   <li>Enable efficient sharing via <code>std::shared_ptr&lt;immutable_str&gt;</code> (<code>atomic_str_ptr</code>).</li>
+     *   <li>Enable efficient sharing via <code>std::shared_ptr&lt;immutable_str&gt;</code> (<code>shared_str_ptr</code>).</li>
      *   <li>Offer consistent hashing and transparent equality for unordered containers.</li>
      * </ul>
      *
@@ -322,7 +323,7 @@ namespace jh {
      * <ul>
      *   <li>Constructible from <code>const char*</code> or <code>std::string_view</code> (with a lock).</li>
      *   <li>Deleted copy and move semantics to preserve immutability guarantees.</li>
-     *   <li>Preferred factory: <code>jh::make_atomic()</code> for shared atomic usage.</li>
+     *   <li>Preferred factory: <code>jh::make_atomic()</code> for shared ownership; use <code>jh::make_atomic_slot()</code> for atomic publication.</li>
      * </ul>
      *
      * <h4>Dual-Mode Header Integration</h4>
@@ -342,7 +343,7 @@ namespace jh {
      * <h4>See Also</h4>
      * <ul>
      *   <li><code>jh::observe_pool</code> &mdash; object pool compatible with <code>immutable_str</code>.</li>
-     *   <li><code>jh::atomic_str_ptr</code> &mdash; alias for <code>std::shared_ptr&lt;immutable_str&gt;</code>.</li>
+     *   <li><code>jh::shared_str_ptr</code> &mdash; ordinary shared handle; use <code>jh::atomic_str_slot</code> for atomic storage.</li>
      * </ul>
      */
     class immutable_str final {
@@ -773,54 +774,25 @@ namespace jh {
     };
 
     /**
-     * @brief Atomically replaceable handle to an immutable string.
-     *
-     * <p>
-     * An <code>atomic_str_ptr</code> is simply a <code>std::shared_ptr&lt;immutable_str&gt;</code>.
-     * </p><p>
-     * Since <code>std::shared_ptr</code> has built-in atomic operations
-     * (<code>atomic_load</code>, <code>atomic_store</code>, <code>atomic_exchange</code>,
-     * <code>atomic_compare_exchange_*</code>, as well as their <code>*_explict</code> forms)
-     * and <code>jh::immutable_str</code> is itself immutable, the pointer can be
-     * safely loaded, stored, or replaced across threads without any additional
-     * synchronization.
-     * </p>
-     *
-     * <ul>
-     *   <li>Atomicity is provided by <code>std::shared_ptr</code> (C++11+).</li>
-     *   <li>The underlying string never mutates, only the pointer changes.</li>
-     *   <li>Suitable for concurrent configuration, caches, and shared views.</li>
-     * </ul>
+     * @brief Copyable shared ownership handle for an immutable string.
+     * @note Concurrent mutation of the same handle requires external synchronization.
+     *       Use <code>atomic_str_slot</code> for atomic publication.
      */
-    using atomic_str_ptr = std::shared_ptr<immutable_str>;
+    using shared_str_ptr = std::shared_ptr<immutable_str>;
 
     /**
-     * @brief Non-owning observer for an <code>immutable_str</code> managed by
-     *        <code>atomic_str_ptr</code>.
-     *
-     * <p>
-     * A <code>weak_str_ptr</code> is the weak counterpart of
-     * <code>atomic_str_ptr</code>. It does not provide atomic load/store
-     * operations itself, but it safely observes an immutable string whose
-     * owning handle may be atomically replaced elsewhere.
-     * </p>
-     *
-     * <p>
-     * Because <code>jh::immutable_str</code> never mutates, any successfully
-     * locked <code>std::shared_ptr</code> obtained from <code>weak_str_ptr</code>
-     * is safe to read concurrently without further synchronization.
-     * </p>
-     *
-     * <ul>
-     *   <li>Typedef of <code>std::weak_ptr&lt;immutable_str&gt;</code>.</li>
-     *   <li>Non-owning: does not participate in atomic exchanges.</li>
-     *   <li>Use <code>lock()</code> to obtain a temporary
-     *       <code>atomic_str_ptr</code>-compatible strong reference.</li>
-     *   <li>Useful for caches and observer-style structures where readers should not
-     *       extend object lifetime.</li>
-     * </ul>
+     * @brief Non-owning observer for an immutable string.
+     * @details Alias of <code>std::weak_ptr&lt;immutable_str&gt;</code>.
+     * Call <code>lock()</code> to obtain a temporary shared handle.
      */
     using weak_str_ptr [[maybe_unused]] = std::weak_ptr<immutable_str>;
+
+    /// @brief Atomically replaceable immutable string handle; load before dereferencing.
+    using atomic_str_slot = jh::atomic::shared_ptr<immutable_str>;
+
+    /// @brief Atomically replaceable weak observer; load before calling lock.
+    using atomic_weak_str_slot = jh::atomic::weak_ptr<immutable_str>;
+
 
     /**
      * @brief Concept for types compatible with <code>jh::immutable_str</code>.
@@ -829,12 +801,12 @@ namespace jh {
      * Defines the set of types that can safely participate in comparison and hashing
      * operations with <code>immutable_str</code> instances.
      * This allows seamless interoperability between
-     * <code>atomic_str_ptr</code>, <code>const char*</code>, and string literals.
+     * <code>shared_str_ptr</code>, <code>const char*</code>, and string literals.
      * </p>
      *
      * @details
      * <ul>
-     *   <li>Satisfied by <code>atomic_str_ptr</code> (and its cv/ref-qualified variants).</li>
+     *   <li>Satisfied by <code>shared_str_ptr</code> (and its cv/ref-qualified variants).</li>
      *   <li>Satisfied by <code>const char*</code>.</li>
      *   <li>Satisfied by string literals such as <code>"hello"</code>
      *       (which decay to <code>const char*</code>).</li>
@@ -854,11 +826,11 @@ namespace jh {
      */
     template<typename U>
     concept immutable_str_compatible =
-    std::same_as<std::remove_cvref_t<U>, atomic_str_ptr> ||
+    std::same_as<std::remove_cvref_t<U>, shared_str_ptr> ||
     std::same_as<std::decay_t<U>, const char *>;
 
     /**
-     * @brief Custom hash functor for <code>atomic_str_ptr</code> and compatible types.
+     * @brief Custom hash functor for <code>shared_str_ptr</code> and compatible types.
      *
      * <p>
      * Provides transparent, content-based hashing for associative containers
@@ -871,10 +843,10 @@ namespace jh {
      * <ul>
      *   <li>Replaces the default <code>std::shared_ptr</code> hash, which hashes by pointer value,
      *       with a deterministic hash computed from string content.</li>
-     *   <li>Supports both <code>atomic_str_ptr</code> and <code>const char*</code> operands,
+     *   <li>Supports both <code>shared_str_ptr</code> and <code>const char*</code> operands,
      *       constrained by <code>immutable_str_compatible</code>.</li>
      *   <li>Transparent lookup is supported &mdash; for example, a container of
-     *       <code>atomic_str_ptr</code> keys can be queried with
+     *       <code>shared_str_ptr</code> keys can be queried with
      *       <code>find("key")</code> or <code>contains("key")</code>.</li>
      *   <li>At least one operand (either the stored key or the lookup key)
      *       must represent an actual <code>immutable_str</code> instance.</li>
@@ -886,7 +858,7 @@ namespace jh {
      *
      * @tparam U
      *   Input type &mdash; must satisfy <code>immutable_str_compatible</code>
-     *   (<code>atomic_str_ptr</code> or <code>const char*</code>).
+     *   (<code>shared_str_ptr</code> or <code>const char*</code>).
      *
      * @param value
      *   Input value to hash; may be <code>nullptr</code> (hash result = 0).
@@ -897,7 +869,7 @@ namespace jh {
      * @note
      * <ul>
      *   <li>Designed primarily for containers that store
-     *       <code>atomic_str_ptr</code> as keys.</li>
+     *       <code>shared_str_ptr</code> as keys.</li>
      *   <li>Either operand may be a <code>const char*</code> during lookup,
      *       but at least one operand must refer to a valid
      *       <code>immutable_str</code> instance.</li>
@@ -914,7 +886,7 @@ namespace jh {
         template<typename U>
         requires immutable_str_compatible<U>
         std::size_t operator()(const U &value) const noexcept {
-            if constexpr (std::same_as<std::remove_cvref_t<U>, atomic_str_ptr>) {
+            if constexpr (std::same_as<std::remove_cvref_t<U>, shared_str_ptr>) {
                 return value ? value->hash() : 0;
             } else {
                 if (value == nullptr) {
@@ -938,7 +910,7 @@ namespace jh {
     };
 
     /**
-     * @brief Custom equality functor for <code>atomic_str_ptr</code> and compatible types.
+     * @brief Custom equality functor for <code>shared_str_ptr</code> and compatible types.
      *
      * <p>
      * Provides content-based comparison for <code>immutable_str</code> instances,
@@ -949,10 +921,10 @@ namespace jh {
      *
      * @details
      * <ul>
-     *   <li>Supports both <code>atomic_str_ptr</code> and <code>const char*</code> operands,
+     *   <li>Supports both <code>shared_str_ptr</code> and <code>const char*</code> operands,
      *       constrained by <code>immutable_str_compatible</code>.</li>
      *   <li>Allows transparent comparison in containers storing
-     *       <code>atomic_str_ptr</code> keys &mdash; e.g.,
+     *       <code>shared_str_ptr</code> keys &mdash; e.g.,
      *       <code>map.find("key")</code> is valid and efficient.</li>
      *   <li>At least one operand (<code>lhs</code> or <code>rhs</code>)
      *       must represent a valid <code>immutable_str</code> instance.</li>
@@ -963,9 +935,9 @@ namespace jh {
      * </ul>
      *
      * @tparam U Type of the left-hand side operand
-     *   (<code>atomic_str_ptr</code> or <code>const char*</code>).
+     *   (<code>shared_str_ptr</code> or <code>const char*</code>).
      * @tparam V Type of the right-hand side operand
-     *   (<code>atomic_str_ptr</code> or <code>const char*</code>).
+     *   (<code>shared_str_ptr</code> or <code>const char*</code>).
      *
      * @param lhs Left-hand side value to compare.
      * @param rhs Right-hand side value to compare.
@@ -977,7 +949,7 @@ namespace jh {
      * @note
      * <ul>
      *   <li>This functor is designed for containers whose key type is
-     *       <code>atomic_str_ptr</code>, but supports lookup using
+     *       <code>shared_str_ptr</code>, but supports lookup using
      *       <code>const char*</code> and string literals.</li>
      *   <li>At least one operand must be an <code>immutable_str</code>
      *       to ensure pointer safety and avoid undefined behavior.</li>
@@ -994,14 +966,14 @@ namespace jh {
         template<typename U, typename V>
         requires (immutable_str_compatible<U> && immutable_str_compatible<V>)
         bool operator()(const U &lhs, const V &rhs) const noexcept {
-            if constexpr (std::same_as<std::remove_cvref_t<U>, atomic_str_ptr> &&
-                          std::same_as<std::remove_cvref_t<V>, atomic_str_ptr>) {
+            if constexpr (std::same_as<std::remove_cvref_t<U>, shared_str_ptr> &&
+                          std::same_as<std::remove_cvref_t<V>, shared_str_ptr>) {
                 return lhs && rhs && *lhs == *rhs;
             } else {
                 if (lhs == nullptr || rhs == nullptr) return false; // nullptr are considered as not eq
                 std::string_view lhs_view, rhs_view;
 
-                if constexpr (std::same_as<std::remove_cvref_t<U>, atomic_str_ptr> &&
+                if constexpr (std::same_as<std::remove_cvref_t<U>, shared_str_ptr> &&
                               std::same_as<std::decay_t<V>, const char *>) {
                     lhs_view = lhs->view();
                     if constexpr (immutable_str::auto_trim) {
@@ -1038,45 +1010,25 @@ namespace jh {
     };
 
     template<typename T>
-    [[maybe_unused]] atomic_str_ptr make_atomic(T str) = delete;
+    [[maybe_unused]] shared_str_ptr make_atomic(T str) = delete;
 
     /**
      * @brief Creates a shared pointer to an <code>immutable_str</code>.
-     *
-     * <p>
-     * Constructs a new <code>jh::immutable_str</code> instance from a
-     * null-terminated C-string and wraps it in a <code>std::shared_ptr</code>.
-     * This is the standard factory function for creating atomic, immutable
-     * string objects.
-     * </p>
-     *
-     * @param str
-     *   Null-terminated C-string to initialize from.
-     *
-     * @return
-     *   Shared pointer (<code>atomic_str_ptr</code>) managing the constructed
-     *   <code>immutable_str</code> instance.
-     *
-     * @details
-     * <ul>
-     *   <li>Performs a direct construction of <code>immutable_str</code>
-     *       without intermediate copies or moves.</li>
-     *   <li>The returned object is reference-counted via
-     *       <code>std::shared_ptr</code> and can be safely shared
-     *       across threads.</li>
-     *   <li>Trimming behavior (if enabled) follows <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>.</li>
-     * </ul>
-     *
-     * @note
-     * <ul>
-     *   <li>Because <code>immutable_str</code> is non-copyable and non-movable,
-     *       this factory is the only supported way to allocate it on the heap.</li>
-     *   <li>Once constructed, the lifetime of the string is bound to its
-     *       <code>std::shared_ptr</code> instance.</li>
-     * </ul>
+     * @param str Null-terminated C-string to copy.
+     * @return A copyable <code>shared_str_ptr</code> handle.
+     * @note Construction follows <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>.
      */
-    inline atomic_str_ptr make_atomic(const char *str) {
+    inline shared_str_ptr make_atomic(const char *str) {
         return std::make_shared<immutable_str>(str);
+    }
+
+    /**
+     * @brief Create an atomic slot containing a new immutable string.
+     * @param str Null-terminated string to copy.
+     * @return A new atomic shared pointer slot.
+     */
+    inline atomic_str_slot make_atomic_slot(const char *str) {
+        return atomic_str_slot(make_atomic(str));
     }
 
     /**
@@ -1100,7 +1052,7 @@ namespace jh {
      *   Mutex-like object protecting the lifetime of the structure that owns <code>sv</code>.
      *
      * @return
-     *   Shared pointer (<code>atomic_str_ptr</code>) managing the constructed
+     *   Shared pointer (<code>shared_str_ptr</code>) managing the constructed
      *   <code>immutable_str</code> instance.
      *
      * @throws std::logic_error
@@ -1120,13 +1072,23 @@ namespace jh {
      *       synchronization.</li>
      *   <li>When the data is guaranteed to be thread-local or immutable,
      *       <code>jh::typed::null_mutex</code> may be used for zero-cost locking.</li>
-     *   <li>Because <code>immutable_str</code> cannot be copied or moved,
-     *       it must always be constructed via this factory or <code>make_atomic()</code>.</li>
      * </ul>
      */
     template<jh::concepts::mutex_like M>
-    inline atomic_str_ptr safe_from(std::string_view sv, M &mtx) {
+    inline shared_str_ptr safe_from(std::string_view sv, M &mtx) {
         return std::make_shared<immutable_str>(sv, mtx);
+    }
+
+    /**
+     * @brief Create an atomic slot from a string view protected by a mutex-like object.
+     * @tparam M Mutex-like type.
+     * @param sv String view to copy.
+     * @param mtx Lock protecting the view during construction.
+     * @return A new atomic shared pointer slot.
+     */
+    template<jh::concepts::mutex_like M>
+    inline atomic_str_slot safe_from_slot(std::string_view sv, M &mtx) {
+        return atomic_str_slot(safe_from(sv, mtx));
     }
 
 } // namespace jh

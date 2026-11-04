@@ -174,14 +174,10 @@
  * then a pointer-based pool should be used instead.
  * </p>
  *
- * @note The data-structure algorithm has complete synchronization coverage
- * and is data-race-free under the ISO C++ model. The project has measured a
- * high-contention gap between the C++ standard library and Windows runtime
- * implementations. On Windows, pool operations
- * use lock adapters that add
- * <code>std::atomic_thread_fence(std::memory_order_seq_cst)</code> at lock
- * boundaries as a measured mitigation. See the pool platform support
- * documentation for details.
+ * @note The index and storage use separate RW mutexes. The selected mutex
+ * must provide cross-thread synchronization; the template constraint checks
+ * its API shape. See the pool platform support documentation for measured
+ * Windows behavior and lock-adapter details.
  *
  * @version <pre>1.4.x</pre>
  * @date <pre>2025</pre>
@@ -206,6 +202,7 @@
 #include "jh/typing/monostate.h"
 #include "jh/core/ordered_map.h"
 #include "jh/conceptual/hashable.h"
+#include "jh/conceptual/mutex_like.h"
 #include "jh/synchronous/control_buf.h"
 #include "jh/synchronous/strong_lock.h"
 
@@ -378,6 +375,7 @@ namespace jh::conc {
      * @tparam Hash  Hash functor used to compute full-width hash values
      *               (<code>jh::hash</code> for auto hash-derivation).
      * @tparam Alloc Allocator type for contiguous storage.
+     * @tparam Mutex Shared-lockable synchronization type for index and storage; defaults to <code>std::shared_mutex</code>.
      *
      * @note
      * Unlike <code>pointer_pool</code> or its user-facing interface <code>observe_pool</code>,
@@ -395,14 +393,16 @@ namespace jh::conc {
     template<typename Key,
             typename Value = jh::typed::monostate,
             typename Hash = jh::hash<Key>,
-            typename Alloc = std::allocator<detail::value_t<Key, Value>>> requires
+            typename Alloc = std::allocator<detail::value_t<Key, Value>>,
+            typename Mutex = std::shared_mutex> requires
     ((requires(const Key &k) {
         { Hash{}(k) } -> std::convertible_to<std::size_t>;
     }) &&
      (requires(const Key &a, const Key &b) {
          { a == b } -> std::convertible_to<bool>;
      }) &&
-     jh::concepts::is_contiguous_reallocable<Key>
+     jh::concepts::rw_mutex_like<Mutex>
+     && jh::concepts::is_contiguous_reallocable<Key>
      && (jh::typed::monostate_t<Value> || jh::concepts::is_contiguous_reallocable<Value>))
     class flat_pool final {
     public:
@@ -435,8 +435,8 @@ namespace jh::conc {
         jh::ordered_set<entry_key> entries_;
         // Contiguous ordered set (vector-backed AVL-style structure) used as a hash-ordered index
 
-        mutable std::shared_mutex entry_mtx_;
-        mutable std::shared_mutex pool_mtx_;
+        mutable Mutex entry_mtx_;
+        mutable Mutex pool_mtx_;
 
         /**
          * @brief Non-copyable, non-movable guard preventing pool reallocation during access.
@@ -448,7 +448,7 @@ namespace jh::conc {
          * its intended scope or be stored in containers.
          */
         struct no_reallocate_guard final {
-            explicit no_reallocate_guard(std::shared_mutex &m) : m_(&m) {
+            explicit no_reallocate_guard(Mutex &m) : m_(&m) {
                 m_->lock_shared();
             }
 
@@ -465,7 +465,7 @@ namespace jh::conc {
             no_reallocate_guard &operator=(no_reallocate_guard &&) = delete;
 
         private:
-            std::shared_mutex *m_;
+            Mutex *m_;
         };
 
         /// @brief Creates a no-reallocation-guard for use by <code>flat_pool::ptr::guard()</code>

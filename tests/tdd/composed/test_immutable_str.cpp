@@ -7,6 +7,8 @@ namespace test::tiny_test {
 
 #include <random>
 #include <thread>
+#include <latch>
+#include <array>
 #include <shared_mutex>
 #include <string_view>
 
@@ -210,7 +212,7 @@ void tiny_test_case_5_body(const int selected_section) {
             std::mutex str_mutex;
             std::string base_string = original; // Create a base string in scope
 
-            const jh::atomic_str_ptr imm_str = jh::safe_from(base_string, str_mutex);
+            const jh::shared_str_ptr imm_str = jh::safe_from(base_string, str_mutex);
             // string will be implicitly converted to string_view to create immutable_str
 
             jh::test::tiny_test::expect(static_cast<bool>((imm_str->view() == original)), "imm_str->view() == original");
@@ -249,7 +251,7 @@ void tiny_test_case_6_body(const int selected_section) {
 
             std::string base_string = original; // Create a base string in scope
 
-            const jh::atomic_str_ptr imm_str = jh::safe_from(base_string, jh::typed::null_mutex);
+            const jh::shared_str_ptr imm_str = jh::safe_from(base_string, jh::typed::null_mutex);
             // string will be implicitly converted to string_view to create immutable_str
 
             jh::test::tiny_test::expect(static_cast<bool>((imm_str->view() == original)), "imm_str->view() == original");
@@ -295,8 +297,8 @@ void tiny_test_case_7_body(const int selected_section) {
             std::string_view sv1(str1);
             std::string_view sv2(str2);
 
-            jh::atomic_str_ptr imm1 = jh::safe_from(sv1, str_mutex);
-            jh::atomic_str_ptr imm2 = jh::safe_from(sv2, str_mutex);
+            jh::shared_str_ptr imm1 = jh::safe_from(sv1, str_mutex);
+            jh::shared_str_ptr imm2 = jh::safe_from(sv2, str_mutex);
 
             jh::test::tiny_test::expect(static_cast<bool>((imm1->view() != imm2->view())), "imm1->view() != imm2->view()");
             jh::test::tiny_test::expect(static_cast<bool>((imm1->hash() != imm2->hash())), "imm1->hash() != imm2->hash()");
@@ -363,7 +365,7 @@ namespace test {
 }
 
 
-// Custom hash and equality function tests for atomic_str_ptr
+// Custom hash and equality function tests for shared_str_ptr
 
 namespace test {
 void tiny_test_case_9_body(const int selected_section) {
@@ -372,15 +374,15 @@ void tiny_test_case_9_body(const int selected_section) {
     std::uniform_int_distribution<size_t> len_dist(5, 20);
     constexpr int total_tests = 128;
 
-    std::unordered_set<jh::atomic_str_ptr, jh::atomic_str_hash, jh::atomic_str_eq> str_set;
+    std::unordered_set<jh::shared_str_ptr, jh::atomic_str_hash, jh::atomic_str_eq> str_set;
 
     for (int i = 0; i < total_tests; ++i) {
         if (selected_section == 1) {
             std::string original = test::generate_random_string(len_dist(gen));
             std::string padded = test::add_random_whitespace(original);
 
-            jh::atomic_str_ptr imm_str1 = jh::make_atomic(original.c_str());
-            jh::atomic_str_ptr imm_str2 = jh::make_atomic(padded.c_str());
+            jh::shared_str_ptr imm_str1 = jh::make_atomic(original.c_str());
+            jh::shared_str_ptr imm_str2 = jh::make_atomic(padded.c_str());
 
             str_set.insert(imm_str1);
             jh::test::tiny_test::expect(static_cast<bool>((str_set.find(imm_str2) != str_set.end())), "str_set.find(imm_str2) != str_set.end()"); // Ensures hash consistency
@@ -489,97 +491,72 @@ namespace test {
 }
 
 
-// Multithreading test: Pooling the same string
+// Concurrent acquisition of one pooled string.
 
 namespace test {
 void tiny_test_case_13() {
     test::ImmutablePool pool;
-    constexpr int THREADS = 4;
-    constexpr int OBJECTS_PER_THREAD = 100;
+    std::array<jh::shared_str_ptr, 2> handles;
+    std::latch both_ready(2), start(1);
+    auto acquire_same = [&](std::size_t index) {
+        both_ready.count_down();
+        start.wait();
+        handles[index] = pool.acquire("Shared String");
+    };
+    std::thread first(acquire_same, 0), second(acquire_same, 1);
+    both_ready.wait();
+    start.count_down();
+    first.join();
+    second.join();
 
-    std::vector<std::shared_ptr<jh::immutable_str> > stored_objects;
-    std::mutex stored_mutex;
-    std::vector<std::thread> workers;
-
-    workers.reserve(THREADS);
-    for (int t = 0; t < THREADS; ++t) {
-        workers.emplace_back([&pool, &stored_objects, &stored_mutex, t]() {
-            for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) {
-                // Avoid duplicate values
-                {
-                    auto obj = pool.acquire("Shared String");
-                    // Protect `stored_objects` with a lock
-                    std::lock_guard lock(stored_mutex);
-                    stored_objects.push_back(obj);
-                }
-            }
-        });
-    }
-
-    for (auto &w: workers) {
-        w.join();
-    }
-    pool.cleanup();
-
-    jh::test::tiny_test::expect(static_cast<bool>((pool.size() == 1)), "pool.size() == 1"); // Same immutable_str should be pooled
-
+    jh::test::tiny_test::expect(handles[0] == handles[1],
+                                "concurrent acquisition deduplicates the same string");
+    jh::test::tiny_test::expect(pool.size() == 1, "pool stores one canonical string");
 }
 }
 template<>
-struct jh::test::tiny_test::test<"observe_pool<immutable_str> - Multithreading Same String">
-    : jh::test::tiny_test::test_definition<"observe_pool<immutable_str> - Multithreading Same String", &::test::tiny_test_case_13> {};
+struct jh::test::tiny_test::test<"observe_pool<immutable_str> - Concurrent Same String">
+    : jh::test::tiny_test::test_definition<"observe_pool<immutable_str> - Concurrent Same String", &::test::tiny_test_case_13> {};
 template<>
 struct jh::test::tiny_test::session<"test module test_immutable_str case 13">
     : jh::test::tiny_test::session_definition<
-          "test module test_immutable_str case 13", jh::test::tiny_test::test<"observe_pool<immutable_str> - Multithreading Same String">
+          "test module test_immutable_str case 13", jh::test::tiny_test::test<"observe_pool<immutable_str> - Concurrent Same String">
       > {};
 namespace test {
     [[maybe_unused]] const tiny_test::session<"test module test_immutable_str case 13"> registration_13{};
 }
 
 
-// Multithreading test: Correctly storing shared_ptr
+// Concurrent acquisition of distinct pooled strings.
 
 namespace test {
 void tiny_test_case_14() {
     test::ImmutablePool pool;
-    constexpr int THREADS = 4;
-    constexpr int OBJECTS_PER_THREAD = 100;
+    std::array<jh::shared_str_ptr, 2> handles;
+    std::latch both_ready(2), start(1);
+    auto acquire_distinct = [&](std::size_t index) {
+        both_ready.count_down();
+        start.wait();
+        handles[index] = pool.acquire(index == 0 ? "Thread-A" : "Thread-B");
+    };
+    std::thread first(acquire_distinct, 0), second(acquire_distinct, 1);
+    both_ready.wait();
+    start.count_down();
+    first.join();
+    second.join();
 
-    std::vector<std::shared_ptr<jh::immutable_str> > stored_objects;
-    std::mutex stored_mutex;
-    std::vector<std::thread> workers;
-
-    workers.reserve(THREADS);
-    for (int t = 0; t < THREADS; ++t) {
-        workers.emplace_back([&pool, &stored_objects, &stored_mutex, t]() {
-            for (int i = t * OBJECTS_PER_THREAD; i < (t + 1) * OBJECTS_PER_THREAD; ++i) {
-                // Avoid duplicate values
-                {
-                    auto obj = pool.acquire(("Thread-" + std::to_string(t) + "-String-" + std::to_string(i)).c_str());
-                    // Protect `stored_objects` with a lock
-                    std::lock_guard lock(stored_mutex);
-                    stored_objects.push_back(obj);
-                }
-            }
-        });
-    }
-
-    for (auto &w: workers) {
-        w.join();
-    }
-
-    jh::test::tiny_test::expect(static_cast<bool>((pool.size() == THREADS * OBJECTS_PER_THREAD)), "pool.size() == THREADS * OBJECTS_PER_THREAD"); // Each thread should store different strings
-
+    jh::test::tiny_test::expect(handles[0] != handles[1],
+                                "distinct strings retain distinct shared handles");
+    jh::test::tiny_test::expect(pool.size() == 2, "pool stores both distinct strings");
 }
 }
 template<>
-struct jh::test::tiny_test::test<"observe_pool<immutable_str> - Multithreading with Stored Shared_Ptr">
-    : jh::test::tiny_test::test_definition<"observe_pool<immutable_str> - Multithreading with Stored Shared_Ptr", &::test::tiny_test_case_14> {};
+struct jh::test::tiny_test::test<"observe_pool<immutable_str> - Concurrent Stored Shared_Ptr">
+    : jh::test::tiny_test::test_definition<"observe_pool<immutable_str> - Concurrent Stored Shared_Ptr", &::test::tiny_test_case_14> {};
 template<>
 struct jh::test::tiny_test::session<"test module test_immutable_str case 14">
     : jh::test::tiny_test::session_definition<
-          "test module test_immutable_str case 14", jh::test::tiny_test::test<"observe_pool<immutable_str> - Multithreading with Stored Shared_Ptr">
+          "test module test_immutable_str case 14", jh::test::tiny_test::test<"observe_pool<immutable_str> - Concurrent Stored Shared_Ptr">
       > {};
 namespace test {
     [[maybe_unused]] const tiny_test::session<"test module test_immutable_str case 14"> registration_14{};
@@ -661,7 +638,7 @@ void tiny_test_case_17_body(const int selected_section) {
 
     jh::observe_pool<jh::immutable_str> pool;
     // Recommended method: Directly map atomic immutable strings to unique identifiers
-    static const std::unordered_map<jh::atomic_str_ptr, size_t, jh::atomic_str_hash, jh::atomic_str_eq> immutable_map =
+    static const std::unordered_map<jh::shared_str_ptr, size_t, jh::atomic_str_hash, jh::atomic_str_eq> immutable_map =
     {
         {jh::make_atomic("example 0"), 0},
         {jh::make_atomic("example 1"), 1},

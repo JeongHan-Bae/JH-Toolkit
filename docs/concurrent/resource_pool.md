@@ -16,8 +16,8 @@
 
 ## Overview
 
-`jh::resource_pool<Key, Value, Alloc>` is a **convenience interface** built on top of  
-`jh::conc::flat_pool<Key, Value, jh::hash<Key>, Alloc>`.
+`jh::resource_pool<Key, Value, Alloc, Mutex>` is a **convenience interface** built on top of
+`jh::conc::flat_pool<Key, Value, jh::hash<Key>, Alloc, Mutex>`.
 
 It is available in the **`jh::` namespace**. Concurrency, lifetime, and storage
 behavior follow [`jh::conc::flat_pool`](flat_pool.md).
@@ -68,16 +68,18 @@ jh::resource_pool<Key, Value, MyAllocator> pool;
 ## `resource_pool_set`
 
 ```cpp
-jh::resource_pool_set<Key, Alloc>
+jh::resource_pool_set<Key, Alloc, Mutex>
 ```
 
 is an alias for:
 
 ```cpp
-jh::resource_pool<Key, jh::typed::monostate, Alloc>
+jh::resource_pool<Key, jh::typed::monostate, Alloc, Mutex>
 ```
 
 The second template argument supplies the allocator for the set-like form.
+Both aliases default `Mutex` to `std::shared_mutex`; the final template
+argument can select a verified RW mutex for both internal lock sites.
 
 ---
 

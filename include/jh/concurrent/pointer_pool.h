@@ -181,7 +181,7 @@
 #include <algorithm>        // for std::copy_if
 #include <vector>           // for std::vector
 #include <unordered_set>    // for std::unordered_set
-#include <mutex>            // For std::shared_mutex
+#include <mutex>            // For lock guards
 #include <memory>
 #include <shared_mutex>
 
@@ -214,7 +214,7 @@ namespace jh::conc {
      *   <li><b>Adaptive capacity:</b> The container may grow or shrink depending on occupancy thresholds
      *       evaluated during insertion.</li>
      *   <li>
-     *     <b>Thread-safe:</b> Lookups and insertions coordinate through <code>std::shared_mutex</code>.
+     *     <b>Thread-safe:</b> Lookup, capacity checks, and insertion use the selected RW mutex.
      *   </li>
      *   <li><b>Discard-friendly:</b> Temporary objects are cheap to abandon when a matching instance exists.</li>
      * </ul>
@@ -230,7 +230,7 @@ namespace jh::conc {
      *
      * <h4>Concurrency and Safety</h4>
      * <ul>
-     *   <li>Concurrent calls to <code>acquire()</code> are safe.</li>
+     *   <li>Concurrent <code>acquire()</code> calls are synchronized.</li>
      *   <li>Insertion and deduplication are atomic under exclusive locking.</li>
      *   <li>Externally held <code>std::shared_ptr</code> objects remain valid even if the pool is cleared
      *       or destroyed.</li>
@@ -240,18 +240,18 @@ namespace jh::conc {
      * Hash and equality functors need only reflect object-level identity. When using
      * <code>jh::observe_pool</code>, these are automatically derived from <code>std::hash&lt;T&gt;()</code> or
      * adl <code>hash(t)</code> or <code>t.hash()</code>, and <code>operator==()</code> to ensure consistent behavior.
+     * Hash and equality callbacks must not recursively call the same pool;
+     * they may run while its exclusive lock is held.
      *
-     * @note The data-structure algorithm has complete synchronization coverage
-     * and is data-race-free under the ISO C++ model. The project has measured
-     * a high-contention gap between the C++ standard library and Windows
-     * runtime implementations. On Windows, the pool
-     * uses lock adapters that add
-     * <code>std::atomic_thread_fence(std::memory_order_seq_cst)</code> at lock
-     * boundaries as a measured mitigation. See the pool platform support
-     * documentation for details.
+     * @note The pool's data is protected by its RW mutex, including capacity
+     * checks and insertion. A custom mutex must provide the required
+     * cross-thread synchronization; <code>rw_mutex_like</code> checks its API,
+     * not its runtime memory-order behavior. See the pool platform support
+     * documentation for measured Windows behavior.
+     * @tparam Mutex Shared-lockable synchronization type; defaults to <code>std::shared_mutex</code>.
      */
-    template<typename T, typename Hash, typename Eq>
-    requires(
+    template<typename T, typename Hash, typename Eq, typename Mutex = std::shared_mutex>
+    requires(jh::concepts::rw_mutex_like<Mutex> &&
         requires(const std::weak_ptr<T>& t) {
             { Hash{}(t) } -> std::convertible_to<std::size_t>;
         } &&
@@ -363,6 +363,9 @@ namespace jh::conc {
          * For structurally immutable resource or handle pools, move assignment
          * is not semantically appropriate, as such pools are expected to be unique
          * within their management domain.
+         * Concurrent move assignments involving the same pool, including
+         * opposite-direction moves, require external serialization. No useful
+         * observation-transfer order or progress is specified for that use.
          */
         pointer_pool &operator=(pointer_pool &&other) noexcept {
             if (this != &other) {
@@ -447,7 +450,7 @@ namespace jh::conc {
          * expansion when capacity thresholds are reached.
          */
         void cleanup() {
-            std::lock_guard<std::shared_mutex> lock(pool_mutex_);
+            std::lock_guard<Mutex> lock(pool_mutex_);
             cleanup_no_lock();
         }
 
@@ -484,7 +487,7 @@ namespace jh::conc {
          * during expansion checks.
          */
         void cleanup_shrink() {
-            std::lock_guard<std::shared_mutex> lock(pool_mutex_);
+            std::lock_guard<Mutex> lock(pool_mutex_);
             cleanup_no_lock();
 
             auto current_size = pool_.size();
@@ -522,8 +525,9 @@ namespace jh::conc {
          * Removes all elements from the internal container and resets
          * <code>capacity_</code> to <code>MIN_RESERVED_SIZE</code>.
          * This operation is functionally equivalent to <code>clear()</code>
-         * on standard containers, but is <strong>thread-safe</strong> and
-         * ensures consistent internal state for concurrent environments.
+         * on standard containers. It holds the pool mutex, but concurrent
+         * concurrent <code>acquire()</code> uses the same mutex for its capacity
+         * precheck and insertion.
          * </p>
          *
          * <p>
@@ -555,7 +559,7 @@ namespace jh::conc {
     private:
         std::unordered_set<std::weak_ptr<T>, Hash, Eq> pool_; ///< Storage for weak_ptr objects.
         std::atomic<std::size_t> capacity_; ///< The dynamically managed reserved size.
-        mutable std::shared_mutex pool_mutex_; ///< Ensures thread-safe access.
+        mutable Mutex pool_mutex_; ///< Ensures thread-safe access.
 
         /**
          * @brief Inserts a shared object into the pool or retrieves an existing equivalent one.
@@ -566,18 +570,18 @@ namespace jh::conc {
          *
          * <p>
          * This function acquires an exclusive lock for insertion. If the pool is
-         * near its capacity limit, <code>expand_and_cleanup()</code> is invoked
-         * beforehand to perform opportunistic cleanup or resizing.
+         * near its capacity limit, cleanup and resizing occur under the same
+         * exclusive lock as insertion.
          * </p>
          *
          * @param obj The <code>shared_ptr&lt;T&gt;</code> to insert or match.
          * @return A <code>shared_ptr&lt;T&gt;</code> to the existing or newly inserted object.
          */
         std::shared_ptr<T> get_or_insert(const std::shared_ptr<T> &obj) {
+            jh::sync::posix_smtx_unique_lock write_lock(pool_mutex_);
             if (pool_.size() >= capacity_.load()) {
-                expand_and_cleanup(); // This function is already acquiring the lock.
+                expand_and_cleanup_no_lock();
             }
-            jh::sync::posix_smtx_unique_lock write_lock(pool_mutex_); // Lock for pool access.
 
             auto [it, inserted] = pool_.insert(obj);
             if (!inserted) return it->lock();
@@ -655,8 +659,7 @@ namespace jh::conc {
          *       used by both external and internal cleanup triggers.</li>
          * </ul>
          */
-        void expand_and_cleanup() {
-            std::lock_guard<std::shared_mutex> lock(pool_mutex_);
+        void expand_and_cleanup_no_lock() {
             cleanup_no_lock();
 
             auto current_size = pool_.size();

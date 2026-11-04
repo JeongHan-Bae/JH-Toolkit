@@ -49,7 +49,7 @@
  *   <li>By default (<code>JH_OCC_ENABLE_MULTI_COMMIT == 1</code>),
  *       one extra atomic load of <code>flag_</code> is performed during validation.</li>
  * </ul>
- * Reads are wait-free, never block writes, and retries only if a concurrent commit
+ * Reads obtain atomic snapshots, never block writes at the OCC protocol level, and retry if a concurrent commit
  * changes the <code>state</code> pointer between the two loads.
  *
  * <h3>Write semantics</h3>
@@ -80,24 +80,20 @@
  *
  * <h3>Atomicity and contention</h3>
  * <ul>
- *   <li><strong>Strong atomicity</strong>: each commit replaces the entire state
- *       (data + version) with a single CAS.</li>
+ *   <li><strong>Strong atomicity</strong>: a single-box write replaces its
+ *       state (data + version) with CAS; multi-box publication uses commit gates.</li>
  *   <li>Readers are always safe: they either succeed with a consistent snapshot
  *       or retry internally.</li>
  *   <li>Writers never expose intermediate states.</li>
  *   <li>High-frequency writes may increase retries, but safety is never compromised.</li>
- *   <li>When <code>JH_OCC_ENABLE_MULTI_COMMIT == 1</code> (default),
- *       contention is resolved by strict priority:
- *       <strong>multi-write &gt; single-write &gt; read</strong>.</li>
  * </ul>
  * <h4>Multi-commit policy</h4>
  * <ul>
  *   <li>If <code>JH_OCC_ENABLE_MULTI_COMMIT</code> is <strong>1</strong> (default):
  *     <ul>
  *       <li><code>occ_box</code> supports <code>apply_to()</code> for atomic multi-box transactions.</li>
- *       <li>Each box carries an extra <code>flag_</code> (<code>atomic&lt;bool&gt;</code>) used as a transaction marker.</li>
- *       <li><code>read()</code> incurs one additional atomic load to check <code>flag_</code>.</li>
- *       <li>Conflict resolution follows: multi-write &gt; single-write &gt; read.</li>
+ *       <li>Each box carries an atomic commit gate for single and multi-box writers.</li>
+ *       <li>Conflicting writers retry or return failure; readers retry while a multi-box commit is active.</li>
  *     </ul>
  *   </li>
  *   <li>If <code>JH_OCC_ENABLE_MULTI_COMMIT</code> is <strong>0</strong>:
@@ -112,7 +108,6 @@
  * <h3>Design intent</h3>
  * <ul>
  *   <li>Correctness and composability over raw microsecond performance.</li>
- *   <li>Deadlock-free by design: readers never block writers, writers never block readers.</li>
  *   <li>Best suited for application-level concurrency where retries are acceptable.</li>
  * </ul>
  *
@@ -182,10 +177,11 @@
 #define JH_OCC_ENABLE_MULTI_COMMIT 1
 #endif
 
-#include "jh/detail/shared_ptr_atomic_shim.h"
+#include "jh/atomic/shared_ptr.h"
 
 #include <memory>
 #include <atomic>
+#include <array>
 #include <concepts>
 #include <cstdint>
 #include <functional>
@@ -195,6 +191,37 @@
 namespace jh::conc {
 #if JH_OCC_ENABLE_MULTI_COMMIT
     namespace detail {
+        enum class commit_gate : unsigned char { idle, single, multi };
+
+        template<std::size_t N>
+        class multi_commit_guard final {
+            std::array<std::atomic<commit_gate> *, N> gates_;
+            std::size_t acquired_ = 0;
+
+        public:
+            explicit multi_commit_guard(std::array<std::atomic<commit_gate> *, N> gates) noexcept
+                : gates_(gates) {}
+            multi_commit_guard(const multi_commit_guard &) = delete;
+            multi_commit_guard &operator=(const multi_commit_guard &) = delete;
+
+            bool acquire() noexcept {
+                for (; acquired_ < N; ++acquired_) {
+                    auto expected = commit_gate::idle;
+                    if (!gates_[acquired_]->compare_exchange_strong(
+                            expected, commit_gate::multi, std::memory_order_acq_rel)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            ~multi_commit_guard() {
+                for (std::size_t i = 0; i < acquired_; ++i) {
+                    gates_[i]->store(commit_gate::idle, std::memory_order_release);
+                }
+            }
+        };
+
         template<typename... BoxTypes, typename... Funcs, std::size_t... I>
         bool apply_to_impl(std::tuple<BoxTypes &...>,
                            std::tuple<Funcs...> &&,
@@ -215,7 +242,7 @@ namespace jh::conc {
      * <h4>Semantics</h4>
      * <ul>
      *   <li>Encapsulates a value of type <code>T</code> with atomic versioned state.</li>
-     *   <li>Reads are wait-free: they either succeed with a consistent snapshot or retry internally.</li>
+     *   <li>Reads use atomic snapshots and may retry; the underlying atomic smart pointer is not guaranteed lock-free.</li>
      *   <li>Writes are commit-replace: each update creates a fresh state and replaces atomically via CAS.</li>
      *   <li>No reader ever observes a partially written value.</li>
      * </ul>
@@ -228,8 +255,8 @@ namespace jh::conc {
      * </ul>
      *
      * @note When <code>JH_OCC_ENABLE_MULTI_COMMIT == 1</code> (default),
-     *       boxes under <code>apply_to()</code> are given priority over single writes and reads,
-     *       ensuring that multi-box transactions cannot be broken by concurrent commits.
+     *       single and multi-box commits reserve a gate before changing state.
+     *       A conflicting operation retries or reports failure.
      */
     template<typename T> requires (std::is_copy_constructible_v<T> && std::is_move_constructible_v<T>)
     class occ_box final {
@@ -244,12 +271,49 @@ namespace jh::conc {
         };
 
         /// Current atomic state (shared and versioned).
-        std::shared_ptr<state> state_;
+        jh::atomic::shared_ptr<state> state_;
 
 #if JH_OCC_ENABLE_MULTI_COMMIT
-        /// Transaction marker: true while box is locked by an ongoing multi-box commit.
-        std::atomic<bool> flag_;
+        /// Commit gate held briefly by single writes or across a multi-box transaction.
+        std::atomic<detail::commit_gate> flag_{detail::commit_gate::idle};
 
+        bool try_commit_state(std::shared_ptr<state> &expected,
+                              std::shared_ptr<state> desired) noexcept {
+            auto idle = detail::commit_gate::idle;
+            if (!flag_.compare_exchange_strong(idle, detail::commit_gate::single,
+                                               std::memory_order_acq_rel)) {
+                return false;
+            }
+            const bool committed = state_.compare_exchange_strong(
+                expected, std::move(desired),
+                std::memory_order_acq_rel, std::memory_order_acquire);
+            flag_.store(detail::commit_gate::idle, std::memory_order_release);
+            return committed;
+        }
+
+        void publish_state(std::shared_ptr<state> desired) noexcept {
+            for (;;) {
+                auto idle = detail::commit_gate::idle;
+                if (flag_.compare_exchange_weak(idle, detail::commit_gate::single,
+                                                std::memory_order_acq_rel)) break;
+            }
+            state_.store(std::move(desired), std::memory_order_release);
+            flag_.store(detail::commit_gate::idle, std::memory_order_release);
+        }
+#else
+        bool try_commit_state(std::shared_ptr<state> &expected,
+                              std::shared_ptr<state> desired) noexcept {
+            return state_.compare_exchange_strong(
+                expected, std::move(desired),
+                std::memory_order_acq_rel, std::memory_order_acquire);
+        }
+
+        void publish_state(std::shared_ptr<state> desired) noexcept {
+            state_.store(std::move(desired), std::memory_order_release);
+        }
+#endif
+
+#if JH_OCC_ENABLE_MULTI_COMMIT
         /// @brief Grant internal helpers access to <code>state_</code> for multi-box atomic commit.
         template<typename... BoxTypes, typename... Funcs, std::size_t... I>
         friend bool detail::apply_to_impl(std::tuple<BoxTypes &...>,
@@ -265,44 +329,32 @@ namespace jh::conc {
 #endif
 
     public:
-        /// @brief Copy constructor: manually resets flag_ to false, cannot use =default.
+        /// @brief Copy constructor: loads the source snapshot into a new box.
         occ_box(const occ_box &other) noexcept {
-            auto st = jh::detail::atomic::load(&other.state_, std::memory_order_acquire);
-            jh::detail::atomic::store(&state_, st, std::memory_order_release);
-#if JH_OCC_ENABLE_MULTI_COMMIT
-            flag_.store(false, std::memory_order_release);
-#endif
+            auto st = other.state_.load(std::memory_order_acquire);
+            state_.store(st, std::memory_order_release);
         }
 
-        /// @brief Copy assignment: manually resets flag_ to false, cannot use =default.
+        /// @brief Copy assignment: publishes the source snapshot.
         occ_box &operator=(const occ_box &other) noexcept {
             if (this != &other) {
-                auto st = jh::detail::atomic::load(&other.state_, std::memory_order_acquire);
-                jh::detail::atomic::store(&state_, st, std::memory_order_release);
-#if JH_OCC_ENABLE_MULTI_COMMIT
-                flag_.store(false, std::memory_order_release);
-#endif
+                auto st = other.state_.load(std::memory_order_acquire);
+                publish_state(std::move(st));
             }
             return *this;
         }
 
-        /// @brief Move constructor: transfers state but resets flag_ to false, cannot use =default.
+        /// @brief Move constructor: publishes the source snapshot without clearing it.
         occ_box(occ_box &&other) noexcept {
-            auto st = jh::detail::atomic::load(&other.state_, std::memory_order_acquire);
-            jh::detail::atomic::store(&state_, st, std::memory_order_release);
-#if JH_OCC_ENABLE_MULTI_COMMIT
-            flag_.store(false, std::memory_order_release);
-#endif
+            auto st = other.state_.load(std::memory_order_acquire);
+            state_.store(st, std::memory_order_release);
         }
 
-        /// @brief Move assignment: transfers state but resets flag_ to false, cannot use =default.
+        /// @brief Move assignment: publishes the source snapshot without clearing it.
         occ_box &operator=(occ_box &&other) noexcept {
             if (this != &other) {
-                auto st = jh::detail::atomic::load(&other.state_, std::memory_order_acquire);
-                jh::detail::atomic::store(&state_, st, std::memory_order_release);
-#if JH_OCC_ENABLE_MULTI_COMMIT
-                flag_.store(false, std::memory_order_release);
-#endif
+                auto st = other.state_.load(std::memory_order_acquire);
+                publish_state(std::move(st));
             }
             return *this;
         }
@@ -318,8 +370,7 @@ namespace jh::conc {
          * with version = 0.
          */
         explicit occ_box(std::shared_ptr<T> ptr) {
-            jh::detail::atomic::store(
-                    &state_,
+            state_.store(
                     std::make_shared<state>(state{0, std::move(ptr)}),
                     std::memory_order_release
             );
@@ -337,8 +388,7 @@ namespace jh::conc {
         template<typename... Args>
         explicit occ_box(Args &&... args) {
             auto init = std::make_shared<T>(std::forward<Args>(args)...);
-            jh::detail::atomic::store(
-                    &state_,
+            state_.store(
                     std::make_shared<state>(state{0, std::move(init)}),
                     std::memory_order_release
             );
@@ -360,7 +410,7 @@ namespace jh::conc {
          * <ul>
          *   <li>Performs a load-invoke-validate sequence under optimistic concurrency.</li>
          *   <li>If the state changes between two atomic loads, the read retries internally.</li>
-         *   <li>Wait-free for readers: never blocks writers.</li>
+         *   <li>Readers do not reserve the commit gate, but may retry during a multi-box commit.</li>
          * </ul>
          *
          * <h4>Why void is disallowed</h4>
@@ -389,11 +439,11 @@ namespace jh::conc {
                  (!std::same_as<std::invoke_result_t<F, const T &, Args...>, void>)
         [[nodiscard]] auto read(F &&f, Args &&... args) const {
             while (true) {
-                auto st1 = jh::detail::atomic::load(&state_, std::memory_order_acquire);
+                auto st1 = state_.load(std::memory_order_acquire);
                 auto result = std::invoke(f, *st1->data, std::forward<Args>(args)...);
-                auto st2 = jh::detail::atomic::load(&state_, std::memory_order_acquire);
+                auto st2 = state_.load(std::memory_order_acquire);
 #if JH_OCC_ENABLE_MULTI_COMMIT
-                if (std::atomic_load_explicit(&flag_, std::memory_order_acquire)) {
+                if (flag_.load(std::memory_order_acquire) == detail::commit_gate::multi) {
                     continue;
                 }
 #endif
@@ -444,11 +494,11 @@ namespace jh::conc {
             using R = std::invoke_result_t<F, const T &, Args...>;
 
             { // first attempt
-                auto st1 = jh::detail::atomic::load(&state_, std::memory_order_acquire);
+                auto st1 = state_.load(std::memory_order_acquire);
                 R result = std::invoke(std::forward<F>(f), *st1->data, std::forward<Args>(args)...);
-                auto st2 = jh::detail::atomic::load(&state_, std::memory_order_acquire);
+                auto st2 = state_.load(std::memory_order_acquire);
 #if JH_OCC_ENABLE_MULTI_COMMIT
-                if (!std::atomic_load_explicit(&flag_, std::memory_order_acquire) && (st1 == st2)) {
+                if (flag_.load(std::memory_order_acquire) != detail::commit_gate::multi && (st1 == st2)) {
                     return result;
                 }
 #else
@@ -457,11 +507,11 @@ namespace jh::conc {
             }
 
             for (std::uint32_t i = 1; i < static_cast<std::uint32_t>(retries); ++i) {
-                auto st1 = jh::detail::atomic::load(&state_, std::memory_order_acquire);
+                auto st1 = state_.load(std::memory_order_acquire);
                 R result = std::invoke(std::forward<F>(f), *st1->data, std::forward<Args>(args)...);
-                auto st2 = jh::detail::atomic::load(&state_, std::memory_order_acquire);
+                auto st2 = state_.load(std::memory_order_acquire);
 #if JH_OCC_ENABLE_MULTI_COMMIT
-                if (std::atomic_load_explicit(&flag_, std::memory_order_acquire)) {
+                if (flag_.load(std::memory_order_acquire) == detail::commit_gate::multi) {
                     continue;
                 }
 #endif
@@ -521,21 +571,14 @@ namespace jh::conc {
                  std::same_as<std::invoke_result_t<F, T &, Args...>, void>
         void write(F &&f, Args &&... args) {
             while (true) {
-                auto old = jh::detail::atomic::load(&state_, std::memory_order_acquire);
+                auto old = state_.load(std::memory_order_acquire);
                 auto new_data = std::make_shared<T>(*old->data);
                 std::invoke(std::forward<F>(f), *new_data, std::forward<Args>(args)...);
 
                 auto new_state = std::make_shared<state>(state{old->version + 1, std::move(new_data)});
 
                 auto expected = old;
-#if JH_OCC_ENABLE_MULTI_COMMIT
-                if (std::atomic_load_explicit(&flag_, std::memory_order_acquire)) {
-                    continue;
-                }
-#endif
-                if (jh::detail::atomic::cas(
-                        &state_, &expected, new_state,
-                        std::memory_order_acq_rel, std::memory_order_acquire)) {
+                if (try_commit_state(expected, new_state)) {
                     return;
                 }
             }
@@ -590,38 +633,25 @@ namespace jh::conc {
                  std::same_as<std::invoke_result_t<F, T &, Args...>, void>
         [[nodiscard]] bool try_write(F &&f, std::uint16_t retries = 1, Args &&... args) {
             { // first attempt
-                auto old = jh::detail::atomic::load(&state_, std::memory_order_acquire);
+                auto old = state_.load(std::memory_order_acquire);
                 auto new_data = std::make_shared<T>(*old->data);
                 std::invoke(std::forward<F>(f), *new_data, std::forward<Args>(args)...);
 
                 auto new_state = std::make_shared<state>(state{old->version + 1, std::move(new_data)});
                 auto expected = old;
-#if JH_OCC_ENABLE_MULTI_COMMIT
-                if (!std::atomic_load_explicit(&flag_, std::memory_order_acquire)
-                    && (jh::detail::atomic::cas(
-                        &state_, &expected, new_state,
-                        std::memory_order_acq_rel, std::memory_order_acquire))) {
+                if (try_commit_state(expected, new_state)) {
                     return true;
                 }
-#else
-                if (jh::detail::atomic::cas(
-                        &state_, &expected, new_state,
-                        std::memory_order_acq_rel, std::memory_order_acquire)) {
-                    return true;
-                    }
-#endif
 
             }
             for (std::uint32_t i = 1; i < static_cast<std::uint32_t>(retries); ++i) {
-                auto old = jh::detail::atomic::load(&state_, std::memory_order_acquire);
+                auto old = state_.load(std::memory_order_acquire);
                 auto new_data = std::make_shared<T>(*old->data);
                 std::invoke(std::forward<F>(f), *new_data, std::forward<Args>(args)...);
 
                 auto new_state = std::make_shared<state>(state{old->version + 1, std::move(new_data)});
                 auto expected = old;
-                if (jh::detail::atomic::cas(
-                        &state_, &expected, new_state,
-                        std::memory_order_acq_rel, std::memory_order_acquire)) {
+                if (try_commit_state(expected, new_state)) {
                     return true;
                 }
             }
@@ -665,19 +695,12 @@ namespace jh::conc {
                  std::same_as<std::invoke_result_t<F, const std::shared_ptr<T> &, Args...>, std::shared_ptr<T>>
         void write_ptr(F &&f, Args &&... args) {
             while (true) {
-                auto old = jh::detail::atomic::load(&state_, std::memory_order_acquire);
+                auto old = state_.load(std::memory_order_acquire);
                 auto new_data = std::invoke(std::forward<F>(f), old->data, std::forward<Args>(args)...);
                 auto new_state = std::make_shared<state>(state{old->version + 1, std::move(new_data)});
 
                 auto expected = old;
-#if JH_OCC_ENABLE_MULTI_COMMIT
-                if (std::atomic_load_explicit(&flag_, std::memory_order_acquire)) {
-                    continue;
-                }
-#endif
-                if (jh::detail::atomic::cas(
-                        &state_, &expected, new_state,
-                        std::memory_order_acq_rel, std::memory_order_acquire)) {
+                if (try_commit_state(expected, new_state)) {
                     return;
                 }
             }
@@ -724,40 +747,22 @@ namespace jh::conc {
                  std::same_as<std::invoke_result_t<F, const std::shared_ptr<T> &, Args...>, std::shared_ptr<T>>
         [[nodiscard]] bool try_write_ptr(F &&f, std::uint16_t retries = 1, Args &&... args) {
             { // first attempt
-                auto old = jh::detail::atomic::load(&state_, std::memory_order_acquire);
+                auto old = state_.load(std::memory_order_acquire);
                 auto new_data = std::invoke(std::forward<F>(f), old->data, std::forward<Args>(args)...);
                 auto new_state = std::make_shared<state>(state{old->version + 1, std::move(new_data)});
 
                 auto expected = old;
-#if JH_OCC_ENABLE_MULTI_COMMIT
-                if (!std::atomic_load_explicit(&flag_, std::memory_order_acquire)
-                    && (jh::detail::atomic::cas(
-                        &state_, &expected, new_state,
-                        std::memory_order_acq_rel, std::memory_order_acquire))) {
+                if (try_commit_state(expected, new_state)) {
                     return true;
                 }
-#else
-                if (jh::detail::atomic::cas(
-                        &state_, &expected, new_state,
-                        std::memory_order_acq_rel, std::memory_order_acquire)) {
-                    return true;
-                }
-#endif
             }
             for (std::uint32_t i = 1; i < static_cast<std::uint32_t>(retries); ++i) {
-                auto old = jh::detail::atomic::load(&state_, std::memory_order_acquire);
+                auto old = state_.load(std::memory_order_acquire);
                 auto new_data = std::invoke(std::forward<F>(f), old->data, std::forward<Args>(args)...);
                 auto new_state = std::make_shared<state>(state{old->version + 1, std::move(new_data)});
 
                 auto expected = old;
-#if JH_OCC_ENABLE_MULTI_COMMIT
-                if (std::atomic_load_explicit(&flag_, std::memory_order_acquire)) {
-                    continue;
-                }
-#endif
-                if (jh::detail::atomic::cas(
-                        &state_, &expected, new_state,
-                        std::memory_order_acq_rel, std::memory_order_acquire)) {
+                if (try_commit_state(expected, new_state)) {
                     return true;
                 }
             }
@@ -781,7 +786,7 @@ namespace jh::conc {
          * </ul>
          */
         [[nodiscard]] std::uint64_t get_version() const noexcept {
-            return jh::detail::atomic::load(&state_, std::memory_order_acquire)->version;
+            return state_.load(std::memory_order_acquire)->version;
         }
     };
 
@@ -803,35 +808,15 @@ namespace jh::conc {
         bool apply_to_impl(std::tuple<BoxTypes &...> boxes_tuple,
                            std::tuple<Funcs...> &&funcs,
                            std::index_sequence<I...>) {
-            // Step 0. Try to acquire all flags for the transaction
-            auto try_lock_all = [&](auto &&... boxes) -> bool {
-                bool success = true;
-                // Expand the parameter pack and attempt each lock one by one
-                (void) std::initializer_list<int>{
-                        ([&] {
-                            if (success) {
-                                bool expected = false;
-                                // Attempt to set the flag from false -> true
-                                if (!boxes.flag_.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
-                                    // If any lock acquisition fails, roll back all previously acquired flags
-                                    ((boxes.flag_.store(false, std::memory_order_release)), ...);
-                                    success = false;
-                                }
-                            }
-                            return 0; // required to satisfy initializer_list<int>
-                        }(), 0)...
-                };
-                return success; // true if all flags acquired, false if any failed
-            };
-
-            // Abort the transaction immediately if not all flags could be acquired
-            if (!try_lock_all(std::get<I>(boxes_tuple)...)) {
-                return false;
-            }
+            // Hold only the flags acquired by this transaction on every exit path.
+            multi_commit_guard<sizeof...(I)> guard(
+                std::array<std::atomic<commit_gate> *, sizeof...(I)>{
+                    &std::get<I>(boxes_tuple).flag_...});
+            if (!guard.acquire()) return false;
 
             // Step 1. Capture old states
             auto old_states = std::tuple{
-                    jh::detail::atomic::load(&std::get<I>(boxes_tuple).state_, std::memory_order_acquire)...
+                    std::get<I>(boxes_tuple).state_.load(std::memory_order_acquire)...
             };
 
             // Step 2. Create deep copies of the underlying values
@@ -855,22 +840,17 @@ namespace jh::conc {
             };
 
             // Step 5. Validate that states were not concurrently modified
-            bool ok = ((jh::detail::atomic::load(&std::get<I>(boxes_tuple).state_, std::memory_order_acquire)
+            bool ok = ((std::get<I>(boxes_tuple).state_.load(std::memory_order_acquire)
                         == std::get<I>(old_states)) && ...);
             if (!ok) return false;
 
             // Step 6. Commit all new states with CAS
             bool cas_ok = true;
-            ((cas_ok &= jh::detail::atomic::cas(
-                    &std::get<I>(boxes_tuple).state_,
-                    &std::get<I>(old_states),
+            ((cas_ok &= std::get<I>(boxes_tuple).state_.compare_exchange_strong(std::get<I>(old_states),
                     std::get<I>(new_states),
                     std::memory_order_acq_rel,
                     std::memory_order_acquire
             )), ...);
-
-            // unlock the lock-flags
-            (std::get<I>(boxes_tuple).flag_.store(false, std::memory_order_release), ...);
 
             return cas_ok;
         }
@@ -891,35 +871,15 @@ namespace jh::conc {
         bool apply_to_ptr_impl(std::tuple<BoxTypes &...> boxes_tuple,
                                std::tuple<Funcs...> &&funcs,
                                std::index_sequence<I...>) {
-            // Step 0. Try to acquire all flags for the transaction
-            auto try_lock_all = [&](auto &&... boxes) -> bool {
-                bool success = true;
-                // Expand the parameter pack and attempt each lock one by one
-                (void) std::initializer_list<int>{
-                        ([&] {
-                            if (success) {
-                                bool expected = false;
-                                // Attempt to set the flag from false -> true
-                                if (!boxes.flag_.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
-                                    // If any lock acquisition fails, roll back all previously acquired flags
-                                    ((boxes.flag_.store(false, std::memory_order_release)), ...);
-                                    success = false;
-                                }
-                            }
-                            return 0; // required to satisfy initializer_list<int>
-                        }(), 0)...
-                };
-                return success; // true if all flags acquired, false if any failed
-            };
-
-            // Abort the transaction immediately if not all flags could be acquired
-            if (!try_lock_all(std::get<I>(boxes_tuple)...)) {
-                return false;
-            }
+            // Hold only the flags acquired by this transaction on every exit path.
+            multi_commit_guard<sizeof...(I)> guard(
+                std::array<std::atomic<commit_gate> *, sizeof...(I)>{
+                    &std::get<I>(boxes_tuple).flag_...});
+            if (!guard.acquire()) return false;
 
             // Step 1. Capture old states
             auto old_states = std::tuple{
-                    jh::detail::atomic::load(&std::get<I>(boxes_tuple).state_, std::memory_order_acquire)...
+                    std::get<I>(boxes_tuple).state_.load(std::memory_order_acquire)...
             };
 
             // Step 2. Invoke user functions to generate new shared_ptr<T>
@@ -938,22 +898,17 @@ namespace jh::conc {
             };
 
             // Step 4. Validate that states were not concurrently modified
-            bool ok = ((jh::detail::atomic::load(&std::get<I>(boxes_tuple).state_, std::memory_order_acquire)
+            bool ok = ((std::get<I>(boxes_tuple).state_.load(std::memory_order_acquire)
                         == std::get<I>(old_states)) && ...);
             if (!ok) return false;
 
             // Step 5. Commit all new states with CAS
             bool cas_ok = true;
-            ((cas_ok &= jh::detail::atomic::cas(
-                    &std::get<I>(boxes_tuple).state_,
-                    &std::get<I>(old_states),
+            ((cas_ok &= std::get<I>(boxes_tuple).state_.compare_exchange_strong(std::get<I>(old_states),
                     std::get<I>(new_states),
                     std::memory_order_acq_rel,
                     std::memory_order_acquire
             )), ...);
-
-            // unlock the lock-flags
-            (std::get<I>(boxes_tuple).flag_.store(false, std::memory_order_release), ...);
 
             return cas_ok;
         }

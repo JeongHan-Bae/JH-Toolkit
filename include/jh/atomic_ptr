@@ -1,0 +1,9 @@
+/**
+ * @file atomic_ptr
+ * @brief Aggregate header for JH atomic shared and weak pointer slots.
+ */
+
+#pragma once
+
+#include "jh/atomic/shared_ptr.h"
+#include "jh/atomic/weak_ptr.h"

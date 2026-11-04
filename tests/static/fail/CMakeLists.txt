@@ -45,6 +45,11 @@ project_static_fail(
     core/immutable_str_rejects_implicit_c_string.cpp
 )
 project_static_fail(
+    immutable_str_rejects_removed_atomic_str_ptr_alias
+    core/immutable_str_rejects_removed_atomic_str_ptr_alias.cpp
+    EXPECT_DIAGNOSTIC "atomic_str_ptr"
+)
+project_static_fail(
     immutable_str_rejects_single_argument_std_string
     core/immutable_str_rejects_single_argument_std_string.cpp
     EXPECT_DIAGNOSTIC "deleted"

@@ -43,9 +43,8 @@ during construction.
 
 ## 🧭 Introduction
 
-`jh::immutable_str` is a **truly immutable and thread-safe string type** for modern C++.  
-Unlike `std::string`, whose internal buffer remains writable even when `const`,
-`immutable_str` enforces immutability both **in type** and **in memory**.
+`jh::immutable_str` is an immutable string type for modern C++.
+It owns its character data and exposes no post-construction mutation API.
 
 It guarantees:
 
@@ -67,7 +66,7 @@ Ideal for:
 |------------------------|---------------------------------------------------------------|
 | **Purpose**            | Represent string data that cannot be modified after creation. |
 | **Thread Safety**      | Safe for concurrent reads.                                    |
-| **Immutability Level** | Memory-enforced, no writable API.                             |
+| **Immutability Level** | Read-only public API after construction.                       |
 | **Hashing**            | Cached, lazily computed once.                                 |
 | **Build Mode**         | Header-only or static library via Dual-Mode system.           |
 | **Integration**        | Works directly with `jh::observe_pool` for deduplication.     |
@@ -76,10 +75,10 @@ Ideal for:
 
 ## 🔹 Core Characteristics
 
-| Feature                   | `jh::immutable_str`    | `const std::string`    |
+| Feature                   | `jh::immutable_str`    | `std::string`          |
 |---------------------------|------------------------|------------------------|
-| Memory-level immutability | ✅ True                 | ❌ Mutable              |
-| Thread safety             | ✅ Safe                 | ⚠️ Not guaranteed      |
+| Public mutation API       | ❌ None                 | ✅ Available            |
+| Concurrent reads          | ✅ Safe                 | ✅ Safe without mutation |
 | Reallocation risk         | ❌ None                 | ✅ Possible             |
 | Hash caching              | ✅ Cached               | ❌ Recomputed each call |
 | Pool compatibility        | ✅ Automatic            | ⚠️ Manual              |
@@ -199,7 +198,7 @@ auto shared = jh::make_atomic("JH Toolkit");
 auto copy   = shared; // reference-counted, safe to share
 ```
 
-Creates a `std::shared_ptr<immutable_str>` (`atomic_str_ptr`) from a null-terminated C-string.
+Creates a `std::shared_ptr<immutable_str>` (`shared_str_ptr`) from a null-terminated C-string.
 The preferred method for constructing immutable strings intended for shared caches or registries.
 
 ---
@@ -218,7 +217,7 @@ auto key = jh::safe_from(key_view, config_lock);
 
 ```cpp
 template <jh::concepts::mutex_like M>
-atomic_str_ptr safe_from(std::string_view sv, M &mtx);
+shared_str_ptr safe_from(std::string_view sv, M &mtx);
 ```
 
 It performs the same thread-safe initialization via
@@ -259,6 +258,15 @@ auto path = jh::safe_from(view, m);
 
 ---
 
+#### Atomic slot factories
+
+`make_atomic_slot()` and `safe_from_slot()` create atomic storage for the
+handles returned by the corresponding ordinary factories. Load a snapshot
+before accessing the string. See [Atomic pointer slots](../entry_points/atomic_ptr.md)
+for the slot operations.
+
+---
+
 ## 🔹 Thread-Safe Hashing
 
 ```cpp
@@ -266,7 +274,7 @@ std::size_t h = shared->hash();
 ```
 
 * The hash is computed once on first access and cached.
-* Uses `std::once_flag` for lock-free thread safety.
+* Uses `std::once_flag` to synchronize the one-time computation.
 * Identical content → identical hash on the same target, guaranteed.
 
 ---
@@ -292,14 +300,20 @@ so semantically identical strings share a single immutable instance.
 
 ## 🔹 Interoperability
 
-### Atomic and Weak Aliases
+### Shared handles and atomic slots
 
 ```cpp
-using jh::atomic_str_ptr; // std::shared_ptr<immutable_str>
+using jh::shared_str_ptr; // std::shared_ptr<immutable_str>
 using jh::weak_str_ptr;   // std::weak_ptr<immutable_str>
+using jh::atomic_str_slot;
+using jh::atomic_weak_str_slot;
 ```
 
-Safe for multi-threaded ownership and observation.
+The first two aliases are ordinary handles. Use the atomic slot aliases when
+several threads access the same stored pointer.
+
+The former `atomic_str_ptr` alias has been removed. Use `shared_str_ptr`
+for an ordinary handle or `atomic_str_slot` for atomic storage.
 
 ---
 
@@ -307,14 +321,14 @@ Safe for multi-threaded ownership and observation.
 
 | Functor               | Purpose                                                      |
 |-----------------------|--------------------------------------------------------------|
-| `jh::atomic_str_hash` | Content-based hash for `atomic_str_ptr` and `const char*`.   |
+| `jh::atomic_str_hash` | Content-based hash for `shared_str_ptr` and `const char*`.   |
 | `jh::atomic_str_eq`   | Content equality, whitespace-insensitive if auto-trim is on. |
 
 Example:
 
 ```cpp
 std::unordered_set<
-    jh::atomic_str_ptr,
+    jh::shared_str_ptr,
     jh::atomic_str_hash,
     jh::atomic_str_eq
 > registry;

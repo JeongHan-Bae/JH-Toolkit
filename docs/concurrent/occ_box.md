@@ -20,11 +20,12 @@
 
 It provides:
 
-* **wait-free, snapshot-based reads**
+* **atomic snapshot-based reads**
 * **atomic commit-replace writes**
 * **optional atomic multi-box transactions**
 
-All updates replace the entire state with a single CAS.
+Single-box writes commit with CAS. Multi-box transactions coordinate atomic
+state publication with commit gates.
 No reader ever observes partial or torn writes.
 
 > We highly recommend using `occ_box<T>` during the prototype development/MVP phase, as it significantly reduces
@@ -50,7 +51,8 @@ No reader ever observes partial or torn writes.
     * attempt atomic replacement
     * retry or fail depending on API
 
-This eliminates deadlocks and lock ordering concerns.
+The internal commit protocol uses atomic state operations. User callbacks
+must follow the [commit coordination contract](#commit-coordination).
 
 ---
 
@@ -118,7 +120,7 @@ where:
 
     * the snapshot is consistent
     * and no concurrent commit intervened
-* Readers are **wait-free** and never block writers
+* Readers use atomic snapshots; the underlying smart pointer operation may use a lock
 
 **Why `void` is forbidden**
 
@@ -422,15 +424,20 @@ std::shared_ptr<T>(const std::shared_ptr<T>&)
     * **no retry is performed**
 * Retry policy is **entirely user-controlled**
 
-### Priority Rules
+### Commit Coordination
 
-When enabled:
+When multi-commit is enabled, each box has a commit gate. A single-box writer
+reserves the gate only for its state replacement. A multi-box transaction
+reserves every participating gate through validation and commit. Conflicting
+writers retry or return `false`; readers retry while a multi-box commit holds
+the gate. User callbacks must not recursively mutate a box participating in
+their transaction.
 
-```
-multi-write  >  single-write  >  read
-```
-
-Transactions cannot be broken by concurrent writes or reads.
+The concurrency unit test pauses a caller-supplied callback after the gates
+are reserved, then runs a conflicting operation at that known point. It checks
+rejection, gate ownership, retries, exception cleanup, and post-commit reads.
+Repeating transactions can supplement this test but cannot prove those rules
+without controlling the interleaving.
 
 ---
 
@@ -502,17 +509,15 @@ This makes it especially valuable for:
 
 ## Summary
 
-* `occ_box` implements OCC via atomic `shared_ptr` replacement
-* reads are wait-free and consistent
+* `occ_box` stores versioned state in `jh::atomic::shared_ptr`
+* reads use consistent atomic snapshots
 * writes are atomic but allocation-heavy
-* multi-box transactions are supported with strict priority
+* multi-box transactions reserve commit gates during validation and publication
 * fragmentation is unavoidable
 * retry and backoff are explicit user responsibilities
 
 ---
 
-## One-Sentence Summary
-
-**`jh::conc::occ_box` is an optimistic, snapshot-based concurrency primitive that trades allocation cost for
-deadlock-free semantics, strong atomicity, and dramatically simpler reasoning—ideal for read-heavy, low-frequency-write
-coordination and transactional glue code.**
+See [Atomic shared pointer slots](../atomic/shared_ptr.md) for the storage
+implementation and lock-free query. The complete `read()` operation has no
+wait-free guarantee.

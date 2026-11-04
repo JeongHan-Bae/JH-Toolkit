@@ -126,12 +126,14 @@ This avoids oscillation and rehash jitter under fluctuating workloads.
 
 ### 🔒 Template Requirements
 
-`pointer_pool<T, Hash, Eq>` requires:
+`pointer_pool<T, Hash, Eq, Mutex>` requires:
 
 * `Hash(weak_ptr<T>) -> size_t`
 * `Eq(weak_ptr<T>, weak_ptr<T>) -> bool`
 
 Hash and equality must reflect **object identity**.
+`Mutex` defaults to `std::shared_mutex` and must satisfy
+`jh::concepts::rw_mutex_like`.
 
 ---
 
@@ -211,14 +213,30 @@ Notes:
 
 ## Concurrency and Safety
 
-* Concurrent `acquire()` calls are safe
+* Concurrent `acquire()` calls use one exclusive lock for the capacity check,
+  optional cleanup, and insertion
 * Deduplication is atomic under exclusive locking
 * Shared objects remain valid even if:
 
     * the pool is cleared
     * the pool is destroyed
 
-The pool uses `std::shared_mutex` internally.
+The pool uses `std::shared_mutex` by default. A custom RW mutex can expose
+lock acquisition in tests or supply a verified synchronization implementation
+for a platform configuration with a measured visibility problem. The mutex
+must provide cross-thread synchronization; `rw_mutex_like` checks its API
+but cannot prove that runtime guarantee. Under that contract, the pool's own
+accesses are data-race-free.
+Custom hash and equality callbacks must not recursively call the same pool,
+because insertion can invoke them while holding its exclusive lock. A move
+assignment locks both participating pools during transfer. Callers must
+serialize concurrent move assignments that involve the same pool, especially
+opposite-direction moves; their result and progress are not specified.
+
+The pool unit test uses a controllable hash and RW mutex to hold one insertion
+at a known point and observe the next lock attempt. It asserts that two
+completed insertions leave `size() <= capacity()`. The same test failed with
+the capacity read outside the lock and passes after moving it inside.
 
 ---
 

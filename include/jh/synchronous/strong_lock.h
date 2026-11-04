@@ -30,8 +30,8 @@
  * <p>The project has measured a high-contention gap at the interaction
  * boundary between the C++ standard library and Windows runtime
  * implementations. The Windows alias path adds fences as a mitigation for
- * that observed behavior. The pool data-structure algorithms have complete
- * synchronization coverage and are data-race-free under the ISO C++ model.
+ * that observed behavior. Pool capacity checks and insertion now use the same
+ * mutex; the adapters preserve the underlying lock's ownership rules.
  * A lock plus these fences cannot complete a missing library/runtime
  * synchronization path for every independent atomic operation. See the
  * <code>strong_lock</code> reference for details.</p>

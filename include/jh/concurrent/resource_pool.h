@@ -109,6 +109,7 @@ namespace jh {
      * @tparam Alloc
      * Allocator used for internal storage. Defaults to an allocator compatible with
      * the underlying <code>flat_pool</code> value representation.
+     * @tparam Mutex Shared-lockable synchronization type; defaults to <code>std::shared_mutex</code>.
      *
      * @note
      * <strong>Design intent:</strong>
@@ -121,8 +122,9 @@ namespace jh {
      */
     template<typename Key,
             typename Value = jh::typed::monostate,
-            typename Alloc = std::allocator<jh::conc::detail::value_t<Key, Value>>>
-    using resource_pool = jh::conc::flat_pool<Key, Value, jh::hash<Key>, Alloc>;
+            typename Alloc = std::allocator<jh::conc::detail::value_t<Key, Value>>,
+            typename Mutex = std::shared_mutex>
+    using resource_pool = jh::conc::flat_pool<Key, Value, jh::hash<Key>, Alloc, Mutex>;
 
     /**
      * @brief Set-style specialization of <code>jh::resource_pool</code>.
@@ -135,7 +137,8 @@ namespace jh {
      * </p>
      */
     template<typename Key,
-            typename Alloc = std::allocator<Key>>
-    using resource_pool_set = jh::conc::flat_pool<Key, jh::typed::monostate, jh::hash<Key>, Alloc>;
+            typename Alloc = std::allocator<Key>,
+            typename Mutex = std::shared_mutex>
+    using resource_pool_set = jh::conc::flat_pool<Key, jh::typed::monostate, jh::hash<Key>, Alloc, Mutex>;
 
 } // namespace jh

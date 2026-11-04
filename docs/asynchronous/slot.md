@@ -378,14 +378,19 @@ for (int i = 0; i < 10; ++i) {
         std::puts("[emit] dropped (timeout)");
     }
 
-    std::this_thread::sleep_for(10ms);
 }
 ```
 
 Semantics:
 
-* if the slot is ready and the hub lock is acquired → event is delivered,
-* if not → event is dropped immediately.
+* if the slot is ready and the hub lock is acquired, the event is delivered,
+* if the lock cannot be acquired within the configured timeout, delivery fails.
+
+Successful `emit()` performs delivery and coroutine resumption before it
+returns. Tests should assert its returned status and observed event, using an
+explicit phase signal when several emitter threads coordinate. Sleeping
+between emits is not needed to make delivery correct and should not be used
+to force a hoped-for scheduling order.
 
 ---
 

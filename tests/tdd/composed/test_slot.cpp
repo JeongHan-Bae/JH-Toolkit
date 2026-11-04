@@ -12,6 +12,7 @@ namespace test::tiny_test {
 #include <vector>
 #include <string>
 #include <thread>
+#include <latch>
 #include <variant>
 #include <sstream>
 #include <tuple>
@@ -56,7 +57,6 @@ void tiny_test_case_1() {
 
     std::thread emit_int([&]{
         for (int i = 0; i < 5; ++i) {
-            std::this_thread::sleep_for(20ms);
             safe_out("[emit-int] emit(" + std::to_string(i) + ")\n");
             sig_int.emit(i);
         }
@@ -147,13 +147,11 @@ void tiny_test_case_2() {
         for (int i = 0; i <= 10; i++) {
             safe_out("[emit-int] emit(" + std::to_string(i) + ")\n");
             sig_int.emit(i);
-            std::this_thread::sleep_for(10ms);
         }
         // 9→0
         for (int i = 9; i >= 0; i--) {
             safe_out("[emit-int] emit(" + std::to_string(i) + ")\n");
             sig_int.emit(i);
-            std::this_thread::sleep_for(10ms);
         }
     });
 
@@ -256,25 +254,23 @@ void tiny_test_case_3() {
 
     s.spawn();
 
-    // thread 1: emits 0..4 every 10ms
+    // First emitter sends values 0..4.
     std::thread t1([&] {
         event_signal<Event> sig1;
         sig1.connect(&ml);
         for (int i = 0; i < 5; i++) {
             safe_out("[emit-1] emit(" + std::to_string(i)+ ")\n");
             sig1.emit(0, i);
-            std::this_thread::sleep_for(10ms);
         }
     });
 
-    // thread 2: emits 10..14 every 20ms
+    // Second emitter sends values 10..14.
     std::thread t2([&] {
         event_signal<Event> sig2;
         sig2.connect(&ml);
         for (int i = 10; i < 15; i++) {
             safe_out("[emit-2] emit(" + std::to_string(i)+ ")\n");
             sig2.emit(1, i);
-            std::this_thread::sleep_for(20ms);
         }
     });
 
@@ -418,7 +414,6 @@ void tiny_test_case_4() {
         for (int v : expected_int1) {
             safe_out("[emit-0] emit(" + std::to_string(v) + ")\n");
             sig.emit(0, v);
-            std::this_thread::sleep_for(10ms);
         }
     });
 
@@ -428,7 +423,6 @@ void tiny_test_case_4() {
         for (int v : expected_int2) {
             safe_out("[emit-1] emit(" + std::to_string(v) + ")\n");
             sig.emit(1, v);
-            std::this_thread::sleep_for(15ms);
         }
     });
 
@@ -438,7 +432,6 @@ void tiny_test_case_4() {
         for (auto &s : expected_str) {
             safe_out("[emit-2] emit(" + s + ")\n");
             sig.emit(2, s);
-            std::this_thread::sleep_for(20ms);
         }
     });
 
@@ -490,7 +483,7 @@ void tiny_test_case_5() {
     std::vector<int> vec_int;
     std::vector<std::string> vec_str;
 
-    bool switched = false;   // external flag changed by slot
+    std::latch switched(1);
 
     // --- logging ---
     std::ostringstream out{};
@@ -515,7 +508,7 @@ void tiny_test_case_5() {
             safe_out("[slot coro] int = " + std::to_string(v) + "\n");
 
             if (v == STOP_VALUE) {
-                switched = true;  // inform external
+                switched.count_down();
                 break;            // leave int loop
             }
             co_yield {};
@@ -542,11 +535,8 @@ void tiny_test_case_5() {
         sig.connect(&li_int);
 
         for (int v : expected_ints) {
-            if (switched) break;  // slot switched, stop sending int
-
             safe_out("[emit-int] " + std::to_string(v) + "\n");
             sig.emit(v);
-            std::this_thread::sleep_for(10ms);
         }
     });
 
@@ -555,15 +545,11 @@ void tiny_test_case_5() {
         event_signal<std::string> sig;
         sig.connect(&li_str);
 
-        // wait a bit until slot sets flag
-        while (!switched) {
-            std::this_thread::sleep_for(2ms);
-        }
+        switched.wait();
 
         for (auto &sval : expected_strs) {
             safe_out("[emit-str] " + sval + "\n");
             sig.emit(sval);
-            std::this_thread::sleep_for(10ms);
         }
     });
 

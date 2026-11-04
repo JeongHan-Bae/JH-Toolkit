@@ -16,11 +16,11 @@
 
 ## Overview
 
-`jh::observe_pool<T>` is a **top-level, user-facing pooling interface** for
+`jh::observe_pool<T, Mutex = std::shared_mutex>` is a **top-level, user-facing pooling interface** for
 **content-based interning of immutable or structurally immutable objects**.
 
 It is built directly on top of
-[`jh::conc::pointer_pool<T, Hash, Eq>`](pointer_pool.md)
+[`jh::conc::pointer_pool<T, Hash, Eq, Mutex>`](pointer_pool.md)
 and provides **duck-typed convenience** by automatically selecting:
 
 * `jh::weak_ptr_hash<T>`
@@ -56,14 +56,16 @@ only **behavioral semantics differ**.
 
 ## Relationship to `pointer_pool`
 
-`observe_pool<T>` is defined as:
+`observe_pool<T, Mutex>` is defined as:
 
 ```cpp
+template<typename T, typename Mutex = std::shared_mutex>
 using observe_pool =
     jh::conc::pointer_pool<
         T,
         jh::weak_ptr_hash<T>,
-        jh::weak_ptr_eq<T>
+        jh::weak_ptr_eq<T>,
+        Mutex
     >;
 ```
 
@@ -72,6 +74,7 @@ using observe_pool =
 * Hashing is performed on `std::weak_ptr<T>`
 * Equality is performed on `std::weak_ptr<T>`
 * Both delegate to **logical content of `T`**
+* `Mutex` defaults to `std::shared_mutex` and may be replaced by a verified RW mutex
 
 Construction, ownership, cleanup, capacity, and concurrency behavior follow
 [`jh::conc::pointer_pool`](pointer_pool.md).
@@ -185,14 +188,16 @@ Consequences:
 
 ## Concurrency and Safety
 
-* Concurrent `acquire()` is safe
+* Concurrent `acquire()` uses the pointer pool's RW mutex for capacity checks
+  and insertion
 * Deduplication is atomic
 * Returned `shared_ptr` objects remain valid regardless of pool lifetime
 
 ### Platform notes
 
 `observe_pool` uses the same locking and pointer-lifetime behavior as
-`pointer_pool`. See its [platform notes](pointer_pool.md#platform-notes-windows)
+`pointer_pool`. See its [concurrency warning](pointer_pool.md#concurrency-and-safety)
+and [platform notes](pointer_pool.md#platform-notes-windows)
 and the [pool platform support note](overview.md#pool-platform-support).
 
 ---

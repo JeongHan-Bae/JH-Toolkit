@@ -16,7 +16,7 @@
 
 ## Overview
 
-`jh::conc::flat_pool<Key, Value, Hash, Alloc>` is a **concurrent, key-based interning container** that stores objects in
+`jh::conc::flat_pool<Key, Value, Hash, Alloc, Mutex>` is a **concurrent, key-based interning container** that stores objects in
 **contiguous memory** and provides **GC-like lifetime semantics** through explicit reference counting.
 
 Each unique `Key` corresponds to **at most one logical entry** in the pool.
@@ -100,6 +100,18 @@ Requirements for `Key`:
 * capable of representing identity independently of storage
 
 This enables **lookup-before-construction** and avoids provisional object creation.
+
+`Mutex` defaults to `std::shared_mutex` and must satisfy
+`jh::concepts::rw_mutex_like`. The same mutex type protects the entry index
+and the value storage, each with its own instance. A custom implementation
+must supply the required cross-thread synchronization; the concept checks
+the lock interface but cannot prove its runtime behavior.
+
+The pool unit test injects a controllable RW mutex. It pauses the first value
+construction while both exclusive locks are held, observes the second
+acquisition attempting the index shared lock, and checks that both callers
+receive the same slot with one value construction. It also checks that the
+index and storage exclusive lock paths were reached.
 
 ---
 

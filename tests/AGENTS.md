@@ -6,6 +6,29 @@ TinyTest executable and CTest entry per test module. Use `tests/bdd/` for
 caller-visible behavior expressed as Gherkin scenarios. Follow
 `tests/bdd/AGENTS.md` for feature and step organization.
 
+## Concurrent behavior
+
+Test a specific interleaving with explicit synchronization such as a latch,
+barrier, condition variable, or a controllable callback. Arrange the threads
+so the contested operation is known to be in progress before performing the
+conflicting operation, then join every thread before asserting the outcome.
+Prefer one reproducible transition and a precise invariant over many iterations
+that merely increase the chance of a race. Do not use random scheduling,
+sleep durations, or repeated attempts as the primary evidence for a concurrency
+correctness claim. Keep timeouts only as bounds for operations whose contract
+actually includes time or to prevent a broken test from hanging indefinitely.
+Stress runs and third-party detectors such as ThreadSanitizer may reveal risks,
+but their diagnostics and exit codes do not count as a red or green behavior
+test. Before calling a concurrency fix complete, make a framework assertion
+about a caller-observable result fail on the original implementation under a
+controlled interleaving, then make the same assertion pass after the fix.
+Record both outcomes. A CTest failure caused only by a sanitizer report is
+diagnostic evidence, not the required behavioral red light. When a real race
+cannot be exposed through the current API, add a controlled test seam or
+observable state where appropriate and use the framework to establish the
+red-green behavior. If the risk still cannot be made observable, report that
+limitation instead of claiming the red-green sequence has been completed.
+
 ## TDD
 
 Use TinyTest's `expect`, `expect_not`, and typed `expect_throw<Exception>`

@@ -9,6 +9,10 @@ namespace test::tiny_test {
 #include "jh/macros/platform.h"
 #include <memory>
 #include <memory_resource>
+#include <atomic>
+#include <latch>
+#include <shared_mutex>
+#include <vector>
 #include <thread>
 
 /**
@@ -25,9 +29,8 @@ namespace test::tiny_test {
  * <hr>
  * <b>Concurrency Guarantees</b>
  *
- * All pool implementations in this module are algorithmically
- * data-race-free (DRF) and do not rely on undefined behavior under
- * the ISO C++ memory model.
+ * The pool tests use a controlled RW mutex to expose capacity behavior
+ * under a known interleaving, alongside ordinary ownership checks.
  *
  * Additional strengthening is applied on Windows builds via
  * <code>std::atomic_thread_fence(std::memory_order_seq_cst)</code>
@@ -563,3 +566,154 @@ namespace test {
 }
 
 
+
+namespace test {
+    struct observed_mutex {
+        std::shared_mutex inner;
+        static inline std::atomic<bool> observe{false};
+        static inline std::atomic<int> attempts{0};
+        static inline std::latch *second_attempt = nullptr;
+        static inline std::atomic<bool> observe_shared{false};
+        static inline std::latch *shared_attempt = nullptr;
+        static inline std::atomic<int> exclusive_calls{0};
+        static inline std::atomic<int> shared_calls{0};
+
+        void lock() {
+            exclusive_calls.fetch_add(1);
+            if (observe.load() && attempts.fetch_add(1) == 1) second_attempt->count_down();
+            inner.lock();
+        }
+        void unlock() { inner.unlock(); }
+        bool try_lock() { return inner.try_lock(); }
+        void lock_shared() {
+            shared_calls.fetch_add(1);
+            if (observe_shared.load()) shared_attempt->count_down();
+            inner.lock_shared();
+        }
+        void unlock_shared() { inner.unlock_shared(); }
+        bool try_lock_shared() { return inner.try_lock_shared(); }
+    };
+
+    struct controlled_value {
+        int key;
+        std::latch *hash_entered;
+        std::latch *release_hash;
+        mutable std::atomic<bool> paused{false};
+
+        explicit controlled_value(int value, std::latch *entered = nullptr,
+                                  std::latch *release = nullptr)
+            : key(value), hash_entered(entered), release_hash(release) {}
+        std::size_t hash() const noexcept {
+            if (hash_entered && !paused.exchange(true)) {
+                hash_entered->count_down();
+                release_hash->wait();
+            }
+            return static_cast<std::size_t>(key);
+        }
+        bool operator==(const controlled_value &other) const noexcept { return key == other.key; }
+    };
+
+    void capacity_covers_concurrent_insertions() {
+        using pool_type = jh::conc::pointer_pool<
+            controlled_value, jh::weak_ptr_hash<controlled_value>,
+            jh::weak_ptr_eq<controlled_value>, observed_mutex>;
+        pool_type pool;
+        std::vector<std::shared_ptr<controlled_value>> held(17);
+        for (int key = 0; key < 15; ++key) held[key] = pool.acquire(key);
+
+        std::latch hash_entered(1), release_hash(1), second_attempt(1);
+        observed_mutex::second_attempt = &second_attempt;
+        observed_mutex::attempts.store(0);
+        observed_mutex::observe.store(true);
+        std::thread first([&] { held[15] = pool.acquire(15, &hash_entered, &release_hash); });
+        hash_entered.wait();
+        std::thread second([&] { held[16] = pool.acquire(16); });
+        second_attempt.wait();
+        release_hash.count_down();
+        first.join();
+        second.join();
+        observed_mutex::observe.store(false);
+
+        jh::test::tiny_test::expect(pool.size() == 17, "both inserts complete");
+        jh::test::tiny_test::expect(pool.capacity() >= pool.size(),
+                                    "capacity covers all stored objects");
+    }
+}
+template<>
+struct jh::test::tiny_test::test<"concurrent pool capacity">
+    : jh::test::tiny_test::test_definition<
+          "concurrent pool capacity", &::test::capacity_covers_concurrent_insertions> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_pool case 12">
+    : jh::test::tiny_test::session_definition<
+          "test module test_pool case 12", jh::test::tiny_test::test<"concurrent pool capacity">> {};
+namespace test {
+    [[maybe_unused]] const jh::test::tiny_test::session<"test module test_pool case 12"> registration_12{};
+}
+
+namespace test {
+    struct blocking_pool_value {
+        int payload;
+        static inline std::atomic<int> constructions{0};
+
+        explicit blocking_pool_value(int value, std::latch *entered, std::latch *release)
+            : payload(value) {
+            constructions.fetch_add(1);
+            entered->count_down();
+            release->wait();
+        }
+    };
+
+    void injected_pool_mutex_coordinates_acquisition() {
+        using pool_type = jh::resource_pool<
+            int, blocking_pool_value, std::allocator<std::pair<int, blocking_pool_value>>, observed_mutex>;
+        pool_type pool;
+        blocking_pool_value::constructions.store(0);
+        observed_mutex::exclusive_calls.store(0);
+        observed_mutex::shared_calls.store(0);
+        std::latch constructor_entered(1), release_constructor(1), shared_attempt(1);
+        observed_mutex::shared_attempt = &shared_attempt;
+        pool_type::ptr first, second;
+        std::thread writer([&] {
+            first = pool.acquire(7, std::forward_as_tuple(42, &constructor_entered, &release_constructor));
+        });
+        constructor_entered.wait();
+        observed_mutex::observe_shared.store(true);
+        std::thread reader([&] {
+            second = pool.acquire(7, std::forward_as_tuple(99, &constructor_entered, &release_constructor));
+        });
+        shared_attempt.wait();
+        observed_mutex::observe_shared.store(false);
+        release_constructor.count_down();
+        writer.join();
+        reader.join();
+
+        jh::test::tiny_test::expect(blocking_pool_value::constructions.load() == 1,
+                                    "shared lock prevents duplicate value construction");
+        jh::test::tiny_test::expect(&*first == &*second, "contending acquisitions share one slot");
+        jh::test::tiny_test::expect(first->second.payload == 42, "first committed value remains visible");
+        jh::test::tiny_test::expect(observed_mutex::exclusive_calls.load() >= 2,
+                                    "index and storage exclusive locks were acquired");
+        jh::test::tiny_test::expect(observed_mutex::shared_calls.load() >= 2,
+                                    "both acquisitions reached the index shared lock");
+
+        jh::resource_pool_set<int, std::allocator<int>, observed_mutex> set;
+        auto set_item = set.acquire(11);
+        jh::test::tiny_test::expect(*set_item == 11, "set alias accepts an injected RW mutex");
+
+        jh::observe_pool<int, observed_mutex> observed;
+        auto observed_item = observed.acquire(13);
+        jh::test::tiny_test::expect(*observed_item == 13, "observer alias accepts an injected RW mutex");
+    }
+}
+template<>
+struct jh::test::tiny_test::test<"injected pool RW mutex">
+    : jh::test::tiny_test::test_definition<
+          "injected pool RW mutex", &::test::injected_pool_mutex_coordinates_acquisition> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_pool case 13">
+    : jh::test::tiny_test::session_definition<
+          "test module test_pool case 13", jh::test::tiny_test::test<"injected pool RW mutex">> {};
+namespace test {
+    [[maybe_unused]] const jh::test::tiny_test::session<"test module test_pool case 13"> registration_13{};
+}

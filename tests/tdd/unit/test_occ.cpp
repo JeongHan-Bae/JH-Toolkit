@@ -8,6 +8,9 @@ namespace test::tiny_test {
 #include "jh/concurrency"
 #include "jh/macros/platform.h"
 #include <thread>
+#include <latch>
+#include <tuple>
+#include <stdexcept>
 #include <chrono>    // NOLINT force include for std::chrono_literals
 #include <vector>
 #include <atomic>
@@ -237,3 +240,105 @@ namespace test {
     [[maybe_unused]] const tiny_test::session<"test module test_occ case 6"> registration_6{};
 }
 
+
+namespace test {
+    struct transaction_result {
+        bool contender_committed;
+        bool single_write_committed;
+        bool owner_committed;
+        bool second_readable;
+    };
+
+    transaction_result run_transaction(bool force_retry, bool pointer_based = false) {
+        jh::conc::occ_box<int> first(0), second(0);
+        std::latch owner_entered(1), release_owner(1);
+        bool owner_committed = false;
+
+        std::thread owner([&] {
+            if (pointer_based) {
+                owner_committed = jh::conc::apply_to(std::tie(first, second), std::tuple{
+                    [&](const std::shared_ptr<int> &value) {
+                        owner_entered.count_down();
+                        release_owner.wait();
+                        return std::make_shared<int>(*value + 1);
+                    },
+                    [](const std::shared_ptr<int> &value) {
+                        return std::make_shared<int>(*value + 1);
+                    }
+                });
+            } else {
+                owner_committed = jh::conc::apply_to(std::tie(first, second), std::tuple{
+                    [&](int &value) {
+                        owner_entered.count_down();
+                        release_owner.wait();
+                        ++value;
+                    },
+                    [](int &value) { ++value; }
+                });
+            }
+        });
+
+        owner_entered.wait();
+        bool contender_committed = false;
+        if (!force_retry) {
+            contender_committed = jh::conc::apply_to(std::tie(first),
+                std::tuple{[](int &value) { ++value; }});
+        }
+        const bool single_write_committed = first.try_write(
+            [](int &value) { ++value; }, force_retry ? 2 : 1);
+        release_owner.count_down();
+        owner.join();
+
+        const bool second_readable = second.try_read(
+            [](const int &value) { return value; }).has_value();
+        return {contender_committed, single_write_committed,
+                owner_committed, second_readable};
+    }
+
+    void tiny_test_case_7() {
+        using jh::test::tiny_test::expect;
+        const auto contender = run_transaction(false);
+        expect(!contender.contender_committed, "conflicting transaction is rejected");
+        expect(!contender.single_write_committed, "failed contender preserves owner's flag");
+        expect(contender.owner_committed, "owner commits after contender fails");
+        expect(contender.second_readable, "owner releases both flags");
+
+        const auto retry = run_transaction(true);
+        expect(!retry.single_write_committed, "retry cannot write during multi-box transaction");
+        expect(retry.owner_committed, "owner commits after rejected retry");
+        expect(retry.second_readable, "owner releases both flags after retry");
+
+        const auto pointer_contender = run_transaction(false, true);
+        expect(!pointer_contender.contender_committed, "pointer transaction rejects contender");
+        expect(!pointer_contender.single_write_committed, "pointer transaction keeps its flags");
+        expect(pointer_contender.owner_committed, "pointer transaction commits");
+        expect(pointer_contender.second_readable, "pointer transaction releases flags");
+
+        jh::conc::occ_box<int> first(0), second(0);
+        bool caught = false;
+        try {
+            (void) jh::conc::apply_to(std::tie(first, second), std::tuple{
+                [](int &) { throw std::runtime_error("callback failure"); },
+                [](int &) {}
+            });
+        } catch (const std::runtime_error &) {
+            caught = true;
+        }
+        expect(caught, "callback failure propagates");
+        expect(first.try_read([](const int &value) { return value; }).has_value(),
+               "callback failure releases first flag");
+        expect(second.try_read([](const int &value) { return value; }).has_value(),
+               "callback failure releases second flag");
+    }
+}
+
+template<>
+struct jh::test::tiny_test::test<"occ_box multi commit flags">
+    : jh::test::tiny_test::test_definition<"occ_box multi commit flags", &::test::tiny_test_case_7> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_occ case 7">
+    : jh::test::tiny_test::session_definition<
+          "test module test_occ case 7", jh::test::tiny_test::test<"occ_box multi commit flags">> {};
+namespace test {
+    [[maybe_unused]] const jh::test::tiny_test::session<"test module test_occ case 7"> registration_7{};
+}

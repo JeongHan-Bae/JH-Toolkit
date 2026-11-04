@@ -21,7 +21,7 @@ callers think in terms of resources (objects, keys, handles) rather than mutexes
 
 | Helper                                                | Role                                                                                            |
 |-------------------------------------------------------|-------------------------------------------------------------------------------------------------|
-| `occ_box<T>`                                          | OCC-wrapped mutable state with wait-free readers and atomic copy-and-replace commits.           |
+| `occ_box<T>`                                          | OCC-wrapped mutable state with atomic snapshot readers and copy-and-replace commits.           |
 | `flat_pool<Key, Value>` / `resource_pool<Key, Value>` | Contiguous key-driven pool for copyable/movable entries, exposing reference-counted handles.    |
 | `pointer_pool<T>` / `observe_pool<T>`                 | Weak-observed pools for pointer-stable, immutable data (the latter auto-deduces hash/equality). |
 
@@ -35,10 +35,10 @@ pools, include `<jh/pool>` so that `jh::observe_pool`/`jh::resource_pool` sit di
 | Component                                              | Header                            | Status   | Description                                                                                          |
 |--------------------------------------------------------|-----------------------------------|----------|------------------------------------------------------------------------------------------------------|
 | [`occ_box<T>`](occ_box.md)                             | `<jh/concurrent/occ_box.h>`       | ✅ Stable | OCC container with optimistic reads, copy-on-write writes, and optional multi-box transactions.      |
-| [`flat_pool<Key, Value>`](flat_pool.md)                | `<jh/concurrent/flat_pool.h>`     | ✅ Stable | Key-based, contiguous pool exposing reference-counted handles, validator guards, and health metrics. |
-| [`pointer_pool<T, Hash, Eq>`](pointer_pool.md)         | `<jh/concurrent/pointer_pool.h>`  | ✅ Stable | Weak-pointer observer for immutable heap objects that must stay at fixed addresses.                  |
-| [`observe_pool<T>`](observe_pool.md)                   | `<jh/concurrent/observe_pool.h>`  | ✅ Stable | Duck-typed alias of `pointer_pool` that derives hash/equality from `jh::hash<T>`/ADL.                |
-| [`resource_pool<Key, Value, Alloc>`](resource_pool.md) | `<jh/concurrent/resource_pool.h>` | ✅ Stable | Simplified alias of `flat_pool` keyed by `jh::hash<Key>`, plus `resource_pool_set<Key>`.             |
+| [`flat_pool<Key, Value>`](flat_pool.md)                | `<jh/concurrent/flat_pool.h>`     | ✅ Stable | Key-based, contiguous pool exposing reference-counted handles, validator guards, and health metrics. A final template parameter selects the RW mutex. |
+| [`pointer_pool<T, Hash, Eq>`](pointer_pool.md)         | `<jh/concurrent/pointer_pool.h>`  | ✅ Stable | Weak-pointer observer for immutable heap objects that must stay at fixed addresses. A final template parameter selects the RW mutex. |
+| [`observe_pool<T>`](observe_pool.md)                   | `<jh/concurrent/observe_pool.h>`  | ✅ Stable | Duck-typed alias of `pointer_pool` with an optional RW mutex parameter. |
+| [`resource_pool<Key, Value, Alloc>`](resource_pool.md) | `<jh/concurrent/resource_pool.h>` | ✅ Stable | Simplified alias of `flat_pool` keyed by `jh::hash<Key>`, plus `resource_pool_set<Key>`; both accept an optional RW mutex parameter. |
 
 ---
 
@@ -51,29 +51,36 @@ pools, include `<jh/pool>` so that `jh::observe_pool`/`jh::resource_pool` sit di
 * **Caveat:** when `jh::hash<T>` cannot be deduced (e.g., types inside `std` such as `std::variant` that forbid
   registering `std::hash`, ADL `hash`, or member `hash()`), instantiate the raw `jh::conc::*_pool` template with
   explicit `Hash`/`Eq` functors, because the auto-deduction path has no hook into closed namespaces.
-* **Multi-commit:** `occ_box` optionally enables multi-box transactions via `JH_OCC_ENABLE_MULTI_COMMIT` (default `1`),
-  placing multi-write commits ahead of single writers and readers.
+* **Multi-commit:** `occ_box` optionally enables multi-box transactions via `JH_OCC_ENABLE_MULTI_COMMIT` (default `1`);
+  participating boxes reserve commit gates while the transaction validates and publishes its states.
 
 ---
 
 ## Pool platform support
 
-The pool components use standard C++ mutexes for synchronization. A conforming
-mutex synchronizes a release with a later successful acquisition on the same
+The pool components use standard C++ mutexes by default and accept a custom
+RW mutex type. A conforming mutex synchronizes a release with a later
+successful acquisition on the same
 mutex; see the [C++ mutex requirements](https://eel.is/c++draft/thread.mutex.requirements)
 and [shared-mutex requirements](https://eel.is/c++draft/thread.sharedmutex.requirements.general).
 Correctly protected data has the corresponding visibility guarantees on every
 conforming platform.
 
-The pool data-structure algorithms have complete synchronization coverage and
-are data-race-free under the ISO C++ model. The project has measured
-high-contention instability on Windows MinGW builds at the boundary between
-the C++ standard library and the Windows runtime implementations. The library
-and runtime paths each assume the other supplies part of the lock/atomic
-ordering, leaving an implementation gap in the tested configurations. This is
-an implementation-integration problem, independent of the standard's mutex
-contract and the pool algorithms' lock coverage. The exact faulty step within
-that boundary has not been isolated.
+`pointer_pool::acquire()` holds the pool's RW mutex across capacity checks,
+cleanup, and insertion. Under a mutex that supplies the required cross-thread
+synchronization, the pool's own accesses are data-race-free. The
+`rw_mutex_like` concept checks the API shape; it cannot establish the runtime
+synchronization quality of a particular library build. Callers must serialize
+concurrent move assignments involving the same pool.
+
+`pointer_pool<T, Hash, Eq, Mutex>`, `observe_pool<T, Mutex>`,
+`flat_pool<Key, Value, Hash, Alloc, Mutex>`, and the `resource_pool` aliases
+accept a custom RW mutex. A platform-specific implementation that has been
+verified to provide the required synchronization can be supplied when the default mutex
+shows a measured visibility problem. The project has measured high-contention
+instability on Windows MinGW builds; the particular standard library and
+runtime combination must be identified before
+assigning its cause.
 
 Windows provides [slim reader/writer (SRW) locks](https://learn.microsoft.com/en-us/windows/win32/sync/slim-reader-writer--srw--locks)
 as lightweight, single-process synchronization objects. Microsoft describes
@@ -84,15 +91,13 @@ locks. This platform distinction is relevant to the measured Windows gap; the
 exact backend selected by a particular C++ standard library must be checked
 for that build.
 
-On Windows, the pool implementations use `posix_smtx_*_lock` aliases, which
-select RAII adapters that add `seq_cst` fences at lock boundaries. Testing has
+On Windows, several pool lock sites use `posix_smtx_*_lock` aliases, which
+select RAII adapters that add `seq_cst` fences at those boundaries. Testing has
 shown that these fences improve behavior on the affected configurations. They
 cannot complete a missing library/runtime synchronization path for independent
 atomic operations: a fence alone does not create a release/acquire relationship
-for an unrelated atomic value. This limit concerns the Windows implementation
-boundary, not a missing lock in the pool algorithm. The mitigation does not
-guarantee every high-contention workload. Other platforms use standard lock
-adapters. The
+for an unrelated atomic value. The mitigation does not guarantee every
+high-contention workload. Other platforms use standard lock adapters. The
 [`strong_lock` reference](../synchronous/strong_lock.md) describes the
 adapter behavior. The [C++ fence rules](https://eel.is/c++draft/atomics.fences)
 specify when fences participate in synchronization through atomic operations.
