@@ -366,9 +366,10 @@ and `false` when using the **header-only** (`jh::jh-toolkit`) mode.
 ## 🔹 Performance Notes
 
 * Immutable buffer → zero reallocation.
-* Constant-time hash and comparison (after first call).
+* The cached hash is constant-time after its first computation.
+* Content comparison may scan the full string.
 * Read-dominant concurrency optimized.
-* Memory footprint: pointer + size + cached hash (≈ 24 bytes).
+* Each instance stores a pointer, size, one-time flag, and cached-hash state; the character buffer is allocated separately.
 * **Under default `auto_trim = true`, performance matches `std::string` within ±2%**,
   confirming that trimming introduces no measurable cost
   while ensuring that semantically equivalent strings are normalized.
@@ -378,8 +379,8 @@ and `false` when using the **header-only** (`jh::jh-toolkit`) mode.
 ## 🧩 Summary
 
 `jh::immutable_str` is the **core immutable text primitive** of the JH Toolkit.  
-It enforces strict immutability and thread safety without runtime overhead,
-and integrates seamlessly with the toolkit's pool and atomic systems.
+It exposes read-only string data for safe concurrent reads and integrates
+with the toolkit's pool and atomic systems.
 
 ---
 

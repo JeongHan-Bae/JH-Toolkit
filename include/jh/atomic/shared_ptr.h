@@ -28,7 +28,7 @@
 #include <memory>
 #include <utility>
 
-#if !defined(JH_ATOMIC_SMART_PTR_FORCE_FALLBACK) && defined(__cpp_lib_atomic_shared_ptr) && __cpp_lib_atomic_shared_ptr >= 201711L
+#if defined(__cpp_lib_atomic_shared_ptr) && __cpp_lib_atomic_shared_ptr >= 201711L
 #define JH_HAS_ATOMIC_SMART_PTR 1
 #else
 #define JH_HAS_ATOMIC_SMART_PTR 0

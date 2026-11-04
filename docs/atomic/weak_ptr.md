@@ -8,7 +8,7 @@
 
 The class stores a `std::weak_ptr<T>` for concurrent access. Construct it from a weak or shared handle, use `store()` to publish a weak handle, `load()` to obtain a weak snapshot, and `exchange()` to replace one. Call `lock()` on the loaded snapshot to acquire shared ownership. It also provides value assignment and conversion, `value_type`, `is_lock_free()`, and `is_always_lock_free`. The atomic slot itself is non-copyable and non-movable.
 
-When the active compiler and standard library expose `__cpp_lib_atomic_shared_ptr >= 201711L`, the operations forward to a private `std::atomic<std::weak_ptr<T>>` with the corresponding native behavior. Otherwise the slot uses one mutex to synchronize access to its stored weak handle. The compatibility path reports `false` from both lock-free queries. Use valid standard load and store memory orders; mutex synchronization may be stronger than a requested relaxed order.
+`weak_ptr.h` includes the shared pointer header, which loads `<memory>` and `<atomic>` before checking `__cpp_lib_atomic_shared_ptr >= 201711L`. When available, the exposed operations forward to a private `std::atomic<std::weak_ptr<T>>`. Otherwise the slot uses one mutex to synchronize its stored weak handle and reports `false` from both lock-free queries. Use valid standard load and store memory orders; mutex synchronization may be stronger than a requested relaxed order.
 
 See [`<jh/atomic_ptr>`](../entry_points/atomic_ptr.md) for the aggregate header and [shared pointer slots](shared_ptr.md) for owning storage.
 
