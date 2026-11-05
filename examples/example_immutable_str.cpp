@@ -25,8 +25,8 @@
  * Specifically:
  * <ul>
  *   <li><code>jh::immutable_str</code> — immutable runtime string type.</li>
- *   <li><code>jh::make_atomic</code> — factory returning <code>std::shared_ptr&lt;immutable_str&gt;</code>.</li>
- *   <li><code>jh::safe_from</code> — thread-safe substring-based construction helper.</li>
+ *   <li><code>jh::make_atomic</code> — factory returning a shared string handle.</li>
+ *   <li><code>jh::safe_from</code> — locked substring-copy helper.</li>
  *   <li><code>jh::shared_str_ptr</code> and <code>jh::weak_str_ptr</code> — shared/weak aliases.</li>
  * </ul>
  * </p>
@@ -40,16 +40,13 @@
  * <p>
  * In modern C++, immutability is often expressed only through
  * const-qualified interfaces. However, <code>jh::immutable_str</code>
- * enforces immutability at both the API and memory level.
- * The underlying character storage is never exposed as writable memory,
- * and no mutation operations are provided.
+ * exposes no public mutation operation. Its character storage is exposed
+ * only through read-only views.
  * </p>
  *
  * <p>
- * Unlike <code>const std::string</code>, which may still allow
- * modification via const-cast or internal reallocation behavior,
- * <code>jh::immutable_str</code> represents a truly immutable runtime
- * string abstraction.
+ * Callers must not cast away constness to write through a returned pointer:
+ * doing so violates the class contract and can invalidate the cached hash.
  * </p>
  *
  * <p>
@@ -93,7 +90,7 @@
  * </ul>
  *
  * <p>
- * Combined with <code>jh::observe_pool&lt;jh::immutable_str&gt;</code>,
+ * Combined with <code>jh::observe_pool&lt;jh::immutable_str&lt;&gt;&gt;</code>,
  * immutable strings can be deduplicated and shared safely via
  * <code>std::shared_ptr</code>, allowing automatic reclamation
  * when no longer referenced.
@@ -115,33 +112,27 @@ static EnsureOutput ensure_output_setup;
  *
  * <p>
  * By default, <code>jh::immutable_str</code> enables automatic trimming
- * of leading and trailing ASCII whitespace:
+ * of leading and trailing ASCII whitespace. The header supplies
+ * <code>true</code> when the program does not configure another default.
  * </p>
+ *
+ * <p>For a different default, configure the whole program through a
+ * shared project header or compiler definitions. A local definition before
+ * inclusion is suitable only if this is the sole translation unit in the
+ * program that includes <code>&lt;jh/immutable_str&gt;</code>.</p>
  *
  * @code
- * #define JH_IMMUTABLE_STR_AUTO_TRIM true
+ * // CMake: link every consumer to the same policy target.
+ * add_library(project_config INTERFACE)
+ * target_compile_definitions(project_config INTERFACE JH_IMMUTABLE_STR_AUTO_TRIM=false)
+ * target_link_libraries(your_target PRIVATE project_config)
  * @endcode
- *
- * <p>
- * The following example shows explicit definition before inclusion:
- * </p>
- *
- * @code
- * #define JH_IMMUTABLE_STR_AUTO_TRIM ... // true or false
- * #include &lt;jh/immutable_str&gt;
- * @endcode
- *
- * <p>
- * In normal usage, you do not need to define this macro manually.
- * The default is already <code>true</code>. This example exists only
- * to demonstrate how configuration must occur <b>before inclusion</b>.
- * </p>
  *
  * <h3>Configuration Rule</h3>
  *
  * <ul>
- *   <li>The macro must be defined before any inclusion of
- *       <code>&lt;jh/immutable_str&gt;</code>.</li>
+ *   <li>Set the macro before the first direct or indirect inclusion of
+ *       <code>&lt;jh/immutable_str&gt;</code> in every relevant translation unit.</li>
  *   <li>It must be a boolean literal: <code>true</code> or <code>false</code>.</li>
  *   <li>All translation units must use the same value.</li>
  * </ul>
@@ -169,14 +160,8 @@ static EnsureOutput ensure_output_setup;
  * <h3>Performance Considerations</h3>
  *
  * <p>
- * In typical engineering workloads, input strings contain little or no
- * boundary whitespace. In such cases, trimming introduces virtually no
- * measurable overhead.
- * </p>
- *
- * <p>
- * Benchmarks show initialization performance remains close to
- * <code>std::string</code> construction.
+ * Trimming scans boundary ASCII whitespace at construction. Its cost depends
+ * on the input length and the amount of boundary whitespace.
  * </p>
  *
  * <p>
@@ -222,8 +207,6 @@ static EnsureOutput ensure_output_setup;
  * semantically valid string abstraction rather than a raw memory container.
  * </p>
  */
-#define JH_IMMUTABLE_STR_AUTO_TRIM true
-
 #include <jh/immutable_str>
 
 #include <iostream>
@@ -363,7 +346,7 @@ namespace example {
 /**
  * @page ImmutableStr_StringView_Constructor
  *
- * @brief Thread-safe <code>std::string_view</code>-based initialization.
+ * @brief Copies a protected <code>std::string_view</code> while holding a lock.
  *
  * <h3>Constructor Form</h3>
  *
@@ -376,6 +359,9 @@ namespace example {
  * This overload allows constructing an immutable string from any object
  * convertible to <code>std::string_view</code>, together with a mutex
  * that guards the underlying memory region.
+ * The conversion to <code>std::string_view</code> happens before the lock is
+ * acquired, so the caller must keep that view valid during the conversion
+ * and until the constructor obtains the lock.
  * </p>
  *
  * <h3>Mutex Requirements</h3>
@@ -558,16 +544,17 @@ namespace example {
  * </p>
  *
  * @code
- * using shared_str_ptr = std::shared_ptr&lt;jh::immutable_str&gt;;
+ * using shared_type = jh::shared_str_ptr&lt;&gt;;
  * @endcode
  *
  * <h3>Factory Functions</h3>
  *
  * @code
- * inline shared_str_ptr make_atomic(const char* str);
+ * template&lt;bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM&gt;
+ * jh::shared_str_ptr&lt;AutoTrim&gt; make_atomic(const char* str);
  *
- * template <jh::concepts::mutex_like M>
- * inline shared_str_ptr safe_from(std::string_view sv, M& mtx);
+ * template&lt;bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM, jh::concepts::mutex_like M&gt;
+ * jh::shared_str_ptr&lt;AutoTrim&gt; safe_from(std::string_view sv, M& mtx);
  * @endcode
  *
  * <p>
@@ -579,10 +566,10 @@ namespace example {
  *
  * <ul>
  *   <li><code>make_atomic(str)</code> is equivalent to:<br/>
- *       <code>std::make_shared&lt;jh::immutable_str&gt;(str)</code></li>
+ *       <code>std::make_shared&lt;jh::immutable_str&lt;&gt;&gt;(str)</code></li>
  *
  *   <li><code>safe_from(sv, mtx)</code> is equivalent to:<br/>
- *       <code>std::make_shared&lt;jh::immutable_str&gt;(sv, mtx)</code></li>
+ *       <code>std::make_shared&lt;jh::immutable_str&lt;&gt;&gt;(sv, mtx)</code></li>
  * </ul>
  *
  * <p>
@@ -663,7 +650,7 @@ namespace example {
  * @brief Shared handles and atomic slots for immutable strings.
  *
  * <p><code>jh::shared_str_ptr</code> is a copyable
- * <code>std::shared_ptr&lt;jh::immutable_str&gt;</code>. Its ownership control
+ * <code>std::shared_ptr&lt;jh::immutable_str&lt;&gt;&gt;</code>. Its ownership control
  * block can be shared between threads, while concurrent modification of one
  * handle object requires synchronization.</p>
  *
@@ -677,7 +664,7 @@ namespace example {
 /**
  * @page ImmutableStr_Observe_Pool
  *
- * @brief Deduplication using <code>jh::observe_pool&lt;jh::immutable_str&gt;</code>.
+ * @brief Deduplication using <code>jh::observe_pool&lt;jh::immutable_str&lt;&gt;&gt;</code>.
  *
  * <p>
  * The JH Toolkit provides <code>jh::observe_pool&lt;T&gt;</code> as a
@@ -703,7 +690,7 @@ namespace example {
  * </p>
  *
  * @code
- * std::shared_ptr<T>
+ * std::shared_ptr&lt;T&gt;
  * @endcode
  *
  * <p>
@@ -719,30 +706,6 @@ namespace example {
  *   <li><code>.c_str()</code> addresses become identical for equal content.</li>
  * </ul>
  *
- * <h3>Platform Note (Windows)</h3>
- *
- * <p>
- * On Windows, especially when using MinGW toolchains with MSVCRT/UCRT,
- * subtle runtime visibility gaps may appear under high contention.
- * </p>
- *
- * <p>
- * Since <code>observe_pool::acquire()</code> is relatively heavy,
- * this effect can become amplified in high-thread-count scenarios.
- * </p>
- *
- * <p>
- * Recommendation:
- * </p>
- *
- * <ul>
- *   <li>Prefer single-threaded or low-thread-count usage on Windows.</li>
- *   <li>Avoid extreme contention patterns.</li>
- * </ul>
- *
- * <p>
- * See also: <code>jh::observe_pool</code> documentation.
- * </p>
  */
 
 #include <memory>
@@ -779,7 +742,7 @@ namespace example {
         // not compile or may not provide the intended address representation, which is an antipattern in C++20
 
         // Pool-based acquisition (deduplicated)
-        jh::observe_pool<jh::immutable_str> pool;
+        jh::observe_pool<jh::immutable_str<>> pool;
 
         auto p1 = pool.acquire("DedupTest");
         auto p2 = pool.acquire("DedupTest");
@@ -832,53 +795,18 @@ namespace example {
  *   <li>Equality compares underlying string values.</li>
  *   <li>Supports heterogeneous lookup with <code>const char*</code>
  *       and string literals.</li>
- *   <li>Respects <code>JH_IMMUTABLE_STR_AUTO_TRIM</code> at compile time.</li>
+ *   <li>Each specialization normalizes C-string lookup values using its own
+ *       <code>AutoTrim</code> policy.</li>
  *   <li>Uses <code>is_transparent</code> to enable
- *       <code>find(lit)</code> where <code>lit</code> is a string literal predefined as <code>const char*</code>.</li>
+ *       <code>find("key")</code> with a string literal.</li>
  * </ul>
  *
- * @section ImmutableStr_Windows_Concurrency Windows Concurrency Note
+ * @section ImmutableStr_Concurrent_Containers Concurrent Container Access
  *
- * <p>
- * When using <code>jh::atomic_str_hash</code>,
- * <code>jh::atomic_str_eq</code>, or
- * <code>jh::observe_pool&lt;jh::immutable_str&gt;</code>
- * under Windows, additional care is recommended.
- * </p>
- *
- * <h3>Background</h3>
- *
- * <ul>
- *   <li><code>std::shared_ptr</code> maintains an internal atomic
- *       reference-count control block.</li>
- *   <li>Container-level synchronization (external mutexes) does not
- *       guarantee ordering alignment with that internal atomic state.</li>
- *   <li>On Windows, particularly when using MinGW toolchains in
- *       combination with MSVCRT or UCRT, subtle visibility gaps
- *       may appear under heavy contention.</li>
- *   <li>Operations such as <code>observe_pool::acquire()</code>,
- *       content-based hashing, and heterogeneous equality comparison
- *       are relatively heavy and can amplify this behavior.</li>
- * </ul>
- *
- * <h3>Recommendation</h3>
- *
- * <ul>
- *   <li>Prefer single-threaded usage on Windows when practical.</li>
- *   <li>If multi-threaded, keep thread counts modest.</li>
- *   <li>Avoid extreme high-frequency concurrent insertion and lookup patterns.</li>
- *   <li>Reduce contention pressure where possible.</li>
- * </ul>
- *
- * <p>
- * This note does not imply undefined behavior in standard-conforming
- * environments. Rather, it reflects practical engineering experience
- * with Windows runtime/toolchain interactions under stress conditions.
- * </p>
- *
- * <p>
- * See also: <code>jh::observe_pool</code> documentation.
- * </p>
+ * <p>Protect an <code>std::unordered_map</code> or
+ * <code>std::unordered_set</code> when threads modify it concurrently.
+ * Atomic string slots protect publication of a shared handle; container
+ * synchronization remains the caller's responsibility.</p>
  */
 
 namespace example {
@@ -888,10 +816,10 @@ namespace example {
         std::cout << "\n===== atomic_str_hash / atomic_str_eq demo =====\n\n";
 
         using Map = std::unordered_map<
-                jh::shared_str_ptr,
+                jh::shared_str_ptr<>,
                 int,
-                jh::atomic_str_hash,
-                jh::atomic_str_eq>;
+                jh::atomic_str_hash<>,
+                jh::atomic_str_eq<>>;
 
         Map registry;
 
@@ -1016,7 +944,7 @@ namespace example {
         // 1. c_str()
         const char* raw = imm.c_str();
         std::cout << "c_str(): " << raw << "\n";
-        // using const_cast on raw is UB, the underlying memory is truly immutable and must not be modified.
+        // Writing through a cast-away const pointer violates immutable_str's contract.
 
         // 2. view()
         std::string_view sv = imm.view();
@@ -1054,15 +982,12 @@ int main() {
     //
     // In large industrial codebases, macro values may be overridden
     // unintentionally via build flags or transitive includes.
-    // By asserting against immutable_str::auto_trim, we guarantee that
+    // By asserting against immutable_str<>::auto_trim, we guarantee that
     // the effective compile-time policy matches the intended value.
     //
-    // If the macro is incorrectly defined (or inconsistently defined across
-    // translation units), compilation will fail immediately.
-    //
-    // This prevents subtle runtime inconsistencies in hash/equality behavior
-    // and ensures deterministic trimming semantics across the program.
-    static_assert(jh::immutable_str::auto_trim == true); // or false, depending on the intended configuration
+    // This checks this translation unit. Translation units that exchange
+    // default-policy types must use a consistent macro value.
+    static_assert(jh::immutable_str<>::auto_trim == true); // or false, depending on the intended configuration
     example::example_basic_immutable_str();
     example::example_string_view_initialization();
     example::example_shared_factories();

@@ -40,7 +40,9 @@ void tiny_test_case_1() {
             std::pair{"blue"sv, 3},
         },
         -1);
-    jh::test::tiny_test::expect(static_cast<bool>((map[jh::immutable_str("blue")] == 3)), "map[jh::immutable_str(\"blue\")] == 3");
+    jh::test::tiny_test::expect(static_cast<bool>((map[jh::immutable_str("blue")] == 3)), "map[jh::immutable_str<>(\"blue\")] == 3");
+    jh::test::tiny_test::expect(map[jh::immutable_str<true>("blue")] == 3, "trim policy key is accepted");
+    jh::test::tiny_test::expect(map[jh::immutable_str<false>("blue")] == 3, "raw policy key is accepted");
 
 }
 }

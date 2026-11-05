@@ -421,7 +421,7 @@ namespace test {
  * std::string itself is <b>not</b> an immutable type — its internal buffer may change.
  * This test only demonstrates that it <b>can</b> be pooled because it satisfies
  * <code>std::hash&lt;std::string&gt;</code> and <code>operator==</code<.
- * For stable, non-static, content-based pooling, use <code>jh::observe_pool&lt;jh::immutable_str&gt;<code> instead.
+ * For stable, non-static, content-based pooling, use <code>jh::observe_pool&lt;jh::immutable_str&lt;&gt;&gt;</code> instead.
 */
 
 namespace test {

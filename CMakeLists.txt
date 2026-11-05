@@ -13,8 +13,8 @@ set(PROJECT_VERSION 1.4.1)
 #
 # 1. Precompiled Components
 #    A small portion of the library provides precompiled implementations.
-#    When linking against `jh-toolkit-static`, those compiled units are built
-#    with Release-level optimizations by design.
+#    When linking against `jh-toolkit-static`, those compiled units use the
+#    selected build configuration. Release builds can apply stronger flags.
 #
 #    IMPORTANT:
 #    Template code remains governed by the consumer project's compilation

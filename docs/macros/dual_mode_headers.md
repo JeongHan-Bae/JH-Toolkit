@@ -1,202 +1,89 @@
-# 🔮 **JH Toolkit — Dual-Mode Header System**
+# Dual-mode headers
 
-📁 **Headers:** `<jh/macros/header_begin.h>`, `<jh/macros/header_end.h>`  
-📦 **Namespace:** `/` *(pure macro scope)*  
-📅 **Version:** 1.3.3  
-👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
+The implementation lives in one header. Header-only users compile it with
+their own code; static-library users link a precompiled form. Keeping the body
+in one place removes the need to synchronize a header implementation with a
+separate `.cpp` implementation. Precompilation lets the library build use
+chosen flags, such as Release optimizations, and lets consumers reuse those
+compiled objects. Runtime speed depends on the selected flags and workload.
 
-<div align="right">
+`<jh/macros/header_begin.h>` and `<jh/macros/header_end.h>` select where a
+header emits functions supplied by a static library. The guarded block can
+contain ordinary functions and members of a concrete class-template
+specialization such as `runtime_arr<bool>`. Primary templates and templates
+with remaining type parameters stay visible in the header.
 
-[![Back to README](https://img.shields.io/badge/%20Back%20to%20README-blue?style=flat-square)](../../README.md)
-[![Back to Repository](https://img.shields.io/badge/%20Back%20to%20Repository-green?style=flat-square)](overview.md)
+| Build setting | Guarded definitions | `JH_INLINE` |
+|---|---|---|
+| No mode macro | Emitted in the including translation unit | `inline` |
+| `JH_HEADER_IMPL_BUILD` | Emitted in the library implementation translation unit | Empty |
+| `JH_HEADER_NO_IMPL` | Supplied by the linked library | Unused for guarded definitions |
 
-</div>
+## Writing a dual-mode header
 
----
-
-## 🏷️ Overview
-
-The **Dual-Mode Header System** is a minimal macro framework that enables a single header
-to serve both **header-only** and **compiled** (static/shared) use cases
-without maintaining separate `.cpp` and `.h` files.  
-
-It provides two cooperating headers:
-
-```cpp
-#include <jh/macros/header_begin.h>
-...
-#include <jh/macros/header_end.h>
-```
-
-Together they allow one `.h` file to safely express declarations and definitions
-depending on the current **build context**.  
-
-> This mechanism is used by [`jh::immutable_str`](../core/immutable_str.md)
-> and `jh::runtime_arr` to realize JH Toolkit's
-> *"write once, build differently"* principle.
-
----
-
-## 🔹 Core Behavior
-
-| Mode                  | Macro                  | Effect                               | Typical Use                         |
-|-----------------------|------------------------|--------------------------------------|-------------------------------------|
-| *(none)*              | *(none)*               | Emit `inline` definitions            | Default header-only include         |
-| **Implementation TU** | `JH_HEADER_IMPL_BUILD` | Emit non-inline (strong) definitions | Used in `.cpp` during library build |
-| **Interface-only**    | `JH_HEADER_NO_IMPL`    | Emit declarations only               | Used by prebuilt/static consumers   |
-
-`header_begin.h` automatically sets the internal macro
-`JH_INTERNAL_SHOULD_DEFINE` based on these conditions,
-while `header_end.h` cleans up all temporary definitions.  
-Multiple inclusions are intentional and safe — the first inclusion
-locks the behavior per translation unit (TU).
-
----
-
-## 🔹 Correct Usage Pattern
+Declare ordinary functions and concrete specializations before the guarded
+block. Put their definitions between the two helper headers. Keep generic
+template definitions outside the block.
 
 ```cpp
+#pragma once
+
+int non_template_helper();
+
+template<typename T>
+struct sample_box { T value; };
+template<>
+struct sample_box<bool> { bool value() const; };
+
 #include <jh/macros/header_begin.h>
-
-// === Declarations ===
-int foo_sum(int a, int b);  // always visible
-
-// === Implementations ===
 #if JH_INTERNAL_SHOULD_DEFINE
-JH_INLINE int foo_sum(int a, int b) { return a + b; }
-#endif  // JH_INTERNAL_SHOULD_DEFINE
-
+JH_INLINE int non_template_helper() { return 42; }
+JH_INLINE bool sample_box<bool>::value() const { return true; }
+#endif
 #include <jh/macros/header_end.h>
 ```
 
-✅ **Rules:**
+The begin header sets `JH_INTERNAL_SHOULD_DEFINE` and `JH_INLINE`. The end
+header clears those temporary macros. Both helper headers are included each
+time a dual-mode header needs them. The dual-mode header's `#pragma once` keeps
+its selected mode consistent within a translation unit.
 
-* All public declarations must appear **before** the conditional block.  
-* Only definitions should be wrapped by `#if JH_INTERNAL_SHOULD_DEFINE`.  
-* Functions depending on user-side compile-time parameters
-  should remain visible outside conditional guards.
+## Compilation units
 
----
+For ordinary functions, the `.cpp` file selects implementation mode and
+includes the header. `src/serio_tu.cpp` follows this pattern:
 
-## 🔹 Automatic Mode Resolution
+```cpp
+#define JH_HEADER_IMPL_BUILD
+#include "jh/serialize_io/base64.h"
+```
 
-Unlike traditional header/source separation,
-this system does not require users to define any macros manually.  
-
-### In the Library Build (author side)
-
-Example from `immutable_str.cpp`:
+For a class template, an instantiation file also names the specializations
+to precompile. `src/immutable_str_inst.cpp` does this for both policies:
 
 ```cpp
 #define JH_HEADER_IMPL_BUILD
 #include "jh/core/immutable_str.h"
+
+template class jh::immutable_str<true>;
+template class jh::immutable_str<false>;
 ```
 
-This single inclusion generates all strong definitions for that module.  
-No parallel `.cpp` logic is needed — the header itself provides the body.  
-All other internal or dependent headers included later automatically respect this mode.
+Both files use the definitions already present in their headers.
 
-### In Consumer Code (user side)
+## Using JH-Toolkit
 
-Users simply write:
+Link `jh::jh-toolkit` for header-only use or `jh::jh-toolkit-static` for the
+static library. The static target supplies `JH_HEADER_NO_IMPL` to consumers.
+Application code includes the normal entry header:
 
 ```cpp
-#include <jh/immutable_str.h>
+#include <jh/immutable_str>
 ```
 
-They **never** define any macros.  
-CMake automatically injects the correct configuration via exported targets.
+`immutable_str` keeps its template member definitions visible. Its two
+non-template initialization helpers use the guarded block.
 
-```cmake
-target_compile_definitions(jh-toolkit-static INTERFACE JH_HEADER_NO_IMPL)
-```
-
-This ensures:
-
-* The prebuilt library exposes only declarations.  
-* Header-only builds remain inline and self-contained.  
-* Consumers do not need to know or care about internal build modes.  
-
----
-
-## 🔹 Integration with CMake
-
-Inside JH Toolkit, both modes are exported automatically:
-
-| Target                  | Behavior                | Definition Source       |
-|-------------------------|-------------------------|-------------------------|
-| `jh::jh-toolkit`        | Header-only mode        | Inline everywhere       |
-| `jh::jh-toolkit-static` | Prebuilt static library | Linked definitions only |
-
-Users select behavior simply by linking a different target —
-no preprocessor macros, no duplicated headers.
-
-This structure guarantees consistent, ODR-safe linkage across all usage scenarios.
-
----
-
-## 🔹 Why It Matters
-
-For **library authors**,
-the system eliminates parallel maintenance of `.h` / `.cpp` files
-and prevents desynchronization between declarations and definitions.
-
-For **users**,
-it offers a clean, zero-macro interface — behavior is automatically inferred
-by which build target is linked.  
-
-This results in:  
-
-* Deterministic compile-time mode resolution
-* Seamless interoperation between inline and prebuilt variants
-* Simplified release and packaging through standard CMake exports
-
----
-
-## 🔹 Embedding in Your Own Project
-
-You can safely copy and use this system independently — it is completely standalone.
-
-**To integrate:**
-
-1. Copy both headers:
-
-   ```
-   jh/macros/header_begin.h  
-   jh/macros/header_end.h
-   ```
-2. Include them around your declarations and definitions as shown above.  
-3. If your project also depends on JH Toolkit,
-   rename the macros (e.g. `MYLIB_HEADER_IMPL_BUILD`)
-   to avoid cross-pollution with `JH_` definitions.  
-4. You may modify the macros freely,
-   as long as you preserve the Apache 2.0 license header at the top.
-
----
-
-## 🧠 Summary
-
-| Aspect                  | Description                               |
-|-------------------------|-------------------------------------------|
-| **Category**            | Build-mode coordination macros            |
-| **Kind**                | Dual-header system                        |
-| **Headers**             | `header_begin.h`, `header_end.h`          |
-| **Namespace**           | `/` (macro scope)                         |
-| **Supported Compilers** | Clang, GCC                                |
-| **Include Guards**      | None (multi-inclusion intended)           |
-| **Automatic Mode**      | Inferred via build context / CMake target |
-| **Used By**             | `jh::immutable_str`, `jh::runtime_arr`    |
-| **Standalone Use**      | Safe to embed directly                    |
-| **ODR Safety**          | Guaranteed per TU mode lock               |
-| **User Macros**         | None required                             |
-
----
-
-> **Design Philosophy**  
-> The Dual-Mode Header System embodies JH Toolkit's core idea:  
-> **one header, one truth.**  
-> Library authors build once with `JH_HEADER_IMPL_BUILD`;  
-> consumers link and include normally — no duplication, no hidden logic.  
-> The system provides deterministic, reproducible behavior
-> across inline, static, and shared contexts —  
-> making cross-target builds *cleaner, safer, and simpler by design.*
+Use one build mode for a target. Configure `JH_IMMUTABLE_STR_AUTO_TRIM`
+consistently across translation units that include `immutable_str`; that macro
+sets the default policy and is separate from the dual-mode controls.

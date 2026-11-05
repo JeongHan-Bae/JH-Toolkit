@@ -480,7 +480,7 @@ ctest --test-dir build-debug --output-on-failure
 #include <iostream>
 
 int main() {
-    jh::observe_pool<jh::immutable_str> pool;
+    jh::observe_pool<jh::immutable_str<>> pool;
     const auto str = pool.acquire("Hello, Oree!");
     std::cout << str->view() << std::endl;
 }

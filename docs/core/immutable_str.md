@@ -3,7 +3,6 @@
 📁 **Header:** `<jh/core/immutable_str.h>`  
 🔄 **Forwarding Header:** `<jh/immutable_str>`  
 📦 **Namespace:** `jh`  
-📅 **Version:** 1.3.5+ (2025)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -24,8 +23,8 @@
 
 ### `JH_IMMUTABLE_STR_AUTO_TRIM`
 
-Controls whether **all immutable strings automatically trim** leading and trailing ASCII whitespace
-during construction.
+Supplies the default template argument for the immutable string API family. Explicit
+`<true>` and `<false>` specializations select their own construction policy.
 
 | Macro value        | Behavior                                                   |
 |--------------------|------------------------------------------------------------|
@@ -35,9 +34,72 @@ during construction.
 **Notes**
 
 * This macro is evaluated **at compile time** — changing it later has no effect.  
-* All translation units must use the same value for deterministic behavior.  
-* When `true`, trimming incurs **no measurable performance cost** — benchmarks show parity with `std::string` (within ±2%).  
-* Trimmed behavior guarantees that two strings differing only by boundary whitespace are semantically equivalent.
+* Configure an override once for the program, through a shared configuration header included before `<jh/immutable_str>` in every relevant translation unit, or through compiler definitions applied consistently to every target that includes it.
+* A source-local `#define` is appropriate only when exactly one translation unit in the program includes this header. Different defaults across translation units can violate the one-definition rule even when explicit specializations are also used.
+* Explicit `immutable_str<true>` and `immutable_str<false>` retain distinct type identities regardless of the configured default.
+* Under the Trim policy, strings differing only by boundary ASCII whitespace store the same content.
+
+---
+
+## Policy specializations and migration
+
+Every policy type uses `template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM>`:
+
+```cpp
+using default_text = jh::immutable_str<>;
+using raw_text = jh::immutable_str<false>;
+using trim_text = jh::immutable_str<true>;
+
+using raw_handle = jh::shared_str_ptr<false>;
+using raw_observer = jh::weak_str_ptr<false>;
+using raw_slot = jh::atomic_str_slot<false>;
+using raw_weak_slot = jh::atomic_weak_str_slot<false>;
+using raw_hash = jh::atomic_str_hash<false>;
+using raw_eq = jh::atomic_str_eq<false>;
+```
+
+C++20 object declarations can omit `<>` for every default-policy component:
+
+```cpp
+jh::immutable_str text{"hello"};
+jh::shared_str_ptr shared;
+jh::weak_str_ptr weak;
+jh::atomic_str_slot slot;
+jh::atomic_weak_str_slot weak_slot;
+jh::atomic_str_hash hash;
+jh::atomic_str_eq eq;
+```
+
+In type contexts such as `using`, `std::unordered_set<...>`, and
+`jh::observe_pool<...>`, use `jh::immutable_str<>`, `jh::shared_str_ptr<>`,
+and the corresponding `<>` forms for slots, hash, and equality. The type and
+static-library symbol changes require existing type-context declarations to be updated.
+
+The factories accept an optional policy parameter:
+
+```cpp
+auto raw = jh::make_atomic<false>(" hello ");
+auto slot = jh::make_atomic_slot<false>(" hello ");
+std::mutex source_lock;
+auto safe = jh::safe_from<false>(std::string_view{" hello "}, source_lock);
+auto safe_slot = jh::safe_from_slot<false>(std::string_view{" hello "}, source_lock);
+```
+
+A hash and equality pair must use the same policy as its key type:
+
+```cpp
+std::unordered_set<jh::shared_str_ptr<false>,
+                   jh::atomic_str_hash<false>,
+                   jh::atomic_str_eq<false>> raw_set;
+raw_set.insert(jh::make_atomic<false>(" hello "));
+raw_set.contains(" hello ");
+```
+
+`jh::observe_pool<jh::immutable_str<true>>` and
+`jh::observe_pool<jh::immutable_str<false>>` are distinct pools. In static mode,
+both policy specializations are linked from the library; in header-only mode,
+both are emitted from the header. The macro must be uniform across translation
+units that include the header in one program.
 
 ---
 
@@ -50,7 +112,7 @@ It guarantees:
 
 * No post-construction modification.
 * Thread-safe concurrent reads.
-* Deterministic hash and equality semantics.
+* Content-based hash and equality semantics within a program.
 
 Ideal for:
 
@@ -95,12 +157,13 @@ jh::immutable_str hello("Hello, world!");
 ```
 
 Creates an immutable copy of a null-terminated C-string.  
-If `JH_IMMUTABLE_STR_AUTO_TRIM` is `true`, leading/trailing whitespace is automatically removed.  
+The default specialization trims leading/trailing ASCII whitespace when
+`JH_IMMUTABLE_STR_AUTO_TRIM` is `true`; an explicit policy uses its own value.
 A `nullptr` input becomes an empty string.
 
 ---
 
-### From String View (Safe Mode, since 1.3.5)
+### From String View (Safe Mode)
 
 ```cpp
 std::string buffer = "Config Value";
@@ -109,7 +172,7 @@ std::mutex buffer_lock;
 jh::immutable_str imm(std::string_view(buffer), buffer_lock);
 ```
 
-Starting from **v1.3.5**, `jh::immutable_str` provides a general-form safe constructor:
+`jh::immutable_str` provides a general-form safe constructor:
 
 ```cpp
 template <jh::concepts::mutex_like M>
@@ -121,8 +184,7 @@ This overload accepts **any synchronization type satisfying**
 including `std::mutex`, `std::shared_mutex`, or the semantic placeholder `jh::typed::null_mutex`
 of type [`jh::typed::null_mutex_t`](../typing/null_mutex.md).
 
-It allows safe, deterministic construction of an immutable copy from a **bounded string view**.
-During initialization, the source region is locked by a **scope-based guard**:
+It copies a **bounded string view** while holding a **scope-based guard**:
 
 ```cpp
 jh::sync::const_lock<M> guard(mtx);  // Scope-based lock, auto-detects shared/exclusive
@@ -130,7 +192,9 @@ jh::sync::const_lock<M> guard(mtx);  // Scope-based lock, auto-detects shared/ex
 
 [`jh::sync::const_lock`](../synchronous/const_lock.md) automatically detects
 whether the mutex supports shared locking and applies the appropriate lock mode.
-This ensures correct behavior across both read/write mutex families without code changes.
+The caller must also keep the source and the view valid while the guard is
+being acquired. Creating a view of concurrently mutable storage before the
+call is not made safe retroactively by this constructor's lock.
 
 ---
 
@@ -158,7 +222,7 @@ from a larger buffer, without additional allocation or slicing overhead.
 |--------------------------|-----------------------------------------------------------------------------------------------------------|
 | **Concurrent access**    | The mutex is locked for the full duration of the copy.                                                    |
 | **Embedded null check**  | Uses `::strnlen()` to verify that the view contains no `'\0'` bytes. Throws `std::logic_error` otherwise. |
-| **Lifetime requirement** | The provided mutex **must** guard the same memory region referenced by `sv.data()`.                       |
+| **Lifetime requirement** | The source and view must remain valid before the guard is acquired; the mutex **must** guard the region referenced by `sv.data()` during the copy. |
 | **Compatibility**        | Works with `std::mutex`, `std::shared_mutex`, and any `mutex_like` object.                                |
 
 ---
@@ -198,12 +262,12 @@ auto shared = jh::make_atomic("JH Toolkit");
 auto copy   = shared; // reference-counted, safe to share
 ```
 
-Creates a `std::shared_ptr<immutable_str>` (`shared_str_ptr`) from a null-terminated C-string.
+Creates a `std::shared_ptr<jh::immutable_str<>>` (`shared_str_ptr<>`) from a null-terminated C-string.
 The preferred method for constructing immutable strings intended for shared caches or registries.
 
 ---
 
-#### `jh::safe_from` *(since 1.3.5)*
+#### `jh::safe_from`
 
 ```cpp
 std::string config = "Host=localhost;Port=3306";
@@ -216,13 +280,14 @@ auto key = jh::safe_from(key_view, config_lock);
 `safe_from` mirrors the constructor above but returns a managed shared pointer:
 
 ```cpp
-template <jh::concepts::mutex_like M>
-shared_str_ptr safe_from(std::string_view sv, M &mtx);
+template <bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM, jh::concepts::mutex_like M>
+shared_str_ptr<AutoTrim> safe_from(std::string_view sv, M &mtx);
 ```
 
-It performs the same thread-safe initialization via
+It performs the same locked copy via
 [`jh::sync::const_lock`](../synchronous/const_lock.md),
-ensuring atomic, exception-safe construction of an immutable string from a protected memory region.
+copying an immutable string from a protected memory region. The caller remains
+responsible for the view's validity before the constructor acquires the lock.
 
 **Key features**
 
@@ -253,7 +318,7 @@ auto path = jh::safe_from(view, m);
 | Locking                    | None                | Scoped (`jh::sync::const_lock`) |
 | Supports substrings        | ❌ No                | ✅ Yes                           |
 | Embedded null check        | Implicit (`strlen`) | Explicit (`::strnlen`)          |
-| Thread-safe initialization | ❌ User-guaranteed   | ✅ Built-in                      |
+| Thread-safe initialization | ❌ User-guaranteed   | Conditional on the caller's view lifetime and lock discipline |
 | No-lock mode               | N/A                 | ✅ via `jh::typed::null_mutex`   |
 
 ---
@@ -261,7 +326,10 @@ auto path = jh::safe_from(view, m);
 #### Atomic slot factories
 
 `make_atomic_slot()` and `safe_from_slot()` create atomic storage for the
-handles returned by the corresponding ordinary factories. Load a snapshot
+handles returned by the corresponding ordinary factories. Like
+`make_atomic()`, `make_atomic_slot()` rejects mutable C-string pointers and
+user-defined conversions to `const char*`; pass a string literal or a
+`const char*` whose data remains valid throughout construction. Load a snapshot
 before accessing the string. See [Atomic pointer slots](../entry_points/atomic_ptr.md)
 for the slot operations.
 
@@ -284,7 +352,7 @@ std::size_t h = shared->hash();
 `immutable_str` is natively compatible with [`jh::observe_pool<T>`](../concurrent/observe_pool.md) for **automatic deduplication**:
 
 ```cpp
-jh::observe_pool<jh::immutable_str> pool;
+jh::observe_pool<jh::immutable_str<>> pool;
 auto x = pool.acquire("JH Toolkit");
 auto y = pool.acquire("JH Toolkit");
 
@@ -303,10 +371,10 @@ so semantically identical strings share a single immutable instance.
 ### Shared handles and atomic slots
 
 ```cpp
-using jh::shared_str_ptr; // std::shared_ptr<immutable_str>
-using jh::weak_str_ptr;   // std::weak_ptr<immutable_str>
-using jh::atomic_str_slot;
-using jh::atomic_weak_str_slot;
+using shared_type = jh::shared_str_ptr<>; // std::shared_ptr<jh::immutable_str<>>
+using weak_type = jh::weak_str_ptr<>;
+using atomic_type = jh::atomic_str_slot<>;
+using atomic_weak_type = jh::atomic_weak_str_slot<>;
 ```
 
 The first two aliases are ordinary handles. Use the atomic slot aliases when
@@ -321,16 +389,16 @@ for an ordinary handle or `atomic_str_slot` for atomic storage.
 
 | Functor               | Purpose                                                      |
 |-----------------------|--------------------------------------------------------------|
-| `jh::atomic_str_hash` | Content-based hash for `shared_str_ptr` and `const char*`.   |
-| `jh::atomic_str_eq`   | Content equality, whitespace-insensitive if auto-trim is on. |
+| `jh::atomic_str_hash<>` | Hashes stored content; normalizes C-string lookups under its policy. |
+| `jh::atomic_str_eq<>`   | Compares stored content; normalizes C-string lookups under its policy. |
 
 Example:
 
 ```cpp
 std::unordered_set<
-    jh::shared_str_ptr,
-    jh::atomic_str_hash,
-    jh::atomic_str_eq
+    jh::shared_str_ptr<>,
+    jh::atomic_str_hash<>,
+    jh::atomic_str_eq<>
 > registry;
 
 registry.insert(jh::make_atomic("admin"));
@@ -345,19 +413,19 @@ if (registry.contains("admin")) {
 
 | Mode                                     | Description                                    |
 |------------------------------------------|------------------------------------------------|
-| **Header-only (`jh-toolkit`)**           | Inline definitions; simple inclusion.          |
-| **Static library (`jh-toolkit-static`)** | Compiled separately for deterministic linking. |
+| **Header-only (`jh-toolkit`)**           | Template definitions remain visible; non-template helpers are inline. |
+| **Static library (`jh-toolkit-static`)** | Template definitions remain visible; non-template helpers and both class specializations are compiled in the library. |
 
 You can detect the current linkage mode at runtime:
 
 ```cpp
-if (jh::immutable_str::is_static_built()) {
+if (jh::immutable_str<>::is_static_built()) {
     std::puts("running static build");
 }
 ```
 
 The static function
-`bool jh::immutable_str::is_static_built();`
+`bool jh::immutable_str<>::is_static_built();`
 returns `true` when you are using the **static library** (`jh::jh-toolkit-static`),
 and `false` when using the **header-only** (`jh::jh-toolkit`) mode.
 
@@ -370,9 +438,7 @@ and `false` when using the **header-only** (`jh::jh-toolkit`) mode.
 * Content comparison may scan the full string.
 * Read-dominant concurrency optimized.
 * Each instance stores a pointer, size, one-time flag, and cached-hash state; the character buffer is allocated separately.
-* **Under default `auto_trim = true`, performance matches `std::string` within ±2%**,
-  confirming that trimming introduces no measurable cost
-  while ensuring that semantically equivalent strings are normalized.
+* Trimming scans boundary ASCII whitespace during construction; cost depends on input length.
 
 ---
 
@@ -401,5 +467,5 @@ with the toolkit's pool and atomic systems.
 > target_link_libraries(your_target PRIVATE jh::jh-toolkit-static) # static library mode
 > ```
 >
-> The correct variant will be linked automatically,
-> and you can verify it at runtime via `jh::immutable_str::is_static_built()`.
+> Select one target for the build mode you want. You can verify the selected
+> mode at runtime via `jh::immutable_str<>::is_static_built()`.

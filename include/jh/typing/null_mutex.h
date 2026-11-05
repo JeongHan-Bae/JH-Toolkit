@@ -47,7 +47,7 @@
  * @code
  *
  * auto s = jh::safe_from("text", typed::null_mutex);
- * // returns std::shared_ptr&lt;jh::immutable_str&gt;
+ * // returns std::shared_ptr&lt;jh::immutable_str&lt;&gt;&gt;
  * jh::sync::const_lock guard(typed::null_mutex);  // No-op
  * @endcode
  *
@@ -142,7 +142,7 @@ namespace jh::typed {
      * <p><b>Usage:</b></p>
      * @code
      * auto s = jh::safe_from(thread_local_string, jh::typed::null_mutex);
-     * // returns std::shared_ptr&lt;jh::immutable_str&gt;
+     * // returns std::shared_ptr&lt;jh::immutable_str&lt;&gt;&gt;
      * @endcode
      *
      * @note

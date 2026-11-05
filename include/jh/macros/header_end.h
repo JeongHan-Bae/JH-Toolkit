@@ -18,34 +18,12 @@
  */
 /**
  * @file header_end.h
+ * @brief Clears the temporary macros set by <code>jh/macros/header_begin.h</code>.
  * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
- * @brief Cleanup header for <code>jh/macros/header_begin.h</code>.
  *
- * @attention This header is intended for multiple inclusions.
- * Do NOT use include guards or <code>#pragma once</code>.
- *
- * <h3>Purpose</h3>
- * <p>
- * Undefines temporary macros (<code>JH_INLINE</code> and
- * <code>JH_INTERNAL_SHOULD_DEFINE</code>) introduced by
- * <code>jh/macros/header_begin.h</code>.
- * Always include it at the <b>end</b> of a dual-mode header.
- * </p>
- *
- * <h3>Pseudocode Layout</h3>
- * @code
- * #include &lt;jh/macros/header_begin.h&gt;
- *
- * declare_things();
- *
- * must_be_visible_implementation();  // outside conditional
- *
- * #if JH_INTERNAL_SHOULD_DEFINE
- *     JH_INLINE normal_definition();
- * #endif
- *
- * #include &lt;jh/macros/header_end.h&gt;
- * @endcode
+ * Include this file after a dual-mode header's guarded definitions. It has
+ * no include guard because each dual-mode header clears its own temporary
+ * macros. The build-setting macros remain available to later headers.
  *
  * @see jh/macros/header_begin.h
  */

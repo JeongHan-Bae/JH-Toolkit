@@ -2,7 +2,6 @@
 
 📁 **Header:** `<jh/typing/null_mutex.h>`  
 📦 **Namespace:** `jh::typed`  
-📅 **Version:** 1.3.5+ (2025)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -125,8 +124,8 @@ Used whenever a lock object is syntactically required but logically redundant.
 #include <jh/immutable_str>
 #include <jh/synchronous/const_lock.h>
 
-auto s = jh::safe_from("example", typed::null_mutex);
-jh::sync::const_lock guard(typed::null_mutex); // no-op
+auto s = jh::safe_from("example", jh::typed::null_mutex);
+jh::sync::const_lock guard(jh::typed::null_mutex); // no-op
 ```
 
 **Semantic Note**

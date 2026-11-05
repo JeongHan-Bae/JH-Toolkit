@@ -70,6 +70,21 @@ project_static_fail(
     EXPECT_DIAGNOSTIC "deleted"
 )
 project_static_fail(
+    immutable_str_make_atomic_slot_rejects_mutable_c_string
+    core/immutable_str_make_atomic_slot_rejects_mutable_c_string.cpp
+    EXPECT_DIAGNOSTIC "deleted"
+)
+project_static_fail(
+    immutable_str_make_atomic_slot_rejects_std_string
+    core/immutable_str_make_atomic_slot_rejects_std_string.cpp
+    EXPECT_DIAGNOSTIC "deleted"
+)
+project_static_fail(
+    immutable_str_make_atomic_slot_rejects_implicit_c_string
+    core/immutable_str_make_atomic_slot_rejects_implicit_c_string.cpp
+    EXPECT_DIAGNOSTIC "deleted"
+)
+project_static_fail(
     runtime_arr_rejects_copy_construction
     core/runtime_arr_rejects_copy_construction.cpp
     EXPECT_DIAGNOSTIC "deleted"

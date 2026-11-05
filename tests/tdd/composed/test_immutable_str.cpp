@@ -16,7 +16,7 @@ namespace test::tiny_test {
 #include "jh/typed"
 
 namespace test {
-    using ImmutablePool = jh::observe_pool<jh::immutable_str>;
+    using ImmutablePool = jh::observe_pool<jh::immutable_str<>>;
 
     // Generates a random string with visible characters only
     std::string generate_random_string(const size_t length) {
@@ -374,7 +374,7 @@ void tiny_test_case_9_body(const int selected_section) {
     std::uniform_int_distribution<size_t> len_dist(5, 20);
     constexpr int total_tests = 128;
 
-    std::unordered_set<jh::shared_str_ptr, jh::atomic_str_hash, jh::atomic_str_eq> str_set;
+    std::unordered_set<jh::shared_str_ptr<>, jh::atomic_str_hash<>, jh::atomic_str_eq<>> str_set;
 
     for (int i = 0; i < total_tests; ++i) {
         if (selected_section == 1) {
@@ -496,7 +496,7 @@ namespace test {
 namespace test {
 void tiny_test_case_13() {
     test::ImmutablePool pool;
-    std::array<jh::shared_str_ptr, 2> handles;
+    std::array<jh::shared_str_ptr<>, 2> handles;
     std::latch both_ready(2), start(1);
     auto acquire_same = [&](std::size_t index) {
         both_ready.count_down();
@@ -532,7 +532,7 @@ namespace test {
 namespace test {
 void tiny_test_case_14() {
     test::ImmutablePool pool;
-    std::array<jh::shared_str_ptr, 2> handles;
+    std::array<jh::shared_str_ptr<>, 2> handles;
     std::latch both_ready(2), start(1);
     auto acquire_distinct = [&](std::size_t index) {
         both_ready.count_down();
@@ -569,7 +569,7 @@ namespace test {
 void tiny_test_case_15() {
     test::ImmutablePool pool(4); // Initial size 4
 
-    std::vector<std::shared_ptr<jh::immutable_str> > objects;
+    std::vector<std::shared_ptr<jh::immutable_str<>> > objects;
     objects.reserve(10);
 
     for (int i = 0; i < 10; ++i) {
@@ -636,9 +636,9 @@ void tiny_test_case_17_body(const int selected_section) {
     std::uniform_int_distribution<int> rand_dist(0, 5);
     constexpr int total_tests = 128;
 
-    jh::observe_pool<jh::immutable_str> pool;
+    jh::observe_pool<jh::immutable_str<>> pool;
     // Recommended method: Directly map atomic immutable strings to unique identifiers
-    static const std::unordered_map<jh::shared_str_ptr, size_t, jh::atomic_str_hash, jh::atomic_str_eq> immutable_map =
+    static const std::unordered_map<jh::shared_str_ptr<>, size_t, jh::atomic_str_hash<>, jh::atomic_str_eq<>> immutable_map =
     {
         {jh::make_atomic("example 0"), 0},
         {jh::make_atomic("example 1"), 1},

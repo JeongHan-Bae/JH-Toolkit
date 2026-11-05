@@ -512,12 +512,8 @@ Without including `<jh/pod>`, streaming operators for POD types are **not define
 
 ### Interaction with Derived Views
 
-`jh::pod::string_view` often appears as the return type of:
-
-```cpp
-jh::immutable_str::pod_view()
-jh::meta::t_str::pod_view()
-```
+`jh::pod::string_view` is returned by `pod_view()` on a
+`jh::immutable_str` object and by `pod_view()` on a `jh::meta::t_str` object.
 
 However:
 
@@ -573,12 +569,8 @@ This guarantees stable behavior independent of the POD debug facilities.
 
 # 🧩 Integration Notes
 
-`jh::pod::string_view` commonly appears as the return type of:
-
-```
-jh::immutable_str::pod_view()
-jh::meta::t_str::pod_view()
-```
+`jh::pod::string_view` is also the return type of `pod_view()` on
+`jh::immutable_str` and `jh::meta::t_str` objects.
 
 Key rules:
 

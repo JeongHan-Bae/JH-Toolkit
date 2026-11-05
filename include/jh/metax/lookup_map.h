@@ -276,10 +276,13 @@ namespace jh::meta {
             }
 
             /**
-             * @brief Convert jh::immutable_str.
+             * @brief Convert a policy-specialized immutable string.
+             * @tparam AutoTrim Construction policy of the source string.
              * @param s Source immutable string.
+             * @return Canonical string view of the stored content.
              */
-            [[maybe_unused]] static canonical_type to_canonical(const jh::immutable_str &s) noexcept {
+            template<bool AutoTrim>
+            [[maybe_unused]] static canonical_type to_canonical(const jh::immutable_str<AutoTrim> &s) noexcept {
                 return s.pod_view();
             }
 

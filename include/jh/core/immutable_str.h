@@ -36,7 +36,7 @@
  *   <li>Optional <b>automatic whitespace trimming</b> during construction.</li>
  *   <li>Compact, zero-reallocation model using <code>unique_ptr&lt;const char[]&gt;</code>.</li>
  *   <li>Transparent hashing and equality for unordered containers.</li>
- *   <li>Seamless integration with <code>std::shared_ptr&lt;immutable_str&gt;</code> for safe sharing.</li>
+ *   <li>Seamless integration with <code>std::shared_ptr&lt;immutable_str&lt;&gt;&gt;</code> for safe sharing.</li>
  * </ul>
  *
  * <h3>Motivation</h3>
@@ -60,7 +60,7 @@
  * <ul>
  *   <li><b>Read-only Data:</b> Exposed through const access to an owned character array.</li>
  *   <li><b>Thread-Safe Hashing:</b> Lazy-evaluated via <code>std::once_flag</code> to ensure safe caching.</li>
- *   <li><b>Auto Trimming:</b> Optional compile-time whitespace removal (controlled by <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>).</li>
+ *   <li><b>Auto Trimming:</b> Optional compile-time whitespace removal selected by <code>AutoTrim</code>; the macro supplies its default.</li>
  *   <li><b>Shared Ownership:</b> Distributed through copyable <code>jh::shared_str_ptr</code> handles; publish with <code>jh::atomic_str_slot</code>.</li>
  *   <li><b>Interop:</b> Compatible with <code>std::string_view</code> and C-string APIs.</li>
  *   <li><b>Custom Hash &amp; Eq:</b> Support for transparent <code>unordered_map</code> lookup via <code>const char*</code>.</li>
@@ -68,18 +68,18 @@
  *
  * <h3>Dual-Mode Header Integration</h3>
  * <p>
- * From <b>v1.3.x</b>, <code>jh::immutable_str</code> supports the <b>Dual-Mode Header</b> system:
+ * <code>jh::immutable_str</code> supports the <b>Dual-Mode Header</b> system:
  * </p>
  * <ul>
  *   <li>Linked through <code>jh::jh-toolkit</code> &rarr; acts as a <b>header-only</b> component.</li>
  *   <li>Linked through <code>jh::jh-toolkit-static</code> &rarr; compiled as a <b>static implementation</b>
  *       for performance and deterministic linking.</li>
- *   <li>Mode controlled internally via <code>JH_INTERNAL_SHOULD_DEFINE</code>.</li>
+ *   <li>Non-template helper definitions use <code>JH_INTERNAL_SHOULD_DEFINE</code>.</li>
  * </ul>
  *
  * <h4>Static Build Detection</h4>
  * <p>
- * The method <code>bool jh::immutable_str::is_static_built()</code> allows runtime mode verification:
+ * The method <code>bool jh::immutable_str&lt;&gt;::is_static_built()</code> allows runtime mode verification:
  * </p>
  * <ul>
  *   <li>Returns <b>true</b> if built as part of <code>jh-toolkit-static</code>.</li>
@@ -92,7 +92,7 @@
  * #include &lt;iostream&gt;
  *
  * int main() {
- *     auto pool = jh::observe_pool&lt;jh::immutable_str&gt;();
+ *     auto pool = jh::observe_pool&lt;jh::immutable_str&lt;&gt;&gt;();
  *     const auto str = pool.acquire("Hello, JH Toolkit!");
  *     std::cout &lt;&lt; str-&gt;view() &lt;&lt; std::endl;
  *     return 0;
@@ -123,8 +123,9 @@
  * </p>
  *
  * <p>
- * <code>jh::immutable_str</code> naturally satisfies this requirement &mdash; its
- * memory content and hash are fixed at construction time and can never change.
+ * <code>jh::immutable_str</code> satisfies this requirement through its public API:
+ * the owned content does not change after construction, and its content hash
+ * is cached on first access.
  * Therefore, it represents the canonical example of a <b>pool-safe immutable type</b>.
  * </p>
  *
@@ -137,7 +138,7 @@
  * #include &lt;cstdio&gt;
  *
  * int main() {
- *     jh::observe_pool&lt;jh::immutable_str&gt; pool;  // automatically available
+ *     jh::observe_pool&lt;jh::immutable_str&lt;&gt;&gt; pool;  // automatically available
  *     auto a = pool.acquire("JH Toolkit");
  *     auto b = pool.acquire("JH Toolkit");
  *
@@ -166,14 +167,9 @@
  * <h3>Performance Notes</h3>
  * <ul>
  *   <li>Immutable buffer &mdash; no internal reallocation or mutation.</li>
- *   <li>Constant-time string comparison and hash access after first computation.</li>
+ *   <li>Content comparison scans the string; cached hash access is constant-time after first computation.</li>
  *   <li>Optimized for concurrent, read-dominant workloads.</li>
- *   <li>Minimal memory footprint: pointer + cached hash + length field.</li>
- *   <li><b>Benchmark:</b> In controlled micro-benchmarks (LLVM&#64;20, 1024&times; iterations), <br>
- *       <code>jh::immutable_str</code> shows performance essentially identical to
- *       <code>std::string</code> &mdash; sometimes slower by about <b>1%</b>,
- *       sometimes faster by up to <b>2%</b>, typically fluctuating within
- *       <b>&plusmn;2%</b>. This variation is within normal measurement noise.</li>
+ *   <li>Each instance stores a pointer, length, cached hash state, and a one-time flag.</li>
  * </ul>
  *
  * <h3>See Also</h3>
@@ -182,7 +178,6 @@
  *   <li><code>jh::atomic_str_slot</code> &mdash; atomic storage for a shared string handle.</li>
  * </ul>
  *
- * @version <pre>1.3.x</pre>
  * @date <pre>2025</pre>
  */
 
@@ -196,28 +191,35 @@
  *
  * <p><b>Default:</b> <code>true</code></p>
  *
- * <p>If not defined manually, it defaults to:</p>
+ * <p>When no project-wide value is supplied, the header defaults to:</p>
  * <pre>
- * #define JH_IMMUTABLE_STR_AUTO_TRIM true
+ * \#define JH_IMMUTABLE_STR_AUTO_TRIM true
  * </pre>
  *
  * <p>
- * If overriding manually, it <b>must be defined before any inclusion</b>
- * of <code>&lt;jh/immutable_str&gt;</code> in the translation unit.
+ * Configure this default once for the whole program. Every translation unit
+ * that includes <code>&lt;jh/immutable_str&gt;</code>, directly or indirectly,
+ * must see the same value before its first inclusion. A source-local
+ * <code>\#define</code> is suitable only when that translation unit is the
+ * program's sole user of this header.
  * </p>
  *
  * <p><b>Configuration methods:</b></p>
  * <ul>
  *   <li>
- *     Source-level (before include):
+ *     Shared project configuration header, included before this header in
+ *     every translation unit that uses it:
  *     <pre>
- *     #define JH_IMMUTABLE_STR_AUTO_TRIM false
+ *     // project_config.h
+ *     \#define JH_IMMUTABLE_STR_AUTO_TRIM false
  *     </pre>
  *   </li>
  *   <li>
  *     CMake:
  *     <pre>
- *     target_compile_definitions(target PRIVATE JH_IMMUTABLE_STR_AUTO_TRIM=false)
+ *     add_library(project_config INTERFACE)
+ *     target_compile_definitions(project_config INTERFACE JH_IMMUTABLE_STR_AUTO_TRIM=false)
+ *     target_link_libraries(every_consumer PRIVATE project_config)
  *     </pre>
  *   </li>
  *   <li>
@@ -232,13 +234,15 @@
  * <ul>
  *   <li>Must be a boolean literal: <code>true</code> or <code>false</code>
  *       (not <code>1</code>/<code>0</code>).</li>
+ *   <li>Do not assign different default values in translation units of one
+ *       program. Explicit <code>immutable_str&lt;true&gt;</code> and
+ *       <code>immutable_str&lt;false&gt;</code> remain available in either configuration.</li>
  *   <li>Acts as a type-level compile-time policy parameter via
- *       <code>static constexpr bool immutable_str::auto_trim</code>.</li>
+ *       <code>static constexpr bool immutable_str&lt;&gt;::auto_trim</code>.</li>
  *   <li>Branch selection is performed using <code>if constexpr</code>,
  *       not preprocessor elimination.</li>
  *   <li>In the static library target (<code>jh-toolkit-static</code>),
- *       both code paths are compiled; user compilation activates the
- *       selected branch.</li>
+ *       both policy specializations are instantiated.</li>
  * </ul>
  *
  * <p><b>Behavior:</b></p>
@@ -265,6 +269,7 @@
 
 #include "jh/synchronous/const_lock.h"
 #include "jh/concurrent/observe_pool.h"
+#include "jh/pods/pair.h"
 #include "jh/pods/string_view.h"
 
 namespace jh::detail {
@@ -272,17 +277,25 @@ namespace jh::detail {
         return ch == ' ' || ch == '\t' || ch == '\n' ||
                ch == '\v' || ch == '\f' || ch == '\r';
     }
+
+    /// @brief Copy a string after removing boundary ASCII whitespace.
+    void init_from_string_trim(const char *input_str, std::size_t input_len,
+                               std::size_t &size, std::unique_ptr<const char[]> &data);
+
+    /// @brief Copy a string without removing boundary whitespace.
+    void init_from_string_no_trim(const char *input_str, std::size_t input_len,
+                                  std::size_t &size, std::unique_ptr<const char[]> &data);
 } // namespace jh::detail
 
 namespace jh {
 
     /**
-     * @brief Immutable string with optional automatic trimming and thread-safe hash caching.
+     * @brief Immutable string with a type-level trimming policy and thread-safe hash caching.
      *
      * <h4>Overview</h4>
      * <p>
-     * <code>immutable_str</code> represents a <b>truly immutable</b> and <b>thread-safe</b> string object.
-     * Once constructed, its internal data is fixed in memory and cannot be modified, reallocated, or replaced.
+     * <code>immutable_str</code> exposes an immutable public API and supports concurrent reads.
+     * Once constructed, no public operation modifies or replaces its owned data.
      * It is designed for efficient read-only access in concurrent systems, configuration registries,
      * and shared constant datasets.
      * </p>
@@ -292,7 +305,7 @@ namespace jh {
      *   <li>Expose no write operation after initialization.</li>
      *   <li>Provide deterministic lifetime ownership using <code>unique_ptr&lt;const char[]&gt;</code>.</li>
      *   <li>Support concurrent reads safely without synchronization overhead.</li>
-     *   <li>Enable efficient sharing via <code>std::shared_ptr&lt;immutable_str&gt;</code> (<code>shared_str_ptr</code>).</li>
+     *   <li>Enable efficient sharing via <code>std::shared_ptr&lt;immutable_str&lt;&gt;&gt;</code> (<code>shared_str_ptr</code>).</li>
      *   <li>Offer consistent hashing and transparent equality for unordered containers.</li>
      * </ul>
      *
@@ -300,10 +313,12 @@ namespace jh {
      * <ul>
      *   <li><b>True Immutability:</b> Internal buffer is never exposed for modification.</li>
      *   <li><b>Thread-Safe Hashing:</b> Cached on first access using <code>std::once_flag</code>.</li>
-     *   <li><b>Optional Auto-Trim:</b> Leading/trailing whitespace removed at construction if enabled.</li>
+     *   <li><b>Optional Auto-Trim:</b> Leading/trailing whitespace removed when <code>AutoTrim</code> is true.</li>
      *   <li><b>Memory Efficiency:</b> Minimal overhead &mdash; stores only a pointer, size, and cached hash.</li>
      *   <li><b>Transparent Lookup:</b> Works directly with <code>const char*</code> keys in hash tables.</li>
      * </ul>
+     *
+     * @tparam AutoTrim Whether construction removes boundary ASCII whitespace. Defaults to the global macro.
      *
      * <h4>View Access</h4>
      * <p>
@@ -329,7 +344,7 @@ namespace jh {
      * <h4>Dual-Mode Header Integration</h4>
      * <ul>
      *   <li>Works under both <b>header-only</b> and <b>static library</b> modes via Dual-Mode Header system.</li>
-     *   <li>Build mode internally controlled by <code>JH_INTERNAL_SHOULD_DEFINE</code>.</li>
+     *   <li>The two non-template initialization helpers use the dual-mode header controls.</li>
      *   <li>Runtime detection available via <code>is_static_built()</code>.</li>
      * </ul>
      *
@@ -346,6 +361,7 @@ namespace jh {
      *   <li><code>jh::shared_str_ptr</code> &mdash; ordinary shared handle; use <code>jh::atomic_str_slot</code> for atomic storage.</li>
      * </ul>
      */
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM>
     class immutable_str final {
     public:
 
@@ -374,7 +390,7 @@ namespace jh {
          * <ul>
          *   <li>Marked as <code>explicit</code> to prevent unintended implicit conversions.</li>
          *   <li>Uses <code>strlen()</code> internally to determine the input length.</li>
-         *   <li>Trimming behavior depends on <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>.</li>
+         *   <li>Trimming behavior depends on this specialization's <code>AutoTrim</code> value.</li>
          *   <li>For non-null-terminated or shared buffers, use
          *       <code>immutable_str(std::string_view, Mutex&amp;)</code> instead.</li>
          *   <li>Designed for safe interoperation with C-style APIs (e.g., LLVM <code>extern "C"</code>).</li>
@@ -484,7 +500,7 @@ namespace jh {
          * @note
          * <ul>
          *   <li>Prevents mutation through reassignment.</li>
-         *   <li>Use <code>std::shared_ptr&lt;jh::immutable_str&gt;</code> if sharing semantics are required.</li>
+         *   <li>Use <code>std::shared_ptr&lt;jh::immutable_str&lt;&gt;&gt;</code> if sharing semantics are required.</li>
          * </ul>
          */
         immutable_str &operator=(const immutable_str &) = delete;
@@ -501,7 +517,7 @@ namespace jh {
          * @note
          * <ul>
          *   <li>Immutability implies that instances cannot change ownership post-construction.</li>
-         *   <li>To share instances safely, use <code>std::shared_ptr&lt;jh::immutable_str&gt;</code>.</li>
+         *   <li>To share instances safely, use <code>std::shared_ptr&lt;jh::immutable_str&lt;&gt;&gt;</code>.</li>
          * </ul>
          */
         immutable_str(immutable_str &&) = delete;
@@ -602,7 +618,8 @@ namespace jh {
          *   <li>It enables deterministic hashing by allowing <code>jh::pod::string_view</code>
          *       to compute stable hashes via any algorithm provided by <code>jh::meta::c_hash</code>,
          *       unlike the non-deterministic nature of typical runtime hash functions.</li>
-         *   <li>Comparison and hashing behavior are identical to <code>jh::pod::string_view</code>.</li>
+         *   <li>The returned view uses <code>jh::pod::string_view</code> operations;
+         *       <code>immutable_str::hash()</code> uses <code>std::hash&lt;std::string_view&gt;</code>.</li>
          * </ul>
          */
         [[nodiscard]] pod::string_view pod_view() const noexcept;
@@ -670,45 +687,37 @@ namespace jh {
         [[nodiscard]] std::size_t hash() const noexcept;
 
         /**
-         * @brief Global flag selecting whether <code>immutable_str</code> performs automatic
+         * @brief Policy flag selecting whether this specialization performs automatic
          *        leading/trailing whitespace trimming.
          *
          * <p>
-         * This value is controlled by the macro <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>.
-         * The macro must be defined <b>before</b> including <code>&lt;jh/immutable_str&gt;</code>.
-         * If the macro is not defined beforehand, the default value is <code>true</code>.
+         * The template argument selects this value. The project-wide
+         * <code>JH_IMMUTABLE_STR_AUTO_TRIM</code> setting supplies only the default
+         * template argument; when unset, that default is <code>true</code>.
          * </p>
          *
          * <p>
          * Because <code>auto_trim</code> is an ordinary <code>constexpr bool</code>,
          * it can be inspected in <code>constexpr</code> contexts and used inside concepts,
          * templates, and other compile-time logic&mdash;avoiding the need for preprocessor
-         * conditionals (<code>#if</code> / <code>#ifdef</code>).
+         * conditionals (<code>\#if</code> / <code>\#ifdef</code>).
          * </p>
          *
          * <ul>
-         *   <li><code>true</code> (default): All constructed <code>immutable_str</code>
-         *       instances remove leading and trailing ASCII whitespace.</li>
+         *   <li><code>true</code>: This specialization removes leading and trailing ASCII whitespace.</li>
          *   <li><code>false</code>: Whitespace is preserved exactly.</li>
          * </ul>
          *
-         * <h4>Usage Recommendation</h4>
          * <p>
-         * To ensure consistent behavior across translation units &mdash; especially when
-         * dependencies may include <code>&lt;jh/immutable_str&gt;</code> indirectly &mdash;
-         * place:
-         * </p>
-         *
-         * @code
-         * #define JH_IMMUTABLE_STR_AUTO_TRIM false
-         * #include &lt;jh/immutable_str&gt;
-         * @endcode
-         *
-         * <p>
-         * before any code that might include the header.
+         * Set the macro through a shared project configuration header or build
+         * definitions used by every translation unit that includes this header.
+         * A local definition is safe only when one translation unit in the
+         * program includes the header. Do not give different translation units
+         * different defaults; a per-translation-unit assertion cannot check
+         * the configuration of another translation unit.
          * </p>
          */
-        static constexpr bool auto_trim = JH_IMMUTABLE_STR_AUTO_TRIM;
+        static constexpr bool auto_trim = AutoTrim;
 
         /**
          * @brief Reports whether this header was built in static mode.
@@ -726,7 +735,8 @@ namespace jh {
          * <ul>
          *   <li>This function supports runtime detection for dual-mode header builds.</li>
          *   <li>In header-only builds, it always returns <code>false</code>.</li>
-         *   <li>In static library builds, it returns <code>true</code> (macro <code>JH_IS_STATIC_BUILD</code> defined).</li>
+         *   <li>In static library builds, it returns <code>true</code> when the static target supplies
+         *       <code>JH_HEADER_NO_IMPL</code> to consumers.</li>
          *   <li>Useful for diagnostics or conditional logic depending on linkage mode.</li>
          * </ul>
          */
@@ -742,9 +752,8 @@ namespace jh {
          * @brief Initializes the immutable string from a C-style source.
          *
          * <p>
-         * Dispatches to either <code>init_from_string_trim()</code> or
-         * <code>init_from_string_no_trim()</code> depending on the compile-time
-         * value of <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>.
+         * Dispatches to the non-template Trim or No-Trim helper depending on
+         * <code>AutoTrim</code>.
          * </p>
          *
          * @param input_str A null-terminated C-string. May be <code>nullptr</code> (treated as empty).
@@ -752,46 +761,105 @@ namespace jh {
          *
          * @note
          * <ul>
-         *   <li>This function is always defined inline in the header for dual-mode visibility.</li>
-         *   <li>In static builds, both branches are compiled, and the linker resolves the selected path
-         *       based on the current macro configuration.</li>
+         *   <li>The dispatcher is visible in every translation unit.</li>
+         *   <li>In static builds, both non-template helpers are compiled once.</li>
          *   <li>In header-only mode, the unused branch is eliminated by the compiler (dead-code pruning).</li>
          *   <li>Acts as a private dispatcher &mdash; not intended for direct user invocation.</li>
          * </ul>
          */
         void init_from_string(const char *input_str, std::size_t input_len = static_cast<std::size_t>(-1)) {
-#if defined(JH_IMMUTABLE_STR_AUTO_TRIM) && JH_IMMUTABLE_STR_AUTO_TRIM
-            init_from_string_trim(input_str, input_len);
-#else
-            init_from_string_no_trim(input_str, input_len);
-#endif
+            if constexpr (AutoTrim) {
+                detail::init_from_string_trim(input_str, input_len, size_, data_);
+            } else {
+                detail::init_from_string_no_trim(input_str, input_len, size_, data_);
+            }
         }
-
-        void init_from_string_trim(const char *input_str, std::size_t input_len);
-
-        void init_from_string_no_trim(const char *input_str, std::size_t input_len);
 
     };
 
+    template<bool AutoTrim>
+    immutable_str<AutoTrim>::immutable_str(const char *str) {
+        init_from_string(str);
+    }
+
+    template<bool AutoTrim>
+    immutable_str<AutoTrim>::immutable_str(std::nullptr_t) {
+        init_from_string(static_cast<const char *>(nullptr));
+    }
+
+    template<bool AutoTrim>
+    const char *immutable_str<AutoTrim>::c_str() const noexcept {
+        return data_.get();
+    }
+
+    template<bool AutoTrim>
+    std::string immutable_str<AutoTrim>::str() const {
+        return {data_.get(), size_};
+    }
+
+    template<bool AutoTrim>
+    std::string_view immutable_str<AutoTrim>::view() const noexcept {
+        return {data_.get(), size_};
+    }
+
+    template<bool AutoTrim>
+    pod::string_view immutable_str<AutoTrim>::pod_view() const noexcept {
+        return {this->c_str(), this->size()};
+    }
+
+    template<bool AutoTrim>
+    std::size_t immutable_str<AutoTrim>::size() const noexcept {
+        return size_;
+    }
+
+    template<bool AutoTrim>
+    bool immutable_str<AutoTrim>::operator==(const immutable_str<AutoTrim> &other) const noexcept {
+        return std::strcmp(data_.get(), other.data_.get()) == 0;
+    }
+
+    template<bool AutoTrim>
+    std::size_t immutable_str<AutoTrim>::hash() const noexcept {
+        std::call_once(hash_flag_, [this] {
+            hash_.emplace(std::hash<std::string_view>{}(std::string_view(data_.get(), size_)));
+        });
+        return hash_.value();
+    }
+
+    template<bool AutoTrim>
+    [[maybe_unused]] bool immutable_str<AutoTrim>::is_static_built() {
+#if defined(JH_HEADER_NO_IMPL) || defined(JH_HEADER_IMPL_BUILD)
+        return true;
+#else
+        return false;
+#endif
+    }
+
+
     /**
      * @brief Copyable shared ownership handle for an immutable string.
+     * @tparam AutoTrim Construction policy of the pointed-to string.
      * @note Concurrent mutation of the same handle requires external synchronization.
      *       Use <code>atomic_str_slot</code> for atomic publication.
      */
-    using shared_str_ptr = std::shared_ptr<immutable_str>;
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM>
+    using shared_str_ptr = std::shared_ptr<immutable_str<AutoTrim>>;
 
     /**
      * @brief Non-owning observer for an immutable string.
-     * @details Alias of <code>std::weak_ptr&lt;immutable_str&gt;</code>.
+     * @tparam AutoTrim Construction policy of the observed string.
+     * @details Alias of <code>std::weak_ptr&lt;immutable_str&lt;&gt;&gt;</code>.
      * Call <code>lock()</code> to obtain a temporary shared handle.
      */
-    using weak_str_ptr [[maybe_unused]] = std::weak_ptr<immutable_str>;
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM>
+    using weak_str_ptr = std::weak_ptr<immutable_str<AutoTrim>>;
 
     /// @brief Atomically replaceable immutable string handle; load before dereferencing.
-    using atomic_str_slot = jh::atomic::shared_ptr<immutable_str>;
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM>
+    using atomic_str_slot = jh::atomic::shared_ptr<immutable_str<AutoTrim>>;
 
     /// @brief Atomically replaceable weak observer; load before calling lock.
-    using atomic_weak_str_slot = jh::atomic::weak_ptr<immutable_str>;
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM>
+    using atomic_weak_str_slot = jh::atomic::weak_ptr<immutable_str<AutoTrim>>;
 
 
     /**
@@ -816,6 +884,7 @@ namespace jh {
      * </ul>
      *
      * @tparam U Candidate type to test for <code>immutable_str</code> compatibility.
+     * @tparam AutoTrim Policy of the matching shared string pointer.
      *
      * @note
      * <ul>
@@ -824,13 +893,15 @@ namespace jh {
      *   <li>String literals are automatically included through pointer decay.</li>
      * </ul>
      */
-    template<typename U>
+    template<typename U, bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM>
     concept immutable_str_compatible =
-    std::same_as<std::remove_cvref_t<U>, shared_str_ptr> ||
-    std::same_as<std::decay_t<U>, const char *>;
+    std::same_as<std::remove_cvref_t<U>, shared_str_ptr<AutoTrim>> ||
+    std::is_convertible_v<const U &, const char *> ||
+    std::same_as<std::remove_cvref_t<U>, std::nullptr_t>;
 
     /**
-     * @brief Custom hash functor for <code>shared_str_ptr</code> and compatible types.
+     * @brief Custom hash functor for a policy-matched <code>shared_str_ptr</code> and C-strings.
+     * @tparam AutoTrim Policy used to normalize C-string lookup values.
      *
      * <p>
      * Provides transparent, content-based hashing for associative containers
@@ -842,7 +913,7 @@ namespace jh {
      * @details
      * <ul>
      *   <li>Replaces the default <code>std::shared_ptr</code> hash, which hashes by pointer value,
-     *       with a deterministic hash computed from string content.</li>
+     *       with a hash computed from string content.</li>
      *   <li>Supports both <code>shared_str_ptr</code> and <code>const char*</code> operands,
      *       constrained by <code>immutable_str_compatible</code>.</li>
      *   <li>Transparent lookup is supported &mdash; for example, a container of
@@ -852,7 +923,7 @@ namespace jh {
      *       must represent an actual <code>immutable_str</code> instance.</li>
      *   <li>This contract allows future implementations to freely reorder or
      *       optimize operand evaluation while maintaining semantic equivalence.</li>
-     *   <li>When <code>JH_IMMUTABLE_STR_AUTO_TRIM</code> is enabled,
+     *   <li>When <code>AutoTrim</code> is true,
      *       leading and trailing ASCII whitespace are ignored in hash computation.</li>
      * </ul>
      *
@@ -873,44 +944,49 @@ namespace jh {
      *   <li>Either operand may be a <code>const char*</code> during lookup,
      *       but at least one operand must refer to a valid
      *       <code>immutable_str</code> instance.</li>
-     *   <li>Whitespace trimming behavior is compile-time controlled via
-     *       <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>.</li>
+     *   <li>Whitespace trimming behavior is compile-time controlled by
+     *       <code>AutoTrim</code>.</li>
      *   <li>The nested <code>is_transparent</code> typedef enables
      *       heterogeneous lookup in standard unordered containers.</li>
      * </ul>
      */
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM>
     struct atomic_str_hash final {
         /// @brief Enables <code>find(const char*)</code> or <code>find(const char (&lit)[N])</code> in hash-based containers.
         using is_transparent [[maybe_unused]] = void;
 
         template<typename U>
-        requires immutable_str_compatible<U>
+        requires immutable_str_compatible<U, AutoTrim>
         std::size_t operator()(const U &value) const noexcept {
-            if constexpr (std::same_as<std::remove_cvref_t<U>, shared_str_ptr>) {
+            if constexpr (std::same_as<std::remove_cvref_t<U>, shared_str_ptr<AutoTrim>>) {
                 return value ? value->hash() : 0;
+            } else if constexpr (std::same_as<std::remove_cvref_t<U>, std::nullptr_t>) {
+                return 0;
             } else {
-                if (value == nullptr) {
+                const char *str = value;
+                if (str == nullptr) {
                     return 0;
                 }
-                if constexpr (immutable_str::auto_trim) {
-                    const std::size_t len = std::strlen(value); // Get const char* length
+                if constexpr (AutoTrim) {
+                    const std::size_t len = std::strlen(str); // Get const char* length
                     std::size_t leading = 0, trailing = len;
-                    while (leading < len && detail::is_space_ascii(static_cast<unsigned char>(value[leading]))) {
+                    while (leading < len && detail::is_space_ascii(static_cast<unsigned char>(str[leading]))) {
                         ++leading;
                     }
                     while (trailing > leading &&
-                           detail::is_space_ascii(static_cast<unsigned char>(value[trailing - 1]))) {
+                           detail::is_space_ascii(static_cast<unsigned char>(str[trailing - 1]))) {
                         --trailing;
                     }
-                    return std::hash<std::string_view>{}(std::string_view{value + leading, trailing - leading});
+                    return std::hash<std::string_view>{}(std::string_view{str + leading, trailing - leading});
                 }
-                return std::hash<std::string_view>{}(std::string_view{value});  // NOLINT if !auto_trim
+                return std::hash<std::string_view>{}(std::string_view{str});  // NOLINT if !auto_trim
             }
         }
     };
 
     /**
-     * @brief Custom equality functor for <code>shared_str_ptr</code> and compatible types.
+     * @brief Custom equality functor for a policy-matched <code>shared_str_ptr</code> and C-strings.
+     * @tparam AutoTrim Policy used to normalize C-string lookup values.
      *
      * <p>
      * Provides content-based comparison for <code>immutable_str</code> instances,
@@ -928,7 +1004,7 @@ namespace jh {
      *       <code>map.find("key")</code> is valid and efficient.</li>
      *   <li>At least one operand (<code>lhs</code> or <code>rhs</code>)
      *       must represent a valid <code>immutable_str</code> instance.</li>
-     *   <li>When <code>JH_IMMUTABLE_STR_AUTO_TRIM</code> is enabled,
+     *   <li>When <code>AutoTrim</code> is true,
      *       leading and trailing ASCII whitespace are ignored during comparison.</li>
      *   <li>Comparison is symmetric and implementation-agnostic:
      *       either operand may be dereferenced first if future optimizations require it.</li>
@@ -953,50 +1029,50 @@ namespace jh {
      *       <code>const char*</code> and string literals.</li>
      *   <li>At least one operand must be an <code>immutable_str</code>
      *       to ensure pointer safety and avoid undefined behavior.</li>
-     *   <li>Whitespace trimming behavior is compile-time controlled via
-     *       <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>.</li>
+     *   <li>Whitespace trimming behavior is compile-time controlled by
+     *       <code>AutoTrim</code>.</li>
      *   <li>The nested <code>is_transparent</code> typedef enables
      *       heterogeneous comparison in unordered containers.</li>
      * </ul>
      */
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM>
     struct atomic_str_eq final {
         /// @brief Enables <code>find(const char*)</code> or <code>find(const char (&lit)[N])</code> in hash-based containers.
         using is_transparent [[maybe_unused]] = void;
 
         template<typename U, typename V>
-        requires (immutable_str_compatible<U> && immutable_str_compatible<V>)
+        requires (immutable_str_compatible<U, AutoTrim> && immutable_str_compatible<V, AutoTrim> &&
+                  (std::same_as<std::remove_cvref_t<U>, shared_str_ptr<AutoTrim>> ||
+                   std::same_as<std::remove_cvref_t<V>, shared_str_ptr<AutoTrim>>))
         bool operator()(const U &lhs, const V &rhs) const noexcept {
-            if constexpr (std::same_as<std::remove_cvref_t<U>, shared_str_ptr> &&
-                          std::same_as<std::remove_cvref_t<V>, shared_str_ptr>) {
+            if constexpr (std::same_as<std::remove_cvref_t<U>, std::nullptr_t> ||
+                          std::same_as<std::remove_cvref_t<V>, std::nullptr_t>) {
+                return false;
+            } else if constexpr (std::same_as<std::remove_cvref_t<U>, shared_str_ptr<AutoTrim>> &&
+                                 std::same_as<std::remove_cvref_t<V>, shared_str_ptr<AutoTrim>>) {
                 return lhs && rhs && *lhs == *rhs;
             } else {
-                if (lhs == nullptr || rhs == nullptr) return false; // nullptr are considered as not eq
-                std::string_view lhs_view, rhs_view;
-
-                if constexpr (std::same_as<std::remove_cvref_t<U>, shared_str_ptr> &&
-                              std::same_as<std::decay_t<V>, const char *>) {
-                    lhs_view = lhs->view();
-                    if constexpr (immutable_str::auto_trim) {
-                        const auto &[leading, size_] = trim(rhs);
-                        rhs_view = std::string_view(rhs + leading, size_);
+                if (lhs == nullptr || rhs == nullptr) return false;
+                if constexpr (std::same_as<std::remove_cvref_t<U>, shared_str_ptr<AutoTrim>>) {
+                    if constexpr (AutoTrim) {
+                        const auto [leading, size] = trim(rhs);
+                        return lhs->view() == std::string_view{rhs + leading, size};
                     } else {
-                        rhs_view = std::string_view(rhs);  // NOLINT if !auto_trim
+                        return lhs->view() == std::string_view{rhs};
                     }
                 } else {
-                    rhs_view = rhs->view();
-                    if constexpr (immutable_str::auto_trim) {
-                        const auto &[leading, size_] = trim(lhs);
-                        lhs_view = std::string_view(lhs + leading, size_);
+                    if constexpr (AutoTrim) {
+                        const auto [leading, size] = trim(lhs);
+                        return std::string_view{lhs + leading, size} == rhs->view();
                     } else {
-                        lhs_view = std::string_view(lhs);  // NOLINT if !auto_trim
+                        return std::string_view{lhs} == rhs->view();
                     }
                 }
-                return lhs_view == rhs_view;
             }
         }
 
     private:
-        static std::pair<std::size_t, std::size_t> trim(const char *str) noexcept {
+        static pod::pair<std::size_t, std::size_t> trim(const char *str) noexcept {
             std::size_t leading = 0, trailing = std::strlen(str);
 
             while (leading < trailing && detail::is_space_ascii(static_cast<unsigned char>(str[leading]))) {
@@ -1009,26 +1085,35 @@ namespace jh {
         }
     };
 
-    template<typename T>
-    [[maybe_unused]] shared_str_ptr make_atomic(T str) = delete;
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM, typename T>
+    [[maybe_unused]] shared_str_ptr<AutoTrim> make_atomic(T str) = delete;
 
     /**
      * @brief Creates a shared pointer to an <code>immutable_str</code>.
      * @param str Null-terminated C-string to copy.
      * @return A copyable <code>shared_str_ptr</code> handle.
-     * @note Construction follows <code>JH_IMMUTABLE_STR_AUTO_TRIM</code>.
+     * @tparam AutoTrim Construction policy; defaults to the global macro.
      */
-    inline shared_str_ptr make_atomic(const char *str) {
-        return std::make_shared<immutable_str>(str);
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM>
+    inline shared_str_ptr<AutoTrim> make_atomic(const char *str) {
+        return std::make_shared<immutable_str<AutoTrim>>(str);
     }
+
+    /// @brief Reject mutable C-string pointers and user-defined C-string conversions.
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM, typename T>
+    requires (!std::same_as<std::decay_t<T>, const char *> &&
+              !std::same_as<std::decay_t<T>, std::nullptr_t>)
+    atomic_str_slot<AutoTrim> make_atomic_slot(T) = delete;
 
     /**
      * @brief Create an atomic slot containing a new immutable string.
+     * @tparam AutoTrim Construction policy; defaults to the global macro.
      * @param str Null-terminated string to copy.
      * @return A new atomic shared pointer slot.
      */
-    inline atomic_str_slot make_atomic_slot(const char *str) {
-        return atomic_str_slot(make_atomic(str));
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM>
+    inline atomic_str_slot<AutoTrim> make_atomic_slot(const char *str) {
+        return atomic_str_slot<AutoTrim>(make_atomic<AutoTrim>(str));
     }
 
     /**
@@ -1037,10 +1122,11 @@ namespace jh {
      * <p>
      * Constructs a new <code>jh::immutable_str</code> using a
      * <code>std::string_view</code> and an associated mutex-like object
-     * that guards the view's lifetime. This ensures thread-safe initialization
-     * from potentially mutable or shared buffers.
+     * that guards the source during the copy. The caller must keep the view
+     * valid while the lock is being acquired.
      * </p>
      *
+     * @tparam AutoTrim Construction policy; defaults to the global macro.
      * @tparam M
      *   Any type satisfying <code>jh::concepts::mutex_like</code>,
      *   such as <code>std::mutex</code>, <code>std::shared_mutex</code>,
@@ -1074,21 +1160,22 @@ namespace jh {
      *       <code>jh::typed::null_mutex</code> may be used for zero-cost locking.</li>
      * </ul>
      */
-    template<jh::concepts::mutex_like M>
-    inline shared_str_ptr safe_from(std::string_view sv, M &mtx) {
-        return std::make_shared<immutable_str>(sv, mtx);
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM, jh::concepts::mutex_like M>
+    inline shared_str_ptr<AutoTrim> safe_from(std::string_view sv, M &mtx) {
+        return std::make_shared<immutable_str<AutoTrim>>(sv, mtx);
     }
 
     /**
      * @brief Create an atomic slot from a string view protected by a mutex-like object.
+     * @tparam AutoTrim Construction policy; defaults to the global macro.
      * @tparam M Mutex-like type.
      * @param sv String view to copy.
      * @param mtx Lock protecting the view during construction.
      * @return A new atomic shared pointer slot.
      */
-    template<jh::concepts::mutex_like M>
-    inline atomic_str_slot safe_from_slot(std::string_view sv, M &mtx) {
-        return atomic_str_slot(safe_from(sv, mtx));
+    template<bool AutoTrim = JH_IMMUTABLE_STR_AUTO_TRIM, jh::concepts::mutex_like M>
+    inline atomic_str_slot<AutoTrim> safe_from_slot(std::string_view sv, M &mtx) {
+        return atomic_str_slot<AutoTrim>(safe_from<AutoTrim>(sv, mtx));
     }
 
 } // namespace jh
@@ -1096,56 +1183,17 @@ namespace jh {
 
 #include "jh/macros/header_begin.h"
 
-namespace jh {
 #if JH_INTERNAL_SHOULD_DEFINE
 
-    JH_INLINE immutable_str::immutable_str(const char *str) {
-        init_from_string(str);
-    }
-
-    JH_INLINE immutable_str::immutable_str(std::nullptr_t) {
-        init_from_string(static_cast<const char *>(nullptr));
-    }
-
-    JH_INLINE const char *immutable_str::c_str() const noexcept {
-        return data_.get();
-    }
-
-    JH_INLINE std::string immutable_str::str() const {
-        return {data_.get(), size_};
-    }
-
-    JH_INLINE std::string_view immutable_str::view() const noexcept {
-        return {data_.get(), size_};
-    }
-
-    JH_INLINE pod::string_view immutable_str::pod_view() const noexcept {
-        return {this->c_str(), this->size()};
-    }
-
-    JH_INLINE std::size_t immutable_str::size() const noexcept {
-        return size_;
-    }
-
-    JH_INLINE bool immutable_str::operator==(const immutable_str &other) const noexcept {
-        return std::strcmp(data_.get(), other.data_.get()) == 0;
-    }
-
-    JH_INLINE std::size_t immutable_str::hash() const noexcept {
-        std::call_once(hash_flag_, [this] {
-            hash_.emplace(std::hash<std::string_view>{}(std::string_view(data_.get(), size_)));
-        });
-        return hash_.value();
-    }
-
-    JH_INLINE void immutable_str::init_from_string_trim(const char *input_str,
-                                                        std::size_t input_len) {
+namespace jh::detail {
+    JH_INLINE void init_from_string_trim(const char *input_str, std::size_t input_len,
+                                         std::size_t &size, std::unique_ptr<const char[]> &data) {
         if (!input_str) [[unlikely]] {
             // Initialize an empty string if input is null
-            size_ = 0;
+            size = 0;
             auto data_array_ = std::make_unique<char[]>(1);
             data_array_[0] = '\0';
-            data_ = std::move(data_array_);
+            data = std::move(data_array_);
             return;
         }
 
@@ -1158,37 +1206,37 @@ namespace jh {
 
         // If auto_trim is enabled, remove leading and trailing whitespace
 
-        while (*start && detail::is_space_ascii(*start)) ++start;
+        while (*start && is_space_ascii(*start)) ++start;
 
         // If the input contains only whitespace, treat it as an empty string
         if (*start == '\0') [[unlikely]] {
-            size_ = 0;
+            size = 0;
             auto data_array_ = std::make_unique<char[]>(1);
             data_array_[0] = '\0';
-            data_ = std::move(data_array_);
+            data = std::move(data_array_);
             return;
         }
 
-        while (end > start && detail::is_space_ascii(*end)) --end;
+        while (end > start && is_space_ascii(*end)) --end;
 
         // Compute the final string size
-        size_ = end - start + 1;
+        size = end - start + 1;
 
         // Allocate memory and copy the string
-        auto data_array_ = std::make_unique<char[]>(size_ + 1);
-        std::memcpy(data_array_.get(), start, size_);
-        data_array_[size_] = '\0';
-        data_ = std::move(data_array_);
+        auto data_array_ = std::make_unique<char[]>(size + 1);
+        std::memcpy(data_array_.get(), start, size);
+        data_array_[size] = '\0';
+        data = std::move(data_array_);
     }
 
-    JH_INLINE void immutable_str::init_from_string_no_trim(const char *input_str,
-                                                           std::size_t input_len) {
+    JH_INLINE void init_from_string_no_trim(const char *input_str, std::size_t input_len,
+                                            std::size_t &size, std::unique_ptr<const char[]> &data) {
         if (!input_str) [[unlikely]] {
             // Initialize an empty string if input is null
-            size_ = 0;
+            size = 0;
             auto data_array_ = std::make_unique<char[]>(1);
             data_array_[0] = '\0';
-            data_ = std::move(data_array_);
+            data = std::move(data_array_);
             return;
         }
 
@@ -1200,24 +1248,17 @@ namespace jh {
         const char *end = input_str + input_len - 1;
 
         // Compute the final string size
-        size_ = end - start + 1;
+        size = end - start + 1;
 
         // Allocate memory and copy the string
-        auto data_array_ = std::make_unique<char[]>(size_ + 1);
-        std::memcpy(data_array_.get(), start, size_);
-        data_array_[size_] = '\0';
-        data_ = std::move(data_array_);
+        auto data_array_ = std::make_unique<char[]>(size + 1);
+        std::memcpy(data_array_.get(), start, size);
+        data_array_[size] = '\0';
+        data = std::move(data_array_);
     }
 
-    [[maybe_unused]] JH_INLINE bool immutable_str::is_static_built() {
-#ifdef JH_IS_STATIC_BUILD
-        return true;
-#else
-        return false;
-#endif // JH_IS_STATIC_BUILD
-    }
+} // namespace jh::detail
 
 #endif // JH_INTERNAL_SHOULD_DEFINE
-} // namespace jh
 
 #include "jh/macros/header_end.h"
