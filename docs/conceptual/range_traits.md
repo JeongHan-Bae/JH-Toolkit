@@ -34,48 +34,42 @@ that does not belong to lower-level categories like iterators or sequences.
 
 ## 🔹 Concept — `vis_function_for<F, R>`
 
-### Behavioral Description
+### Structural check and semantic contract
 
 `vis_function_for` expresses the **visual relation** between
 a callable type `F` and a range type `R`.
 
-A type pair `(F, R)` satisfies this concept when the following behavioral
-conditions hold:
+A type pair `(F, R)` satisfies this concept when these expressions are valid:
 
-1. **Stable traversal** —
-   The range `R` supports non-consuming iteration; invoking `begin()` and `end()`
-   repeatedly does not alter its observable state.
+1. **Const-accessible input iteration** —
+   `begin()` on a const-qualified `R` returns a standard input iterator.
 
 2. **Element accessibility** —
-   Dereferencing the iterator returned by `begin(R)` produces a valid element
-   reference that can be read without mutation.
+   The returned iterator can be dereferenced.
 
 3. **Callable compatibility** —
-   Applying `F` to an element of `R` (as if by `std::invoke(f, *begin(r))`)
-   is well-formed and produces a result.
+   A const-qualified `F` can be invoked with `*begin(r)`.
 
 4. **Non-void semantics** —
-   The invocation result must not be `void`; the operation is *visual* or
-   *transformational*, not purely procedural.
+   The invocation result is non-void.
 
-5. **Non-mutating relation** —
-   The application of `F` must not modify either the range `R` itself or its
-   individual elements; the relation is *observational only*.
+These structural checks select the observational view. They cannot prove that
+`begin()` is semantically repeatable or that `F` preserves later observed
+results. Callers must uphold those properties when they require reentrant
+observations.
 
 ### Conforming Behavior
 
-* Ranges whose iterators are stable and readable without ownership transfer.
-* Callables that act as *inspectors* or *mappers*, producing values based on
-  elements rather than mutating them.
-* View or adaptor layers that perform visual transformations (e.g. diagnostic
-  pipelines) without consuming the source range.
+* A repeatable source with const-accessible input iteration.
+* An observational callable that produces a value without changing the source
+  or later results for the same source data.
 
 ### Non-Conforming Behavior
 
-* Callables that mutate or consume the range elements.
-* Ranges whose `begin()` or `end()` alter internal state or invalidate iteration.
-* Operations that return `void` or rely on side effects rather than observable
-  transformation.
+* A callable that mutates state relevant to later observations, even if its
+  const call operator satisfies the structural concept.
+* A source whose const `begin()` consumes shared state.
+* A callable returning `void`, which fails the concept itself.
 
 ---
 
@@ -108,8 +102,7 @@ value category.
    Are stored as *references*, allowing lightweight borrowing.
 
 3. **Reference-wrapper mode (`UseRefWrapper = true`)**  
-   Enforces *safe reference semantics*, ensuring deferred or pipelined
-   transformations do not outlive their source objects.
+   Stores a reference wrapper. The referenced source must outlive the view.
 
 4. **Const propagation**  
    When `R` is a const reference, storage preserves const-qualification

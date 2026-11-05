@@ -95,11 +95,11 @@ to `diff_t`. Invalid casts result in ill-formed code at compile time.
 |-------------------------|---------------------------------------------------------------------------|
 | **Index generation**    | Uses `std::views::iota(start)` to generate an index sequence.             |
 | **Type deduction**      | Index type deduced via `jh::concepts::sequence_difference_t<Seq>`.        |
-| **Input handling**      | The sequence is forwarded as-is (no copying).                             |
-| **Reference semantics** | Yields `(index, reference)` pairs — fully lazy and non-owning.            |
+| **Input handling**      | Lvalue inputs are borrowed and rvalue inputs are owned through `zip`.     |
+| **Element access**      | Yields an index value and source element access through Zip's proxy.     |
 | **Pipe compatibility**  | Callable in both direct and pipe forms.                                   |
 | **Type constraints**    | `start` must be convertible to the deduced difference type.               |
-| **Composition**         | Fully composable with other range adaptors, identical to `zip` semantics. |
+| **Composition**         | Uses `zip` to combine the index view with the source sequence.          |
 
 ---
 
@@ -151,16 +151,16 @@ resolved through the following rules:
 
 ## 🔹 Integration Notes
 
-* Identical in composition and laziness to [`jh::ranges::views::zip`](zip.md).
+* Uses [`jh::ranges::views::zip`](zip.md) to combine indices with source elements.
 * `enumerate()` acts as syntactic sugar for pairing elements with indices.
-* Works transparently with STL containers, arrays, pointers, and JH duck-typed sequences.
+* Works with standard containers and JH duck-typed sequences that model `sequence`.
 * Included automatically by `<jh/views>` (since **v1.3.3+**) or via `<jh/ranges/views/enumerate.h>`.
 
 ---
 
 ## 🧩 Summary
 
-`jh::ranges::views::enumerate` provides a **zero-overhead, lazy index-value adaptor**
+`jh::ranges::views::enumerate` provides a lazy index-value adaptor
 compatible with the full C++20 ranges pipeline.  
 It offers the same ergonomics as Python's `enumerate`, while remaining fully generic
 and type-safe across all sequence-like objects modeled by JH's sequence concept.

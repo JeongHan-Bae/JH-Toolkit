@@ -39,7 +39,7 @@
  *       <code>jh::ranges::to_adaptor&lt;C&gt;</code>.</li>
  *   <li>Otherwise, it performs element-wise insertion according to
  *       <code>collectable_status</code> deduction, supporting the four canonical
- *       insertion forms aligned with the proposed <code>std::ranges::to</code>:
+ *       insertion forms related to C++23 <code>std::ranges::to</code>:
  *       <ul>
  *         <li><b><code>emplace_back()</code></b></li>
  *         <li><b><code>push_back()</code></b></li>
@@ -121,11 +121,12 @@
  * @endcode
  *
  * <p>
- * Do <b>not</b> use <code>std::move()</code> between <code>collect</code> and
- * <code>to</code> &mdash; it provides no benefit.
- * The two adaptors are designed to compose directly in a pipeline;
- * move construction is handled automatically via RVO/NRVO.
- * See the <code>to</code> adaptor documentation for detailed move semantics.
+ * Compose <code>collect</code> and <code>to</code> directly in a pipeline.
+ * An explicit <code>std::move()</code> on the temporary result can prevent
+ * guaranteed prvalue elision. The insertion branch returns a named local,
+ * for which NRVO is permitted but not guaranteed; otherwise a move or copy
+ * initializes the result. See the <code>to</code> adaptor documentation for
+ * the construction paths used by the second stage.
  * </p>
  *
  * <h3>Direct completion</h3>
@@ -134,9 +135,8 @@
  * constructor parameters (e.g. <code>std::vector</code>,
  * <code>std::set</code>, <code>std::unordered_map</code>), you can use
  * <code>collect&lt;C&gt;</code> directly as the final stage.
- * Performance will be identical to <code>to</code> because, when possible,
- * <code>collect</code> automatically dispatches to
- * <code>to_adaptor&lt;C&gt;</code> internally.
+ * When the pair is closable, <code>collect</code> uses the same
+ * <code>to_adaptor&lt;C&gt;</code> construction path as <code>to</code>.
  * </p>
  *
  * <h3>Design rationale</h3>
@@ -234,7 +234,7 @@ namespace jh::ranges {
             // prefer direct closable construction
             return jh::ranges::to_adaptor<C>(std::forward<R>(r));
         } else {
-            C c{}; // guaranteed NRVO, only need default constructor
+            C c{}; // NRVO may elide the move or copy on return
 
             // reserve if available
             if constexpr (requires(C &cont, std::size_t n) { cont.reserve(n); } &&

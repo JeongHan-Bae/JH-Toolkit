@@ -26,15 +26,17 @@
  * <p>
  * The <code>jh::ranges::vis_transform_view</code> represents the underlying mechanism
  * used by <code>jh::ranges::views::vis_transform</code>.
- * It applies a callable over a range <em>without consuming</em> the source elements,
- * preserving reentrancy and the integrity of the underlying data.
+ * It applies a callable over a range under an observational contract.
+ * Repeatability requires a reentrant source and a callable that leaves the
+ * observed state unchanged.
  * </p>
  *
  * <h3>Core semantics</h3>
  * <ul>
  *   <li>Transforms elements through an observational projection (the callable
  *       must return a non-void value).</li>
- *   <li>Does not mutate or consume the source range &mdash; iteration is repeatable.</li>
+ *   <li>Supports repeatable observation when the source and callable uphold
+ *       the contract.</li>
  *   <li>Implements <code>std::ranges::view_interface</code> for composability.</li>
  *   <li>Acts as a lightweight, fully constexpr-compatible wrapper.</li>
  * </ul>
@@ -42,15 +44,13 @@
  * <p>
  * This class template is instantiated only when
  * <code>jh::concepts::vis_function_for&lt;F, R&gt;</code> is satisfied.
- * That concept ensures both that the callable <code>F</code> can be safely
- * applied to <code>R</code> and that the transformation does not alter
- * or terminate the stream.
+ * That concept checks const-accessible iteration, const invocation, and a
+ * non-void result. It cannot establish runtime purity or repeatability.
  * </p>
  *
  * <p>
- * In contrast to <code>std::views::transform</code>, which models a potentially
- * consumptive view, <code>vis_transform_view</code> guarantees the output
- * remains <b>non-consuming</b> and fully <b>reentrant</b>.
+ * The standard transform view does not promise reentrant transformed
+ * observations. This view makes that JH contract explicit for callers.
  * </p>
  *
  * @see jh::ranges::views::vis_transform
@@ -76,9 +76,9 @@ namespace jh::ranges {
      *
      * <p>
      * This view wraps a base range and lazily applies a callable to each element.
-     * Unlike <code>std::ranges::transform_view</code>, it does not consume the range.
-     * The resulting iteration can be repeated safely, provided the base range
-     * itself is reentrant.
+     * The resulting observations can be repeated when the base range is
+     * reentrant and the callable preserves observed state.
+     * Iterators retain a pointer to this view, so the view must outlive them.
      * </p>
      */
     template<std::ranges::range R, typename F> requires jh::concepts::vis_function_for<F, R>
@@ -324,49 +324,16 @@ namespace jh::ranges {
 
 namespace std::ranges {
     /**
-     * @brief Legal specialization of <code>std::ranges::enable_borrowed_range</code>.
+     * @brief Marks every <code>vis_transform_view</code> as non-borrowed.
      *
      * <p>
-     * This specialization is <b>explicitly permitted</b> by the C++ standard.
-     * User code may provide template specializations for certain customization points
-     * declared under the <code>std::ranges</code> namespace, including
-     * <code>std::ranges::enable_borrowed_range</code>, to indicate that a custom range
-     * type models the borrowed-range property.
+     * Its iterator stores a pointer to the view so that dereference can
+     * invoke the view's callable. That pointer becomes invalid when the
+     * view is destroyed. A borrowed base range therefore cannot make the
+     * transformed view borrowed for any <code>R</code> or <code>F</code> in
+     * this implementation.
      * </p>
-     *
-     * <h4>About Clang-Tidy false positives</h4>
-     * <p>
-     * Static analyzers such as <b>Clang-Tidy</b> may emit a warning:
-     * <em>"Modification of 'std' namespace can result in undefined behavior"</em>.
-     * This warning is triggered because Clang-Tidy heuristically treats
-     * <b>any</b> declaration inside a user-written <code>namespace std</code> block
-     * as a modification of the standard namespace, without recognizing that
-     * <em>nested namespaces</em> like <code>std::ranges</code> define a separate,
-     * standards-sanctioned customization domain.
-     * </p>
-     *
-     * <p>
-     * Concretely:
-     * </p>
-     * <ul>
-     *   <li>Specializations such as <code>std::tuple_element&lt;&gt;</code> are recognized
-     *       by Clang-Tidy as explicitly allowed and thus do <b>not</b> trigger the warning.</li>
-     *   <li>Specializations inside nested subnamespaces (e.g.
-     *       <code>std::ranges::enable_borrowed_range&lt;T&gt;</code>) are equally legal
-     *       under the standard, but Clang-Tidy does not check the whitelist at that depth
-     *       and therefore incorrectly flags them as potential UB.</li>
-     * </ul>
-     *
-     * <p>
-     * This is a <b>false positive</b> &mdash; the specialization is <em>fully standard-compliant</em>
-     * and does <b>not</b> constitute undefined behavior.
-     * </p>
-     *
-     * @see <a href="https://en.cppreference.com/w/cpp/ranges/borrowed_range.html">
-     * std::ranges::borrowed_range</a>
      */
     template<typename R, typename F>
-    [[maybe_unused]] inline constexpr bool enable_borrowed_range<
-            jh::ranges::vis_transform_view<R, F>> =
-            std::is_lvalue_reference_v<R> || std::ranges::borrowed_range<R>;
+    inline constexpr bool enable_borrowed_range<jh::ranges::vis_transform_view<R, F>> = false;
 } // namespace std::ranges

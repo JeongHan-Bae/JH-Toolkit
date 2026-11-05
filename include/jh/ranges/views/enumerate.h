@@ -47,7 +47,7 @@
  *   <li><code>start</code> is <code>static_cast</code> to <code>diff_t</code>; invalid conversions are ill-formed.</li>
  * </ul>
  *
- * @note Behavior, composition, and pipeline rules are identical to <code>zip</code>.
+ * @note Input ownership and traversal follow the underlying Zip adaptor.
  * @version <pre>1.3.x</pre>
  * @date <pre>2025</pre>
  */

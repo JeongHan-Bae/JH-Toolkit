@@ -22,46 +22,42 @@
  * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <p>
- * This header provides <code>jh::ranges::views::zip</code> &mdash; a <b>conceptually aligned but generalized</b>
- * version of the C++23 <code>std::views::zip</code> adaptor.
- * It extends the applicability of <code>zip</code> to custom <code>jh::concepts::sequence</code>
- * types, which may not be standard ranges but still define explicit iteration semantics
- * (non-consuming begin/end pairs).
+ * This header provides the JH Toolkit's sequence-aware
+ * <code>jh::ranges::views::zip</code> adaptor. It converts
+ * <code>jh::concepts::sequence</code> inputs to standard ranges before
+ * constructing <code>jh::ranges::zip_view</code>.
  * </p>
  *
  * <p>
- * The resulting view type is <code>jh::ranges::zip_view</code>,
- * which models both <code>std::ranges::view</code> and <code>jh::concepts::sequence</code>.
- * This dual compatibility allows seamless interoperability between STL-style range adaptors
- * and <code>jh</code>-specific abstractions.
+ * The resulting <code>jh::ranges::zip_view</code> models
+ * <code>std::ranges::view</code>. Its traversal category depends on the
+ * converted inputs and the selected Zip view implementation.
  * </p>
  *
  * <p><b>Behavior overview:</b></p>
  * <ul>
  *   <li><b>Direct call:</b><br/>
  *       <code>jh::ranges::views::zip(a, b, c)</code> constructs and returns
- *       a <code>jh::ranges::zip_view</code> directly, just like C++23 <code>std::views::zip</code>.
+ *       a <code>jh::ranges::zip_view</code> directly.
  *   </li>
- *   <li><b>Pipe call (standard form):</b><br/>
+ *   <li><b>Single-sequence pipe call:</b><br/>
  *       <code>a | jh::ranges::views::zip(b)</code> is supported,
- *       producing a <code>zip_view&lt;a,b&gt;</code>. This exactly matches
- *       the standard C++23 behavior &mdash; only <em>one</em> right-hand sequence is allowed.
+ *       producing a Zip view after <code>zip(b)</code> captures <code>b</code>
+ *       in a closure.
  *   </li>
  *   <li><b>Pipe call (extended form):</b><br/>
  *       The companion adaptor <code>jh::ranges::views::zip_pipe</code>
  *       enables piping with multiple right-hand sequences, e.g.:
  *       <code>a | jh::ranges::views::zip_pipe(b, c, d)</code>.
- *       This is a <b>semantic extension</b> of the standard pipeline form,
- *       generalized for <code>jh::concepts::sequence</code> sources.
- *       It preserves full compositional compatibility while providing
- *       broader applicability.
+ *       This closure captures multiple right-hand sequences for a later
+ *       pipe call.
  *   </li>
  * </ul>
  *
  * <p><b>Summary of design goals:</b></p>
  * <ul>
  *   <li>Extend <code>zip</code> to all <code>jh::concepts::sequence</code>-compatible types.</li>
- *   <li>Preserve the C++23 behavioral contract for single-argument pipelines.</li>
+ *   <li>Support a single-sequence pipe call through a closure.</li>
  *   <li>Offer a clean, opt-in extension (<code>zip_pipe</code>) for multi-argument pipeline usage.</li>
  * </ul>
  *
@@ -69,7 +65,7 @@
  * @code
  * using namespace jh::ranges::views;
  *
- * // Standard usage (same as C++23):
+ * // Direct and single-sequence pipe calls:
  * for (auto [x, y] : zip(a, b)) { ... }
  * for (auto [x, y] : a | zip(b)) { ... }
  *
@@ -82,16 +78,13 @@
  * The <code>jh::concepts::sequence</code> abstraction is designed to enable
  * <b>third-party or non-standard containers</b> to participate naturally
  * in the range adaptor ecosystem.
- * It recognizes any type that supports <em>non-consuming iteration</em> &mdash;
- * that is, a const-accessible <code>begin()</code> and a deducible <code>end()</code>
- * (including static sentinels). Such types can be safely iterated multiple times
- * without altering or consuming their internal state, and are thus considered
- * valid <code>sequence</code>s.
+ * It checks for const-accessible iteration and a comparable end sentinel.
+ * Implementations of the sequence interface must uphold the non-consuming
+ * iteration contract.
  * </p>
  *
  * <p>
- * Unlike a typical "range wrapper" system, this layer is <b>active and semantic</b>:
- * containers that model <code>std::ranges::range</code> and are <b>movable or copyable</b>
+ * Containers that model <code>std::ranges::range</code> and are <b>movable or copyable</b>
  * are forwarded directly. Non-movable and non-copyable ranges
  * (e.g. <code>jh::runtime_arr&lt;T&gt;</code>) are proxied by
  * <code>std::ranges::subrange</code> to ensure safe reference semantics.
@@ -102,7 +95,7 @@
  * </p>
  *
  * <p>
- * As a result, any valid <code>sequence</code> &mdash; even a type lacking standard iterator
+ * As a result, supported <code>sequence</code> inputs &mdash; even types lacking standard iterator
  * typedefs &mdash; can be <b>semantically promoted</b> into a fully compliant
  * <code>std::ranges::range</code> via <code>jh::to_range(seq)</code>.
  * All <code>jh::ranges::views</code> adaptors, including <code>zip</code> and
@@ -120,6 +113,7 @@
 #include <ranges>
 #include <cstdint>
 #include "jh/conceptual/sequence.h"
+#include "jh/metax/adl_apply.h"
 #include "jh/ranges/zip_view.h"
 
 namespace jh::ranges::views {
@@ -136,7 +130,7 @@ namespace jh::ranges::views {
          *
          * <p>For example:</p>
          * @code
-         * auto zipped = some_sequence | jh::ranges::views::zip(other_seq, third_seq);
+         * auto zipped = some_sequence | jh::ranges::views::zip_pipe(other_seq, third_seq);
          * @endcode
          *
          * @tparam Views The types of the captured view objects.
@@ -147,6 +141,22 @@ namespace jh::ranges::views {
              * @brief The tuple storing the captured view objects.
              */
             std::tuple<Views...> views;
+
+        private:
+            template<typename Self, jh::concepts::sequence R>
+            static constexpr auto apply(Self&& self, R&& r) {
+                return jh::meta::adl_apply(
+                        [&](auto&&... v) {
+                            return jh::ranges::zip_view{
+                                    std::views::all(jh::to_range(std::forward<R>(r))),
+                                    std::forward<decltype(v)>(v)...
+                            };
+                        },
+                        std::forward<Self>(self).views
+                );
+            }
+
+        public:
 
             /**
              * @brief Applies the stored views to a new range.
@@ -161,16 +171,20 @@ namespace jh::ranges::views {
              * <code>jh::ranges::zip_view</code> containing all views.
              */
             template <jh::concepts::sequence R>
-            constexpr auto operator()([[maybe_unused]] R&& r) const {
-                return std::apply(
-                        [&](auto&&... v) {
-                            return jh::ranges::zip_view{
-                                    std::views::all(jh::to_range(r)),
-                                    std::forward<decltype(v)>(v)...
-                            };
-                        },
-                        views
-                );
+            constexpr auto operator()(R&& r) const &
+                requires (std::copy_constructible<Views> && ...) {
+                return apply(*this, std::forward<R>(r));
+            }
+
+            /**
+             * @brief Applies a temporary closure by moving its captured views.
+             * @tparam R Left-hand sequence type.
+             * @param r The sequence to prepend.
+             * @return A Zip view owning any captured rvalue views.
+             */
+            template <jh::concepts::sequence R>
+            constexpr auto operator()(R&& r) && {
+                return apply(std::move(*this), std::forward<R>(r));
             }
 
             /**
@@ -184,12 +198,25 @@ namespace jh::ranges::views {
              * @details
              * This overload allows expressions like:
              * <pre><code>
-             * auto zipped = seq1 | jh::ranges::views::zip(seq2, seq3);
+             * auto zipped = seq1 | jh::ranges::views::zip_pipe(seq2, seq3);
              * </code></pre>
              */
             template <jh::concepts::sequence R>
-            friend constexpr auto operator|(R&& lhs, const zip_closure& rhs) {
+            friend constexpr auto operator|(R&& lhs, const zip_closure& rhs)
+                requires (std::copy_constructible<Views> && ...) {
                 return rhs(std::forward<R>(lhs));
+            }
+
+            /**
+             * @brief Pipes a sequence into a temporary Zip closure.
+             * @tparam R Left-hand sequence type.
+             * @param lhs The sequence to prepend.
+             * @param rhs A temporary closure whose captured views are moved.
+             * @return A Zip view containing the converted sequences.
+             */
+            template <jh::concepts::sequence R>
+            friend constexpr auto operator|(R&& lhs, zip_closure&& rhs) {
+                return std::move(rhs)(std::forward<R>(lhs));
             }
         };
 
@@ -204,7 +231,8 @@ namespace jh::ranges::views {
          * </ul>
          *
          * <p>Internally, the single-argument version produces a <code>zip_closure</code>
-         * object that stores the captured views.</p>
+             * object that stores the captured views. Lvalue sources are
+             * borrowed; rvalue sources are owned by their converted views.</p>
          */
         struct zip_fn final {
             /**
@@ -227,7 +255,7 @@ namespace jh::ranges::views {
             template <jh::concepts::sequence... Seq>
             constexpr auto operator()(Seq&&... seqs) const {
                 return jh::ranges::zip_view{
-                        std::views::all(jh::to_range(seqs))...
+                        std::views::all(jh::to_range(std::forward<Seq>(seqs)))...
                 };
             }
 
@@ -247,7 +275,7 @@ namespace jh::ranges::views {
              */
             template <jh::concepts::sequence Seq>
             constexpr auto operator()(Seq&& seq) const {
-                using View = decltype(std::views::all(jh::to_range(seq)));
+                using View = decltype(std::views::all(jh::to_range(std::forward<Seq>(seq))));
                 return zip_closure<View>{
                         std::tuple{ std::views::all(jh::to_range(std::forward<Seq>(seq))) }
                 };
@@ -263,13 +291,13 @@ namespace jh::ranges::views {
          * auto combined = seq1 | jh::ranges::views::zip_pipe(seq2, seq3);
          * @endcode
          *
-         * Unlike the standard zip, this version always returns a closure,
-         * so it can be safely used in pipelines with multiple parameters.
+         * This adaptor returns a closure that captures the right-hand
+         * sequences for a later pipe call.
          */
         struct zip_pipe_fn final {
             template <jh::concepts::sequence... Seq>
             constexpr auto operator()(Seq&&... seqs) const {
-                return zip_closure<decltype(std::views::all(jh::to_range(seqs)))...>{
+                return zip_closure<decltype(std::views::all(jh::to_range(std::forward<Seq>(seqs))))...>{
                         std::tuple{ std::views::all(jh::to_range(std::forward<Seq>(seqs)))... }
                 };
             }
@@ -299,19 +327,15 @@ namespace jh::ranges::views {
      *    <li>Always returns a closure.</li>
      * </ul>
      * @note
-     * The <code>zip_pipe</code> adaptor resolves the inherent ambiguity of the standard <code>zip</code> adaptor:
-     * in C++23, <code>zip(a, b)</code> returns a <code>zip_view</code>, while <code>zip(b)</code> produces a closure.
-     * This makes multi-argument pipeline forms (<code>a | zip(b, c)</code>) impossible.
-     *
-     * The <code>zip_pipe</code> variant explicitly defines a <b>closure-only</b> behavior,
-     * enabling expressive and unambiguous syntax:
+     * <code>zip_pipe</code> always produces a closure, enabling multi-sequence
+     * pipe syntax:
      * @code
-     * auto z1 = a | jh::ranges::views::zip(b);        // standard form
-     * auto z2 = a | jh::ranges::views::zip_pipe(b,c); // extended multi-sequence form
+     * auto z1 = a | jh::ranges::views::zip(b);
+     * auto z2 = a | jh::ranges::views::zip_pipe(b,c);
      * @endcode
      *
-     * <code>zip_pipe</code> provides closure semantics for multi-argument zip operations
-     * while maintaining full compatibility with the C++23 range adaptor model.
+     * <code>zip_pipe</code> captures multiple right-hand sequences and builds
+     * the view when a left-hand sequence is supplied.
      */
     inline constexpr detail::zip_pipe_fn zip_pipe{};
 

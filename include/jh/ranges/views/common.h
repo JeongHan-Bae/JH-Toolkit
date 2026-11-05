@@ -32,8 +32,8 @@
  * </p>
  *
  * <p>
- * The adaptor normalizes iterator/sentinel categories without altering data ownership
- * semantics. For standard ranges, it behaves identically to <code>std::views::common</code>.
+ * The adaptor normalizes iterator/sentinel types. Standard ranges outside
+ * the Sequence concept are passed to <code>std::views::common</code>.
  * For types satisfying <code>jh::concepts::sequence</code>, it performs a promotion through
  * <code>jh::to_range()</code> to obtain a valid range representation.
  * Non-copyable or non-movable sequences are automatically proxied via
@@ -42,12 +42,14 @@
  *
  * <p><b>Behavior summary:</b></p>
  * <ul>
- *   <li>If the source models <code>jh::concepts::sequence</code>, it is promoted
- *       using <code>jh::to_range()</code> and wrapped by <code>std::ranges::common_view</code>.</li>
+ *   <li>If the source models <code>jh::concepts::sequence</code>, it is converted
+ *       using <code>jh::to_range()</code>. A <code>common_view</code> is added only
+ *       when the converted view has a distinct sentinel type.</li>
  *   <li>If the source models only <code>std::ranges::range</code>, the adaptor
- *       forwards to <code>std::views::common()</code>.</li>
- *   <li>Existing <code>common_range</code> types remain unchanged, except when
- *       proxied for non-copyable sources.</li>
+ *       uses <code>std::views::common()</code> where available and a shared
+ *       single-pass cursor when that standard path cannot be constructed.</li>
+ *   <li>An already-common converted view is returned without another
+ *       <code>common_view</code> layer.</li>
  * </ul>
  *
  * <p><b>Usage examples:</b></p>
@@ -78,13 +80,13 @@
  *
  * <p><b>Notes:</b></p>
  * <ul>
- *   <li>Applying <code>common()</code> to a temporary object results in a dangling view.
- *       Always ensure the source object outlives the resulting view.</li>
+ *   <li>A view borrowing an lvalue source requires that source to outlive it.
+ *       An rvalue source may be owned by the resulting view.</li>
  *   <li>If the input already models <code>std::ranges::common_range</code>,
  *       <code>common()</code> performs no semantic change; it may return
  *       a <code>subrange</code> proxy for non-copyable or non-movable sources.</li>
- *   <li>For consuming (single-pass) ranges, the adaptor directly invokes
- *       <code>std::views::common()</code>.</li>
+ *   <li>A single-pass fallback cursor allocates state on <code>begin()</code>
+ *       and keeps iterator copies at the same input position.</li>
  * </ul>
  *
  * @version <pre>1.3.x</pre>
@@ -94,11 +96,84 @@
 #pragma once
 
 #include <ranges>
+#include <memory>
 #include "jh/conceptual/sequence.h"
 
 namespace jh::ranges::views {
 
     namespace detail {
+
+        /**
+         * @brief Makes a single-pass input view common through a shared cursor.
+         * @tparam V The stored input view type.
+         *
+         * Iterator copies share the current position. Each call to
+         * <code>begin()</code> allocates cursor state and obtains a new iterator
+         * from the base view. The base view must outlive its iterators.
+         */
+        template<std::ranges::view V>
+            requires std::ranges::input_range<V>
+        class shared_common_view final : public std::ranges::view_interface<shared_common_view<V>> {
+            V base_;
+
+            struct state final {
+                std::ranges::iterator_t<V> current;
+                std::ranges::sentinel_t<V> last;
+
+                state(std::ranges::iterator_t<V> first, std::ranges::sentinel_t<V> end)
+                    : current(std::move(first)), last(std::move(end)) {}
+            };
+
+        public:
+            /// @brief Constructs the wrapper from a standard input view.
+            explicit shared_common_view(V base) : base_(std::move(base)) {}
+
+            /// @brief Copyable iterator whose copies share one input position.
+            class iterator final {
+                std::shared_ptr<state> cursor_;
+
+            public:
+                using iterator_concept = std::input_iterator_tag;
+                using value_type = std::ranges::range_value_t<V>;
+                using difference_type = std::ranges::range_difference_t<V>;
+
+                iterator() = default;
+
+                /// @brief Attaches an iterator to shared cursor state.
+                explicit iterator(std::shared_ptr<state> cursor)
+                    : cursor_(std::move(cursor)) {}
+
+                /// @brief Reads the current source element.
+                decltype(auto) operator*() const { return *cursor_->current; }
+
+                /// @brief Advances the shared input position.
+                iterator& operator++() {
+                    ++cursor_->current;
+                    return *this;
+                }
+
+                /// @brief Advances the shared input position after a discarded result.
+                void operator++(int) { ++(*this); }
+
+                /// @brief Compares active cursors or an active cursor with the end marker.
+                friend bool operator==(const iterator& lhs, const iterator& rhs) {
+                    if (!lhs.cursor_) return !rhs.cursor_ || rhs.cursor_->current == rhs.cursor_->last;
+                    if (!rhs.cursor_) return lhs.cursor_->current == lhs.cursor_->last;
+                    if (lhs.cursor_ == rhs.cursor_) return true;
+                    return lhs.cursor_->current == lhs.cursor_->last &&
+                           rhs.cursor_->current == rhs.cursor_->last;
+                }
+            };
+
+            /// @brief Starts a new single-pass cursor over the base view.
+            iterator begin() {
+                return iterator(std::make_shared<state>(std::ranges::begin(base_),
+                                                        std::ranges::end(base_)));
+            }
+
+            /// @brief Returns a same-type end marker.
+            iterator end() const { return iterator{}; }
+        };
 
         /**
          * @brief Closure type enabling pipe syntax for <code>common()</code>.
@@ -140,14 +215,14 @@ namespace jh::ranges::views {
              *       </ol>
              *   </li>
              *   <li>Otherwise, if <code>R</code> is only a
-             *       <code>std::ranges::range</code> (consuming flow),
-             *       the call directly forwards to
-             *       <code>std::views::common(std::forward&lt;R&gt;(r))</code>.</li>
+             *       <code>std::ranges::range</code>,
+             *       the call uses <code>std::views::common</code> when possible
+             *       or a shared single-pass cursor otherwise.</li>
              * </ul>
              *
              * <p>
-             * In both cases, ownership semantics are preserved; no copies or moves
-             * are introduced unless required for view construction.
+             * View construction may borrow or move its source according to
+             * the source value category and the selected adaptor.
              * </p>
              */
             template<typename R>
@@ -164,7 +239,13 @@ namespace jh::ranges::views {
                         };
                     }
                 } else {
-                    return std::ranges::views::common(std::forward<R>(r));
+                    if constexpr (requires { std::ranges::views::common(std::forward<R>(r)); }) {
+                        return std::ranges::views::common(std::forward<R>(r));
+                    } else {
+                        return shared_common_view<std::views::all_t<R>>{
+                                std::views::all(std::forward<R>(r))
+                        };
+                    }
                 }
             }
 
@@ -185,6 +266,7 @@ namespace jh::ranges::views {
              * </p>
              */
             template<typename R>
+            requires (jh::concepts::sequence<R> || std::ranges::range<R>)
             friend constexpr auto operator|(R &&lhs, const common_closure &rhs) {
                 return rhs(std::forward<R>(lhs));
             }
@@ -214,16 +296,14 @@ namespace jh::ranges::views {
              * @tparam R Type satisfying <code>jh::concepts::sequence</code>
              *           or <code>std::ranges::range</code>.
              * @param r  The range or sequence object.
-             * @return A <code>std::ranges::common_view</code> if <code>R</code>
-             *         satisfies <code>jh::concepts::sequence</code>,
-             *         otherwise <code>std::views::common(R)</code>.
+             * @return A common range, possibly the converted view itself.
              *
              * <p><b>Notes:</b></p>
              * <ul>
              *   <li>Sequence types are promoted or proxied through
              *       <code>jh::to_range()</code> as necessary.</li>
-             *   <li>For consuming ranges, the standard
-             *       <code>std::views::common</code> is applied directly.</li>
+             *   <li>For standard ranges outside the Sequence concept, the
+             *       standard adaptor is tried before the shared cursor fallback.</li>
              * </ul>
              */
             template<typename R>
@@ -240,7 +320,13 @@ namespace jh::ranges::views {
                         };
                     }
                 } else {
-                    return std::ranges::views::common(std::forward<R>(r));
+                    if constexpr (requires { std::ranges::views::common(std::forward<R>(r)); }) {
+                        return std::ranges::views::common(std::forward<R>(r));
+                    } else {
+                        return shared_common_view<std::views::all_t<R>>{
+                                std::views::all(std::forward<R>(r))
+                        };
+                    }
                 }
             }
 

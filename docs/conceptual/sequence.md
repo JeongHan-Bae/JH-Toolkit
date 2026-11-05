@@ -104,7 +104,7 @@ Provides a `constexpr bool` shorthand for SFINAE or static assertions.
 
 ### `jh::to_range(seq)`
 
-Transforms any valid sequence into a `std::ranges::range`-compatible object.
+Transforms a supported sequence into a `std::ranges::range`-compatible result.
 Requires:
 
 * The input type satisfies `jh::concepts::sequence`.
@@ -113,30 +113,37 @@ Behavior:
 
 * If the input already models `std::ranges::range`:
 
-    * returns it directly if movable or copyable;
-    * otherwise wraps it with `std::ranges::subrange` for const-lvalue access.
+    * a usable lvalue remains a reference to the source;
+    * a movable or copyable rvalue becomes an owned result;
+    * a temporary built-in array becomes an owned `std::array`;
+    * a non-movable lvalue is represented by a borrowing `std::ranges::subrange`.
 * If the input does *not* model `std::ranges::range`:
 
     * wraps lvalues using `jh::ranges::range_adaptor<Seq&>`;
     * wraps rvalues or values using `jh::ranges::range_adaptor<Seq>`.
 
-The resulting object is always **movable and forwardable**, even when the original sequence is not.
+The resulting range representation can be passed to standard range algorithms.
+Borrowed lvalue results require the source to remain alive. A non-movable
+temporary cannot be safely borrowed and must be kept as an lvalue for adaptation.
+A temporary `std::initializer_list` is rejected because copying its handle
+does not extend the backing array's lifetime; a named initializer list can be
+borrowed while it remains alive.
+Returning a range object by value does not necessarily own its elements:
+non-owning inputs such as `std::span` and `std::string_view` retain their
+underlying storage lifetime requirements.
 Some STL range algorithms perform overly strict move/copy checks —
 **even when the algorithm itself never actually moves or copies the range**.
 `jh::to_range()` guarantees such checks will pass by producing a proxy object that
 behaves as a movable `std::ranges::range` through `range_adaptor` or `subrange`.
 
-This adaptation is **idempotent for all valid inputs**, following four deterministic paths:
+The conversion follows these input paths:
 
-1. **`std::ranges::range` + movable/copyable** → returned directly (transparent pass-through).
-2. **`std::ranges::range` + not movable/copyable** → wrapped by `std::ranges::subrange`.
+1. **Standard range lvalue** → borrowed directly or through `subrange` when required.
+2. **Movable/copyable standard range rvalue** → returned as an owned value.
 3. **`sequence` lvalue** → wrapped by `jh::ranges::range_adaptor<Seq&>`.
 4. **`sequence` rvalue/value** → wrapped by `jh::ranges::range_adaptor<Seq>`.
 
-The outputs of cases 2–4 all satisfy case 1,
-so any subsequent call to `jh::to_range()` simply forwards the object unchanged.
-This is why the operation is *natively idempotent*—
-once an object has been adapted, further adaptation is a no-op.
+The selected path determines whether the result borrows or owns its source.
 
 In practice, this requires that the input must satisfy `jh::concepts::sequence`, 
 meaning it must be iterable and iteration itself must not consume the container.

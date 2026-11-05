@@ -28,21 +28,20 @@
  * semantic dispatch between two transformation behaviors:
  * <ul>
  *   <li><code>jh::ranges::views::vis_transform</code> &mdash; when the pair <code>&lt;R, F&gt;</code>
- *       satisfies <code>jh::concepts::vis_function_for</code>, meaning the range
- *       is non-consuming and the function is a pure observation (returns non-void).</li>
- *   <li><code>std::views::transform</code> &mdash; otherwise, for standard consumptive
- *       transformations that may alter or terminate the underlying stream.</li>
+ *       satisfies <code>jh::concepts::vis_function_for</code> and the caller
+ *       upholds the observational contract.</li>
+ *   <li><code>std::views::transform</code> &mdash; otherwise, with the standard
+ *       transform view's range and callable semantics.</li>
  * </ul>
  * </p>
  *
  * <h3>Design rationale</h3>
  * <ul>
- *   <li><b>Problem:</b> <code>std::views::transform</code> treats every projection
- *       as consumptive, even when it merely observes elements.
- *       This breaks reentrancy and forces intermediate buffering in non-consuming pipelines.</li>
- *   <li><b>Solution:</b> Defer dispatch until both <code>R</code> and <code>F</code> are known,
- *       so the adaptor can route to <code>vis_transform</code> only when the combination
- *       preserves observation semantics. This ensures correctness and efficiency.</li>
+ *   <li><b>Purpose:</b> The standard transform view does not promise that
+ *       transformed observations remain reentrant, even when the callable
+ *       is observational.</li>
+ *   <li><b>Dispatch:</b> Select <code>vis_transform</code> for a qualifying
+ *       range-callable pair; otherwise use <code>std::views::transform</code>.</li>
  * </ul>
  *
  * Supports both <b>direct</b> and <b>pipe</b> usage forms:
@@ -55,9 +54,9 @@
  * Dispatch occurs <em>inside</em> the call operator, because determining
  * whether <code>vis_transform</code> semantics apply requires both
  * the range and the callable type.
- * This ensures that only non-consuming, pure-observation combinations
- * are elevated to <code>vis_transform</code>, while all others fall back
- * to the standard <code>std::views::transform</code>.
+ * The concept checks const-accessible iteration, const invocability, and
+ * a non-void result. The caller must supply a reentrant range and an
+ * observational callable to uphold the <code>vis_transform</code> contract.
  *
  * @see jh::concepts::vis_function_for
  * @see jh::ranges::views::vis_transform
@@ -82,8 +81,8 @@ namespace jh::ranges::views {
          * Stores the callable and delays dispatch until a range is provided.
          * The combination <code>&lt;R, F&gt;</code> is inspected in
          * <code>operator()</code> to determine whether the transformation
-         * is non-consuming (<code>vis_transform</code>) or consumptive
-         * (<code>std::views::transform</code>).
+         * selects <code>vis_transform</code> or the standard
+         * <code>std::views::transform</code> path.
          */
         template<typename F>
         struct transform_closure final {
@@ -94,8 +93,8 @@ namespace jh::ranges::views {
              *
              * @tparam R Range type.
              * @param r The input range.
-             * @return Either a <code>jh::ranges::vis_transform_view</code> (for non-consuming)
-             *         or a <code>std::ranges::transform_view</code> (for consumptive behavior).
+             * @return Either a <code>jh::ranges::vis_transform_view</code>
+             *         or a <code>std::ranges::transform_view</code>.
              */
             template<std::ranges::range R>
             constexpr auto operator()(R &&r) const {
@@ -121,8 +120,8 @@ namespace jh::ranges::views {
          * Provides both direct and pipe forms.
          * Dispatch is determined for each <code>&lt;R, F&gt;</code> pair at the point of call:
          * <ul>
-         *   <li>If the range is non-consuming and the callable is observational,
-         *       uses <code>vis_transform</code>.</li>
+             *   <li>If <code>vis_function_for&lt;F, R&gt;</code> holds,
+             *       uses <code>vis_transform</code>.</li>
          *   <li>Otherwise, uses <code>std::views::transform</code>.</li>
          * </ul>
          */
@@ -135,7 +134,7 @@ namespace jh::ranges::views {
              * @tparam F Callable type.
              * @param r Source range.
              * @param f Function applied to each element.
-             * @return A transform view &mdash; either non-consuming or consumptive depending on semantics.
+             * @return The selected transform view.
              */
             template<std::ranges::range R, typename F>
             constexpr auto operator()(R &&r, F &&f) const {
@@ -166,7 +165,7 @@ namespace jh::ranges::views {
      * <p>
      * Provides an adaptive interface for transformation within range pipelines.
      * The adaptor performs a deferred semantic inspection of the pair <code>&lt;R, F&gt;</code>
-     * to determine whether to use the non-consuming or consumptive transformation path.
+     * to select the observational or standard transformation path.
      * </p>
      *
      * Supports both <b>direct</b> and <b>pipe</b> usage forms:
@@ -177,9 +176,9 @@ namespace jh::ranges::views {
      *
      * @note
      * The dispatch is performed per combination of range and callable.
-     * Non-consuming ranges with purely observational projections automatically
-     * gain <code>vis_transform</code> semantics and remain reentrant.
-     * All others use <code>std::views::transform</code> to preserve correct consumption semantics.
+     * Qualifying pairs use <code>vis_transform</code> under its observational
+     * contract. Other pairs use <code>std::views::transform</code> and its
+     * standard range semantics.
      */
     inline constexpr detail::transform_fn transform{};
 

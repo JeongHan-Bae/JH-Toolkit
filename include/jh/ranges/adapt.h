@@ -47,6 +47,7 @@
 #pragma once
 
 #include "jh/conceptual/sequence.h"
+#include <type_traits>
 
 namespace jh::ranges {
 
@@ -71,11 +72,17 @@ namespace jh::ranges {
              *
              * @tparam Seq The sequence type, must satisfy <code>jh::concepts::sequence</code>.
              * @param seq The sequence to be adapted.
-             * @return A <code>std::ranges::viewable_range</code> object.
+             * @return A reference for a directly usable lvalue range, or an
+             *         owned range or proxy for other inputs.
              */
             template <jh::concepts::sequence Seq>
-            constexpr auto operator()(Seq&& seq) const {
-                return jh::to_range(std::forward<Seq>(seq));
+            constexpr decltype(auto) operator()(Seq&& seq) const {
+                if constexpr (std::is_lvalue_reference_v<Seq>) {
+                    return jh::to_range(seq);
+                } else {
+                    using Result = std::remove_cvref_t<decltype(jh::to_range(std::forward<Seq>(seq)))>;
+                    return Result(jh::to_range(std::forward<Seq>(seq)));
+                }
             }
 
             /**
@@ -87,7 +94,7 @@ namespace jh::ranges {
              * @return The adapted range produced by <code>jh::to_range(lhs)</code>.
              */
             template <jh::concepts::sequence Seq>
-            friend constexpr auto operator|(Seq&& lhs, const adapt_closure& rhs) {
+            friend constexpr decltype(auto) operator|(Seq&& lhs, const adapt_closure& rhs) {
                 return rhs(std::forward<Seq>(lhs));
             }
         };
@@ -102,8 +109,10 @@ namespace jh::ranges {
          *   <li><b>Pipe:</b> <code>seq | adapt()</code></li>
          * </ul>
          *
-         * Internally forwards to <code>jh::to_range()</code>,
-         * preserving const-correctness and perfect forwarding.
+         * Internally calls <code>jh::to_range()</code>. Directly usable
+         * lvalue ranges remain references; rvalue inputs produce range
+         * objects by value, and restricted inputs may produce iterator
+         * proxies. Non-owning views retain their source lifetime requirements.
          */
         struct adapt_fn final {
 
@@ -112,11 +121,12 @@ namespace jh::ranges {
              *
              * @tparam Seq Sequence type modeling <code>jh::concepts::sequence</code>.
              * @param seq Input sequence.
-             * @return A <code>std::ranges::viewable_range</code>.
+             * @return A reference for a directly usable lvalue range, or an
+             *         owned range or proxy for other inputs.
              */
             template <jh::concepts::sequence Seq>
-            constexpr auto operator()(Seq&& seq) const {
-                return jh::to_range(std::forward<Seq>(seq));
+            constexpr decltype(auto) operator()(Seq&& seq) const {
+                return adapt_closure{}(std::forward<Seq>(seq));
             }
 
             /**

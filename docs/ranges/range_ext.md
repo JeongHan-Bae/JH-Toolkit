@@ -31,9 +31,10 @@ between *lazy evaluation* and *structural materialization*,
 forming the connective layer that binds views, concepts, and containers
 into a single coherent range architecture.
 
-Unlike the standard library’s loosely defined `std::ranges::to` behavior,
-the `jh::ranges_ext` module enforces explicitness, compositional clarity,
-and compile-time verification for every transformation stage.
+The C++23 standard specifies ordered construction and insertion paths for
+`std::ranges::to`. JH Toolkit exposes its own choices as separate adaptors:
+`collect` handles supported materialization paths and `to` selects a documented
+structural construction path at compile time.
 
 ---
 
@@ -65,7 +66,7 @@ auto result =
     | jh::ranges::adapt()
     | jh::ranges::views::transform(...)
     | jh::ranges::views::enumerate()
-    | jh::ranges::collect<std::vector<Key, Val>>()
+    | jh::ranges::collect<std::vector<std::pair<Key, Val>>>()
     | jh::ranges::to<std::pmr::unordered_map<Key, Val>>(
           0,
           std::hash<Key>{},

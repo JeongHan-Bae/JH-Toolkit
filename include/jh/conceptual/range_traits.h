@@ -80,27 +80,25 @@ namespace jh::concepts {
      * @brief Concept describing the <em>visual relation</em> between a range and a callable.
      *
      * @details
-     * <code>vis_function_for&lt;F, R&gt;</code> formalizes a <b>visual visitation contract</b>:
-     * both the range and the callable must satisfy conditions for a
-     * <em>non-consuming, non-mutating traversal</em> with a meaningful result.
+     * <code>vis_function_for&lt;F, R&gt;</code> checks the structural requirements
+     * used to select an observational transform view.
      *
      * <h4>Contract Requirements</h4>
      * <ul>
-     *   <li>The range <code>R</code> supports <b>non-consuming iteration</b> &mdash;
-     *       calling <code>begin()</code> and <code>end()</code> does not alter its state.</li>
-     *   <li>Elements of <code>R</code> can be dereferenced as input iterators.</li>
-     *   <li>The callable <code>F</code> can be safely invoked on each element:
-     *       <code>std::invoke(f, *begin(r))</code> must be well-formed.</li>
+     *   <li>A const-qualified <code>R</code> provides an input iterator through
+     *       <code>begin()</code>.</li>
+     *   <li>The iterator can be dereferenced.</li>
+     *   <li>A const-qualified <code>F</code> can be invoked with the dereferenced
+     *       element.</li>
      *   <li>The invocation result is <b>non-void</b>, allowing the result
      *       to participate in further pipeline or transform chaining.</li>
-     *   <li>Neither the range nor its elements are modified by the operation &mdash;
-     *       the relation is purely observational.</li>
      * </ul>
      *
      * <p>
-     * In other words, <code>vis_function_for</code> ensures that a callable and a
-     * range can participate together in a <em>visual transformation pipeline</em>
-     * such as those implemented by <code>jh::ranges::vis_transform_view</code>.
+     * The concept cannot prove that repeated traversal is stable or that
+     * invocation preserves later observed results. Callers using
+     * <code>jh::ranges::vis_transform_view</code> must uphold those semantic
+     * requirements.
      * </p>
      *
      * @tparam F Callable type to be applied visually to the range.
@@ -130,9 +128,9 @@ namespace jh::concepts {
      * <ul>
      *   <li><b>Rvalues / temporaries</b> &mdash; stored by value.</li>
      *   <li><b>Lvalues</b> &mdash; stored as references, optionally wrapped in
-     *       <code>std::reference_wrapper</code> for safety.</li>
-     *   <li><b>UseRefWrapper = true</b> &mdash; enforces safe reference semantics,
-     *       ensuring non-dangling access in deferred pipelines.</li>
+     *       <code>std::reference_wrapper</code>. The source must outlive the wrapper.</li>
+     *   <li><b>UseRefWrapper = true</b> &mdash; stores lvalue references through
+     *       <code>std::reference_wrapper</code>; it does not extend source lifetime.</li>
      *   <li><b>UseRefWrapper = false</b> &mdash; uses direct references for
      *       lightweight, local usage.</li>
      * </ul>
@@ -169,7 +167,7 @@ namespace jh::concepts {
          * @param v The source range to wrap.
          * @return Stored representation (value or reference) suitable for internal retention.
          */
-        static constexpr auto wrap(R &&v) noexcept(
+        static constexpr decltype(auto) wrap(R &&v) noexcept(
         std::is_nothrow_constructible_v<stored_t, R &&>
         ) {
             if constexpr (is_lvalue && UseRefWrapper) {
@@ -180,7 +178,7 @@ namespace jh::concepts {
             } else if constexpr (is_lvalue)
                 return v;
             else
-                return std::move(v);
+                return stored_t(std::move(v));
         }
 
         /**

@@ -1,5 +1,15 @@
 project_static_fail(enum_case_rejects_unscoped_enum concepts/enum_case_rejects_unscoped_enum.cpp)
 project_static_fail(
+    to_range_rejects_nonmovable_temporary
+    concepts/to_range_rejects_nonmovable_temporary.cpp
+    EXPECT_DIAGNOSTIC "deleted"
+)
+project_static_fail(
+    to_range_rejects_temporary_initializer_list
+    concepts/to_range_rejects_temporary_initializer_list.cpp
+    EXPECT_DIAGNOSTIC "constraints not satisfied"
+)
+project_static_fail(
     serializable_rejects_temporary_borrowed_string
     concepts/serializable_rejects_temporary_borrowed_string.cpp
     EXPECT_DIAGNOSTIC "deleted"

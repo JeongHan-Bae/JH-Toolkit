@@ -2,7 +2,6 @@
 
 📁 **Header:** `<jh/ranges/collect.h>`  
 📦 **Namespace:** `jh::ranges`  
-📅 **Version:** 1.3.5+ (2025)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -19,8 +18,8 @@
 
 `jh::ranges::collect` is an **eager materialization adaptor** —
 it terminates a lazy or proxy-based range pipeline and realizes it into a concrete container **`C`**.  
-It represents the **materialization half** of C++23's proposed [
-`std::ranges::to`](https://en.cppreference.com/w/cpp/ranges/to).
+It provides an explicit materialization stage alongside the C++23
+[`std::ranges::to`](https://eel.is/c++draft/range.utility.conv.to) conversion model.
 
 Unlike [`jh::ranges::to`](./to.md), which performs *structural construction* of a closable container,
 `collect` performs *explicit evaluation* — converting any compatible range into a stable, value-semantic container.
@@ -94,9 +93,8 @@ The evaluation process follows a **priority chain** — each later step applies 
 | ②    | Otherwise, `C` and `R` satisfy [`collectable_container_for`](../conceptual/collectable_container.md) <br> (direct insertion/emplacement) | Iterate through the range and perform `emplace_back`, `push_back`, `emplace`, or `insert`. | Standard path for all common containers.                                  |
 | ③    | When the element type is **tuple-like** and direct insertion is invalid                                                                  | Unpack tuple-like elements and forward them to `emplace_back` / `emplace`.                 | Enables reconstruction from proxy elements such as `zip_reference_proxy`. |
 
-Additionally, if the container type supports `reserve()` and the range models `sized_range`,
-capacity is **preallocated before any insertion**, regardless of which semantic path is taken.  
-This optimization applies orthogonally to all steps above.
+In the insertion branch, `collect` calls `reserve()` before inserting when the
+container supports it and the range models `sized_range`.
 
 ---
 
@@ -164,8 +162,11 @@ It focuses on *evaluation and normalization*, while `to` focuses on *constructio
     | to<std::set<T>>();
   ```
 
-  This avoids redundant rebalancing, hashing, or allocator churn
-  by constructing the final container in one structural step.
+  This can reduce total cost when repeated insertion into the final container
+  is more expensive than constructing the intermediate vector and then
+  constructing the final container from it. The selected `to` path and the
+  container constructors determine whether elements are copied, moved, or
+  transferred through a whole-container move.
 
 * **If your stream is non-consumptive** and your types are *directly closable*,
   you may safely use a single stage:
@@ -189,8 +190,9 @@ It focuses on *evaluation and normalization*, while `to` focuses on *constructio
 
 * **For `collect + to` pipelines**,
   `std::vector` is the *recommended intermediate container*:  
-  it offers optimal cache locality, minimal insertion cost,
-  and the broadest allocator and construction support.
+  its contiguous storage and append operations suit many materialization
+  workloads. Check the final container's constructor and allocator behavior
+  before relying on a whole-container ownership transfer.
 
 ---
 
@@ -212,7 +214,7 @@ This separation makes pipeline intent clear:
 
 * Controlled by [`jh::concepts::collectable_container_for`](../conceptual/collectable_container.md).
 * Delegates automatically to [`to_adaptor`](./to.md) when `closable_container_for` holds.
-* Safe and idempotent — multiple `collect` applications yield the same result.
+* A second `collect` materializes the output of the first as a new container.
 * Fully compatible with lazy JH and STL view adaptors (`zip`, `enumerate`, `transform`, etc.).
 * Included automatically via `<jh/ranges_ext>` or directly with `<jh/ranges/collect.h>`.
 
@@ -227,4 +229,4 @@ and forms the first half of the robust two-stage pipeline with [`jh::ranges::to`
 > **In short:**  
 > `collect` = *force evaluation and normalize data* →
 > `to` = *construct and adapt final container*.
-> Together, they provide explicitness, safety, and composability beyond `std::ranges::to`.
+> Together, they expose the materialization and final construction stages.

@@ -25,11 +25,9 @@ It extends `std::views::common` by providing
 a complete bridge across **standard**, **third-party**,
 and **semantically constrained** iterable types.
 
-Its purpose is to guarantee that all pipeline components
-operate on **common ranges** — i.e., those with identical iterator and sentinel types —
-while preserving each type's native ownership and traversal semantics.
-
-No copies, allocations, or eager transformations are performed.
+Its result models **common_range**: begin and end have the same type.
+The adaptor may borrow an lvalue source or own an rvalue source according to
+the selected view construction path. It does not materialize range elements.
 
 ---
 
@@ -72,76 +70,49 @@ auto v2 = r | jh::ranges::views::common();
 
 ## 🔹 Dispatch Model
 
-`common()` inspects the structural and semantic traits of its input `R`,
-and dispatches to one of **five** normalization paths:
+The implementation has four dispatch branches:
 
-|   | Category                                             | Description                                                                        | Action                                                                                                                                                                              |
-|---|------------------------------------------------------|------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| ① | Already `common_range`                               | Iterator and sentinel types are identical.                                         | Returned directly (transparent pass-through).                                                                                                                                       |
-| ② | Fully reentrant and `std::views::all`–compatible     | Copy/move–capable reentrant ranges or sequences.                                   | Forwarded transparently via `jh::to_range()` → `std::views::all` → `std::ranges::common_view`.                                                                                      |
-| ③ | Reentrant but restricted (move-only / stable-holder) | Copy/move incomplete types that must not transfer ownership.                       | Wrapped into `std::ranges::subrange`, then passed through `std::views::all` → `std::ranges::common_view`.                                                                           |
-| ④ | Sequence-only (not a range)                          | Duck-typed iterable meeting `jh::concepts::sequence` but not `std::ranges::range`. | Promoted to compliant range via [`jh::to_range()`](../../conceptual/sequence.md#jhto_rangeseq) <br> → `jh::ranges::range_adaptor` → `std::views::all` → `std::ranges::common_view`. |
-| ⑤ | Consuming range (non-reentrant)                      | Single-pass generators such as `iota`, `enumerate`, etc.                           | Forwarded directly to `std::views::common()` (standard consumptive path).                                                                                                           |
+| Input | Conversion | Result |
+|-------|------------|--------|
+| `jh::concepts::sequence` whose converted view is already common | `jh::to_range()` then `std::views::all` | The converted view |
+| `jh::concepts::sequence` whose converted view has a distinct sentinel | `jh::to_range()` then `std::views::all` | `std::ranges::common_view` |
+| Standard range outside the Sequence concept accepted by `std::views::common` | `std::views::common()` | The standard adaptor's result |
+| Single-pass standard range with a non-copyable iterator | JH shared cursor wrapper | A common input range whose iterator copies share one position |
 
-Each normalization path guarantees **iterator compatibility**,
-**no lifetime disruption**, and **semantic transparency**.
+`jh::to_range()` may use a borrowed subrange for a restricted lvalue source.
+The source must remain alive while that view is used. The shared cursor path
+allocates cursor state on each `begin()` call; it keeps single-pass semantics
+and does not make the source reentrant.
 
 ---
 
 ## 🔹 Design Semantics
 
-`jh::ranges::views::common` acts as a **semantic bridge**,
-not merely a wrapper around `std::views::common`.
+`jh::ranges::views::common` accepts JH sequences and standard ranges through
+one entry point.
 
 It provides:
 
 * Compatibility with **standard ranges** and all **custom or third-party types**
   that model [`jh::concepts::sequence`](../../conceptual/sequence.md).
 * Automatic **promotion** or **proxy wrapping** for structurally incomplete or restricted types.
-* Preservation of **non-consuming** reentrancy semantics when applicable.
+* Preservation of the source's repeatability contract when the conversion
+  and caller-supplied sequence satisfy it.
 * Full **pipeline-form support** under **libc++**,
   which does not provide a pipe overload for `std::views::common()`.
 
-In contrast to the standard adaptor,
-which unconditionally wraps its input in a `common_view` —
-even when the source already models `common_range` —
-the JH implementation performs **compile-time transparent forwarding**.  
-This eliminates redundant view layers,
-reduces template instantiation depth,
-and ensures that already-conforming types remain type-identical after adaptation.
-
-Hence, `common()` serves as a **unifying and compilation-friendly adaptor**
-that allows all iterable types — whether STL-compliant or user-defined —
-to enter the same range pipeline
-without semantic noise or performance loss.
+For a converted Sequence view that is already common, JH returns the view
+selected by `std::views::all`. The standard adaptor also avoids adding a
+`common_view` when its input is already common. The JH extension is the
+Sequence conversion before that standard normalization.
 
 ---
 
 ## 🔹 Description
 
-Normalization logic proceeds as follows:
-
-1. **Already common**  
-   If `R` models `std::ranges::common_range`, it is returned unchanged.
-
-2. **Fully reentrant (copy/move complete)**  
-   If `R` is compatible with `std::views::all`,
-   it is transparently forwarded through `jh::to_range()` to `std::views::all`.
-
-3. **Reentrant but restricted**  
-   If the type is stable-holding, move-only, or semantically non-transferable,
-   it is proxied as `std::ranges::subrange(begin(r), end(r))`
-   and then passed through `std::views::all`.
-
-4. **Sequence-only types**  
-   Non-range iterables are promoted to standard-compliant ranges via `jh::to_range()`,
-   which produces a `jh::ranges::range_adaptor` preserving all observable semantics.
-
-5. **Consuming ranges**  
-   One-shot streams (like `std::views::iota`, `enumerate`, `istream_view`)
-   are directly normalized via `std::views::common()`.
-
-No copies or allocations are made unless required for iterator unification.
+An `istream_view` is an example of a single-pass standard range outside the
+Sequence contract; its move-only iterator uses the JH shared cursor path.
+An `iota_view` supports repeatable iteration and is not a one-shot stream.
 
 ---
 
@@ -158,11 +129,11 @@ int main() {
     std::vector<int> a = {1, 2, 3};
     std::vector<int> b = {10, 20, 30};
 
-    // Case ①+②: zip of two vectors — already common
+    // Zip of two vectors is already common in the C++20 fallback
     auto zipped = a | jh::ranges::views::zip_pipe(b);
     static_assert(std::ranges::common_range<decltype(zipped)>);
 
-    // Case ⑤: enumerate produces non-common view (iterator != sentinel)
+    // This enumerate view has a distinct end sentinel
     auto enumerated = jh::ranges::views::enumerate(a, 1);
     static_assert(!std::ranges::common_range<decltype(enumerated)>);
 
@@ -187,28 +158,24 @@ int main() {
 
 ## 🔹 Integration with `adapt` and `to_range`
 
-`jh::ranges::views::common()` is a **superset adaptor** of
-[`jh::ranges::adapt`](../adapt.md) and [`jh::to_range()`](../../conceptual/sequence.md#jhto_rangeseq).
+`common()` uses [`jh::to_range()`](../../conceptual/sequence.md#jhto_rangeseq)
+for Sequence inputs and then supplies a common range. The
+[`adapt`](../adapt.md) adaptor exposes `to_range()` without the common-range
+normalization step.
 
 While all three adaptors serve to normalize input objects into range-compatible forms,
 their scopes differ:
 
 | Adaptor                                                        | Role                              | Input Domain                                                                  | Output Guarantee            | Behavior                                                                                         |
 |----------------------------------------------------------------|-----------------------------------|-------------------------------------------------------------------------------|-----------------------------|--------------------------------------------------------------------------------------------------|
-| [`jh::to_range()`](../../conceptual/sequence.md#jhto_rangeseq) | **Fundamental promotion**         | Types modeling `jh::concepts::sequence` — including reentrant standard ranges | `std::ranges::view`         | Converts a sequence to a valid non-consuming range representation.                               |
-| [`jh::ranges::adapt`](../adapt.md)                             | **Pipeline form of `to_range()`** | Same as `to_range()` (duck-typed or standard reentrant sequences)             | `std::ranges::view`         | Provides pipe syntax for promotion (<code>adapt(seq)</code> or <code>seq &#124; adapt()</code>). |
-| `jh::ranges::views::common()`                                  | **Upgraded unifying adaptor**     | All sequences **plus** consuming (single-pass) ranges                         | `std::ranges::common_range` | Accepts both reentrant and consuming ranges, preserving or enforcing common-range semantics.     |
+| [`jh::to_range()`](../../conceptual/sequence.md#jhto_rangeseq) | **Sequence conversion** | Types modeling `jh::concepts::sequence` | `std::ranges::range` | Converts a Sequence to a standard range representation. |
+| [`jh::ranges::adapt`](../adapt.md) | **Direct and pipe entry point** | Same Sequence domain | `std::ranges::viewable_range` | Exposes conversion for direct and pipe calls. |
+| `jh::ranges::views::common()` | **Common-range normalization** | Sequences and standard ranges | `std::ranges::common_range` | Uses Sequence conversion, the standard adaptor, or a shared single-pass cursor. |
 
-Unlike `adapt()`, which only *elevates* a `sequence` into a range,
-`common()` extends that behavior to cover **all iterable categories**,
-including *consuming* ranges.
-
-It automatically chooses the minimal transformation necessary:
-
-* Directly forwards already compliant `common_range`s.
-* Promotes plain `sequence`s via `jh::to_range()`.
-* Proxies restricted non-copyable or non-movable ranges as `std::ranges::subrange`.
-* Invokes `std::views::common()` for consuming or single-pass sources.
+For a standard input range that does not model Sequence, `common()` selects
+the standard adaptor when it can construct the result and otherwise uses the
+shared cursor wrapper. For a Sequence, it applies `jh::to_range()` and adds
+`common_view` only when the converted view needs it.
 
 In other words:
 
@@ -216,16 +183,16 @@ In other words:
 >
 > `common()` → performs **promotion + normalization** (sequence ∣ range → common_range)
 
-This makes `jh::ranges::views::common()` the canonical adaptor
-for entering the JH Toolkit range pipeline with complete semantic coverage.
+This makes `common()` the entry point when a pipeline specifically needs
+matching begin and end types.
 
 
 ---
 
 ## 🔹 Integration Notes
 
-* Transparent adaptor — does not alter ownership or lifetime.
-* Fully idempotent: applying `common()` repeatedly yields identical results.
+* Lvalue-backed results require the source to outlive the view.
+* An already-common converted view does not gain another `common_view` layer.
 * Supports all view adaptors (`zip`, `enumerate`, `flatten`, etc.).
 * Provides missing pipe overload for `std::views::common()` in libc++.
 * Included by `<jh/views>` or directly via `<jh/ranges/views/common.h>`.
@@ -234,12 +201,9 @@ for entering the JH Toolkit range pipeline with complete semantic coverage.
 
 ## 🧩 Summary
 
-`jh::ranges::views::common` provides a **complete and precise normalization layer**
-between C++ standard ranges and extended JH Toolkit `sequence` concepts.
-
-It covers five distinct input categories — from STL-compliant ranges
-to constrained holders and duck-typed iterables —
-bridging them into a unified, reentrant, and pipeline-ready model.
+`jh::ranges::views::common` accepts Sequence and standard range inputs and
+returns a common range. Its Sequence branch uses `jh::to_range()` before
+normalizing the end type.
 
 This adaptor also corrects the standard library's portability gap
 by restoring pipe syntax under libc++,

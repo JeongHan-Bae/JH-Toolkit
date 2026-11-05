@@ -23,14 +23,15 @@ performs **semantic dispatch** between two transformation modes at compile time:
 * [`jh::ranges::views::vis_transform`](vis_transform.md) — when the pair
   <b><code>&lt;Range, Function&gt;</code></b> satisfies
   [`jh::concepts::vis_function_for<F, R>`](../../conceptual/range_traits.md#-concept--vis_function_forf-r),
-  meaning the range is non-consuming and the callable is a *pure observation*
-  (returns a non-void, non-mutating value).
-* `std::views::transform` — for all other combinations,
-  including consumptive or stateful transformations.
+  selecting the JH observational path under its non-consuming contract.
+* `std::views::transform` — for other combinations, using the standard
+  transform view's range and callable semantics.
 
-This adaptor unifies both semantics under a single entry point,
-preserving **reentrancy** when possible while maintaining full
-compatibility with the standard C++23 pipeline model.
+The JH path exists because the standard transform view does not promise that
+transformed observations remain reentrant, even when the supplied callable
+is intended to be observational. Traversal category and reentrancy are
+separate properties: the ability to move an iterator forward or backward
+does not by itself establish repeatable observations.
 
 ---
 
@@ -76,16 +77,13 @@ auto v2 = r | jh::ranges::views::transform(f);
 `transform()` applies a callable `f` to each element of range `r`
 and returns a view determined by semantic dispatch:
 
-* If `vis_function_for<F, R>` is satisfied —
-  meaning the transformation is observational and non-consuming —
-  it delegates to [`jh::ranges::views::vis_transform`](vis_transform.md).
-* Otherwise, it falls back to `std::views::transform`,
-  preserving standard consumptive semantics.
+* If `vis_function_for<F, R>` is satisfied, it delegates to
+  [`jh::ranges::views::vis_transform`](vis_transform.md).
+* Otherwise, it uses `std::views::transform`.
 
-This mechanism ensures that observational adaptors like
-[`flatten`](flatten.md) and analytical pipelines automatically benefit
-from non-consuming behavior, while normal data transformations
-still follow standard range rules.
+The caller must uphold the observational contract for a pair routed through
+`vis_transform`: repeated traversal of the source must be valid, and the
+callable must leave the source and later observed results unchanged.
 
 Dispatch occurs inside the call operator,
 where both `R` and `F` are fully deduced,
@@ -99,14 +97,10 @@ The dispatch logic depends on
 [`jh::concepts::vis_function_for<F, R>`](../../conceptual/range_traits.md#-concept--vis_function_forf-r),
 defined in [`jh/conceptual/range_traits.h`](../../conceptual/range_traits.md).
 
-This concept models the **visual relation** between a callable and a range:
-
-* The range supports stable, non-consuming traversal.
-* The callable produces a readable, non-void value.
-* The callable does not mutate elements or consume iteration state.
-
-When these hold, the adaptor guarantees a *reentrant, observation-only* transformation.
-Otherwise, `std::views::transform` is used, respecting consumption semantics.
+The concept checks const-accessible input iteration, const invocation of the
+callable on an element, and a non-void result. These checks do not establish
+that the callable is free of side effects or that a source's `begin()` is
+semantically repeatable. Those are requirements of the observational contract.
 
 ---
 
@@ -116,8 +110,8 @@ Otherwise, `std::views::transform` is used, respecting consumption semantics.
 |----------------------------|-----------------------------------------------------------------------------------------------------------|
 | **Dispatch rule**          | Compile-time selection between `vis_transform` and `std::views::transform`.                               |
 | **Concept dependency**     | [`jh::concepts::vis_function_for<F, R>`](../../conceptual/range_traits.md#-concept--vis_function_forf-r). |
-| **Consumption semantics**  | Preserved automatically — non-consuming if possible.                                                      |
-| **Reentrancy**             | Inherited from the chosen underlying adaptor.                                                             |
+| **Consumption semantics**  | The JH branch has an observational contract; the standard branch follows its base and callable semantics. |
+| **Reentrancy**             | Requires a repeatable source and observational callable on the JH branch.                                  |
 | **Pipeline compatibility** | Fully composable with all JH and standard range adaptors.                                                 |
 | **Laziness**               | Identical to the semantics of the underlying transformation view.                                         |
 
@@ -136,7 +130,7 @@ int main() {
     // Pure observation (non-consuming)
     auto squares = xs | jh::ranges::views::transform([](int x) { return x * x; });
 
-    // Mutating transformation (consumptive)
+    // Mutating transformation (standard transform path)
     auto negated = xs | jh::ranges::views::transform([](int& x) -> int& { x = -x; return x; });
 
     for (auto v : squares) std::cout << v << " ";
@@ -152,16 +146,16 @@ int main() {
 -1 -2 -3
 ```
 
-In the first case, the transformation is non-consuming and can be
-reiterated freely; in the second, the function mutates elements,
-so the adaptor correctly falls back to `std::views::transform`.
+The first case is repeatable while `xs` and the callable uphold the
+observational contract. In the second case, the mutable reference parameter
+selects `std::views::transform`; dereferencing that view changes `xs`.
 
 ---
 
 ## 🔹 Integration Notes
 
 * Dispatch and concept checking occur per `(R, F)` pair.
-* The adaptor never assumes non-consuming semantics unless proven by the concept.
+* The concept selects the JH path; callers remain responsible for stable observations.
 * Internally, this mechanism is shared with [`vis_transform`](vis_transform.md)
   and used implicitly by observational adaptors such as [`flatten`](flatten.md).
 * Depends on
@@ -172,10 +166,7 @@ so the adaptor correctly falls back to `std::views::transform`.
 
 ## 🧩 Summary
 
-`jh::ranges::views::transform` is a **semanticly adaptive transformation adaptor**
-that unifies standard and observational behaviors.  
-It preserves reentrancy automatically when applicable,
-ensures consumption correctness otherwise,
-and acts as the **central dispatch point** connecting
-`std::views::transform`, `vis_transform`, and higher-level adaptors
+`jh::ranges::views::transform` selects between JH's observational view and
+`std::views::transform` for each range-callable pair. The JH branch makes its
+reentrancy contract explicit for callers and higher-level adaptors
 within the JH Ranges Toolkit.

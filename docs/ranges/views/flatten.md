@@ -103,19 +103,19 @@ auto v2 = r | jh::ranges::views::flatten();
   exposing its structured contents as a single flattened view.
 * Otherwise, the element is passed through unchanged.
 
-Because the projection function used by `flatten` is **purely observational**,
-the underlying consumption model of the range is preserved automatically by
-[`jh::ranges::views::transform`](transform.md):
+`flatten` delegates projection to
+[`jh::ranges::views::transform`](transform.md). Its projection inspects
+element structure without intentionally changing the source. Repeatability
+still depends on the source and on the selected transform path:
 
-* If the underlying range is **non-consuming** (reentrant),
-  the result is also non-consuming.
-* If the underlying range is **consuming** (single-pass),
-  the result remains consuming.
+* A repeatable source can produce repeatable flattened observations under the
+  JH observational contract.
+* A single-pass source retains its single-pass traversal behavior.
 
 For example, when flattening the output of
 [`jh::ranges::views::zip`](zip.md) or [`jh::ranges::views::enumerate`](enumerate.md),
-the resulting view is **guaranteed non-consuming**,
-since both adaptors already enforce reentrancy constraints.
+the resulting view can be traversed again when the source sequences uphold
+their repeatability contract.
 
 ---
 
@@ -127,7 +127,7 @@ since both adaptors already enforce reentrancy constraints.
 | **Tuple-like detection**   | Determined by `jh::concepts::tuple_like`.                       |
 | **Proxy type**             | Uses `jh::meta::flatten_proxy` for structured tuple expansion.  |
 | **Observational purity**   | View creation does not copy or mutate elements; materialization can. |
-| **Consumption semantics**  | Preserved according to transform's dispatch.                    |
+| **Consumption semantics**  | Follows the source's traversal contract and the selected transform path. |
 | **Pipeline compatibility** | Fully composable with lazy adaptors (`zip`, `enumerate`, etc.). |
 
 ---
@@ -241,7 +241,7 @@ because `flatten_proxy` is tuple-compatible and reentrant-safe.
 
 * `flatten()` is an *observational adaptor* — it reinterprets structure, not data.
 * Delegates all dispatch and consumption rules to [`transform`](transform.md).
-* Preserves the original range's reentrancy semantics.
+* Repeatable observations require a repeatable source and the observational path.
 * Included by `<jh/views>` or via `<jh/ranges/views/flatten.h>`.
 
 ---
@@ -250,6 +250,5 @@ because `flatten_proxy` is tuple-compatible and reentrant-safe.
 
 `jh::ranges::views::flatten` provides a **structure-aware, lazy flattening adaptor**
 that integrates tuple decomposition seamlessly into C++20 ranges.  
-It preserves all underlying consumption and traversal properties,
-and composes naturally with `zip`, `enumerate`, and other JH view adaptors
-to deliver readable, zero-overhead structured pipelines.
+It composes with `zip`, `enumerate`, and other JH view adaptors while retaining
+the source's lifetime and traversal requirements.

@@ -44,9 +44,10 @@
  *   <li><code>jh::concepts::is_sequence&lt;T&gt;</code> &mdash; Compile-time boolean for detection.</li>
  *   <li>
  *     <code>jh::to_range()</code> &mdash;
- *     Converts any <code>sequence</code> into a <em>range-compatible</em> object.
+ *     Converts supported <code>sequence</code> inputs into range-compatible objects.
  *     If the input already models <code>std::ranges::range</code> and is safely
- *     movable or copyable, it is forwarded unchanged.
+ *     movable or copyable, lvalues remain references and rvalues become
+ *     owned values.
  *     Otherwise &mdash; for non-movable, non-copyable lvalues &mdash; it automatically
  *     produces a <code>std::ranges::subrange</code> to preserve reference validity.
  *     For non-range sequences, it wraps them in a
@@ -71,6 +72,8 @@
 
 #pragma once
 
+#include <array>
+#include <initializer_list>
 #include <iterator>    // for "iterator_tag"s
 #include <ranges>
 #include <type_traits>
@@ -162,16 +165,22 @@ namespace jh::ranges {
 } // namespace jh::ranges
 
 namespace jh::concepts::detail {
+    template<typename T>
+    inline constexpr bool is_initializer_list_v = false;
+
+    template<typename T>
+    inline constexpr bool is_initializer_list_v<std::initializer_list<T>> = true;
+
     /**
      * @brief Converts a sequence into a <em>range-compatible</em> form.
      *
      * @details
      * <p>
-     * This function guarantees that any valid <code>jh::concepts::sequence</code>
-     * can be safely transformed into a range object usable by
+     * This helper converts a supported <code>jh::concepts::sequence</code>
+     * into a range representation usable by
      * <code>std::ranges</code> algorithms or range-based for loops.
-     * In other words, <code>jh::to_range()</code> always returns a value that
-     * models <code>std::ranges::range</code>.
+     * A directly usable lvalue range remains a reference; a movable or
+     * copyable rvalue range produces an owned value.
      * </p>
      *
      * <p>
@@ -184,12 +193,17 @@ namespace jh::concepts::detail {
      *     <strong>If the input already models</strong> <code>std::ranges::range</code>:
      *     <ul>
      *       <li>
-     *         When it is movable or copyable, it is perfectly forwarded (idempotent).
+     *         A usable lvalue remains a reference. A movable or copyable
+     *         rvalue produces an owned value.
      *       </li>
      *       <li>
      *         When it is a non-movable and non-copyable left value, it is converted
      *         into a <code>std::ranges::subrange</code> constructed from its
      *         <code>begin()</code> / <code>end()</code> iterators to ensure safe access.
+     *       </li>
+     *       <li>
+     *         A temporary built-in array is converted to an owned
+     *         <code>std::array</code>.
      *       </li>
      *     </ul>
      *   </li>
@@ -212,7 +226,7 @@ namespace jh::concepts::detail {
      * <p>
      * As a result, <code>jh::to_range()</code> provides a uniform bridge between
      * duck-typed <code>sequence</code> objects and the standard range ecosystem,
-     * ensuring they can always participate in range-based algorithms and
+     * allowing supported inputs to participate in range-based algorithms and
      * <code>std::ranges</code> pipelines without additional adaptation.
      * </p>
      *
@@ -222,7 +236,7 @@ namespace jh::concepts::detail {
      *         either the same range, a <code>std::ranges::subrange</code>,
      *         or a <code>jh::ranges::range_adaptor</code>.
      *
-     * @note This function ensures algorithm-level compatibility &mdash; any valid
+     * @note This function ensures algorithm-level compatibility &mdash; any supported
      *       <code>sequence</code> passed through <code>jh::to_range()</code>
      *       becomes immediately usable in <code>std::ranges</code> algorithms.
      */
@@ -232,20 +246,20 @@ namespace jh::concepts::detail {
             using S = std::remove_reference_t<Seq>;
 
             if constexpr (std::ranges::range<S>) {
-                // non-copyable non-movable
-                if constexpr ((!std::is_copy_constructible_v<S> &&
-                               !std::is_move_constructible_v<S>) ||
-                              (!std::is_copy_constructible_v<const S> &&
-                               !std::is_move_constructible_v<const S>)) {
-                    // copy iterators for subrange
-                    return std::ranges::subrange(std::ranges::begin(s),
-                                                 std::ranges::end(s));
-                } else if constexpr (std::is_lvalue_reference_v<Seq>) {
-                    // copyable left value return by ref
-                    return (s);
+                if constexpr (std::is_lvalue_reference_v<Seq>) {
+                    if constexpr ((!std::is_copy_constructible_v<S> &&
+                                   !std::is_move_constructible_v<S>) ||
+                                  (!std::is_copy_constructible_v<const S> &&
+                                   !std::is_move_constructible_v<const S>)) {
+                        return std::ranges::subrange(std::ranges::begin(s),
+                                                     std::ranges::end(s));
+                    } else {
+                        return (s);
+                    }
+                } else if constexpr (std::is_array_v<S>) {
+                    return std::to_array(std::forward<Seq>(s));
                 } else {
-                    // right value, forward
-                    return std::forward<Seq>(s);
+                    return std::remove_cv_t<S>(std::forward<Seq>(s));
                 }
             } else {
                 if constexpr (std::is_lvalue_reference_v<Seq>) {
@@ -267,27 +281,31 @@ namespace jh {
      * @details
      * <p>
      * This is the user-facing interface for range conversion.
-     * It guarantees that any valid <code>jh::concepts::sequence</code> can be
-     * transformed into an object that models <code>std::ranges::range</code>,
-     * regardless of whether the original type is movable, copyable,
-     * or a simple sequence-like container.
+     * It converts supported <code>jh::concepts::sequence</code> inputs into
+     * an object that models <code>std::ranges::range</code>. A non-movable
+     * standard range can be borrowed as an lvalue; movable or copyable
+     * rvalue range objects are returned by value. A non-owning range object
+     * still requires its underlying element storage to remain alive.
      * </p>
      *
      * <p>
-     * The conversion is <b>idempotent</b> &mdash; if the input already models
-     * <code>std::ranges::range</code> and is safely movable or copyable,
-     * it is forwarded unchanged.
+     * If the input already models <code>std::ranges::range</code>,
+     * an lvalue remains borrowed and a supported rvalue is owned.
      * Otherwise, the function wraps or adapts it internally to ensure
      * range compatibility and reference safety.
+     * A temporary <code>std::initializer_list</code> is rejected because
+     * copying its handle does not extend the backing array's lifetime.
      * </p>
      *
      * @tparam Seq A type satisfying <code>jh::concepts::sequence</code>.
      * @param s The input sequence to convert.
-     * @return An object guaranteed to model <code>std::ranges::range</code>,
+     * @return A result modeling <code>std::ranges::range</code>,
      *         ready for direct use in range-based for loops or
      *         <code>std::ranges</code> algorithms.
      */
     template<concepts::sequence Seq>
+    requires (std::is_lvalue_reference_v<Seq> ||
+              !concepts::detail::is_initializer_list_v<std::remove_cvref_t<Seq>>)
     decltype(auto) to_range(Seq &&s) {
         return concepts::detail::to_range_traits<Seq>::convert(std::forward<Seq>(s));
     }

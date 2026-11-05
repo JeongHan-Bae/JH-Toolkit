@@ -29,11 +29,11 @@
  * </p>
  *
  * <p>
- * Conceptually, this corresponds to the <b>closable half</b> of the proposed
- * C++23 <code>std::ranges::to</code>. Unlike <code>jh::ranges::collect</code>,
- * which can always materialize a range via insertion or emplace iteration,
- * <code>to</code> requires that the container and range are <em>structurally compatible</em>
- * and can be constructed directly.
+ * This adaptor covers the structurally closable part of container conversion.
+ * It requires a valid <code>closable_container_for</code> relation and selects
+ * a documented constructor path at compile time. The companion
+ * <code>collect</code> adaptor handles supported insertion and tuple-unpacking
+ * paths.
  * </p>
  *
  * <h3>Behavior overview</h3>
@@ -82,68 +82,33 @@
  * 
  * <h3>Optimization semantics: <code>collect + to</code></h3>
  * <p>
- * Under optimized compilation (C++20 and later), the combination
- * <code>collect + to</code> behaves as a <em>semantic two-stage pipeline</em> but is
- * compiled down to a near-optimal one-stage construction.  
- * Although <code>collect</code> materializes an intermediate container (usually
- * <code>std::vector&lt;T&gt;</code>), the compiler's <b>RVO</b> and <b>move-propagation</b>
- * rules ensure that no redundant copies occur for right-value ranges.
+ * The pipeline has two materialization stages. C++17 and later guarantee
+ * direct initialization of a function result for <code>return C(...)</code>
+ * when the expression has the return type. This avoids a copy or move of
+ * that result object; it says nothing about copies or moves of its elements.
  * </p>
  *
- * <table>
- *   <tr>
- *     <th>Stage</th>
- *     <th>Responsibility</th>
- *     <th>Typical Behavior</th>
- *     <th>Optimization Result</th>
- *   </tr>
- *   <tr>
- *     <td><b>collect&lt;V&gt;()</b></td>
- *     <td>Terminates lazy views and produces a normalized, value-semantic
- *         container (e.g. <code>std::vector&lt;pair&lt;K,V&gt;&gt;</code>).</td>
- *     <td>Constructs a temporary container on the caller's stack.</td>
- *     <td>RVO creates the container directly in the caller frame; no copy or
- *         move is required.</td>
- *   </tr>
- *   <tr>
- *     <td><b>to&lt;C&gt;()</b></td>
- *     <td>Adapts the collected data into the final container <code>C</code>
- *         via its constructor (<code>[begin, end)</code>, move-iterators,
- *         or adapter dispatch).</td>
- *     <td>Passes iterators of the temporary container.</td>
- *     <td>Because the source is a right-value, the target container moves each
- *         element; no deep copy occurs.</td>
- *   </tr>
- *   <tr>
- *     <td><b>Overall pipeline</b></td>
- *     <td>Two semantic stages: materialization + construction.</td>
- *     <td>Intermediate vector exists logically but not physically duplicated.</td>
- *     <td>Equivalent runtime cost to <code>C(std::make_move_iterator(...))</code>;
- *         no extra allocations, deterministic lifetime.</td>
- *   </tr>
- * </table>
+ * <p>
+ * When <code>collect</code> inserts into a named local and returns it,
+ * NRVO may omit the return move or copy. NRVO is an optional optimization;
+ * otherwise the result is moved or copied according to the available
+ * operations. The <code>to</code> dispatch may construct from ordinary
+ * iterators, move iterators, a moved vector, or an underlying adapter.
+ * A right-value source alone does not select the move-iterator path.
+ * A whole-vector move may transfer its buffer when the target constructor
+ * and allocator conditions support that behavior. Intermediate and final
+ * containers may each allocate storage.
+ * </p>
  *
- * <h4>Why this design is semantically superior</h4>
+ * <h4>Engineering purpose</h4>
  * <ul>
  *   <li><b>Explicit materialization point:</b> The exact moment a lazy range
  *       becomes concrete is visible and controllable.</li>
- *   <li><b>Allocator and resource safety:</b> Construction parameters are isolated
- *       in <code>to</code>, preventing accidental cross-allocator moves.</li>
- *   <li><b>Predictable evaluation order:</b> No hidden eager materialization as in
- *       <code>std::ranges::to</code>.</li>
- *   <li><b>Copy-safe yet move-efficient:</b> Even though
- *       <code>return C(begin(r), end(r))</code> is specified as a copy operation,
- *       compilers perform per-element <code>move</code> for right-value containers,
- *       achieving optimal performance without losing semantic clarity.</li>
- *   <li><b>Transparent lifetime management:</b> The intermediate vector's scope is
- *       clear, making debugging and reasoning about resource ownership trivial.</li>
+ *   <li><b>Constructor arguments:</b> Allocators and policies are supplied
+ *       to <code>to</code> at the final construction stage.</li>
+ *   <li><b>Auditable dispatch:</b> The selected construction path states
+ *       where element copies, moves, and allocations may occur.</li>
  * </ul>
- *
- * <p>
- * In practice, <code>collect + to</code> achieves the same performance as a
- * monolithic <code>std::ranges::to</code> call while providing stronger guarantees
- * of safety, clarity, and composability within a range pipeline.
- * </p>
  * 
  * @see jh::ranges::collect
  * @see jh::concepts::closable_container_for

@@ -40,13 +40,10 @@
  * <h3>Implementation Notes</h3>
  * <ul>
  *   <li><code>flatten</code> delegates to <code>jh::ranges::views::transform</code>.</li>
- *   <li><code>jh::ranges::views::transform</code> internally decides whether to
- *       construct a non-consuming or consuming transformation view depending on
- *       the behavior of the projection function.</li>
- *   <li>Because <code>flatten</code> is a pure observation, its output preserves
- *       the consumption property of the underlying range:
- *       if the input is non-consuming, the output remains non-consuming;
- *       if the input is single-pass, the result is also single-pass.</li>
+ *   <li><code>jh::ranges::views::transform</code> selects the observational
+ *       or standard transform path from its structural constraints.</li>
+ *   <li>Repeatable flattened observations require a repeatable source and
+ *       the observational contract; single-pass sources remain single-pass.</li>
  * </ul>
  *
  * @version <pre>1.3.x</pre>
@@ -72,8 +69,8 @@ namespace jh::ranges::views {
          * </p>
          *
          * <p>
-         * The transformation is purely observational. Data is neither consumed nor copied,
-         * and the resulting view preserves the consumption property of the input range.
+         * The projection inspects structure lazily. Its source lifetime and
+         * repeatability requirements follow the selected transform path.
          * </p>
          */
         struct flatten_closure final {
@@ -147,9 +144,8 @@ namespace jh::ranges::views {
          * </p>
          *
          * <p>
-         * This adaptor preserves the consumption semantics of the source range:
-         * if the input range is non-consuming, the resulting view is reentrant;
-         * if the input is single-pass, the resulting view is also single-pass.
+         * Repeatable observation requires a repeatable source and the JH
+         * observational contract; a single-pass source remains single-pass.
          * </p>
          */
         struct flatten_fn final {
@@ -216,11 +212,9 @@ namespace jh::ranges::views {
      *       <code>jh::meta::flatten_proxy</code>.</li>
      *   <li>Non-tuple-like elements are left untouched.</li>
      *   <li>The adaptor delegates to <code>jh::ranges::views::transform</code>,
-     *       which automatically preserves the consumption behavior of the input range:
-     *       <ul>
-     *         <li>If the source is non-consuming, the result remains reentrant.</li>
-     *         <li>If the source is consuming, the result remains single-pass.</li>
-     *       </ul>
+     *       which selects the observational or standard transform path.
+     *       Repeatable results require a repeatable source under the
+     *       observational contract; single-pass sources remain single-pass.
      *   </li>
      *   <li>No ownership or lifetime semantics are altered.</li>
      * </ul>

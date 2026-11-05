@@ -25,20 +25,21 @@
  * <p>
  * The <code>jh::ranges::views::vis_transform</code> adaptor provides an
  * <b>explicit, observation-only</b> variant of <code>std::views::transform</code>.
- * It guarantees non-consuming behavior for reentrant ranges and is used internally
+ * It provides an observational contract for reentrant ranges and is used internally
  * by adaptors such as <code>jh::ranges::views::flatten</code>.
  * </p>
  *
  * <p>
- * Unlike the standard adaptor, which treats every transformation as consumptive,
- * <code>vis_transform</code> ensures that its result remains reentrant and stable
- * whenever the underlying range allows it.
+ * The standard transform view does not promise reentrant transformed
+ * observations. This adaptor requires a repeatable source and a callable
+ * that leaves observed state unchanged.
  * </p>
  *
  * <h3>Design rationale</h3>
  * <ul>
- *   <li><b>Non-consuming by contract:</b> The resulting view never consumes its input.</li>
- *   <li><b>Explicit intent:</b> Because this guarantees reentrancy, its use must be explicit.</li>
+ *   <li><b>Non-consuming by contract:</b> The caller supplies repeatable
+ *       traversal and observational invocation.</li>
+ *   <li><b>Explicit intent:</b> The adaptor requests that contract directly.</li>
  *   <li><b>Interoperability:</b> Fully compatible with <code>jh::ranges::views::common()</code>
  *       and <code>jh::ranges::to</code>.</li>
  * </ul>
@@ -83,7 +84,8 @@ namespace jh::ranges::views {
          * @tparam F The callable type captured.
          * @details
          * Stores a function object to be applied lazily to elements of a range.
-         * The result is always a non-consuming, observation-only view.
+         * The result follows the observational contract when the source and
+         * callable uphold it.
          */
         template<typename F>
         struct vis_transform_closure final {
@@ -120,7 +122,7 @@ namespace jh::ranges::views {
          * @details
          * Provides both direct and pipe invocation forms for constructing
          * a <code>jh::ranges::vis_transform_view</code>. The transformation
-         * is always non-consuming.
+         * is intended for non-consuming observation.
          */
         struct vis_transform_fn final {
 
@@ -166,8 +168,8 @@ namespace jh::ranges::views {
      *
      * <p>
      * Provides an explicit, non-consuming transform adaptor for
-     * observation-only projections. Unlike <code>std::views::transform</code>,
-     * this adaptor preserves reentrancy whenever possible.
+     * observation-only projections. The source and callable must uphold
+     * the observational contract for repeatable results.
      * </p>
      *
      * Supports both <b>direct</b> and <b>pipe</b> usage forms:
@@ -178,13 +180,13 @@ namespace jh::ranges::views {
      *
      * <p>
      * The adaptor enforces the concept <code>jh::concepts::vis_function_for&lt;F, R&gt;</code>,
-     * which requires that the callable is safely invocable for every element
-     * of <code>R</code> and returns a non-void result.
+     * which checks const-accessible input iteration, const invocation, and
+     * a non-void result. It does not prove freedom from side effects.
      * </p>
      *
      * <h4>Design semantics</h4>
      * <ul>
-     *   <li>All projections are non-consuming and reentrant by design.</li>
+     *   <li>Projections follow the caller's observational contract.</li>
      *   <li>Intended for explicit use in analytical or visualization pipelines.</li>
      *   <li>Integrates directly with <code>jh::ranges::views::common()</code> and
      *       <code>jh::ranges::to</code> for final materialization.</li>

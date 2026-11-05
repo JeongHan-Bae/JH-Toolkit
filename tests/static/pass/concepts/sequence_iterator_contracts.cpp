@@ -1,4 +1,5 @@
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <deque>
 #include <forward_list>
@@ -6,15 +7,21 @@
 #include <list>
 #include <map>
 #include <optional>
+#include <ranges>
 #include <set>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "jh/conceptual/sequence.h"
+#include "jh/conceptual/range_traits.h"
+#include "jh/ranges/adapt.h"
+#include "jh/ranges/views/common.h"
 #include "jh/pod"
 
 namespace test {
@@ -562,4 +569,52 @@ void sequence_contract_21()
     static_assert(jh::concepts::bidirectional_iterator<TrueRAIter<int>>);
     static_assert(jh::concepts::random_access_iterator<TrueRAIter<int>>);
 
+}
+
+void sequence_contract_22()
+{
+    using Vector = std::vector<int>;
+
+    static_assert(!std::is_reference_v<decltype(jh::to_range(std::declval<Vector>()))>);
+    static_assert(std::is_same_v<
+        decltype(jh::to_range(std::declval<int(&&)[3]>())), std::array<int, 3>>);
+    static_assert(std::is_same_v<
+        decltype(jh::to_range(std::declval<std::initializer_list<int>&>())),
+        std::initializer_list<int>&>);
+    static_assert(std::same_as<
+        decltype(jh::ranges::adapt(std::declval<Vector&>())), Vector&>);
+    static_assert(std::same_as<
+        decltype(std::declval<Vector&>() | jh::ranges::adapt()), Vector&>);
+    static_assert(std::ranges::range<decltype(jh::ranges::adapt(std::declval<Vector>()))>);
+    static_assert(!std::is_reference_v<decltype(jh::ranges::adapt(std::declval<Vector>()))>);
+}
+
+template<typename R>
+concept CommonAccepts = requires(R&& range) {
+    jh::ranges::views::common(std::forward<R>(range));
+};
+
+void sequence_contract_23()
+{
+    using Input = std::ranges::istream_view<int>;
+    using CommonInput = decltype(jh::ranges::views::common(std::declval<Input&>()));
+
+    static_assert(CommonAccepts<Input&>);
+    static_assert(std::ranges::input_range<CommonInput>);
+    static_assert(std::ranges::common_range<CommonInput>);
+    static_assert(!std::ranges::borrowed_range<CommonInput>);
+}
+
+void sequence_contract_24()
+{
+    using Vector = std::vector<int>;
+    using DirectStorage = jh::concepts::range_storage_traits<Vector&, false>;
+
+    static_assert(std::is_same_v<typename DirectStorage::stored_t, Vector&>);
+    static_assert(std::is_same_v<
+        decltype(DirectStorage::wrap(std::declval<Vector&>())), Vector&>);
+
+    using OwnedStorage = jh::concepts::range_storage_traits<Vector, false>;
+    static_assert(std::is_same_v<
+        decltype(OwnedStorage::wrap(std::declval<Vector&&>())), Vector>);
 }

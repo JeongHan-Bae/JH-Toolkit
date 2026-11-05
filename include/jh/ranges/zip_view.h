@@ -23,30 +23,24 @@
  * <p>
  * Defines the implementation of <code>jh::ranges::zip_view</code> &mdash;
  * a lightweight, C++20-compatible view that aggregates multiple ranges
- * into synchronized tuples of references.
+ * into synchronized tuple-like element proxies.
  * </p>
  *
  * <p>
- * This header is part of the <strong>ranges</strong> module and serves as
- * an internal dependency of <code>jh::ranges::views::zip</code> and
+ * This header is part of the <strong>ranges</strong> module and provides the
+ * view used by <code>jh::ranges::views::zip</code> and
  * <code>jh::ranges::views::enumerate</code>.
- * It is <strong>not</strong> intended for direct inclusion by user code.
  * </p>
  *
  * <p>
- * <strong>Semantic equivalence:</strong><br/>
- * <code>jh::ranges::zip_view</code> provides the same observable behavior
- * as <code>std::ranges::zip_view</code> (C++23 and later). When the
+ * <strong>Standard integration:</strong><br/>
+ * When the
  * standard implementation is available, <code>jh::ranges::zip_view</code>
  * transparently aliases it through feature detection.
  * Otherwise, this header defines a portable fallback implementation
- * with identical semantics and API surface.
- * </p>
- *
- * <p>
- * This design follows the same principle as <code>boost::string_view</code>
- * &mdash; offering a pre-standard, fully compatible type that later becomes
- * a transparent bridge to its standard counterpart once available.
+ * for synchronized traversal of input views. The fallback preserves
+ * forward iteration when every component is a forward range; it does not
+ * provide the standard zip view's bidirectional or random-access operations.
  * </p>
  *
  * <p>
@@ -56,8 +50,7 @@
  *   <li><code>zip_sentinel</code> &mdash; range termination marker</li>
  *   <li><code>zip_reference_proxy</code> &mdash; reference aggregator for structured bindings</li>
  * </ul>
- * Together, these emulate the complete semantics of
- * <code>std::ranges::zip_view</code> for C++20 environments.
+ * Together, these provide the C++20 fallback's input and forward traversal.
  * </p>
  *
  * @see jh::ranges::views::zip
@@ -71,6 +64,7 @@
 #include <utility>
 #include <type_traits>
 #include <functional>
+#include "jh/metax/adl_apply.h"
 
 /// Feature detection for <code>std::ranges::zip_view</code> availability.
 #if defined(__cpp_lib_ranges_zip) && __cpp_lib_ranges_zip >= 202110L
@@ -197,8 +191,8 @@ namespace jh::ranges {
      * This proxy provides structured binding support by exposing a member
      * <code>get&lt;I&gt;()</code> and a corresponding free function
      * <code>get&lt;I&gt;(const zip_reference_proxy&amp;)</code>,
-     * making it behave as a tuple-like object compatible with
-     * <code>std::get</code> and <code>std::tuple_size</code>.
+     * making it a tuple-like object accessible through ADL and
+     * <code>std::tuple_size</code>.
      * </p>
      *
      * <p>
@@ -211,8 +205,7 @@ namespace jh::ranges {
      *   <li>a value, if the range yields temporaries (e.g. <code>std::views::iota</code>).</li>
      * </ul>
      * The proxy abstracts over these distinctions so that element access
-     * through <code>get&lt;I&gt;()</code> always yields a reference to the
-     * underlying element.
+     * through <code>get&lt;I&gt;()</code> preserves the stored reference or value.
      * </p>
      *
      * @tparam Es The element types of the aggregated tuple. Each may be a
@@ -240,14 +233,14 @@ namespace jh::ranges {
     public:
         constexpr operator zip_proxy_value_tuple_t<zip_reference_proxy>() // NOLINT
                 const & {
-            return std::apply([](auto const&... e) {
+            return jh::meta::adl_apply([](auto const&... e) {
                 return zip_proxy_value_tuple_t<zip_reference_proxy>{ unwrap_ref(e)... };
             }, elems);
         }
 
         constexpr operator zip_proxy_value_tuple_t<zip_reference_proxy>() // NOLINT
                 && {
-            return std::apply([](auto&&... e) {
+            return jh::meta::adl_apply([](auto&&... e) {
                 return zip_proxy_value_tuple_t<zip_reference_proxy>{ unwrap_ref(std::forward<decltype(e)>(e))... };
             }, std::move(elems));
         }
@@ -269,22 +262,22 @@ namespace jh::ranges {
      * <p>
      * This free function provides tuple-like access to elements within a
      * <code>zip_reference_proxy</code>, enabling structured bindings and
-     * compatibility with <code>std::get</code> and <code>std::tuple_element</code>.
+     * compatibility with ADL-based tuple access and <code>std::tuple_element</code>.
      * </p>
      *
      * <p>
      * Internally, this simply forwards to
      * <code>p.get&lt;I&gt;()</code>, preserving reference semantics and
-     * ensuring that both direct and wrapped elements yield proper references.
+     * preserving the proxy's stored element access.
      * </p>
      *
      * @tparam I The index of the element to retrieve.
      * @tparam Elems Parameter pack of stored element types.
      * @param p The <code>zip_reference_proxy</code> instance to access.
-     * @return The <code>I</code>-th element reference from the proxy.
+     * @return Access to the <code>I</code>-th stored proxy element.
      *
      * @see jh::ranges::zip_reference_proxy
-     * @see std::get
+     * @see jh::meta::adl_apply
      */
     template<std::size_t I, typename... Elems>
     constexpr decltype(auto) get(const zip_reference_proxy<Elems...> &p) noexcept {
@@ -326,7 +319,7 @@ namespace jh::ranges {
      * <p>
      * <code>zip_iterator</code> traverses multiple input ranges in lockstep,
      * dereferencing into a <code>zip_reference_proxy</code> that aggregates
-     * element references from each underlying range.
+     * references or values from the underlying ranges.
      * </p>
      *
      * <p>
@@ -364,30 +357,36 @@ namespace jh::ranges {
         using difference_type   = std::ptrdiff_t;
         using value_type        = std::tuple<std::remove_cvref_t<std::iter_value_t<Iters>>...>;
         using reference         = zip_reference_proxy<std::iter_reference_t<Iters>...>;
-        using iterator_concept  = std::input_iterator_tag;
-        using iterator_category [[maybe_unused]] = iterator_concept;
+        using iterator_concept [[maybe_unused]] = std::conditional_t<(std::forward_iterator<Iters> && ...),
+                                                  std::forward_iterator_tag,
+                                                  std::input_iterator_tag>;
 
         constexpr reference operator*() const {
             auto packed = tuple_transform([](auto &it) -> decltype(auto) {
                 return detail::wrap_element(*it);
             }, iters);
-            return std::apply([](auto &&... args) {
+            return jh::meta::adl_apply([](auto &&... args) {
                 return reference{std::tuple{std::forward<decltype(args)>(args)...}};
             }, packed);
         }
 
         constexpr zip_iterator &operator++() {
-            tuple_transform([](auto &it) -> auto & { ++it; return it; }, iters);
+            jh::meta::adl_apply([](auto &... it) { (++it, ...); }, iters);
             return *this;
         }
 
-        constexpr zip_iterator operator++(int) {
+        constexpr void operator++(int) requires (!(std::forward_iterator<Iters> && ...)) {
+            ++(*this);
+        }
+
+        constexpr zip_iterator operator++(int) requires (std::forward_iterator<Iters> && ...) {
             auto tmp = *this;
             ++(*this);
             return tmp;
         }
 
-        constexpr bool operator==(const zip_iterator &other) const {
+        constexpr bool operator==(const zip_iterator &other) const
+            requires (std::equality_comparable<Iters> && ...) {
             return [&]<std::size_t... I>(std::index_sequence<I...>) {
                 if (terminal_ || other.terminal_) {
                     return ((std::get<I>(iters) == std::get<I>(other.iters)) || ...);
@@ -396,7 +395,8 @@ namespace jh::ranges {
             }(std::index_sequence_for<Iters...>{});
         }
 
-        constexpr bool operator!=(const zip_iterator &other) const {
+        constexpr bool operator!=(const zip_iterator &other) const
+            requires (std::equality_comparable<Iters> && ...) {
             return !(*this == other); // NOLINT
         }
 
@@ -442,9 +442,8 @@ namespace jh::ranges {
      * </p>
      *
      * <p>
-     * The class follows the same observable semantics as
-     * <code>std::ranges::zip_view</code> (C++23), providing a transparent
-     * fallback implementation for C++20 environments.
+     * The C++20 fallback supports input traversal and preserves forward
+     * traversal when every component is a forward range.
      * </p>
      *
      * <p>
@@ -468,7 +467,8 @@ namespace jh::ranges {
      * @see jh::ranges::zip_reference_proxy
      * @see jh::ranges::views::zip
      */
-    template<std::ranges::view... Views>
+    template<typename... Views>
+        requires ((std::ranges::view<Views> && std::ranges::input_range<Views>) && ...)
     class zip_view final : public std::ranges::view_interface<zip_view<Views...>> {
         /// @brief Tuple of underlying view objects.
         std::tuple<Views...> bases;
@@ -547,7 +547,7 @@ namespace jh::ranges {
          * @details
          * This overload participates when <code>*this</code> is const.
          */
-        constexpr auto begin() const {
+        constexpr auto begin() const requires (std::ranges::range<const Views> && ...) {
             return zip_iterator{
                     tuple_transform([](auto const &v) { return std::ranges::begin(v); }, bases)
             };
@@ -562,8 +562,8 @@ namespace jh::ranges {
          * @details
          * This overload participates when <code>*this</code> is const.
          */
-        constexpr auto end() const {
-            if constexpr ((std::ranges::common_range<Views> && ...)) {
+        constexpr auto end() const requires (std::ranges::range<const Views> && ...) {
+            if constexpr ((std::ranges::common_range<const Views> && ...)) {
                 return zip_iterator{
                         tuple_transform([](auto const &v) { return std::ranges::end(v); }, bases),
                         true
@@ -717,4 +717,4 @@ namespace std::ranges{
             (std::ranges::borrowed_range<Views> && ...);
 } // namespace std::ranges
 
-#endif
+#endif // !JH_HAS_STD_ZIP_VIEW

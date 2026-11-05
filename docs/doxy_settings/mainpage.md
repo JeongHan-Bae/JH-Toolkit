@@ -89,7 +89,7 @@ C++20 is used as a **baseline**, not as a showcase.
 
 It enables:
 
-- reliable value semantics (guaranteed RVO/NRVO)
+- reliable value semantics (guaranteed prvalue elision and optional NRVO)
 - coroutine-based async composition with minimal boilerplate
 - non-type template parameters (NTTPs) for compile-time identity
 - expressive concepts for semantic constraints

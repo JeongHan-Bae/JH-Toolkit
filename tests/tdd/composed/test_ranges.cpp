@@ -1049,6 +1049,21 @@ void tiny_test_case_22() {
     jh::test::tiny_test::expect(static_cast<bool>((out1.str() == out2.str())), "out1.str() == out2.str()");
     jh::test::tiny_test::expect(static_cast<bool>((out1.str() == "0 1 2 ")), "out1.str() == \"0 1 2 \"");
 
+    std::istringstream source{"4 5"};
+    auto input = std::ranges::istream_view<int>(source);
+    auto normalized_input = jh::ranges::views::common(input);
+    int total = 0;
+    for (int value : normalized_input) total += value;
+    jh::test::tiny_test::expect(total == 9, "common accepts a single-pass standard range");
+
+    std::istringstream shared_source{"7 8"};
+    auto shared_input = std::ranges::istream_view<int>(shared_source);
+    auto shared_common = jh::ranges::views::common(shared_input);
+    auto first = shared_common.begin();
+    auto copy = first;
+    ++copy;
+    jh::test::tiny_test::expect(*first == 8, "single-pass iterator copies share one position");
+
 }
 }
 template<>
@@ -1149,4 +1164,84 @@ struct jh::test::tiny_test::session<"test module test_ranges case 24">
       > {};
 namespace test {
     [[maybe_unused]] const tiny_test::session<"test module test_ranges case 24"> registration_24{};
+}
+
+namespace test {
+void tiny_test_case_25() {
+    std::vector<int> values{1, 2, 3};
+
+    auto& direct = jh::ranges::adapt(values);
+    auto& piped = values | jh::ranges::adapt();
+    tiny_test::expect(&direct == &values, "direct adapt borrows the lvalue range");
+    tiny_test::expect(&piped == &values, "pipe adapt borrows the lvalue range");
+
+    direct[0] = 7;
+    piped[1] = 8;
+    tiny_test::expect(values == std::vector<int>{7, 8, 3}, "adapted references update the source");
+
+    auto owned_direct = jh::ranges::adapt(std::vector<int>{4, 5});
+    auto owned_piped = std::vector<int>{6, 7} | jh::ranges::adapt();
+    tiny_test::expect(owned_direct == std::vector<int>{4, 5}, "direct adapt owns an rvalue range");
+    tiny_test::expect(owned_piped == std::vector<int>{6, 7}, "pipe adapt owns an rvalue range");
+
+    using DirectStorage = jh::concepts::range_storage_traits<std::vector<int>&, false>;
+    auto& stored = DirectStorage::wrap(values);
+    tiny_test::expect(&stored == &values, "direct storage borrows the original vector");
+
+    auto&& converted_temporary = jh::to_range(std::vector<int>{10, 11});
+    tiny_test::expect(converted_temporary == std::vector<int>{10, 11},
+                      "to_range owns a temporary standard range");
+}
+}
+template<>
+struct jh::test::tiny_test::test<"adapt preserves lvalue identity and owns rvalues">
+    : jh::test::tiny_test::test_definition<
+          "adapt preserves lvalue identity and owns rvalues", &::test::tiny_test_case_25> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_ranges case 25">
+    : jh::test::tiny_test::session_definition<
+          "test module test_ranges case 25",
+          jh::test::tiny_test::test<"adapt preserves lvalue identity and owns rvalues">> {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_ranges case 25"> registration_25{};
+}
+
+namespace test {
+void tiny_test_case_26() {
+    auto direct = jh::ranges::views::zip(std::vector<int>{1, 2},
+                                         std::vector<int>{3, 4});
+    int direct_sum = 0;
+    for (auto [a, b] : direct) direct_sum += a + b;
+    tiny_test::expect(direct_sum == 10, "direct zip owns temporary inputs");
+
+    auto piped = std::vector<int>{1, 2}
+                 | jh::ranges::views::zip(std::vector<int>{3, 4});
+    int pipe_sum = 0;
+    for (auto [a, b] : piped) pipe_sum += a + b;
+    tiny_test::expect(pipe_sum == 10, "pipe zip owns temporary inputs");
+
+    auto extended = std::vector<int>{1, 2}
+                    | jh::ranges::views::zip_pipe(std::vector<int>{3, 4},
+                                                  std::vector<int>{5, 6});
+    int extended_sum = 0;
+    for (auto [a, b, c] : extended) extended_sum += a + b + c;
+    tiny_test::expect(extended_sum == 21, "zip_pipe owns temporary inputs");
+
+    auto enumerated = jh::ranges::views::enumerate(std::vector<int>{9, 8}, 10);
+    int enumerated_sum = 0;
+    for (auto [index, value] : enumerated) enumerated_sum += static_cast<int>(index) + value;
+    tiny_test::expect(enumerated_sum == 38, "enumerate owns its temporary input");
+}
+}
+template<>
+struct jh::test::tiny_test::test<"zip owns temporary sequence inputs">
+    : jh::test::tiny_test::test_definition<
+          "zip owns temporary sequence inputs", &::test::tiny_test_case_26> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_ranges case 26">
+    : jh::test::tiny_test::session_definition<
+          "test module test_ranges case 26",
+          jh::test::tiny_test::test<"zip owns temporary sequence inputs">> {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_ranges case 26"> registration_26{};
 }

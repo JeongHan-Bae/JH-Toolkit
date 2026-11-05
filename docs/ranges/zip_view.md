@@ -2,7 +2,6 @@
 
 📁 **Header:** `<jh/ranges/zip_view.h>`  
 📦 **Namespace:** `jh::ranges`  
-📅 **Version:** 1.3.x → 1.4.0-dev (2025)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -16,28 +15,34 @@
 
 ## 🧭 Introduction
 
-`jh::ranges::zip_view` provides a **C++20 fallback implementation** of
-`std::ranges::zip_view` (C++23 and later).  
-It allows *lockstep iteration* over multiple ranges, producing tuple-like element proxies
-without copying or allocating data.
+`jh::ranges::zip_view` aliases `std::ranges::zip_view` when the standard version
+is available. Its C++20 fallback iterates over input views in lockstep and
+produces tuple-like element proxies without materializing the zipped sequence.
+The fallback aims to follow the C++23 standard view's behavior where supported.
 
-This header belongs to the **`ranges` repository** and serves as an internal dependency of
-[`jh::ranges::views::zip`](views/zip.md) and [`jh::ranges::views::enumerate`](views/enumerate.md).  
-It is **not intended for direct inclusion** by user code.
+This header provides the view used by
+[`jh::ranges::views::zip`](views/zip.md) and [`jh::ranges::views::enumerate`](views/enumerate.md).
 
 ---
 
 ## 🔹 Definition
 
 ```cpp
-template <std::ranges::input_range... Ranges>
+template <typename... Views>
+    requires ((std::ranges::view<Views> && std::ranges::input_range<Views>) && ...)
 class zip_view;
 ```
 
-`jh::ranges::zip_view` emulates the observable behavior and API of
-`std::ranges::zip_view`, transparently aliasing it when available.  
+The C++20 fallback supports input views and retains forward traversal when
+all underlying views are forward ranges. Its current iterator operations stop
+at forward traversal; the standard view also supports bidirectional and random
+access traversal when its inputs allow them. The specialized `jh::views::zip`
+adaptor has a separate, non-consuming `jh::concepts::sequence` input contract.
+`zip_view` stores its component views by value. A reference view borrows its
+source; an owning view retains the source object. A copied non-owning view may
+still refer to external element storage that must outlive iteration.
 
-The fallback activation is controlled by **feature detection**, not just the language standard:
+Selection follows the condition in the header:
 
 ```cpp
 #if defined(__cpp_lib_ranges_zip) && __cpp_lib_ranges_zip >= 202110L
@@ -49,27 +54,17 @@ The fallback activation is controlled by **feature detection**, not just the lan
 #endif
 ```
 
-> ⚙️ **Note:**
-> Using `-std=c++23` or higher is completely **safe** —  
-> the compiler will automatically enable C++23 semantics where supported.  
-> If a particular implementation does **not** yet provide
-> `std::ranges::zip_view`, it simply won't define
-> `__cpp_lib_ranges_zip` or expose a `__cplusplus` value above `202302L`.  
-> In that case, the JH Toolkit fallback remains active automatically.
->
-> What is **not safe**, however, is manually faking feature macros —
-> e.g. defining `-D__cpp_lib_ranges_zip=202110L` by hand.  
-> Doing so can desynchronize the detection logic and result in
-> undefined behavior or partial symbol exposure.
+The feature macro selects the standard implementation in C++23 when the
+library provides it. The later-language branch assumes a standard Zip
+implementation is present.
 
-When the standard version is absent, this header provides a
-fully portable implementation composed of:
+The fallback comprises:
 
 * `zip_iterator` — synchronized iterator tuple  
 * `zip_sentinel` — termination marker  
 * `zip_reference_proxy` — structured binding–friendly reference aggregator
 
-These components together reproduce the complete semantics of `std::ranges::zip_view`.
+These components provide synchronized input and forward traversal in the fallback.
 
 ---
 
@@ -77,9 +72,9 @@ These components together reproduce the complete semantics of `std::ranges::zip_
 
 | Aspect                  | Description                                                                                      |
 |:------------------------|:-------------------------------------------------------------------------------------------------|
-| **Purpose**             | Provides C++20-compatible `zip_view` equivalent to the C++23 standard version.                   |
-| **Input model**         | Accepts any `std::ranges::input_range` and works transparently with `jh::ranges::range_adaptor`. |
-| **Iteration**           | Yields tuples of element references aggregated via proxy.                                        |
+| **Purpose**             | Provides C++20-compatible synchronized traversal of standard input views.                       |
+| **Input model**         | Accepts standard input views, including adapted sequences and single-pass input views.          |
+| **Iteration**           | Yields proxies holding references or values according to each source element.                    |
 | **Termination**         | Ends when any underlying range is exhausted (shortest-range rule).                               |
 | **Const compatibility** | Supports const iteration if all subranges allow it.                                              |
 | **Laziness**            | Fully lazy; elements are accessed only on demand.                                                |
@@ -93,13 +88,12 @@ These are **implementation details** used internally by the fallback version:
 
 | Type                  | Role                                                               | Availability            |
 |-----------------------|--------------------------------------------------------------------|-------------------------|
-| `zip_reference_proxy` | Represents the tuple-like dereference result; supports `std::get`. | Removed in C++23 builds |
-| `zip_iterator`        | Iterates through multiple subranges synchronously.                 | Removed in C++23 builds |
-| `zip_sentinel`        | Marks the unified end position across all subranges.               | Removed in C++23 builds |
+| `zip_reference_proxy` | Represents the tuple-like dereference result; supports ADL-based `get`. | Fallback only |
+| `zip_iterator`        | Iterates through multiple subranges synchronously.                       | Fallback only |
+| `zip_sentinel`        | Marks the unified end position across all subranges.                     | Fallback only |
 
-> ⚠️ **Do not depend on these types directly.**  
-> In C++23 or later, they will no longer exist —  
-> `jh::ranges::zip_view` becomes a simple alias to `std::ranges::zip_view`.
+These implementation types are absent when `jh::ranges::zip_view` aliases the
+standard type.
 
 ---
 
@@ -109,6 +103,7 @@ These are **implementation details** used internally by the fallback version:
 #include <jh/ranges/zip_view.h>
 #include <vector>
 #include <array>
+#include <iostream>
 
 int main() {
     std::vector<int> a = {1, 2, 3};
@@ -131,36 +126,16 @@ int main() {
 
 ---
 
-## ⚠️ Integration Notes (update)
+## 🔹 Integration Notes
 
 * Used internally by [`jh::ranges::views::zip`](views/zip.md)
   and [`jh::ranges::views::enumerate`](views/enumerate.md).
-* Designed to be **ABI-compatible** with the standard `std::ranges::zip_view` once available.
-* Avoids any dependency on experimental or vendor-specific range extensions.
 * Automatically included when using `<jh/views>` or `<jh/ranges/views/zip.h>`.
-
-> ⚠️ **Known limitation (1.3.4 freeze note):**  
-> The current implementation of `jh::ranges::zip_view` is **not yet fully recognized**
-> by `jh::concepts::sequence`.  
-> It only satisfies the *range-binding semantics* through structural matching
-> rather than full duck-type conformance.  
-> This limitation affects concept resolution in generic pipelines,
-> though the view itself functions correctly within `jh::views` and STL range contexts.
-
-> 💡 **Planned improvement (1.3.5):**  
-> The upcoming **1.3.5** release will extend the internal trait detection and
-> concept resolution rules to fully register `jh::ranges::zip_view`
-> as a valid `jh::concepts::sequence` type.  
-> This update will introduce stronger duck-typing semantics
-> and ensure that all range adaptors—`zip`, `enumerate`, and future ones—
-> participate seamlessly in generic pipelines and meta-level type deduction.
 
 ---
 
 ### 🧩 **Summary**
 
-`jh::ranges::zip_view` is a **pre-standard, C++20-compatible bridge** to
-`std::ranges::zip_view`.  
-It provides lazy, synchronized iteration across multiple ranges,
-offering identical semantics to the C++23 standard view while remaining
-safe, lightweight, and forward-compatible.
+`jh::ranges::zip_view` provides lazy, synchronized iteration across standard
+input views. The C++20 fallback retains forward traversal when every input
+view is forward.

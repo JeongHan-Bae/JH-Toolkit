@@ -30,7 +30,7 @@ through their interfaces.
 | `jh::views::zip`           | `<jh/ranges/views/zip.h>`           | ✅ Stable | Generalized, sequence-aware zip adaptor supporting multi-pipeline composition.                 |
 | `jh::views::enumerate`     | `<jh/ranges/views/enumerate.h>`     | ✅ Stable | Index-value adaptor equivalent to Python-style enumerate; implemented via zip.                 |
 | `jh::views::flatten`       | `<jh/ranges/views/flatten.h>`       | ✅ Stable | Observation-preserving flatten adaptor compatible with both consuming and non-consuming flows. |
-| `jh::views::transform`     | `<jh/ranges/views/transform.h>`     | ✅ Stable | Unified transform adaptor that dispatches between consumptive and observational semantics.     |
+| `jh::views::transform`     | `<jh/ranges/views/transform.h>`     | ✅ Stable | Selects the observational or standard transform path for a range-callable pair.                |
 | `jh::views::vis_transform` | `<jh/ranges/views/vis_transform.h>` | ✅ Stable | Explicitly non-consuming "visual" transform for reentrant, observation-only projections.       |
 | `jh::views::common`        | `<jh/ranges/views/common.h>`        | ✅ Stable | Upgraded common adaptor with transparent forwarding and extended normalization support.        |
 
@@ -45,7 +45,8 @@ through their interfaces.
   to participate naturally in pipelines without conversion overhead.
 * **Transparent forwarding** — avoids redundant wrapping of already conforming types,
   ensuring compile-time and runtime efficiency.
-* **Behavioral preservation** — propagation of consumption or reentrancy semantics is explicit and deterministic.
+* **Behavioral contracts** — each adaptor states its input constraints and the
+  conditions required for repeatable observations.
 * **Pipeline completeness** — provides missing pipe-form adaptors in certain standard library implementations (e.g.
   libc++).
 

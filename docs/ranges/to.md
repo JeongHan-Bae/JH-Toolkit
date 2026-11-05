@@ -2,7 +2,6 @@
 
 📁 **Header:** `<jh/ranges/to.h>`  
 📦 **Namespace:** `jh::ranges`  
-📅 **Version:** 1.3.5+ (2025)  
 👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
 
 <div align="right">
@@ -21,16 +20,11 @@
 While `collect` materializes data eagerly, `to` **finalizes** the pipeline by constructing
 a target container **`C`** directly from a compatible range **`R`**.
 
-It corresponds to the *closable half* of the C++23 `std::ranges::to` proposal —
-but with a **stricter and clearer semantic model**.  
-Unlike the STL version, which performs multiple implicit fallbacks,
 `jh::ranges::to` requires the pair `(C, R)` to satisfy
-[`closable_container_for<C, R>`](../conceptual/closable_container.md),
-ensuring **deterministic**, **optimized**, and **compile-time guaranteed** behavior.
-
-> `jh::ranges::collect` always succeeds by iteration;
-> `jh::ranges::to` succeeds only when structural construction is possible.
-> This strict separation eliminates ambiguity and runtime fallbacks.
+[`closable_container_for<C, R>`](../conceptual/closable_container.md).
+Its construction path is selected at compile time from the documented order
+below. [`collect`](./collect.md) covers supported insertion and tuple-unpacking
+paths when a separate materialization stage is useful.
 
 ---
 
@@ -64,7 +58,7 @@ template <typename C, typename... Args>
 constexpr auto to(Args&&... args);
 ```
 
-### Equivalent usage
+### Example calls
 
 ```cpp
 auto v1 = jh::ranges::to<std::vector<int>>(range);
@@ -87,20 +81,19 @@ without element-by-element insertion.
 If the pair is not closable,
 users should materialize the intermediate result via [`collect`](./collect.md) first,
 then call `to`.  
-This division enforces **explicitness**, **clarity**, and **compile-time optimization**.
+This division makes the materialization stage explicit.
 
 ---
 
 ## 🔹 Behavior
 
-`to()` follows a deterministic cost-ordered dispatch model.
-Each construction path is checked at compile time and chosen based on efficiency:
+`to()` checks these construction paths in priority order at compile time:
 
 | Priority | Condition                                             | Strategy                      | Description                                                       |
 |----------|-------------------------------------------------------|-------------------------------|-------------------------------------------------------------------|
-| ①        | `C` constructible from `(begin(r), end(r))`           | **Direct range construction** | Invokes container's native range constructor — the optimal path.  |
+| ①        | `C` constructible from `(begin(r), end(r))`           | **Direct range construction** | Invokes the container's iterator constructor.                    |
 | ②        | `C` constructible from a whole vector of element type | **`via_vector_whole`**        | Materializes a vector, passes it by move.                         |
-| ③        | `C` constructible via move iterators                  | **`via_vector_move`**         | Uses `std::make_move_iterator` to transfer ownership efficiently. |
+| ③        | `C` constructible via move iterators                  | **`via_vector_move`**         | Builds a vector, then passes move iterators.                       |
 | ④        | `C` constructible via copy iterators                  | **`via_vector_copy`**         | Fallback to element copy if no move path exists.                  |
 | ⑤        | `C` is an adaptor (e.g. `std::stack`, `std::queue`)   | **adapter_via_underlying**    | Builds the underlying container, then wraps it.                   |
 
@@ -155,32 +148,35 @@ clear evaluation → structural construction → explicit resource binding.
 | `collect` | Eager normalization and realization | [`collectable_container_for`](../conceptual/collectable_container.md) | ❌ No               | Evaluation |
 | `to`      | Structural container construction   | [`closable_container_for`](../conceptual/closable_container.md)       | ✅ Yes              | Adaptation |
 
-Unlike `std::ranges::to`,
-this version enforces a **strict closability requirement** and
-**explicit construction path ordering** —
-no ambiguous or hidden fallback conversions.
+`jh::ranges::to` requires closability and checks the documented construction
+paths in order. Insertion and tuple reconstruction belong to `collect`.
 
 ---
 
-## 🔹 Optimization Semantics — `collect + to`
+## 🔹 Return construction and materialization costs
 
-Although `collect` and `to` are semantically distinct,
-their composition achieves **RVO-based object-level move** in practice.
+The return expression determines which copy-elision rule applies:
 
-Under C++17 guaranteed RVO and later standards (C++20+ here),
-the intermediate container produced by `collect` is constructed
-directly in the frame expected by `to`.  
-Thus, even though no explicit `std::move` appears,
-the compiler performs the entire operation as one contiguous construction sequence.
+| Code path | Return expression | C++17 and later guarantee |
+|-----------|-------------------|---------------------------|
+| `to_adaptor<C>` and the closable branch of `collect_adaptor<C>` | `return C(...)` or another `C` prvalue | The returned `C` result is initialized directly; no copy or move of that result object is required. |
+| Insertion branch of `collect_adaptor<C>` | `C c{}; ...; return c;` | NRVO is permitted but optional. If omitted, the result is moved or copied according to the available operations. |
 
-| Stage          | Behavior                                        | Effect                                |
-|----------------|-------------------------------------------------|---------------------------------------|
-| `collect<V>()` | Materializes into a temporary container `V`     | Constructed in caller frame under RVO |
-| `to<C>(...)`   | Constructs `C` from `V` (via iterators or move) | Consumes `V` with move semantics      |
-| Combined       | Two semantic stages → One physical construction | Zero-copy, zero-overhead execution    |
+These rules concern the returned **container object**. They do not select how
+its elements are transferred. The direct iterator path can copy elements;
+`via_vector_move` explicitly uses move iterators; `via_vector_whole` moves the
+intermediate vector into a compatible constructor. The selected container
+constructors determine further element work and allocations. A whole-container
+move can transfer management of the intermediate buffer when that constructor
+and its allocator conditions support it; this avoids element-wise copying in
+that case. A move-iterator path instead visits elements and requests a move
+for each one.
 
-This means `collect + to` provides full clarity and composability,
-yet remains *as efficient as direct constructor invocation*.
+`collect + to` can save time when repeated insertion into the final container
+costs more than materializing an intermediate container and then constructing
+the final container from it. Compare those two total costs for the actual
+container and selected dispatch path. The intermediate container can also add
+an allocation and a traversal, so this is a workload-dependent choice.
 
 ---
 
@@ -206,8 +202,8 @@ yet remains *as efficient as direct constructor invocation*.
       | to<std::pmr::deque<int>>(std::pmr::polymorphic_allocator<int>(&pool));
   ```
 
-  `std::vector` is recommended as the intermediate type
-  due to its optimal locality, stable layout, and best compiler support for RVO.
+  `std::vector` is a practical intermediate type when contiguous storage and
+  append operations suit the input and the final constructor accepts it.
 
 ---
 
@@ -215,13 +211,15 @@ yet remains *as efficient as direct constructor invocation*.
 
 * **Strict closability enforcement** — prevents ambiguous runtime fallbacks.
 * **Ordered performance dispatch** — prefers the most efficient constructor path first.
-* **Zero-overhead composition** — merges seamlessly with `collect` under RVO.
+* **Explicit materialization** — `collect` makes the intermediate stage visible.
 * **Explicit adaptability** — supports allocator / comparator / hash customization directly.
-* **Predictable lifetime semantics** — no hidden moves, no unintended copies.
+* **Auditable construction** — the selected path shows where moves and copies may occur.
 
-Unlike STL's mixed-mode `std::ranges::to`,
-`jh::ranges::to` maintains **semantic clarity**, **compilation determinism**,
-and **consistent optimization behavior** across compilers.
+The C++23 [`std::ranges::to`](https://eel.is/c++draft/range.utility.conv.to)
+also specifies an ordered set of construction and insertion cases. JH Toolkit
+places insertion and tuple reconstruction in `collect`, and documents the
+priority of its `to` paths above. Neither interface guarantees a particular
+runtime cost for the selected container's constructor.
 
 ---
 
@@ -238,23 +236,20 @@ and **consistent optimization behavior** across compilers.
 
 `jh::ranges::to` is the **deterministic structural constructor**
 of the JH Ranges system — the closing stage of the `collect + to` pipeline.  
-It enforces compile-time structural validity, follows cost-prioritized dispatch,
-and, under RVO, achieves *object-level move equivalence*.
-
-Unlike the STL `std::ranges::to`, which mixes materialization and construction in one template,
-the JH model **explicitly separates** these stages:  
+It enforces compile-time structural validity and follows the documented
+construction order. The JH model separates two stages:
 `collect` handles unpacking and realization,
 while `to` performs structural construction and parameter binding.
 
 This strict separation enables:
 
 * precise compile-time diagnostics (clear failure location between materialization and construction);
-* better compiler comprehension and optimization;
+* an explicit place to compare the costs of insertion and intermediate construction;
 * explicit semantic boundaries that reflect actual cost and intent;
-* unpacking and proxy reconstruction support — capabilities *not available in STL's version*.
+* tuple-like proxy unpacking through `collect` when its constraints select that path.
 
 > **In short:**  
 > `collect` = *evaluate & unpack*  
 > → `to` = *construct & adapt structurally*  
-> → together = *semantically clearer, diagnostically stronger, and more expressive* than `std::ranges::to`.
+> → together = *an explicit two-stage container conversion when the workload benefits from it*.
 

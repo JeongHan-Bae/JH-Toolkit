@@ -3,6 +3,8 @@ project_static_pass(pattern_matcher_contracts concepts/pattern_matcher_contracts
 project_static_pass(runtime_arr_contracts concepts/runtime_arr_contracts.cpp)
 project_static_pass(pod_sequence concepts/pod_sequence.cpp)
 project_static_pass(sequence_iterator_contracts concepts/sequence_iterator_contracts.cpp)
+project_static_pass(zip_view_contracts concepts/zip_view_contracts.cpp)
+project_static_pass(vis_transform_view_contracts concepts/vis_transform_view_contracts.cpp)
 project_static_pass(base64_constexpr constexpr/base64.cpp)
 project_static_pass(tuple_constexpr constexpr/tuple.cpp)
 project_static_pass(t_str_constexpr constexpr/t_str.cpp)

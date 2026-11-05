@@ -73,15 +73,13 @@
  *
  * <h4>Performance note</h4>
  * <p>
- * Although <code>closable_container_for</code> never performs a direct move of
- * the source object, this design imposes <b>no runtime penalty</b>.  
- * When the source range is a prvalue (e.g. produced by <code>collect</code>),
- * modern C++ compilers guarantee through <b>RVO</b> and <b>NRVO</b> that the
- * intermediate container is constructed in-place, and element-wise initialization
- * automatically uses <b>move semantics</b> rather than copy.  
- * Therefore, <code>collect + to</code> achieves the same runtime efficiency
- * as a single monolithic move construction, while preserving precise and
- * standard-compliant semantics.
+ * The selected construction path determines the cost of adapting a source
+ * range. A <code>return C(...)</code> expression benefits from guaranteed
+ * prvalue elision in C++17 and later. A named local returned by
+ * <code>collect</code> may benefit from NRVO, which remains optional.
+ * Elements are moved only when the chosen constructor or move-iterator path
+ * performs moves; iterator construction may copy them. Intermediate
+ * containers can also require their own allocations.
  * </p>
  *
  * <h3>Core entities</h3>

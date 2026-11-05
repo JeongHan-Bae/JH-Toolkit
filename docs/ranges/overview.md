@@ -21,12 +21,16 @@ It defines the **foundational range infrastructure** that unifies:
 * the **view adaptor layer** (`<jh/views>`), and
 * the **semantic extension layer** (`<jh/ranges_ext>`).
 
-This repository is **not a single header** like `<ranges>` in STL;  
-it is a **modular repository** providing range–view–extension interoperability
+It is a modular range library providing view and extension interoperability
 across the entire JH Toolkit.
 
-All components here conform to `std::ranges::range` semantics
-and ensure full compatibility with both C++20 and C++23 range algorithms.
+The library adapts JH sequences to standard ranges and supplies C++20
+fallbacks for selected C++23 facilities. Each adaptor documents its own
+input constraints and supported iterator operations.
+
+Iterator traversal category and semantic reentrancy answer different
+questions. The former describes available iterator operations; the latter
+requires a source and any applied callable to support repeatable observation.
 
 ---
 
@@ -52,8 +56,9 @@ The `jh::ranges` repository represents the **complete range model** of JH Toolki
 | **View Adaptors**        | `<jh/views>` — transform, zip, enumerate, flatten, common, etc. | Lazy evaluation and pipeline composition.                          |
 | **Semantic Extensions**  | `<jh/ranges_ext>` — adapt, collect, to                          | Materialization and conversion semantics beyond standard adaptors. |
 
-Together, they provide a **pre-C++23-complete range ecosystem**
-that bridges lazy transformation, semantic extension, and structural normalization.
+Together, these layers connect lazy traversal, explicit materialization, and
+container construction. Consult each adaptor's contract for its supported
+input types and behavior.
 
 ---
 
