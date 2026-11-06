@@ -132,12 +132,19 @@ This enforces:
 |-------------------------------|-------------------------------------------------------------|
 | `void wait_signal()`          | Blocks until signaled. Spurious wakeups may occur.          |
 | `bool wait_until(time_point)` | Waits until signaled or timeout expires.                    |
+| `void wait_while(predicate)` | Checks the predicate while entering the wait.              |
+| `bool wait_while_until(predicate, time_point)` | Predicate wait with a deadline.          |
 | `void notify_one()`           | Wakes one waiting participant.                              |
 | `void notify_all(int n = 32)` | Wakes up to `n` waiting participants (POSIX).               |
 | `void notify_all()`           | Broadcast approximation (Windows).                          |
 | `static void unlink()`        | Removes backing resources (POSIX only, `HighPriv == true`). |
 
 The semantic contract mirrors `std::condition_variable`, adjusted for IPC constraints.
+Use a predicate wait when a notification means that shared state may have
+changed. On POSIX, the predicate is checked under the condition mutex and the
+notifier takes that mutex before signaling, closing the check-to-wait gap.
+The predicate must read shared state safely, and the notifier must update that
+state before signaling.
 
 ---
 

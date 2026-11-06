@@ -19,15 +19,31 @@ correctness claim. Keep timeouts only as bounds for operations whose contract
 actually includes time or to prevent a broken test from hanging indefinitely.
 Stress runs and third-party detectors such as ThreadSanitizer may reveal risks,
 but their diagnostics and exit codes do not count as a red or green behavior
-test. Before calling a concurrency fix complete, make a framework assertion
-about a caller-observable result fail on the original implementation under a
-controlled interleaving, then make the same assertion pass after the fix.
-Record both outcomes. A CTest failure caused only by a sanitizer report is
-diagnostic evidence, not the required behavioral red light. When a real race
-cannot be exposed through the current API, add a controlled test seam or
-observable state where appropriate and use the framework to establish the
-red-green behavior. If the risk still cannot be made observable, report that
-limitation instead of claiming the red-green sequence has been completed.
+test. For a defined-behavior concurrency defect, start with a separate red
+`.cpp` that makes a TinyTest assertion fail on the original implementation
+under a controlled interleaving. Run the same assertion after the fix and
+record both outcomes.
+
+For an internal fix, temporary fault injection may establish the red-green
+behavior, but both outcomes must be shown by test-framework assertions.
+Undefined behavior does not require a red-green demonstration; identify the
+relevant ISO C++ requirement, the exact operation that violates it, and the
+limits of runtime evidence.
+After the green run, move a test that uses ordinary behavior into its unit or
+composed module and delete the standalone `.cpp`. If the test
+depends entirely on injected fixtures or production-source hooks, remove the
+test and hooks before delivery, then report the diagnostic result and the
+absence of permanent regression coverage. A public API change that improves
+control, such as a configurable RW mutex, may justify a retained test; confirm
+the intended API change with the developer unless the change is already
+authorized.
+
+Pool tests that assert cross-thread synchronization must inject a known RW
+mutex and verify the relevant lock path. Do not rely on the default
+`std::shared_mutex` to establish Windows runtime correctness. A test RW mutex
+may use a `std::mutex` entrance gate and a reader count, following the IPC
+shared mutex strategy. Compile-time default-API checks and single-threaded
+behavior tests may use the default mutex.
 
 ## TDD
 

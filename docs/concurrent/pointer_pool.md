@@ -1,310 +1,83 @@
-# 🎍 **JH Toolkit — `jh::conc::pointer_pool` API Reference**
-
-📁 **Header:** `<jh/concurrent/pointer_pool.h>`  
-📦 **Namespace:** `jh::conc`  
-📅 **Version:** 1.4.x (2025)  
-👤 **Author:** JeongHan-Bae `<mastropseudo@gmail.com>`
-
-<div align="right">
-
-[![Back to README](https://img.shields.io/badge/%20Back%20to%20README-blue?style=flat-square)](../../README.md)
-[![Back to Module](https://img.shields.io/badge/%20Back%20to%20Module-green?style=flat-square)](overview.md)
-
-</div>
-
----
-
-## Overview
-
-`jh::conc::pointer_pool<T, Hash, Eq>` is a **pointer-based interning container** designed for objects whose identity:
-
-* is **intrinsic to the object itself**
-* **cannot** be expressed via an external key
-* requires **stable address identity**
-* may be **non-copyable and non-movable**
-
-The pool deduplicates objects using **full-object hashing and equality**, while ownership remains entirely with
-`std::shared_ptr<T>` held by the user.
-
-Internally, the pool stores **only `std::weak_ptr<T>`** for observation and reuse.
-It never owns, destroys, or manages object lifetime.
-
----
-
-## Design Philosophy
-
-`pointer_pool` exists to support types that **cannot participate in key-based or contiguous storage models**.
-
-Typical constraints include:
-
-* non-copyable / non-movable types
-* equality defined by full object state
-* identity inseparable from the object itself
-* mandatory pointer stability throughout lifetime
-
-Because of these constraints:
-
-* objects must be **constructed before lookup**
-* deduplication is based on **object equality**, not keys
-* fragmentation is **accepted and unavoidable**
-* allocator customization is **intentionally avoided**
-
-This container prioritizes **correctness and semantic identity** over storage efficiency.
-
----
-
-### Lookup Model (Construct-First)
-
-Unlike key-driven containers, `pointer_pool` does **not** provide `find()`.
-
-The acquisition flow is always:
-
-1. A **temporary object is constructed**
-2. The pool performs a **hash-based lookup** using the object
-3. If an equivalent object exists:
-
-    * that instance is reused
-    * the temporary object is discarded
-4. Otherwise:
-
-    * the new object becomes the canonical instance
-
-This is required because hashing and equality depend on the object itself.
-
----
-
-### Recommended Object Pattern
-
-Because provisional construction may be frequent, objects should support **cheap identity construction**.
-
-Recommended pattern:
-
-* construct only **identity-defining fields** eagerly
-* defer heavy or mutable initialization
-* perform expensive setup lazily (e.g. via `std::once_flag`)
-
-This ensures discarded temporary objects are inexpensive.
-
----
-
-### Lifetime and Ownership Model
-
-* The pool **never owns objects**
-* All ownership resides in `std::shared_ptr<T>` returned to the user
-* The pool stores only `std::weak_ptr<T>`
-
-As a result:
-
-* object lifetime is independent of the pool
-* destroying the pool does **not** affect live objects
-* expired entries are removed opportunistically
-
----
-
-### Cleanup and Adaptive Capacity
-
-Cleanup is **best-effort**:
-
-* expired entries are removed during:
-
-    * insertion
-    * expansion
-    * explicit cleanup calls
-
-Capacity management is **adaptive**:
-
-* cleanup occurs before expansion
-* capacity grows if usage exceeds a high-watermark
-* capacity shrinks if usage falls below a low-watermark
-* shrinking is conservative (halving, never minimal-fit)
-
-This avoids oscillation and rehash jitter under fluctuating workloads.
-
----
-
-## Member Summary
-
-### 🔒 Template Requirements
-
-`pointer_pool<T, Hash, Eq, Mutex>` requires:
-
-* `Hash(weak_ptr<T>) -> size_t`
-* `Eq(weak_ptr<T>, weak_ptr<T>) -> bool`
-
-Hash and equality must reflect **object identity**.
-`Mutex` defaults to `std::shared_mutex` and must satisfy
-`jh::concepts::rw_mutex_like`.
-
----
-
-### 🔢 Constants
-
-| Member              | Type                    | Description                              |
-|---------------------|-------------------------|------------------------------------------|
-| `MIN_RESERVED_SIZE` | `constexpr std::size_t` | Minimum reserved capacity (default: 16). |
-
----
-
-### 🏗 Constructors
-
-| Member                                                          | Description                                       |
-|-----------------------------------------------------------------|---------------------------------------------------|
-| `explicit pointer_pool(std::size_t reserve = MIN_RESERVED_SIZE)` | Constructs a pool with initial reserved capacity. |
-
-**Deleted / Restricted:**
-
-| Member                             | Description                              |
-|------------------------------------|------------------------------------------|
-| Copy constructor / copy assignment | Disabled — pools must not be duplicated. |
-| `acquire(...) const`               | Deleted — acquisition mutates the pool.  |
-
----
-
-### 🔁 Move Semantics
-
-| Member                   | Description                                          |
-|--------------------------|------------------------------------------------------|
-| Move constructor         | Transfers observation state; source pool is cleared. |
-| Move assignment operator | Replaces observation scope atomically.               |
-
-Move operations transfer **observation**, not ownership.
-
----
-
-### 🔑 Acquisition
-
-| Member                                  | Description                                                                      |
-|-----------------------------------------|----------------------------------------------------------------------------------|
-| `std::shared_ptr<T> acquire(Args&&...)` | Constructs a candidate object, deduplicates, and returns the canonical instance. |
-
-Properties:
-
-* construction happens **before locking**
-* temporary objects may be discarded
-* deduplication is atomic
-* returned object is always owned by the caller
-
----
-
-### 🧹 Maintenance
-
-| Member                  | Description                                                 |
-|-------------------------|-------------------------------------------------------------|
-| `void cleanup()`        | Removes expired weak entries.                               |
-| `void cleanup_shrink()` | Removes expired entries and conditionally shrinks capacity. |
-| `void clear()`          | Clears all entries and resets capacity to minimum.          |
-
-Notes:
-
-* cleanup is safe at any time
-* `clear()` removes observation only — objects remain alive if owned externally
-* `clear()` is not recommended for structural resource pools
-
----
-
-### 📊 Observers
-
-| Member                         | Description                                        |
-|--------------------------------|----------------------------------------------------|
-| `std::size_t size() const`     | Number of stored weak entries (including expired). |
-| `std::size_t capacity() const` | Current reserved capacity limit.                   |
-
----
-
-## Concurrency and Safety
-
-* Concurrent `acquire()` calls use one exclusive lock for the capacity check,
-  optional cleanup, and insertion
-* Deduplication is atomic under exclusive locking
-* Shared objects remain valid even if:
-
-    * the pool is cleared
-    * the pool is destroyed
-
-The pool uses `std::shared_mutex` by default. A custom RW mutex can expose
-lock acquisition in tests or supply a verified synchronization implementation
-for a platform configuration with a measured visibility problem. The mutex
-must provide cross-thread synchronization; `rw_mutex_like` checks its API
-but cannot prove that runtime guarantee. Under that contract, the pool's own
-accesses are data-race-free.
-Custom hash and equality callbacks must not recursively call the same pool,
-because insertion can invoke them while holding its exclusive lock. A move
-assignment locks both participating pools during transfer. Callers must
-serialize concurrent move assignments that involve the same pool, especially
-opposite-direction moves; their result and progress are not specified.
-
-The pool unit test uses a controllable hash and RW mutex to hold one insertion
-at a known point and observe the next lock attempt. It asserts that two
-completed insertions leave `size() <= capacity()`. The same test failed with
-the capacity read outside the lock and passes after moving it inside.
-
----
-
-## Platform notes (Windows)
-
-On Windows, `pointer_pool` uses the `posix_smtx_*_lock` adapters at its lock
-boundaries. Its `std::shared_ptr`, `std::weak_ptr`, and hash-table operations
-must also satisfy their standard synchronization and lifetime contracts. See
-[pool platform support](overview.md#pool-platform-support) for the shared
-platform guidance. A high-contention failure needs investigation before its
-cause can be assigned to a specific component.
-
----
-
-## Intended Use Cases
-
-`pointer_pool` is intended for objects that:
-
-* cannot be copied or moved
-* cannot be represented by an external key
-* require full-object equality for deduplication
-* require stable pointer identity
-
-Typical examples:
-
-* immutable resource handles
-* structurally immutable objects
-* objects with identity-bound invariants
-
----
-
-## Comparison with `flat_pool`
-
-| Aspect            | `pointer_pool`  | `flat_pool`             |
-|-------------------|-----------------|-------------------------|
-| Identity          | Object itself   | External key            |
-| Storage           | Heap + pointers | Contiguous              |
-| Lookup            | Construct-first | Lookup-before-construct |
-| `find()`          | ❌ Not supported | ✅ Supported             |
-| Fragmentation     | Inevitable      | Minimized               |
-| Pointer stability | Guaranteed      | Not guaranteed          |
-| Allocator control | ❌               | ✅                       |
-
-`pointer_pool` exists **specifically** for cases where `flat_pool` is inapplicable.
-
----
-
-## When *Not* to Use `pointer_pool`
-
-Do **not** use `pointer_pool` if:
-
-* object identity can be expressed by a key
-* objects are copyable or movable
-* contiguous storage is acceptable
-* large-scale, cache-sensitive storage is required
-
-In those cases, prefer `flat_pool` or `resource_pool`.
-
----
-
-## Summary
-
-> **`pointer_pool` is a weak-observed, pointer-stable interning container for objects whose identity is inseparable from
-the object itself.**
-
-* construct-first deduplication
-* no ownership or destruction
-* stable pointer identity
-* best-effort cleanup
-* adaptive capacity
-* semantics-first design
+# `jh::conc::pointer_pool`
+
+Header: `<jh/concurrent/pointer_pool.h>`
+
+`pointer_pool<T, Hash, Eq, Mutex = std::shared_mutex>` interns objects by
+content. Each object is constructed in its own heap node, so `T` may be
+non-copyable and non-movable. `acquire()` returns `pointer_pool::ptr`, a
+reference-counted handle. The pool adds no independent object reference.
+
+The former weak-pointer design used `weak_ptr::lock()` and a `shared_ptr`
+control block whose synchronization could not be selected through `Mutex`.
+The current handle brings index and lifetime operations under the selected RW
+mutex. On a Windows MinGW combination where the default `std::shared_mutex`
+is unreliable, provide a mutex with verified cross-thread behavior. The
+[pool platform note](overview.md#pool-platform-support) records the observed
+gap and the remaining mutex requirement.
+
+## Identity and lookup
+
+`Hash` receives `const T&` and returns `std::size_t`. `Eq` compares two
+`const T&` values. Equal objects must have equal hashes, and the fields used
+by both callbacks must remain stable while an object is observed.
+
+For each `acquire(args...)` call, the pool:
+
+1. Constructs a candidate node from `args...`.
+2. Computes its hash once before acquiring the pool mutex.
+3. Finds the hash range in a sorted vector of slots.
+4. Compares objects only when cached hashes match.
+5. Returns the existing node's handle or adopts the candidate node.
+
+Each occupied slot holds a cached hash and a `unique_ptr` to a stable node.
+The last handle release destroys its node immediately and leaves a reusable
+slot. A second sorted vector records every empty slot position. For a new hash,
+insertion uses binary search to find the nearest empty slot and moves only the
+records between that slot and the sorted insertion position. Lookup takes
+`O(log N + C)` comparisons, where `C` is the number of entries with the same
+hash. Insertion may move up to `O(N)` slot records when no nearby slot is free.
+
+## Handles and lifetime
+
+```cpp
+using pool_type = jh::conc::pointer_pool<T, Hash, Eq, Mutex>;
+pool_type pool;
+pool_type::ptr handle = pool.acquire(constructor_args...);
+```
+
+A handle supports copy, move, `reset()`, `get()`, `operator*`, `operator->`,
+`use_count()`, and comparison with another handle or `nullptr`. Copying and
+releasing a handle update reference counts through the configured `Mutex`.
+The last release destroys its node immediately and leaves a reusable index slot.
+
+Handles remain valid after the pool is moved, cleared, or destroyed. `clear()`
+starts a new index. Existing handles retain the previous index until their
+objects are released. Concurrent access to one handle object requires external
+synchronization.
+
+## Capacity and maintenance
+
+`size()` counts currently observed live objects. `capacity()` reports the
+number of index slots. The default is 16; a full live index doubles on
+insertion. Expansion and `cleanup()` distribute free slots through the sorted
+index. `cleanup_shrink()` also halves a slot count above 16 when
+live occupancy is at most one quarter, down to 16. `clear()` starts a new
+16-slot index.
+
+## Synchronization
+
+`Mutex` must satisfy `jh::concepts::rw_mutex_like` and provide working
+cross-thread synchronization on the target platform. The pool uses instances
+of this type for index changes, equality comparison, handle reference counts,
+and state changes such as `clear()`. Hashing a new candidate occurs before the
+lock. Equality callbacks run under the lock and must not reenter the same pool.
+
+The default is `std::shared_mutex`. The chosen implementation must supply
+the required cross-thread synchronization on the target platform.
+
+## Migration
+
+The former API returned `std::shared_ptr<T>` and accepted Hash/Eq functors for
+`std::weak_ptr<T>`. The current API returns `pointer_pool::ptr` and applies
+Hash/Eq directly to `T`. Code with explicit handle types or custom functors
+must be updated.

@@ -23,7 +23,7 @@ callers think in terms of resources (objects, keys, handles) rather than mutexes
 |-------------------------------------------------------|-------------------------------------------------------------------------------------------------|
 | `occ_box<T>`                                          | OCC-wrapped mutable state with atomic snapshot readers and copy-and-replace commits.           |
 | `flat_pool<Key, Value>` / `resource_pool<Key, Value>` | Contiguous key-driven pool for copyable/movable entries, exposing reference-counted handles.    |
-| `pointer_pool<T>` / `observe_pool<T>`                 | Weak-observed pools for pointer-stable, immutable data (the latter auto-deduces hash/equality). |
+| `pointer_pool<T>` / `observe_pool<T>`                 | Pools with their own handles for pointer-stable, immutable data; the latter auto-selects hash/equality. |
 
 `<jh/concurrency>` aggregates every `<jh/concurrent/*.h>` helper into `jh::conc`. When you only need the alias-based
 pools, include `<jh/pool>` so that `jh::observe_pool`/`jh::resource_pool` sit directly under `jh::`.
@@ -36,7 +36,7 @@ pools, include `<jh/pool>` so that `jh::observe_pool`/`jh::resource_pool` sit di
 |--------------------------------------------------------|-----------------------------------|----------|------------------------------------------------------------------------------------------------------|
 | [`occ_box<T>`](occ_box.md)                             | `<jh/concurrent/occ_box.h>`       | ✅ Stable | OCC container with optimistic reads, copy-on-write writes, and optional multi-box transactions.      |
 | [`flat_pool<Key, Value>`](flat_pool.md)                | `<jh/concurrent/flat_pool.h>`     | ✅ Stable | Key-based, contiguous pool exposing reference-counted handles, validator guards, and health metrics. A final template parameter selects the RW mutex. |
-| [`pointer_pool<T, Hash, Eq>`](pointer_pool.md)         | `<jh/concurrent/pointer_pool.h>`  | ✅ Stable | Weak-pointer observer for immutable heap objects that must stay at fixed addresses. A final template parameter selects the RW mutex. |
+| [`pointer_pool<T, Hash, Eq>`](pointer_pool.md)         | `<jh/concurrent/pointer_pool.h>`  | ✅ Stable | Sorted, reusable hash slots for immovable heap objects; its handle and index use the selected RW mutex. |
 | [`observe_pool<T>`](observe_pool.md)                   | `<jh/concurrent/observe_pool.h>`  | ✅ Stable | Duck-typed alias of `pointer_pool` with an optional RW mutex parameter. |
 | [`resource_pool<Key, Value, Alloc>`](resource_pool.md) | `<jh/concurrent/resource_pool.h>` | ✅ Stable | Simplified alias of `flat_pool` keyed by `jh::hash<Key>`, plus `resource_pool_set<Key>`; both accept an optional RW mutex parameter. |
 
@@ -58,52 +58,26 @@ pools, include `<jh/pool>` so that `jh::observe_pool`/`jh::resource_pool` sit di
 
 ## Pool platform support
 
-The pool components use standard C++ mutexes by default and accept a custom
-RW mutex type. A conforming mutex synchronizes a release with a later
-successful acquisition on the same
-mutex; see the [C++ mutex requirements](https://eel.is/c++draft/thread.mutex.requirements)
-and [shared-mutex requirements](https://eel.is/c++draft/thread.sharedmutex.requirements.general).
-Correctly protected data has the corresponding visibility guarantees on every
-conforming platform.
+Windows MinGW runs of `tdd.composed.immutable_str` have intermittently failed
+and passed on rerun. GCC behaved as expected in separate local tests; UCRT and
+MSVCRT have not been evaluated independently. The observed gap belongs to the
+MinGW and Windows runtime combination, with no single component identified as
+its cause.
 
-`pointer_pool::acquire()` holds the pool's RW mutex across capacity checks,
-cleanup, and insertion. Under a mutex that supplies the required cross-thread
-synchronization, the pool's own accesses are data-race-free. The
-`rw_mutex_like` concept checks the API shape; it cannot establish the runtime
-synchronization quality of a particular library build. Callers must serialize
-concurrent move assignments involving the same pool.
+`flat_pool` uses atomic reference counts and a selectable RW mutex. With a
+custom RW mutex and latch-controlled ordering tests, its observed ordering
+failure stopped occurring. The former `pointer_pool` had an additional path
+through `weak_ptr::lock()` and the `shared_ptr` control block, which the
+selected mutex could not govern. Its new `ptr` handle removes that path.
 
-`pointer_pool<T, Hash, Eq, Mutex>`, `observe_pool<T, Mutex>`,
-`flat_pool<Key, Value, Hash, Alloc, Mutex>`, and the `resource_pool` aliases
-accept a custom RW mutex. A platform-specific implementation that has been
-verified to provide the required synchronization can be supplied when the default mutex
-shows a measured visibility problem. The project has measured high-contention
-instability on Windows MinGW builds; the particular standard library and
-runtime combination must be identified before
-assigning its cause.
-
-Windows provides [slim reader/writer (SRW) locks](https://learn.microsoft.com/en-us/windows/win32/sync/slim-reader-writer--srw--locks)
-as lightweight, single-process synchronization objects. Microsoft describes
-them as [typically operating in user mode, with a possible kernel transition
-under contention](https://learn.microsoft.com/en-us/windows/win32/sync/about-synchronization).
-Their implementation and scheduling behavior differ from POSIX reader/writer
-locks. This platform distinction is relevant to the measured Windows gap; the
-exact backend selected by a particular C++ standard library must be checked
-for that build.
-
-On Windows, several pool lock sites use `posix_smtx_*_lock` aliases, which
-select RAII adapters that add `seq_cst` fences at those boundaries. Testing has
-shown that these fences improve behavior on the affected configurations. They
-cannot complete a missing library/runtime synchronization path for independent
-atomic operations: a fence alone does not create a release/acquire relationship
-for an unrelated atomic value. The mitigation does not guarantee every
-high-contention workload. Other platforms use standard lock adapters. The
-[`strong_lock` reference](../synchronous/strong_lock.md) describes the
-adapter behavior. The [C++ fence rules](https://eel.is/c++draft/atomics.fences)
-specify when fences participate in synchronization through atomic operations.
-
-The [contribution guide](../../CONTRIBUTING.md) defines the minimum Windows
-support requirement and separately reports occasional Windows CI runner freezes.
+The remaining engineering requirement is an RW mutex that reliably
+synchronizes the pool's state, including atomic counts where present, on the
+target runtime. The default is `std::shared_mutex`; callers can select another
+type when that default is unreliable. `rw_mutex_like` checks the interface,
+while target-platform tests must check the synchronization behavior. Windows
+CI validation of the new observed pool remains pending. See the
+[`strong_lock` reference](../synchronous/strong_lock.md) for the lock adapters
+used at pool boundaries.
 
 ---
 

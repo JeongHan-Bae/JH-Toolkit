@@ -10,13 +10,14 @@ namespace test::tiny_test {
 #include <latch>
 #include <array>
 #include <shared_mutex>
+#include "../support/pool_test_mutex.hpp"
 #include <string_view>
 
 #include "jh/immutable_str"
 #include "jh/typed"
 
 namespace test {
-    using ImmutablePool = jh::observe_pool<jh::immutable_str<>>;
+    using ImmutablePool = jh::observe_pool<jh::immutable_str<>, pool_test_mutex>;
 
     // Generates a random string with visible characters only
     std::string generate_random_string(const size_t length) {
@@ -415,8 +416,8 @@ void tiny_test_case_10() {
     auto str2 = pool.acquire("Hello, World!");
     auto str3 = pool.acquire("Different String");
 
-    jh::test::tiny_test::expect(static_cast<bool>((str1 == str2)), "str1 == str2"); // Same string should return the same shared_ptr
-    jh::test::tiny_test::expect(static_cast<bool>((str1 != str3)), "str1 != str3"); // Different strings should return different shared_ptr
+    jh::test::tiny_test::expect(static_cast<bool>((str1 == str2)), "str1 == str2");
+    jh::test::tiny_test::expect(static_cast<bool>((str1 != str3)), "str1 != str3");
     jh::test::tiny_test::expect(static_cast<bool>((pool.size() == 2)), "pool.size() == 2"); // There should be 2 unique string objects in the pool
 
 }
@@ -443,8 +444,8 @@ void tiny_test_case_11() {
     auto str1 = pool.acquire("Persistent String");
     jh::test::tiny_test::expect(static_cast<bool>((pool.size() == 1)), "pool.size() == 1");
 
-    str1.reset(); // Release shared_ptr
-    jh::test::tiny_test::expect(static_cast<bool>((pool.size() == 1)), "pool.size() == 1"); // Since it's a weak_ptr, it won't be deleted before cleanup
+    str1.reset();
+    jh::test::tiny_test::expect(pool.size() == 0, "released string is removed immediately");
 
     pool.cleanup(); // Trigger cleanup
     jh::test::tiny_test::expect(static_cast<bool>((pool.size() == 0)), "pool.size() == 0"); // The pool should be empty
@@ -496,7 +497,7 @@ namespace test {
 namespace test {
 void tiny_test_case_13() {
     test::ImmutablePool pool;
-    std::array<jh::shared_str_ptr<>, 2> handles;
+    std::array<test::ImmutablePool::ptr, 2> handles;
     std::latch both_ready(2), start(1);
     auto acquire_same = [&](std::size_t index) {
         both_ready.count_down();
@@ -532,7 +533,7 @@ namespace test {
 namespace test {
 void tiny_test_case_14() {
     test::ImmutablePool pool;
-    std::array<jh::shared_str_ptr<>, 2> handles;
+    std::array<test::ImmutablePool::ptr, 2> handles;
     std::latch both_ready(2), start(1);
     auto acquire_distinct = [&](std::size_t index) {
         both_ready.count_down();
@@ -551,12 +552,12 @@ void tiny_test_case_14() {
 }
 }
 template<>
-struct jh::test::tiny_test::test<"observe_pool<immutable_str> - Concurrent Stored Shared_Ptr">
-    : jh::test::tiny_test::test_definition<"observe_pool<immutable_str> - Concurrent Stored Shared_Ptr", &::test::tiny_test_case_14> {};
+struct jh::test::tiny_test::test<"observe_pool<immutable_str> - Concurrent Stored Handles">
+    : jh::test::tiny_test::test_definition<"observe_pool<immutable_str> - Concurrent Stored Handles", &::test::tiny_test_case_14> {};
 template<>
 struct jh::test::tiny_test::session<"test module test_immutable_str case 14">
     : jh::test::tiny_test::session_definition<
-          "test module test_immutable_str case 14", jh::test::tiny_test::test<"observe_pool<immutable_str> - Concurrent Stored Shared_Ptr">
+          "test module test_immutable_str case 14", jh::test::tiny_test::test<"observe_pool<immutable_str> - Concurrent Stored Handles">
       > {};
 namespace test {
     [[maybe_unused]] const tiny_test::session<"test module test_immutable_str case 14"> registration_14{};
@@ -569,20 +570,23 @@ namespace test {
 void tiny_test_case_15() {
     test::ImmutablePool pool(4); // Initial size 4
 
-    std::vector<std::shared_ptr<jh::immutable_str<>> > objects;
-    objects.reserve(10);
+    std::vector<test::ImmutablePool::ptr> objects;
+    objects.reserve(20);
 
-    for (int i = 0; i < 10; ++i) {
-        std::string str = test::generate_random_string(8);
+    for (int i = 0; i < 20; ++i) {
+        std::string str = "value_" + std::to_string(i);
         objects.push_back(pool.acquire(str.c_str()));
     }
 
-    jh::test::tiny_test::expect(static_cast<bool>((pool.size() == 10)), "pool.size() == 10");
-    jh::test::tiny_test::expect(static_cast<bool>((pool.capacity() >= 16)), "pool.capacity() >= 16"); // Expansion
+    jh::test::tiny_test::expect(pool.size() == 20 && pool.capacity() == 32,
+                                "unique strings expand the observation index");
 
-    objects.clear(); // Release all objects
-    pool.cleanup(); // Trigger contraction
-    jh::test::tiny_test::expect(static_cast<bool>((pool.capacity() <= 16)), "pool.capacity() <= 16"); // Contraction
+    objects.clear();
+    pool.cleanup();
+    jh::test::tiny_test::expect(pool.size() == 0 && pool.capacity() == 32,
+                                "cleanup leaves the allocated capacity available");
+    pool.cleanup_shrink();
+    jh::test::tiny_test::expect(pool.capacity() == 16, "explicit shrink halves capacity");
 
 }
 }
@@ -636,7 +640,7 @@ void tiny_test_case_17_body(const int selected_section) {
     std::uniform_int_distribution<int> rand_dist(0, 5);
     constexpr int total_tests = 128;
 
-    jh::observe_pool<jh::immutable_str<>> pool;
+    test::ImmutablePool pool;
     // Recommended method: Directly map atomic immutable strings to unique identifiers
     static const std::unordered_map<jh::shared_str_ptr<>, size_t, jh::atomic_str_hash<>, jh::atomic_str_eq<>> immutable_map =
     {
@@ -659,7 +663,10 @@ void tiny_test_case_17_body(const int selected_section) {
             }
 
             const auto str = pool.acquire(str_value.c_str());
-            const auto it = immutable_map.find(str);
+            const auto it = immutable_map.find(str->c_str());
+            const auto shared_lookup = jh::make_atomic(str->c_str());
+            jh::test::tiny_test::expect(immutable_map.find(shared_lookup) == it,
+                                        "shared pointer and C string lookups agree");
 
             std::string check_str;
 

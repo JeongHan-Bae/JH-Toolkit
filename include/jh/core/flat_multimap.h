@@ -556,7 +556,9 @@ namespace jh {
                     storage_.begin(), storage_.end(), key,
                     [](const K &v, auto &&p) { return v < p.first; }
             );
-            return storage_.insert(pos, {key, value});
+            return storage_.insert(pos, value_type(
+                    std::forward<KArg>(key), std::forward<VArg>(value)
+            ));
             // all iterators invalidated, except the returned one
         }
 

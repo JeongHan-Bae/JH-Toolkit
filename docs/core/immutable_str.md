@@ -363,6 +363,10 @@ if (x.get() == y.get()) {
 
 `jh::observe_pool` compares objects by `hash()` and `operator==`,
 so semantically identical strings share a single immutable instance.  
+`pool.acquire()` returns the pool's own `ptr` handle. It manages references
+through the pool's selected mutex and remains valid after the pool is
+destroyed. It is a different type from `jh::shared_str_ptr<>`, which is an
+ordinary `std::shared_ptr` used by the standalone factories.
 
 ---
 

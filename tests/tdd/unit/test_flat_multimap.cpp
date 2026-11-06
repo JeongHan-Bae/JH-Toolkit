@@ -10,6 +10,7 @@ namespace test::tiny_test {
 #include <map>
 #include <algorithm>
 #include <stdexcept>
+#include <memory>
 
 #include "jh/flat_multimap"
 
@@ -293,5 +294,34 @@ struct jh::test::tiny_test::session<"test module test_flat_multimap case 8">
       > {};
 namespace test {
     [[maybe_unused]] const tiny_test::session<"test module test_flat_multimap case 8"> registration_8{};
+}
+
+namespace test {
+void tiny_test_case_9() {
+    flat_multimap<int, std::unique_ptr<int>> fm;
+    fm.emplace(3, std::make_unique<int>(30));
+    fm.insert(std::make_pair(1, std::make_unique<int>(10)));
+    fm.emplace(2, std::make_unique<int>(20));
+    fm.insert(std::forward_as_tuple(1, std::make_unique<int>(11)));
+
+    std::vector<int> keys;
+    for (const auto &entry : fm) keys.push_back(entry.first);
+    jh::test::tiny_test::expect(keys == std::vector<int>{1, 1, 2, 3}, "move-only values stay sorted");
+    jh::test::tiny_test::expect(*fm.equal_range(1).first->second == 10, "equivalent keys retain insertion order");
+    auto held = fm.find(2)->second.get();
+    fm.erase(fm.find(1));
+    jh::test::tiny_test::expect(fm.find(2)->second.get() == held, "moving entries preserves pointee address");
+}
+}
+template<>
+struct jh::test::tiny_test::test<"move-only values preserve ordering and ownership">
+    : jh::test::tiny_test::test_definition<"move-only values preserve ordering and ownership", &::test::tiny_test_case_9> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_flat_multimap case 9">
+    : jh::test::tiny_test::session_definition<
+          "test module test_flat_multimap case 9", jh::test::tiny_test::test<"move-only values preserve ordering and ownership">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_flat_multimap case 9"> registration_9{};
 }
 

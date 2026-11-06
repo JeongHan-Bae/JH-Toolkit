@@ -91,9 +91,8 @@
  *
  * <p>
  * Combined with <code>jh::observe_pool&lt;jh::immutable_str&lt;&gt;&gt;</code>,
- * immutable strings can be deduplicated and shared safely via
- * <code>std::shared_ptr</code>, allowing automatic reclamation
- * when no longer referenced.
+ * immutable strings can be deduplicated through the pool's own handles.
+ * The last handle release reclaims the observed object.
  * </p>
  *
  */
@@ -690,7 +689,7 @@ namespace example {
  * </p>
  *
  * @code
- * std::shared_ptr&lt;T&gt;
+ * jh::observe_pool&lt;T&gt;::ptr
  * @endcode
  *
  * <p>

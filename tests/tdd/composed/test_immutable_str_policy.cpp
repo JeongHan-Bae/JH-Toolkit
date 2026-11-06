@@ -8,6 +8,7 @@
 #include <unordered_set>
 
 #include "jh/immutable_str"
+#include "../support/pool_test_mutex.hpp"
 
 namespace test {
     using jh::test::tiny_test::expect;
@@ -67,7 +68,7 @@ namespace test {
         map.emplace(first, 7);
         expect(map.find(" \t hello \r ") != map.end(), "unordered_map heterogeneous lookup");
 
-        jh::observe_pool<str_type> pool;
+        jh::observe_pool<str_type, pool_test_mutex> pool;
         const auto pooled1 = pool.acquire(" \t hello \r ");
         const auto pooled2 = pool.acquire(" \t hello \r ");
         expect(pooled1 == pooled2 && pooled1->view() == expected, "pool deduplicates stored content");
@@ -96,8 +97,8 @@ namespace test {
         static_assert(std::is_same_v<jh::atomic_str_hash<>, jh::atomic_str_hash<JH_IMMUTABLE_STR_AUTO_TRIM>>);
         static_assert(std::is_same_v<jh::atomic_str_eq<>, jh::atomic_str_eq<JH_IMMUTABLE_STR_AUTO_TRIM>>);
         static_assert(!std::is_same_v<jh::immutable_str<true>, jh::immutable_str<false>>);
-        static_assert(!std::is_same_v<jh::observe_pool<jh::immutable_str<true>>,
-                                      jh::observe_pool<jh::immutable_str<false>>>);
+        static_assert(!std::is_same_v<jh::observe_pool<jh::immutable_str<true>, pool_test_mutex>,
+                                      jh::observe_pool<jh::immutable_str<false>, pool_test_mutex>>);
         static_assert(!std::is_convertible_v<jh::shared_str_ptr<true>, jh::shared_str_ptr<false>>);
         static_assert(!std::is_invocable_v<jh::atomic_str_hash<true>, jh::shared_str_ptr<false>>);
         static_assert(!std::is_invocable_v<jh::atomic_str_eq<true>, jh::shared_str_ptr<true>, jh::shared_str_ptr<false>>);
@@ -146,7 +147,7 @@ namespace test {
         static_assert(std::is_same_v<decltype(default_safe_slot), jh::atomic_str_slot<>>);
         expect(default_slot.load()->view() == default_safe_slot.load()->view(),
                "default slot factories share the configured policy");
-        jh::observe_pool<default_str> default_pool;
+        jh::observe_pool<default_str, pool_test_mutex> default_pool;
         expect(default_pool.acquire("hello") == default_pool.acquire("hello"),
                "default pool deduplicates strings");
 

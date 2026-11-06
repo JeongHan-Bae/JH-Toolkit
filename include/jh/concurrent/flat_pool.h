@@ -138,14 +138,10 @@
  *   <li>
  *     <b><code>pointer_pool</code> (<code>observe_pool</code>)</b>:
  *     <ul>
- *       <li>Pointer-driven identity (Generally, comparisons of internal objects are proxied using
- *           <code>jh::weak_ptr_hash</code> and <code>jh::weak_ptr_eq</code>.)
- *           <br>
- *           On Windows, the native implementation of <code>shared_ptr</code> can cause greater jitter than POSIX.
- *       </li>
+ *       <li>Content identity through cached hashes in reusable slots</li>
  *       <li>Heap-allocated, immovable objects</li>
- *       <li>Immediate destruction via <code>shared_ptr</code></li>
- *       <li>Weak-observed lifetime</li>
+     *       <li>Immediate destruction after the last pool-owned handle is released</li>
+     *       <li>Reference counts governed by the selected pool mutex</li>
  *     </ul>
  *   </li>
  * </ul>
@@ -381,9 +377,8 @@ namespace jh::conc {
      * Unlike <code>pointer_pool</code> or its user-facing interface <code>observe_pool</code>,
      * <code>flat_pool</code>(<code>resource_pool</code>) does not permit moves.
      * <br>
-     * As indicated by their user-facing interface names, <code>pointer_pool</code>(<code>observe_pool</code>)
-     * does not hold objects: it merely observes them.
-     * The worst-case scenario after a move is deduplication failure, but the system remains operational.
+     * <code>pointer_pool</code> transfers its observation index on move;
+     * existing handles remain bound to the transferred state.
      * <br>
      * <code>flat_pool</code>(<code>resource_pool</code>), however, fully owns objects.
      * Once moves are permitted, the <code>flat_pool::ptr</code> handle becomes dangling, hence the move semantics

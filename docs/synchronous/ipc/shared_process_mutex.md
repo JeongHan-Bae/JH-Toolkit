@@ -76,6 +76,10 @@ The mutex is a **composite IPC primitive**, built from the following named compo
 
 All components share the same **compile-time namespace** derived from `S`.
 
+Writers check the reader count through a locked load inside a predicate wait.
+The last reader updates the count before notifying, so a reader exit between
+the initial check and the wait cannot be missed.
+
 Declaring any of these names manually elsewhere is a **protocol violation**.
 
 ---

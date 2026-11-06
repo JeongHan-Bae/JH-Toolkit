@@ -23,15 +23,16 @@ Each unique `Key` corresponds to **at most one logical entry** in the pool.
 Acquisition returns a lightweight, reference-counted handle (`flat_pool::ptr`) that refers to a **stable index**, not a
 raw pointer.
 
-Unlike pointer-based pools, `flat_pool`:
+`flat_pool` owns its stored values, controls its reference counts, and reuses
+released slots. It does not use `std::shared_ptr` control blocks. This layout
+minimizes allocation churn during repeated acquisition and release.
 
-* **owns its objects**
-* **does not rely on `std::shared_ptr` for synchronization**
-* **controls all concurrency internally**
-* **reuses slots instead of eagerly destroying objects**
-
-This design minimizes allocation churn, avoids platform-specific `shared_ptr` behavior, and provides predictable
-performance under high concurrency.
+On a Windows MinGW combination where the default `std::shared_mutex` is
+unreliable, provide an RW mutex that correctly synchronizes the index and
+atomic reference counts. The project's latch-controlled tests stopped
+observing the ordering failure with a custom mutex. See the
+[pool platform note](overview.md#pool-platform-support) for the evidence and
+its limits.
 
 ---
 
@@ -58,30 +59,18 @@ performance under high concurrency.
 > Conceptually, this places `flat_pool` closer to an **arena + GC-style reuse model**
 > than to a classical associative container.
 >
-> From a purely algorithmic standpoint, lookup and insertion in `flat_pool` are
-> theoretically inferior to hash-table–based designs such as `pointer_pool`
-> (which relies on `unordered_map`).
-> However, in practice:
->
-> * pointer-based containers suffer from **pointer-induced fragmentation**,
-> * cache-line scattering and **L3 cache regression**,
-> * and the non-trivial overhead of `std::shared_ptr` control blocks.
->
-> As a result, `pointer_pool` is ill-suited for **high-frequency, large-volume,
-> data-oriented workloads**.
->
-> `flat_pool`, by contrast, is optimized for:
+> `flat_pool` stores values contiguously and is optimized for:
 >
 > * pure or near-pure data objects,
 > * relatively large populations,
 > * frequent reuse rather than destruction,
 > * and cache-friendly, contiguous memory access.
 >
-> In summary:
->
-> * **`flat_pool`** is designed for *data-centric storage* with high churn and reuse.
-> * **`pointer_pool`** is better suited for *semantic objects*—objects whose identity,
-    > lifetime, and destruction semantics are more important than raw storage efficiency.
+> Stored values must support the pool's copy or move operations. A movable
+> pointer wrapper can hold an immovable object. Released slots are reused.
+> `pointer_pool` constructs each object in a stable heap node and destroys it
+> when its last handle is released. Its handles use the configured mutex for
+> reference counts.
 
 ---
 
@@ -683,9 +672,11 @@ jh::conc::flat_pool<Key, std::unique_ptr<V>>
 ### Platform support
 
 On Windows, `flat_pool` uses the `posix_smtx_*_lock` adapters, which add
-`seq_cst` fences at lock boundaries. The
-[pool platform support note](overview.md#pool-platform-support) explains the
-standard mutex contract and the project's Windows support policy.
+`seq_cst` fences at lock boundaries. The selected RW mutex must coordinate
+index and slot operations with the pool's atomic reference counts. On an
+affected MinGW combination, provide a verified RW mutex if the default
+`std::shared_mutex` is unreliable. See the
+[pool platform note](overview.md#pool-platform-support) for the observed scope.
 
 ---
 

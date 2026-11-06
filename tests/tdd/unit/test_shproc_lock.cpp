@@ -10,6 +10,8 @@ namespace test::tiny_test {
 #include <vector>
 #include <chrono>
 #include <atomic>
+#include <mutex>
+#include <latch>
 #include <random>
 #include "jh/synchronous/ipc/shared_process_mutex.h"
 #include "jh/concepts"
@@ -93,5 +95,94 @@ struct jh::test::tiny_test::session<"test module test_shproc_lock case 2">
       > {};
 namespace test {
     [[maybe_unused]] const tiny_test::session<"test module test_shproc_lock case 2"> registration_2{};
+}
+
+namespace test {
+void tiny_test_case_3() {
+    using entrance_mutex_t = process_mutex<"test_shared_mutex.exc">;
+    using priority_mutex_t = process_mutex<"test_shared_mutex.pri">;
+    auto &mtx = test_mutex_t::instance();
+    auto &entrance = entrance_mutex_t::instance();
+    auto &priority = priority_mutex_t::instance();
+
+    std::unique_lock priority_hold(priority);
+    const bool acquired = mtx.try_lock();
+    const bool entrance_open = entrance.try_lock();
+    if (entrance_open) entrance.unlock();
+    const bool timed_acquired = mtx.try_lock_for(1ms);
+    const bool entrance_open_after_timeout = entrance.try_lock();
+    if (entrance_open_after_timeout) entrance.unlock();
+    if (acquired) mtx.unlock();
+    if (timed_acquired) mtx.unlock();
+    priority_hold.unlock();
+
+    jh::test::tiny_test::expect_not(acquired, "priority gate rejects an exclusive try-lock");
+    jh::test::tiny_test::expect(entrance_open, "failed try-lock releases the entrance gate");
+    jh::test::tiny_test::expect_not(timed_acquired, "priority gate rejects a timed exclusive lock");
+    jh::test::tiny_test::expect(entrance_open_after_timeout,
+                                "failed timed lock releases the entrance gate");
+}
+}
+template<>
+struct jh::test::tiny_test::test<"shared_process_mutex releases entrance after failed priority lock">
+    : jh::test::tiny_test::test_definition<
+          "shared_process_mutex releases entrance after failed priority lock", &::test::tiny_test_case_3> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_shproc_lock case 3">
+    : jh::test::tiny_test::session_definition<
+          "test module test_shproc_lock case 3",
+          jh::test::tiny_test::test<"shared_process_mutex releases entrance after failed priority lock">> {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_shproc_lock case 3"> registration_3{};
+}
+
+namespace test {
+void tiny_test_case_4() {
+    using condition_type = process_cond_var<"test_predicate_wait">;
+    auto &condition = condition_type::instance();
+    std::atomic<bool> pending{true};
+    std::atomic<bool> first_check{true};
+    std::atomic<bool> completed{false};
+    std::latch predicate_entered(1), resume_predicate(1), notifier_ready(1);
+
+    std::thread waiter([&] {
+        const bool ready = condition.wait_while_until([&] {
+            if (first_check.exchange(false)) {
+                const bool observed = pending.load();
+                predicate_entered.count_down();
+                resume_predicate.wait();
+                return observed;
+            }
+            return pending.load();
+        }, std::chrono::steady_clock::now() + 5s);
+        completed.store(ready);
+    });
+
+    predicate_entered.wait();
+    std::thread notifier([&] {
+        pending.store(false);
+        notifier_ready.count_down();
+        condition.notify_one();
+    });
+    notifier_ready.wait();
+    resume_predicate.count_down();
+    waiter.join();
+    notifier.join();
+
+    jh::test::tiny_test::expect(completed.load(),
+                                "predicate wait observes a notification after its first check");
+}
+}
+template<>
+struct jh::test::tiny_test::test<"process_cond_var predicate wait preserves notification">
+    : jh::test::tiny_test::test_definition<
+          "process_cond_var predicate wait preserves notification", &::test::tiny_test_case_4> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_shproc_lock case 4">
+    : jh::test::tiny_test::session_definition<
+          "test module test_shproc_lock case 4",
+          jh::test::tiny_test::test<"process_cond_var predicate wait preserves notification">> {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_shproc_lock case 4"> registration_4{};
 }
 

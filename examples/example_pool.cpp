@@ -93,28 +93,19 @@ namespace example {
         }
     };
 
-    struct HeavyNodeWeakHash final {
-        std::size_t operator()(const std::weak_ptr<HeavyNode> &w) const noexcept {
-            if (const auto p = w.lock()) {
-                return p->object_hash();
-            }
-            return 0U;
+    struct HeavyNodeHash final {
+        std::size_t operator()(const HeavyNode &value) const noexcept {
+            return value.object_hash();
         }
     };
 
-    struct HeavyNodeWeakEq final {
-        bool operator()(const std::weak_ptr<HeavyNode> &lhs,
-                        const std::weak_ptr<HeavyNode> &rhs) const noexcept {
-            const auto l = lhs.lock();
-            const auto r = rhs.lock();
-            if (!l || !r) {
-                return false;
-            }
-            return *l == *r;
+    struct HeavyNodeEq final {
+        bool operator()(const HeavyNode &lhs, const HeavyNode &rhs) const noexcept {
+            return lhs == rhs;
         }
     };
 
-    using custom_pointer_pool = jh::conc::pointer_pool<HeavyNode, HeavyNodeWeakHash, HeavyNodeWeakEq>;
+    using custom_pointer_pool = jh::conc::pointer_pool<HeavyNode, HeavyNodeHash, HeavyNodeEq>;
 
     void observe_pool_basic_demo() {
         std::cout << "\n===== observe_pool basic =====\n";
@@ -133,7 +124,7 @@ namespace example {
         b.reset();
         c.reset();
 
-        std::cout << "pool.size() after reset (expired weak entries remain): "
+        std::cout << "pool.size() after reset (last handles destroy objects): "
                   << pool.size() << "\n";
 
         pool.cleanup();

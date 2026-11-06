@@ -18,169 +18,34 @@
  */
 /**
  * @file observe_pool.h
+ * @brief Content-based pool with automatically selected object hash and equality.
  * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
- * @brief Top-level user-facing pool for content-based interning of immutable objects.
  *
- * <p>
- * <code>jh::observe_pool&lt;T&gt;</code> is a duck-typed, user-oriented pooling facility
- * built on top of <code>jh::conc::pointer_pool</code>. It provides content-based
- * deduplication for immutable or structurally immutable objects, without requiring
- * explicit hash or equality policy specification.
- * </p>
- *
- * <p>
- * The pool observes object lifetimes via <code>std::weak_ptr</code> and never owns
- * pooled objects. Logical identity is defined by <code>T</code>'s hashing semantics
- * and <code>operator==</code>.
- * </p>
- *
- * <p>
- * <code>observe_pool</code> is defined as a direct alias of
- * <code>jh::conc::pointer_pool</code> with automatically selected
- * <code>jh::weak_ptr_hash&lt;T&gt;</code> and <code>jh::weak_ptr_eq&lt;T&gt;</code>.
- * Instantiation is valid only when the underlying type requirements are satisfied.
- * </p>
- *
- * <p>
- * As a user-facing pool under the <code>jh</code> namespace, it is available via:
- * </p>
- * <ul>
- *   <li><code>&lt;jh/pool&gt;</code></li>
- *   <li><code>&lt;jh/concurrency&gt;</code></li>
- * </ul>
- *
- * @version <pre>1.4.x</pre>
- * @date <pre>2025</pre>
+ * <code>observe_pool</code> uses <code>pointer_pool</code>'s own handle and
+ * delegates object hashing to <code>jh::hash&lt;T&gt;</code>. The supplied
+ * <code>Mutex</code> protects the index, comparisons, and handle reference
+ * counts. Objects remain alive while a handle owns them, including after the
+ * pool is cleared or destroyed.
  */
-
 
 #pragma once
 
-#include <concepts>         // NOLINT for concepts
-#include <utility>          // for std::ignore
+#include <functional>
+#include <shared_mutex>
 #include "jh/concurrent/pointer_pool.h"
 #include "jh/conceptual/hashable.h"
 
 namespace jh {
-
     /**
-     * @brief Content-based hash functor for <code>std::weak_ptr&lt;T&gt;</code>.
+     * @brief Deduplicates objects using their content hash and equality.
+     * @tparam T Immutable or structurally immutable object type.
+     * @tparam Mutex RW mutex used for the pool index and handle lifetime.
      *
-     * <h3>Behavior</h3>
-     * <ul>
-     *   <li>If the pointer is expired, returns <tt>0</tt>.</li>
-     *   <li>If valid, locks and applies the unified <code>jh::hash&lt;T&gt;</code> functor
-     *       to the underlying object.</li>
-     *   <li>Ensures consistent results during concurrent insertion into a
-     *       <code>jh::observe_pool</code> by performing a single well-defined hash access
-     *       per locked instance.</li>
-     * </ul>
-     *
-     * <h3>Purpose</h3>
-     * <p>
-     * Enables <code>jh::observe_pool</code> and <code>jh::conc::pointer_pool</code> to hash
-     * weakly referenced shared objects by logical content, without altering
-     * ownership or extending object lifetimes.
-     * </p>
-     *
-     * <h3>Version Note (since 1.3.5)</h3>
-     * <p>
-     * Starting with <b>1.3.5</b>, <code>weak_ptr_hash&lt;T&gt;</code> supports
-     * <em>automatic hash deduction</em> through
-     * <code>jh::hash&lt;T&gt;</code>, which transparently resolves hashing
-     * via the following precedence chain:
-     * </p>
-     * <pre><tt>
-     * std::hash&lt;T&gt;{ }(v)
-     *   &gt;  hash(v)
-     *   &gt;  v.hash()
-     * </tt></pre>
-     *
-     * <p>
-     * This allows any type declaring a valid hash mechanism &mdash; standard,
-     * ADL-based, or member-based &mdash; to participate in pooling without the need
-     * for custom specialization.
-     * </p>
-     *
-     * @tparam T The managed type, which must satisfy
-     *           <code>jh::concepts::extended_hashable</code>.
-     *
-     * @see jh::concepts::extended_hashable
-     * @see jh::hash
-     */
-    template<typename T> requires jh::concepts::extended_hashable<T>
-    struct weak_ptr_hash final {
-        std::size_t operator()(const std::weak_ptr<T> &ptr) const noexcept {
-            if (const auto sp = ptr.lock()) {
-                return jh::hash<T>{}(*sp);
-            }
-            return 0;
-        }
-    };
-
-    /**
-     * @brief Equality functor for <code>std::weak_ptr&lt;T&gt;</code>.
-     *
-     * <p><strong>Behavior:</strong></p>
-     * <ul>
-     *   <li>If either pointer is expired, comparison yields <tt>false</tt>.</li>
-     *   <li>If both are valid, comparison is delegated to the underlying
-     *       <code>T::operator==()</code>.</li>
-     * </ul>
-     *
-     * <p><strong>Purpose:</strong></p>
-     * <p>
-     * Allows weak pointers to be compared by the logical content of their targets,
-     * ensuring that semantically identical live objects match in pooling structures.
-     * Expired entries are safely treated as distinct.
-     * </p>
-     *
-     * @tparam T The managed type, which must satisfy equality comparing.
-     */
-    template<typename T> requires requires(const T &lhs, const T &rhs){
-        { lhs == rhs } -> std::convertible_to<bool>;
-    }
-    struct weak_ptr_eq final {
-        bool operator()(const std::weak_ptr<T> &lhs, const std::weak_ptr<T> &rhs) const noexcept {
-            const auto sp1 = lhs.lock();
-            const auto sp2 = rhs.lock();
-            if (!sp1 || !sp2) return false;
-            return *sp1 == *sp2;
-        }
-    };
-
-    /**
-     * @brief Duck-typed alias of <code>jh::conc::pointer_pool</code> for
-     *        content-based pooling of immutable objects.
-     *
-     * <p>
-     * <code>jh::observe_pool&lt;T&gt;</code> provides logical deduplication of
-     * shared objects based on content hashing and equality. Objects are
-     * observed via <code>std::weak_ptr</code> and are never owned by the pool.
-     * </p>
-     *
-     * <p>
-     * All concurrency, cleanup, and adaptive resizing behavior is defined entirely
-     * by <code>jh::conc::pointer_pool</code>, of which <code>observe_pool</code> is
-     * a direct alias with fixed template parameters.
-     * </p>
-     *
-     * @tparam T
-     * The pooled object type. <code>T</code> must be logically immutable,
-     * satisfy <code>jh::concepts::extended_hashable</code>, and support
-     * content-based <code>operator==</code>.
-     *
-     * @note
-     * <strong>Platform guidance:</strong>
-     * <br>
-     * Concurrent <code>acquire()</code> uses the underlying pool's RW mutex
-     * for capacity checks and insertion. The selected mutex must provide
-     * cross-thread synchronization. A custom RW mutex can be supplied for a
-     * platform configuration whose default mutex exhibits a measured gap.
-     * @tparam Mutex Shared-lockable synchronization type used by the underlying pool.
+     * <code>T</code> must be hashable through <code>jh::hash&lt;T&gt;</code> and
+     * comparable through <code>operator==</code>. The default mutex is
+     * <code>std::shared_mutex</code>; callers can select another mutex whose
+     * runtime synchronization behavior meets their platform requirements.
      */
     template<typename T, typename Mutex = std::shared_mutex>
-    using observe_pool =
-            conc::pointer_pool<T, weak_ptr_hash<T>, weak_ptr_eq<T>, Mutex>;
-
+    using observe_pool = conc::pointer_pool<T, jh::hash<T>, std::equal_to<T>, Mutex>;
 } // namespace jh

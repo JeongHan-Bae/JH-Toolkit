@@ -142,6 +142,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <thread>
+#include <mutex>
 
 namespace jh::sync::ipc {
 
@@ -274,15 +275,17 @@ namespace jh::sync::ipc {
          * </ol>
          * The participant then has full exclusive access across all processes.
          * </p>
+         * @throws std::runtime_error If an IPC lock operation fails. A scope guard
+         *         releases an acquired <code>.exc</code> gate on later-stage failure.
          */
         void lock() {
             if (is_writer()) return;
-            excl_.lock();
+            std::unique_lock entrance(excl_);
 
-            while (readers_.load() > 0)
-                cond_.wait_signal();
+            cond_.wait_while([&] { return readers_.load_force() > 0; });
 
             prior_.lock();
+            entrance.release();
 
             has_exclusive_lock_ = true;
             has_prior_lock_ = true;
@@ -291,26 +294,23 @@ namespace jh::sync::ipc {
         /**
          * @brief Try to acquire exclusive access immediately.
          * @return <code>true</code> if successful, <code>false</code> otherwise.
+         * @throws std::runtime_error If an IPC lock operation fails. A scope guard
+         *         releases an acquired <code>.exc</code> gate on later-stage failure.
          */
         bool try_lock() {
             if (is_writer()) return true; // already have exclusive lock
-            if (!excl_.try_lock()) return false;
-            if (readers_.load() == 0) {
-                if (!prior_.try_lock()) {
-                    excl_.unlock();
-                    return false;
-                }
-                has_exclusive_lock_ = true;
-                has_prior_lock_ = true;
-                return true;
-            }
-            excl_.unlock();
-
-            return false;
+            std::unique_lock entrance(excl_, std::try_to_lock);
+            if (!entrance || readers_.load_force() != 0 || !prior_.try_lock()) return false;
+            entrance.release();
+            has_exclusive_lock_ = true;
+            has_prior_lock_ = true;
+            return true;
         }
 
         /**
          * @brief Attempt to acquire exclusive access for a limited duration.
+         * @throws std::runtime_error If an IPC lock operation fails. A scope guard
+         *         releases an acquired <code>.exc</code> gate on later-stage failure.
          */
         template<typename Rep, typename Period>
         bool try_lock_for(const std::chrono::duration<Rep, Period> &d) {
@@ -319,23 +319,18 @@ namespace jh::sync::ipc {
 
         /**
          * @brief Attempt to acquire exclusive access until a specific time point.
+         * @throws std::runtime_error If an IPC lock operation fails. A scope guard
+         *         releases an acquired <code>.exc</code> gate on later-stage failure.
          */
         template<typename Clock, typename Duration>
         bool try_lock_until(const std::chrono::time_point<Clock, Duration> &tp) {
             if (is_writer())
                 return true; // already have exclusive lock
-            if (!excl_.try_lock_until(tp))
-                return false;
-            while (readers_.load() > 0) {
-                if (!cond_.wait_until(tp)) {
-                    excl_.unlock();
-                    return false;
-                }
-            }
-            if (!prior_.try_lock_until(tp)) {
-                excl_.unlock();
-                return false;
-            }
+            std::unique_lock entrance(excl_, std::defer_lock);
+            if (!entrance.try_lock_until(tp)) return false;
+            if (!cond_.wait_while_until([&] { return readers_.load_force() > 0; }, tp)) return false;
+            if (!prior_.try_lock_until(tp)) return false;
+            entrance.release();
             has_exclusive_lock_ = true;
             has_prior_lock_ = true;
             return true;
@@ -468,7 +463,7 @@ namespace jh::sync::ipc {
             auto backoff = std::chrono::microseconds(100);
 
             while (true) {
-                int r = readers_.load();
+                const auto r = readers_.load_force();
                 if (r == 1)
                     break;
 

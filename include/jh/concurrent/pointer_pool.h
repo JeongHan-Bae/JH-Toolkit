@@ -18,172 +18,31 @@
  */
 /**
  * @file pointer_pool.h
- *
- * @brief Pointer-based interning for non-copyable, non-movable, structurally immutable objects.
+ * @brief Pointer-stable interning with reference-counted handles and a configurable mutex.
  * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
- * <h3>Overview</h3>
- * <p>
- * <code>jh::conc::pointer_pool</code> is a weak-observed pointer interning container designed for objects
- * whose identity is defined intrinsically by the object itself and which cannot be copied, moved,
- * or represented by an external key. These objects are stored and deduplicated through
- * <code>std::shared_ptr</code> instances, while the pool maintains only <code>std::weak_ptr</code>
- * references for lookup and reuse.
- * </p>
+ * Candidates are constructed in independent heap nodes, so <code>T</code>
+ * need not be movable. The pool stores cached hashes and owning node pointers
+ * in sorted, reusable vector slots. A sorted table tracks every empty slot.
+ * Candidate hashes are computed before locking;
+ * matching objects are compared under the selected <code>Mutex</code>.
  *
- * <p>
- * The pool specializes in handling objects that must reside at a stable address for their entire lifetime,
- * and therefore cannot be placed inside contiguous storage or trivial containers. It enables
- * pointer-stable sharing without imposing ownership, allocator customization, or intrusive hooks.
- * </p>
- *
- * <h4>Design Philosophy</h4>
- * <p>
- * The essential purpose of <code>pointer_pool</code> is to support types that are impossible to intern
- * through traditional contiguous or key-indexed structures. These types may be non-copyable,
- * non-movable, or may express equality only through their full object state rather than an external key.
- * As a result, they cannot participate in compact storage models and must rely on pointer identity
- * for stable lifetime management.
- * </p>
- *
- * <p>
- * Because the pool only ever stores separate heap-allocated shared objects, fragmentation is unavoidable.
- * For this reason, the pool deliberately avoids allocator customization. Regardless of allocator choice,
- * large numbers of pointer-sized allocations inevitably produce fragmentation, and avoiding it is neither
- * practical nor a design goal for this container.
- * </p>
- *
- * <h4>Lookup Model</h4>
- * <p>
- * The pool does not provide a <code>find()</code> operation. This is a fundamental design decision.
- * Equality and hashing depend on the object itself, so a candidate object must already exist before
- * the pool can determine whether an equivalent instance is present. Therefore, every acquisition follows
- * the sequence:
- * </p>
- *
- * <ol>
- *   <li>A candidate object is constructed (temporarily).</li>
- *   <li>The pool performs a hash-based lookup using this constructed object.</li>
- *   <li>If an equivalent object already exists, that instance is returned and the candidate is discarded.</li>
- *   <li>If no match exists, the candidate becomes the canonical instance stored inside the pool.</li>
- * </ol>
- *
- * <p>
- * This model ensures that objects can be deduplicated even when they offer no external key. However,
- * it also means that construction must always occur before lookup. As such, the theoretical access
- * cost is a combination of <code>O(1)</code> hash addressing and whatever cost is required to build
- * a provisional object.
- * </p>
- *
- * <h4>Recommended Object Pattern</h4>
- * <p>
- * Because provisional construction may occur frequently, objects used with <code>pointer_pool</code>
- * should support low-cost identity construction. Heavy initialization should be deferred until
- * after the object becomes the accepted canonical instance. A common pattern is:
- * </p>
- *
- * <ul>
- *   <li>Construct identity-defining fields first (used in hashing and equality).</li>
- *   <li>Perform heavy or mutable initialization lazily, often guarded by <code>std::once_flag</code>.</li>
- * </ul>
- *
- * <p>
- * This approach allows the pool to discard temporary instances cheaply while ensuring that full
- * initialization happens only for the accepted canonical object.
- * </p>
- *
- * <h4>Lifetime and Ownership Model</h4>
- * <p>
- * The pool never owns any object. All objects are owned exclusively by <code>std::shared_ptr</code>
- * instances returned to the user. The pool only observes these objects via <code>std::weak_ptr</code>.
- * </p>
- *
- * <p>
- * Because of this design:
- * </p>
- *
- * <ul>
- *   <li>The destruction order between the pool and the objects is irrelevant.</li>
- *   <li>Objects remain valid even if the pool is destroyed first.</li>
- *   <li>Expired entries are removed opportunistically during insertion or via explicit cleanup calls.</li>
- * </ul>
- *
- * <h4>Cleanup and Resizing</h4>
- * <p>
- * Cleanup is performed on a best-effort basis. The pool removes expired weak entries only during
- * insertion, expansion, or explicit calls to <code>cleanup()</code> and <code>cleanup_shrink()</code>.
- * </p>
- *
- * <p>
- * Resizing and shrinking are adaptive:
- * </p>
- *
- * <ul>
- *   <li>Before expanding, the pool attempts cleanup.</li>
- *   <li>If the set remains above a high-watermark threshold, capacity grows.</li>
- *   <li>If cleanup reveals vacancy below a low-watermark threshold, capacity may shrink.</li>
- * </ul>
- *
- * <p>
- * This design avoids rehash jitter and minimizes allocation disturbances during periods of
- * high-frequency reuse.
- * </p>
- *
- * <h4>Intended Use Cases</h4>
- * <p>
- * The pool is intended for objects that:
- * </p>
- *
- * <ul>
- *   <li>cannot be copied or moved,</li>
- *   <li>cannot be expressed through an external key,</li>
- *   <li>must rely on full-object equality for deduplication,</li>
- *   <li>require stable pointer identity throughout their lifetime.</li>
- * </ul>
- *
- * <h4>Comparison with <code>flat_pool</code> (<code>resource_pool</code>)</h4>
- * <p>
- * <code>pointer_pool</code> differs fundamentally from <code>flat_pool</code> and its user-layer
- * extension <code>resource_pool</code>. While <code>pointer_pool</code> is designed for immovable,
- * non-copyable objects that cannot be represented by an external key, <code>flat_pool</code> supports
- * contiguous memory layout, slot reuse, and key-driven lookup. It offers <code>find()</code> operations
- * that return a null pointer on miss and can store either keys alone or key-value pairs. Lookup is based
- * on full-hash binary search with <code>O(log N)</code> complexity.
- * </p>
- *
- * <p>
- * Although <code>flat_pool</code> has asymptotically higher lookup complexity than the
- * <code>O(1)</code> expectation of hash probing, this does not imply inferior performance. Binary search
- * over contiguous memory is extremely cache-friendly, and modern CPUs can predict the comparison pattern
- * effectively due to stable branching behavior. Even without branch prediction, the number of steps is
- * small and bounded. By contrast, hash-table probing involves irregular memory access and higher
- * constant-time factors despite its theoretical <code>O(1)</code> model. As a result, at small and medium
- * scales, <code>flat_pool</code> lookup performance can match or exceed that of <code>pointer_pool</code>.
- * In reality, excessive fragmentation and pointer addressing that may fall into L3 are unacceptable in
- * practical applications, <code>pointer_pool</code> will <b>never</b> be used in large-scale storage,
- * so it can be simply assumed that <code>flat_pool</code> is faster and can store larger amounts of data.
- * </p>
- *
- * <p>
- * <code>flat_pool</code> requires objects to be copyable or movable and can integrate allocator
- * customization. <code>pointer_pool</code> remains the preferred structure for objects that cannot be
- * relocated or keyed externally and must be deduplicated solely through their own equality semantics.
- * </p>
- *
- * @version <pre>1.4.x</pre>
- * @date <pre>2025</pre>
+ * Returned handles use the same mutex for reference counts. The final handle
+ * release destroys its node; the index keeps a reusable empty slot. Handles
+ * remain valid after the pool is cleared or destroyed.
  */
 
 #pragma once
 
-#include <atomic>           // NOLINT for std::atomic
 #include <cstddef>          // for std::size_t
-#include <algorithm>        // for std::copy_if
-#include <vector>           // for std::vector
-#include <unordered_set>    // for std::unordered_set
+#include <algorithm>
+#include <vector>
 #include <mutex>            // For lock guards
 #include <memory>
 #include <shared_mutex>
+#include <utility>
+#include <limits>
+#include <iterator>
 
 #include "jh/synchronous/strong_lock.h"
 
@@ -191,493 +50,390 @@
 namespace jh::conc {
 
     /**
-     * @brief Weak pointer-observed pool for immutable or structurally immutable objects.
+     * @brief Content-based pool for heap-allocated, pointer-stable objects.
+     * @tparam T Object type; it may be non-copyable and non-movable.
+     * @tparam Hash Callable taking <code>const T&amp;</code> and returning a hash.
+     * @tparam Eq Callable comparing two <code>const T&amp;</code> objects.
+     * @tparam Mutex RW mutex used for the index, comparisons, and handle counts.
      *
-     * <h4>Core Behavior</h4>
-     * <ol>
-     *   <li>Objects are always constructed first using the forwarded arguments.</li>
-     *   <li>The pool lock is acquired only when attempting insertion.</li>
-     *   <li>If an equivalent object already exists, that instance is returned and the temporary is discarded.</li>
-     *   <li>If no match exists, the temporary becomes the canonical instance stored in the pool.</li>
-     * </ol>
-     * <p>
-     * This construct-first, lock-then-insert pattern is required because lookup is defined by the
-     * object's own equality; no external key or pre-hash structure can be used.
-     * </p>
-     *
-     * <h4>Design Characteristics</h4>
-     * <ul>
-     *   <li><b>Non-intrusive:</b> The pool never owns objects; it records only <code>std::weak_ptr</code>
-     *       while ownership remains external.</li>
-     *   <li><b>Deferred cleanup:</b> Expired entries are removed only during insertion, capacity checks,
-     *       or explicit cleanup calls.</li>
-     *   <li><b>Adaptive capacity:</b> The container may grow or shrink depending on occupancy thresholds
-     *       evaluated during insertion.</li>
-     *   <li>
-     *     <b>Thread-safe:</b> Lookup, capacity checks, and insertion use the selected RW mutex.
-     *   </li>
-     *   <li><b>Discard-friendly:</b> Temporary objects are cheap to abandon when a matching instance exists.</li>
-     * </ul>
-     *
-     * <h4>Usage Notes</h4>
-     * <ul>
-     *   <li>Best suited for immutable or structurally immutable types whose identity is fully determined
-     *       at construction.</li>
-     *   <li>For heavier objects, prefer a two-phase initialization pattern: construct only identity fields
-     *       immediately and defer expensive setup until the object becomes the accepted instance.</li>
-     *   <li>Fields contributing to equality and hashing must remain constant while managed by the pool.</li>
-     * </ul>
-     *
-     * <h4>Concurrency and Safety</h4>
-     * <ul>
-     *   <li>Concurrent <code>acquire()</code> calls are synchronized.</li>
-     *   <li>Insertion and deduplication are atomic under exclusive locking.</li>
-     *   <li>Externally held <code>std::shared_ptr</code> objects remain valid even if the pool is cleared
-     *       or destroyed.</li>
-     * </ul>
-     *
-     * @note
-     * Hash and equality functors need only reflect object-level identity. When using
-     * <code>jh::observe_pool</code>, these are automatically derived from <code>std::hash&lt;T&gt;()</code> or
-     * adl <code>hash(t)</code> or <code>t.hash()</code>, and <code>operator==()</code> to ensure consistent behavior.
-     * Hash and equality callbacks must not recursively call the same pool;
-     * they may run while its exclusive lock is held.
-     *
-     * @note The pool's data is protected by its RW mutex, including capacity
-     * checks and insertion. A custom mutex must provide the required
-     * cross-thread synchronization; <code>rw_mutex_like</code> checks its API,
-     * not its runtime memory-order behavior. See the pool platform support
-     * documentation for measured Windows behavior.
-     * @tparam Mutex Shared-lockable synchronization type; defaults to <code>std::shared_mutex</code>.
+     * The pool constructs a candidate before lookup. It computes the hash
+     * once, searches the index, and compares only entries with that hash.
+     * The returned <code>ptr</code> owns a reference to the canonical
+     * object. Hash and equality must be stable while the object is observed.
+     * Callbacks run under the pool mutex during equality comparison and must
+     * not reenter the same pool.
      */
     template<typename T, typename Hash, typename Eq, typename Mutex = std::shared_mutex>
     requires(jh::concepts::rw_mutex_like<Mutex> &&
-        requires(const std::weak_ptr<T>& t) {
-            { Hash{}(t) } -> std::convertible_to<std::size_t>;
-        } &&
-        requires(const std::weak_ptr<T>& a, const std::weak_ptr<T>& b) {
-            { Eq{}(a, b) } -> std::convertible_to<bool>;
-        })
+             requires(const T &value) {
+                 { Hash{}(value) } -> std::convertible_to<std::size_t>;
+             } &&
+             requires(const T &lhs, const T &rhs) {
+                 { Eq{}(lhs, rhs) } -> std::convertible_to<bool>;
+             })
     class pointer_pool final {
     public:
+        static constexpr std::size_t MIN_RESERVED_SIZE = 16;
 
-        /**
-         * @brief The minimum reserved capacity for the pool.
-         *
-         * Defines the lower bound of the adaptive capacity management system.
-         * The pool will never shrink below this threshold even when mostly empty,
-         * ensuring predictable memory usage and avoiding excessive reallocation.
-         *
-         * @note
-         * This value is also used as the default reserve size when constructing a new pool.
-         */
-        static std::size_t constexpr MIN_RESERVED_SIZE = 16;
+    private:
+        struct node {
+            template<typename... Args>
+            explicit node(Args &&... args) : value(std::forward<Args>(args)...) {}
 
-        /**
-         * @brief Constructs a pool with an initial reserved capacity.
-         *
-         * @param reserve_size The initial capacity to reserve for the internal hash set.
-         *                     Defaults to <code>MIN_RESERVED_SIZE</code> (<tt>16</tt>).
-         *
-         * Initializes the pool's internal storage and establishes the adaptive
-         * resizing baseline. This constructor performs no object construction;
-         * it only reserves memory for the underlying <code>std::unordered_set</code>
-         * that stores weak references.
-         *
-         * @note
-         * The reserved size determines the initial hash set capacity and defines
-         * the minimum capacity threshold for future adaptive resizing.
-         * The pool will never shrink below <code>MIN_RESERVED_SIZE</code>
-         * (<tt>16</tt>), ensuring predictable allocation behavior and avoiding
-         * frequent reallocation during low-load periods.
-         */
-        explicit pointer_pool(std::size_t reserve_size = MIN_RESERVED_SIZE)
-                : capacity_(reserve_size) {
-            pool_.reserve(capacity_.load());
+            T value;
+            std::size_t hash = 0;
+            std::size_t references = 0;
+        };
+
+        struct slot {
+            std::size_t hash = std::numeric_limits<std::size_t>::max();
+            std::unique_ptr<node> value;
+        };
+
+        struct state {
+            explicit state(const std::size_t reserve_size)
+                : slots(std::max(reserve_size, std::size_t{1})) {
+                free_slots.reserve(slots.size());
+                for (std::size_t index = 0; index < slots.size(); ++index)
+                    free_slots.push_back(index);
+            }
+
+            Mutex mutex;
+            std::vector<slot> slots;
+            std::vector<std::size_t> free_slots;
+            std::size_t live = 0;
+            std::size_t references = 1; // Pool ownership plus one reference per handle.
+        };
+
+        static void rebuild(state *owner, std::size_t capacity) {
+            std::vector<slot> next(capacity);
+            std::vector<std::size_t> free_slots;
+            free_slots.reserve(capacity);
+            if (owner->live == 0) {
+                for (std::size_t index = 0; index < capacity; ++index)
+                    free_slots.push_back(index);
+                owner->slots.swap(next);
+                owner->free_slots.swap(free_slots);
+                return;
+            }
+            std::size_t position = 0;
+            std::size_t inserted = 0;
+            std::size_t preceding_hash = 0;
+            for (auto &old : owner->slots) {
+                if (!old.value) continue;
+                const std::size_t target = (++inserted * capacity) / (owner->live + 1);
+                while (position < target) {
+                    next[position].hash = preceding_hash;
+                    free_slots.push_back(position++);
+                }
+                next[position].hash = old.hash;
+                next[position++].value = std::move(old.value);
+                preceding_hash = old.hash;
+            }
+            while (position < capacity) {
+                next[position].hash = preceding_hash;
+                free_slots.push_back(position++);
+            }
+            owner->slots.swap(next);
+            owner->free_slots.swap(free_slots);
         }
 
+        static auto matching_range(state *owner, std::size_t hash) {
+            auto first = std::lower_bound(owner->slots.begin(), owner->slots.end(), hash,
+                    [](const slot &entry, std::size_t key) { return entry.hash < key; });
+            auto last = std::upper_bound(first, owner->slots.end(), hash,
+                    [](std::size_t key, const slot &entry) { return key < entry.hash; });
+            return std::pair{first, last};
+        }
+
+        static void retain(state *owner, node *value) {
+            jh::sync::posix_smtx_unique_lock lock(owner->mutex);
+            ++value->references;
+            ++owner->references;
+        }
+
+        static void release(state *owner, node *value) {
+            std::unique_ptr<node> retired;
+            bool destroy_state = false;
+            {
+                jh::sync::posix_smtx_unique_lock lock(owner->mutex);
+                if (--value->references == 0) {
+                    auto [first, last] = matching_range(owner, value->hash);
+                    for (auto it = first; it != last; ++it) {
+                        if (it->value.get() == value) {
+                            const std::size_t index = static_cast<std::size_t>(it - owner->slots.begin());
+                            auto vacant = std::lower_bound(owner->free_slots.begin(),
+                                    owner->free_slots.end(), index);
+                            owner->free_slots.insert(vacant, index);
+                            retired = std::move(it->value);
+                            --owner->live;
+                            break;
+                        }
+                    }
+                }
+                destroy_state = --owner->references == 0;
+            }
+            retired.reset();
+            if (destroy_state) delete owner;
+        }
+
+        static void close(state *owner) {
+            bool destroy_state;
+            {
+                jh::sync::posix_smtx_unique_lock lock(owner->mutex);
+                destroy_state = --owner->references == 0;
+            }
+            if (destroy_state) delete owner;
+        }
+
+    public:
         /**
-         * @brief Deleted copy constructor.
+         * @brief Reference-counted handle whose lifetime uses the pool's mutex type.
          *
-         * Copying is disabled because two pools observing the same set of
-         * immutable objects have no meaningful deduplication relationship.
-         * A duplicated observer would only increase contention and break the
-         * one-pool-per-type principle for resource or handle management.
-         *
-         * @note
-         * For structurally immutable resource types, only one pool should exist
-         * in the entire program. For simple data deduplication (e.g. shared strings),
-         * threads can directly share <code>std::reference_wrapper</code> or
-         * <code>shared_ptr</code> instead of copying the pool.
+         * Handles remain valid after the pool is moved, cleared, or destroyed.
+         * Concurrent access to the same handle object requires external synchronization.
          */
-        pointer_pool(const pointer_pool &) = delete;
+        class ptr final {
+            friend class pointer_pool;
+            state *owner_ = nullptr;
+            node *value_ = nullptr;
+
+            ptr(state *owner, node *value) noexcept : owner_(owner), value_(value) {}
+
+        public:
+            /// @brief Constructs an empty handle.
+            ptr() noexcept = default;
+            /// @brief Constructs an empty handle from nullptr.
+            ptr(std::nullptr_t) noexcept {}
+
+            /// @brief Copies a handle and retains its object under the configured mutex.
+            ptr(const ptr &other) : owner_(other.owner_), value_(other.value_) {
+                if (value_) retain(owner_, value_);
+            }
+
+            /// @brief Transfers a handle without changing its reference count.
+            ptr(ptr &&other) noexcept : owner_(other.owner_), value_(other.value_) {
+                other.owner_ = nullptr;
+                other.value_ = nullptr;
+            }
+
+            /// @brief Releases the held reference, if any.
+            ~ptr() { reset(); }
+
+            /// @brief Copies another handle.
+            ptr &operator=(const ptr &other) {
+                if (this != &other) {
+                    ptr copy(other);
+                    swap(copy);
+                }
+                return *this;
+            }
+
+            /// @brief Transfers another handle.
+            ptr &operator=(ptr &&other) noexcept {
+                if (this != &other) {
+                    reset();
+                    owner_ = other.owner_;
+                    value_ = other.value_;
+                    other.owner_ = nullptr;
+                    other.value_ = nullptr;
+                }
+                return *this;
+            }
+
+            /// @brief Releases the current object and becomes empty.
+            void reset() {
+                if (!value_) return;
+                state *owner = owner_;
+                node *value = value_;
+                owner_ = nullptr;
+                value_ = nullptr;
+                release(owner, value);
+            }
+
+            /// @brief Exchanges two handles without changing reference counts.
+            void swap(ptr &other) noexcept {
+                std::swap(owner_, other.owner_);
+                std::swap(value_, other.value_);
+            }
+
+            /// @brief Returns the owned object pointer, or nullptr.
+            [[nodiscard]] T *get() const noexcept { return value_ ? &value_->value : nullptr; }
+            /// @brief Accesses the owned object.
+            [[nodiscard]] T &operator*() const noexcept { return *get(); }
+            /// @brief Accesses the owned object's members.
+            [[nodiscard]] T *operator->() const noexcept { return get(); }
+            /// @brief Reports whether this handle owns an object.
+            explicit operator bool() const noexcept { return value_ != nullptr; }
+
+            /// @brief Returns the number of handles to this object.
+            [[nodiscard]] std::size_t use_count() const {
+                if (!value_) return 0;
+                jh::sync::posix_smtx_shared_lock lock(owner_->mutex);
+                return value_->references;
+            }
+
+            /// @brief Compares object identity.
+            friend bool operator==(const ptr &lhs, const ptr &rhs) noexcept {
+                return lhs.value_ == rhs.value_;
+            }
+            /// @brief Compares a handle with nullptr.
+            friend bool operator==(const ptr &value, std::nullptr_t) noexcept {
+                return !value;
+            }
+        };
 
         /**
-         * @brief Deleted copy assignment operator.
-         *
-         * Copy assignment is not supported for the same reasons as copy construction:
-         * duplicating the pool would create two independent observers of the same
-         * logical object space, defeating deduplication semantics.
+         * @brief Constructs a pool with the requested number of index slots.
+         * @param reserve_size Initial slot count, clamped to at least one.
          */
+        explicit pointer_pool(const std::size_t reserve_size = MIN_RESERVED_SIZE)
+            : state_(new state(reserve_size)) {}
+
+        /// @brief Releases the pool's index while existing handles remain valid.
+        ~pointer_pool() { close(state_); }
+
+        /// @brief Pool copying is disabled.
+        pointer_pool(const pointer_pool &) = delete;
+        /// @brief Pool copy assignment is disabled.
         pointer_pool &operator=(const pointer_pool &) = delete;
 
-        /**
-         * @brief Move constructor.
-         *
-         * Transfers internal weak references and capacity state from another pool.
-         * The source pool is locked during transfer and cleared afterward to ensure
-         * a valid empty state.
-         *
-         * @note
-         * Moving a pool transfers observation authority, not ownership of objects.
-         * Since the pool tracks objects via <code>weak_ptr</code>, live instances
-         * remain valid and unaffected. After a move, entries may temporarily exist
-         * in both the old and new pool, but this is acceptable for deduplication use.
-         */
-        pointer_pool(pointer_pool &&other) noexcept {
-            jh::sync::posix_smtx_unique_lock write_lock(other.pool_mutex_);
-            pool_ = std::move(other.pool_);
-            capacity_.store(other.capacity_.load());
-            other.pool_.clear();  // Ensure valid empty state after move.
+        /// @brief Transfers the index and leaves the source pool empty.
+        pointer_pool(pointer_pool &&other) : state_(new state(MIN_RESERVED_SIZE)) {
+            jh::sync::posix_smtx_unique_lock lock(other.state_mutex_);
+            std::swap(state_, other.state_);
         }
 
-        /**
-         * @brief Move assignment operator.
-         *
-         * Moves the weak reference set and capacity state from another pool.
-         * Both pools are locked during transfer to ensure atomicity.
-         *
-         * @note
-         * During move assignment, all existing weak references in the current pool
-         * are released and replaced by those from the source pool.
-         * This only removes the pool's <em>observation</em> of those objects &mdash;
-         * their actual lifetimes remain intact because ownership is held by
-         * external <code>std::shared_ptr</code> instances.
-         * <br>
-         * Moving represents transfer of observation scope. Since deduplication
-         * is tolerant to transient duplicates, the existence of similar entries
-         * in both pools after move is not a correctness issue.
-         * The moved-from pool is cleared and remains valid for later reuse.
-         *
-         * @warning
-         * For structurally immutable resource or handle pools, move assignment
-         * is not semantically appropriate, as such pools are expected to be unique
-         * within their management domain.
-         * Concurrent move assignments involving the same pool, including
-         * opposite-direction moves, require external serialization. No useful
-         * observation-transfer order or progress is specified for that use.
-         */
-        pointer_pool &operator=(pointer_pool &&other) noexcept {
+        /// @brief Transfers the index and leaves the source pool empty.
+        pointer_pool &operator=(pointer_pool &&other) {
             if (this != &other) {
-                std::lock_guard lock_this(pool_mutex_);
-                std::lock_guard lock_other(other.pool_mutex_);
-                pool_ = std::move(other.pool_);
-                capacity_.store(other.capacity_.load());
-                other.pool_.clear();  // Ensure safe use after move.
+                state *replacement = new state(MIN_RESERVED_SIZE);
+                state *old;
+                {
+                    jh::sync::posix_smtx_unique_lock this_lock(state_mutex_);
+                    jh::sync::posix_smtx_unique_lock other_lock(other.state_mutex_);
+                    old = state_;
+                    state_ = other.state_;
+                    other.state_ = replacement;
+                }
+                close(old);
             }
             return *this;
         }
 
+        /// @brief Acquisition through a const pool is disabled.
+        template<typename... Args>
+        [[maybe_unused]] ptr acquire(Args &&... args) const = delete;
+
         /**
-         * @brief Deleted <code>acquire()</code> for <code>const pointer_pool</code>.
+         * @brief Constructs a candidate and returns the canonical object handle.
+         * @tparam Args Constructor argument types for T.
+         * @param args Arguments used to construct the candidate.
+         * @return A handle that remains valid after the pool is destroyed.
          *
-         * Prevents acquiring or inserting objects through a constant pool reference.
-         * Since acquisition may modify the internal pool state, it is not permitted
-         * on <code>const</code> instances.
-         *
-         * @tparam Args Constructor argument types for <code>T</code>.
-         *
-         * @note
-         * This overload exists purely to provide a compile-time diagnostic when
-         * <code>acquire()</code> is accidentally called on a constant pool reference.
-         * Immutable access to existing shared objects should be performed through
-         * previously returned <code>std::shared_ptr</code> instances.
+         * Hashing happens before the pool lock. Equality and index changes use
+         * the configured mutex. The index holds each node while handles refer to it.
          */
         template<typename... Args>
-        [[maybe_unused]] std::shared_ptr<T> acquire(Args &&... args) const = delete;
-
-        /**
-         * @brief Retrieves an object from the pool, or creates a new one if none exists.
-         *
-         * Constructs a temporary instance of <code>T</code> using the forwarded arguments,
-         * then attempts to insert it into the pool.
-         * If a logically equivalent instance already exists (as determined by <code>Eq</code>),
-         * it is reused and the newly created temporary object is discarded.
-         * Otherwise, the new instance is inserted and returned.
-         *
-         * @tparam Args Constructor argument types for <code>T</code>.
-         * @param args Arguments forwarded to <code>T</code>'s constructor.
-         * @return A <code>std::shared_ptr&lt;T&gt;</code> representing the pooled object.
-         *
-         * <p><b>Acquisition Flow:</b></p>
-         * <ol>
-         *   <li>A new object is tentatively constructed using the forwarded arguments.</li>
-         *   <li>The pool lock is acquired only during insertion and lookup.</li>
-         *   <li>If a logically equivalent instance already exists, it is reused &mdash;
-         *       the temporary object is immediately discarded.</li>
-         *   <li>If not found, the new object is inserted and its <code>shared_ptr</code> returned.</li>
-         * </ol>
-         *
-         * @note
-         * The pool employs a construct-first, lock-then-insert model.
-         * This avoids holding the pool lock during object construction,
-         * enabling support for non-copyable or non-movable types.
-         * Temporary objects may be discarded if an equivalent instance already exists,
-         * so types should support lightweight provisional construction
-         * (e.g. lazy initialization of heavy internal resources).
-         */
-        template<typename... Args>
-        std::shared_ptr<T> acquire(Args &&... args) {
-            auto new_obj = std::make_shared<T>(std::forward<Args>(args)...);
-            return get_or_insert(new_obj);
-        }
-
-        /**
-         * @brief Removes expired weak references from the pool.
-         *
-         * Scans the internal container and erases all <code>weak_ptr</code> entries
-         * that have expired (that is, their corresponding <code>shared_ptr</code> instances
-         * have been destroyed).
-         * <p>
-         * This operation reclaims hash table slots and prevents unbounded growth
-         * when many pooled objects are released.
-         * </p>
-         *
-         * @note
-         * This function is safe to call at any time and is intended for
-         * <b>manual maintenance</b>.
-         * Automatic cleanup also occurs opportunistically during insertion or
-         * expansion when capacity thresholds are reached.
-         */
-        void cleanup() {
-            std::lock_guard<Mutex> lock(pool_mutex_);
-            cleanup_no_lock();
-        }
-
-        /**
-         * @brief Removes expired entries and conditionally shrinks the reserved capacity.
-         *
-         * Performs the same expired-entry cleanup as <code>cleanup()</code>,
-         * then evaluates the current usage ratio to determine whether
-         * capacity should be reduced.
-         *
-         * <p>
-         * If the number of active entries falls below <tt>0.25</tt> of the current
-         * reserved size (the low-watermark ratio), the reserved capacity is reduced
-         * to one half of its previous value.
-         * The pool will never shrink below <code>MIN_RESERVED_SIZE</code>.
-         * </p>
-         *
-         * @note
-         * <ul>
-         *   <li>Both manual and automatic shrinkage follow the same rule:
-         *       capacity is reduced by half instead of being minimized to fit
-         *       the current usage exactly.</li>
-         *   <li>This conservative policy prevents oscillation between expansion
-         *       and contraction when workload size fluctuates,
-         *       reducing allocation jitter.</li>
-         *   <li>Since a previously expanded pool indicates historically higher load,
-         *       shrinking only halfway preserves readiness for future reuse
-         *       without significant memory overhead.</li>
-         * </ul>
-         *
-         * This function is intended for <b>manual maintenance</b> when predictable
-         * memory release is desired. It complements the automatic,
-         * event-driven resizing that may also perform half shrinkage
-         * during expansion checks.
-         */
-        void cleanup_shrink() {
-            std::lock_guard<Mutex> lock(pool_mutex_);
-            cleanup_no_lock();
-
-            auto current_size = pool_.size();
-            auto current_reserved = capacity_.load();
-
-            const auto low_watermark =
-                    static_cast<std::size_t>(static_cast<double>(current_reserved) * LOW_WATERMARK_RATIO);
-
-            if (current_size <= low_watermark) {
-                capacity_.store(std::max(current_reserved / 2, MIN_RESERVED_SIZE));
+        ptr acquire(Args &&... args) {
+            auto candidate = std::make_unique<node>(std::forward<Args>(args)...);
+            const std::size_t hash = Hash{}(candidate->value);
+            jh::sync::posix_smtx_shared_lock state_lock(state_mutex_);
+            state *owner = state_;
+            jh::sync::posix_smtx_unique_lock lock(owner->mutex);
+            std::size_t capacity = owner->slots.size();
+            auto [first, last] = matching_range(owner, hash);
+            for (auto it = first; it != last; ++it) {
+                if (it->value && Eq{}(it->value->value, candidate->value)) {
+                    ++it->value->references;
+                    ++owner->references;
+                    return ptr(owner, it->value.get());
+                }
             }
+            node *value = candidate.get();
+            value->hash = hash;
+            value->references = 1;
+            if (owner->free_slots.empty()) {
+                capacity *= 2;
+                rebuild(owner, capacity);
+            }
+            const std::size_t target = static_cast<std::size_t>(
+                    std::upper_bound(owner->slots.begin(), owner->slots.end(), hash,
+                            [](std::size_t key, const slot &entry) { return key < entry.hash; })
+                    - owner->slots.begin());
+            auto right_it = std::lower_bound(owner->free_slots.begin(),
+                    owner->free_slots.end(), target);
+            const std::size_t right = right_it == owner->free_slots.end() ? capacity : *right_it;
+            const std::size_t left = right_it == owner->free_slots.begin()
+                    ? capacity : *std::prev(right_it);
+            const bool use_left = left != capacity &&
+                    (right == capacity || target - left <= right - target);
+            std::size_t destination_index;
+            if (use_left) {
+                owner->free_slots.erase(std::prev(right_it));
+                for (std::size_t i = left; i + 1 < target; ++i)
+                    owner->slots[i] = std::move(owner->slots[i + 1]);
+                destination_index = target - 1;
+            } else {
+                owner->free_slots.erase(right_it);
+                for (std::size_t i = right; i > target; --i)
+                    owner->slots[i] = std::move(owner->slots[i - 1]);
+                destination_index = target;
+            }
+            slot &destination = owner->slots[destination_index];
+            destination.hash = hash;
+            destination.value = std::move(candidate);
+            ++owner->live;
+            ++owner->references;
+            return ptr(owner, value);
         }
 
-        /**
-         * @brief Gets the current number of elements in the pool.
-         * @return The number of stored weak_ptrs (including expired ones).
-         */
+        /// @brief Rebuilds the index without expired slots.
+        void cleanup() {
+            jh::sync::posix_smtx_shared_lock state_lock(state_mutex_);
+            jh::sync::posix_smtx_unique_lock lock(state_->mutex);
+            rebuild(state_, state_->slots.size());
+        }
+
+        /// @brief Rebuilds the index and halves capacity below one-quarter occupancy.
+        void cleanup_shrink() {
+            jh::sync::posix_smtx_shared_lock state_lock(state_mutex_);
+            jh::sync::posix_smtx_unique_lock lock(state_->mutex);
+            std::size_t capacity = state_->slots.size();
+            if (capacity > MIN_RESERVED_SIZE && state_->live <= capacity / 4)
+                capacity = std::max(capacity / 2, MIN_RESERVED_SIZE);
+            rebuild(state_, capacity);
+        }
+
+        /// @brief Returns the number of currently observed live objects.
         [[nodiscard]] std::size_t size() const {
-            jh::sync::posix_smtx_shared_lock read_lock(pool_mutex_);
-            return pool_.size();
+            jh::sync::posix_smtx_shared_lock state_lock(state_mutex_);
+            jh::sync::posix_smtx_shared_lock lock(state_->mutex);
+            return state_->live;
         }
 
-        /**
-         * @brief Gets the current reserved size of the pool.
-         * @return The reserved size limit before expansion or contraction.
-         */
+        /// @brief Returns the number of index slots.
         [[nodiscard]] std::size_t capacity() const {
-            return capacity_.load();
+            jh::sync::posix_smtx_shared_lock state_lock(state_mutex_);
+            jh::sync::posix_smtx_shared_lock lock(state_->mutex);
+            return state_->slots.size();
         }
 
-        /**
-         * @brief Clears all entries and resets the pool to its initial state.
-         *
-         * <p>
-         * Removes all elements from the internal container and resets
-         * <code>capacity_</code> to <code>MIN_RESERVED_SIZE</code>.
-         * This operation is functionally equivalent to <code>clear()</code>
-         * on standard containers. It holds the pool mutex, but concurrent
-         * concurrent <code>acquire()</code> uses the same mutex for its capacity
-         * precheck and insertion.
-         * </p>
-         *
-         * <p>
-         * Because the pool only stores <code>weak_ptr</code> references,
-         * clearing it merely removes observation records and does not affect
-         * the lifetime of externally held <code>shared_ptr</code> instances.
-         * For immutable data types, deduplication integrity remains intact.
-         * </p>
-         *
-         * @note
-         * <ul>
-         *   <li>For <strong>structurally immutable resource or handle pools</strong>,
-         *       calling <code>clear()</code> is not recommended, as it abandons
-         *       tracking of active handles and may cause side effects.</li>
-         *   <li>After clearing, <code>capacity()</code> is reset to
-         *       <code>MIN_RESERVED_SIZE</code>, fully restoring the pool to
-         *       its initial baseline.</li>
-         *   <li>Unlike move operations, which preserve capacity to prevent
-         *       unnecessary re-expansion, <code>clear()</code> always resets
-         *       the capacity to its minimum for a deterministic clean state.</li>
-         * </ul>
-         */
+        /// @brief Starts a fresh index while existing handles keep their objects alive.
         void clear() {
-            jh::sync::posix_smtx_unique_lock write_lock(pool_mutex_);
-            pool_.clear();
-            capacity_.store(MIN_RESERVED_SIZE);
+            state *replacement = new state(MIN_RESERVED_SIZE);
+            state *old;
+            {
+                jh::sync::posix_smtx_unique_lock lock(state_mutex_);
+                old = state_;
+                state_ = replacement;
+            }
+            close(old);
         }
 
     private:
-        std::unordered_set<std::weak_ptr<T>, Hash, Eq> pool_; ///< Storage for weak_ptr objects.
-        std::atomic<std::size_t> capacity_; ///< The dynamically managed reserved size.
-        mutable Mutex pool_mutex_; ///< Ensures thread-safe access.
-
-        /**
-         * @brief Inserts a shared object into the pool or retrieves an existing equivalent one.
-         *
-         * Checks whether an equivalent object (as determined by <code>Eq</code>)
-         * already exists in the pool. If found, returns a <code>shared_ptr</code>
-         * to the existing instance; otherwise inserts the new one and returns it.
-         *
-         * <p>
-         * This function acquires an exclusive lock for insertion. If the pool is
-         * near its capacity limit, cleanup and resizing occur under the same
-         * exclusive lock as insertion.
-         * </p>
-         *
-         * @param obj The <code>shared_ptr&lt;T&gt;</code> to insert or match.
-         * @return A <code>shared_ptr&lt;T&gt;</code> to the existing or newly inserted object.
-         */
-        std::shared_ptr<T> get_or_insert(const std::shared_ptr<T> &obj) {
-            jh::sync::posix_smtx_unique_lock write_lock(pool_mutex_);
-            if (pool_.size() >= capacity_.load()) {
-                expand_and_cleanup_no_lock();
-            }
-
-            auto [it, inserted] = pool_.insert(obj);
-            if (!inserted) return it->lock();
-            return obj;
-        }
-
-        /// @brief Internal cleanup without locking
-        void cleanup_no_lock() {
-            // Step 1: Collect valid weak_ptrs using STL algorithms
-            std::vector<std::weak_ptr<T>> valid_elements;
-            valid_elements.reserve(pool_.size());
-
-            std::copy_if(pool_.begin(), pool_.end(), std::back_inserter(valid_elements),
-                         [](const std::weak_ptr<T> &w_ptr) { return !w_ptr.expired(); });
-
-            // Step 2: Safely replace `pool_` inside the lock
-            pool_.clear();
-            pool_.insert(std::make_move_iterator(valid_elements.begin()),
-                         std::make_move_iterator(valid_elements.end()));
-        }
-
-        static constexpr double HIGH_WATERMARK_RATIO = 0.875; ///< Expand if usage exceeds 87.5%
-        static constexpr double LOW_WATERMARK_RATIO = 0.25;  ///< Shrink if usage falls below 25%
-
-        /**
-         * @brief Performs opportunistic cleanup and adaptive resizing.
-         *
-         * <p>
-         * Invoked internally when the pool approaches its capacity limit.
-         * This function first removes expired entries, then decides whether
-         * to expand or shrink the reserved capacity based on current usage
-         * ratios.
-         * </p>
-         *
-         * <p><strong>Cleanup Phase</strong></p>
-         * <p>
-         * Before any resizing, <code>cleanup_no_lock()</code> is called to purge
-         * expired <code>weak_ptr</code> entries. This ensures that capacity decisions
-         * are based on live objects only.
-         * </p>
-         *
-         * <p><strong>Resizing Logic</strong></p>
-         * <p>
-         * After cleanup, the pool evaluates usage against two thresholds:
-         * <ul>
-         *   <li><b>High-watermark:</b> <tt>0.875</tt> &mdash; expansion trigger.</li>
-         *   <li><b>Low-watermark:</b> <tt>0.25</tt> &mdash; shrink trigger.</li>
-         * </ul>
-         * If the active entry count exceeds <tt>87.5%</tt> of capacity or the
-         * reserved limit itself, the pool doubles its capacity.
-         * If it falls below <tt>25%</tt>, the capacity is halved (but never below
-         * <code>MIN_RESERVED_SIZE</code>).
-         * </p>
-         *
-         * <p><strong>Why High-Watermark Is Below 1.0</strong></p>
-         * <p>
-         * The high-watermark is deliberately set below 1.0 to avoid oscillation
-         * when operating near full capacity. If the threshold were exactly 1.0,
-         * large pools might repeatedly reach their limit even after cleanup,
-         * leading to expansion attempts on nearly every insertion.
-         * </p>
-         * <p>
-         * Setting the threshold to <strong>87.5%</strong> provides a safety margin:
-         * normal cleanup can reclaim space without immediately retriggering expansion,
-         * reducing jitter and lock contention under heavy load.
-         * </p>
-         *
-         * <p><strong>Behavior Characteristics</strong></p>
-         * <ul>
-         *   <li>Both expansion and shrinkage are <strong>gradual</strong> &mdash; capacity
-         *       changes by doubling or halving, avoiding aggressive reallocation.</li>
-         *   <li>The pool never shrinks below <code>MIN_RESERVED_SIZE</code>,
-         *       maintaining a stable baseline.</li>
-         *   <li>This function serves as the unified adaptive management mechanism
-         *       used by both external and internal cleanup triggers.</li>
-         * </ul>
-         */
-        void expand_and_cleanup_no_lock() {
-            cleanup_no_lock();
-
-            auto current_size = pool_.size();
-            auto current_reserved = capacity_.load();
-
-            const auto high_watermark =
-                    static_cast<std::size_t>(static_cast<double >(current_reserved) * HIGH_WATERMARK_RATIO);
-            const auto low_watermark =
-                    static_cast<std::size_t>(static_cast<double >(current_reserved) * LOW_WATERMARK_RATIO);
-
-            if (current_size >= current_reserved || current_size >= high_watermark) {
-                // Expand if size exceeds the limit or crosses the high watermark.
-                capacity_.store(current_reserved * 2);
-            } else if (current_size <= low_watermark) {
-                // Shrink if size falls below the low watermark.
-                capacity_.store(std::max(current_reserved / 2, MIN_RESERVED_SIZE));
-            }
-        }
+        mutable Mutex state_mutex_;
+        state *state_;
     };
 
 } // namespace jh::conc

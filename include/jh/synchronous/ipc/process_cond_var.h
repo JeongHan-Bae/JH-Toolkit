@@ -402,6 +402,103 @@ namespace jh::sync::ipc {
         }
 
         /**
+         * @brief Wait while a predicate remains true.
+         * @tparam Predicate Callable checked under the condition mutex on POSIX.
+         * @param predicate Condition that requires waiting while true.
+         *
+         * The notifier acquires the same condition mutex before signaling, so
+         * a predicate change cannot be lost between its check and the wait.
+         * The predicate must read shared state through its own valid synchronization,
+         * and the notifier must update that state before calling <code>notify_one()</code>.
+         * @throws std::runtime_error If the OS wait operation fails.
+         */
+        template<typename Predicate>
+        void wait_while(Predicate &&predicate) {
+#if IS_WINDOWS
+            while (predicate()) {
+                const DWORD result = ::WaitForSingleObject(event_, INFINITE);
+                if (result != WAIT_OBJECT_0)
+                    throw std::runtime_error("process_cond_var: WaitForSingleObject failed");
+                ::ResetEvent(event_);
+            }
+#else
+            if (pthread_mutex_lock(&data_->mutex) != 0)
+                throw std::runtime_error("process_cond_var: pthread_mutex_lock failed");
+            try {
+                while (predicate()) {
+                    if (pthread_cond_wait(&data_->cond, &data_->mutex) != 0)
+                        throw std::runtime_error("process_cond_var: pthread_cond_wait failed");
+                }
+            } catch (...) {
+                pthread_mutex_unlock(&data_->mutex);
+                throw;
+            }
+            if (pthread_mutex_unlock(&data_->mutex) != 0)
+                throw std::runtime_error("process_cond_var: pthread_mutex_unlock failed");
+#endif
+        }
+
+        /**
+         * @brief Wait while a predicate remains true, up to an absolute deadline.
+         * @tparam Predicate Callable checked under the condition mutex on POSIX.
+         * @tparam Clock Deadline clock type.
+         * @tparam Duration Deadline duration type.
+         * @param predicate Condition that requires waiting while true.
+         * @param tp Deadline for the wait.
+         * @return Whether the predicate became false by the deadline.
+         * @throws std::runtime_error If the OS wait operation fails.
+         * @note The predicate must read synchronized shared state. Update that
+         *       state before notification.
+         */
+        template<typename Predicate, typename Clock, typename Duration>
+        bool wait_while_until(Predicate &&predicate,
+                              const std::chrono::time_point<Clock, Duration> &tp) {
+#if IS_WINDOWS
+            while (predicate()) {
+                auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(tp - Clock::now());
+                constexpr auto max_ms = std::chrono::milliseconds{0xFFFFFFFEu};
+                if (remaining > max_ms) remaining = max_ms;
+                const DWORD timeout = remaining.count() > 0 ? static_cast<DWORD>(remaining.count()) : 0;
+                const DWORD result = ::WaitForSingleObject(event_, timeout);
+                if (result == WAIT_TIMEOUT) return !predicate();
+                if (result != WAIT_OBJECT_0)
+                    throw std::runtime_error("process_cond_var: WaitForSingleObject failed");
+                ::ResetEvent(event_);
+            }
+            return true;
+#else
+            const auto deadline = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                tp - Clock::now() + std::chrono::system_clock::now());
+            const auto secs = std::chrono::time_point_cast<std::chrono::seconds>(deadline);
+            const auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline - secs);
+            timespec ts{};
+            ts.tv_sec = static_cast<time_t>(secs.time_since_epoch().count());
+            ts.tv_nsec = static_cast<long>(nsec.count());
+
+            if (pthread_mutex_lock(&data_->mutex) != 0)
+                throw std::runtime_error("process_cond_var: pthread_mutex_lock failed");
+            bool ready = true;
+            try {
+                while (predicate()) {
+                    const int result = pthread_cond_timedwait(&data_->cond, &data_->mutex, &ts);
+                    if (result == ETIMEDOUT) {
+                        ready = !predicate();
+                        break;
+                    }
+                    if (result != 0)
+                        throw std::runtime_error("process_cond_var: pthread_cond_timedwait failed");
+                }
+            } catch (...) {
+                pthread_mutex_unlock(&data_->mutex);
+                throw;
+            }
+            if (pthread_mutex_unlock(&data_->mutex) != 0)
+                throw std::runtime_error("process_cond_var: pthread_mutex_unlock failed");
+            return ready;
+#endif
+        }
+
+        /**
          * @brief Wake a single waiting process.
          *
          * <h4>Semantics</h4>
