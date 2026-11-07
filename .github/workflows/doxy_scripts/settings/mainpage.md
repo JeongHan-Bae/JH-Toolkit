@@ -1,6 +1,21 @@
-@mainpage JH-Toolkit
+@mainpage JH-Toolkit Libraries
 
-# JH-Toolkit
+# JH-Toolkit Libraries
+
+This documentation covers the three C++20 libraries in this repository. Choose a
+library below for its purpose, public headers, and usage guide.
+
+| Library | Version | Start here |
+| --- | --- | --- |
+| JH-Toolkit | __TOOLKIT_VERSION__ | @ref toolkit_library "Core toolkit and public API" |
+| JH Simple Cucumber | __CUCUMBER_VERSION__ | @ref cucumber_library "Typed BDD steps and Gherkin integration" |
+| TinyTest | __TINY_TEST_VERSION__ | @ref tiny_test_library "Lightweight C++ test framework" |
+
+The API navigation includes the public headers of all three libraries.
+
+---
+
+## JH-Toolkit Core
 
 **JH-Toolkit** is an **engineering-oriented C++20 toolkit** built on:
 
@@ -23,7 +38,7 @@ while retaining the performance and control C++ is known for.
 
 ## What This Documentation Is
 
-This site contains the **official API and design documentation** for JH-Toolkit.
+This site contains the **official API and design documentation** for the three libraries.
 
 You can start reading the documentation in two primary ways:
 

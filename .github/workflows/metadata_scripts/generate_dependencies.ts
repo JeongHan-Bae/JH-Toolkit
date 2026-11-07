@@ -6,11 +6,10 @@
  * metadata, and yaml for the CI workflow. Requires CMake 3.21 or newer.
  *
  * Usage:
- *   node .github/workflows/scripts/generate_dependencies.ts [--root PATH]
- *   node .github/workflows/scripts/generate_dependencies.ts --check
- *   node .github/workflows/scripts/generate_dependencies.ts --fetch-external
- *   node .github/workflows/scripts/generate_dependencies.ts --scan-cached
- *   node .github/workflows/scripts/generate_dependencies.ts --get-version
+ *   node .github/workflows/metadata_scripts/generate_dependencies.ts [--root PATH]
+ *   node .github/workflows/metadata_scripts/generate_dependencies.ts --check
+ *   node .github/workflows/metadata_scripts/generate_dependencies.ts --fetch-external
+ *   node .github/workflows/metadata_scripts/generate_dependencies.ts --scan-cached
  *
  * CMake source scanning records conditional declarations. File API validation
  * configures the all-components profile with tests and examples disabled.
@@ -28,12 +27,13 @@ import { loadMetadataConfig } from './metadata_config.ts';
 
 const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const args = process.argv.slice(2);
+if (args.includes('--get-version') || args.includes('--get-versions'))
+  throw new Error('Use get_version.ts to read library versions.');
 const readArg = (key: string): string | undefined => { const i = args.indexOf(key); return i < 0 ? undefined : args[i + 1]; };
 const root = resolve(readArg('--root') ?? scriptRoot);
 const check = args.includes('--check');
 const fetchExternal = args.includes('--fetch-external');
 const scanCached = args.includes('--scan-cached');
-const onlyVersion = args.includes('--get-version');
 const metadata = loadMetadataConfig();
 const astPort = createCMakeParser(await createCMakeLexer());
 const analyzer = createMetadataAnalyzer({ root, astPort, fetchExternal, scanCached, metadata });
@@ -49,7 +49,6 @@ function syncFile(p: string, data: string) {
 }
 async function main() {
   const components = analyzer.analyze();
-  if (onlyVersion) { console.log(components[0].version); return; }
   await populateInstallProfiles(root, components[0]);
   const target = join(root,'dependencies.toml');
   syncFile(target, serializeReport(components, repositorySource(root), ciSupportedPlatforms(root), metadata));

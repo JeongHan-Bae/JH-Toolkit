@@ -14,7 +14,7 @@ on:
       - 'simple-cucumber/include/**'
       - 'simple-cucumber/gherkin/include/**'
       - 'dependencies.toml'
-      - '.github/workflows/scripts/**'
+      - '.github/workflows/metadata_scripts/**'
       - '.github/workflows/ci.yml'
       - '.github/workflows/update-dependencies.yml'
   workflow_dispatch:
@@ -43,17 +43,17 @@ jobs:
           package-manager-cache: false
 
       - name: Install metadata parser dependencies
-        run: npm ci --prefix .github/workflows/scripts --no-audit --no-fund
+        run: npm ci --prefix .github/workflows/metadata_scripts --no-audit --no-fund
 
       - name: Verify metadata parser
         run: |
-          npm run typecheck --prefix .github/workflows/scripts
-          npm test --prefix .github/workflows/scripts
+          npm run typecheck --prefix .github/workflows/metadata_scripts
+          npm test --prefix .github/workflows/metadata_scripts
 
       - name: Generate dependencies and badges
         env:
           JH_REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
-        run: node .github/workflows/scripts/generate_dependencies.ts
+        run: node .github/workflows/metadata_scripts/generate_dependencies.ts
 
       - name: Detect changes
         id: diff
@@ -87,6 +87,6 @@ jobs:
       - name: Commit and push metadata
         if: steps.diff.outputs.changed == 'true'
         run: |
-          version=$(node .github/workflows/scripts/generate_dependencies.ts --get-version)
+          version=$(node .github/workflows/metadata_scripts/get_version.ts)
           git commit -m "auto-update(version): ${version}"
           git push origin "HEAD:${GITHUB_REF_NAME}"

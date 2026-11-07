@@ -86,52 +86,27 @@ Manual duplication of version numbers is prohibited.
 
 ---
 
-Below is a **simple English section** you can paste directly into the document.
-
----
-
 ## 🔗 GitHub Actions and CI Integration
 
-JH Toolkit uses **GitHub Actions** as its CI and automation system.
-All workflows and helper scripts are located in:
+JH Toolkit uses **GitHub Actions** for CI and automation. Workflow files are in
+`.github/workflows/`; their TypeScript helpers are grouped by purpose:
 
-```
-.github/workflows/
-```
+| Directory | Purpose |
+|-----------|---------|
+| `.github/workflows/metadata_scripts/` | CMake metadata and dependency generation |
+| `.github/workflows/docs_scripts/` | Public-header documentation presence and hygiene checks |
+| `.github/workflows/doxy_scripts/` | Doxygen build, configuration, and entry-point pages |
 
-### 📁 Directory Layout
-
-The project uses a **flat structure**.
-
-Rules:
-
-* No subdirectories
-* All `.yml` and `.py` files are placed directly in this directory
-
----
-
-### 📄 File Naming Rules
-
-* **Workflow YAML files**
-
-    * Use **kebab-case**
-    * Example:
-
-      ```
-      ci.yml
-      docs-check.yml
-      update-dependencies.yml
-      ```
-
-* **Python helper scripts**
-
-    * Use **snake_case**
-    * Example:
-
-      ```
-      docs_hygiene_check.py
-      generate_dependencies.py
-      ```
+Each helper directory owns its `package.json`, lockfile, and TypeScript configuration.
+Install dependencies with `npm ci --prefix .github/workflows/<directory>` before running its scripts.
+Use Node.js 24 or newer and run scripts with their full repository-relative path.
+Keep workflow YAML filenames in kebab-case and helper modules in snake_case.
+The Doxygen workflow runs `node .github/workflows/doxy_scripts/build.ts`. It stages
+source headers and writes configuration and generated pages under the ignored
+`.doxy-build/` directory. Doxygen settings live beside the script; project
+entry-header guides remain under `docs/entry_points/`.
+The metadata helper `get_version.ts` reads the toolkit version by default and emits
+all three library versions as JSON with `--all`.
 
 ---
 
@@ -156,33 +131,18 @@ name: "Install Component Integration"
 
 ---
 
-### 🐍 Using Python Scripts in Workflows
+### 🟩 Using TypeScript Helpers in Workflows
 
-Python scripts in `.github/workflows/` are executed directly.
-
-Required syntax:
+Set up Node.js with `actions/setup-node@v5`, install the relevant helper directory
+with `npm ci --prefix`, and run its scripts with `node`. Example:
 
 ```yaml
-- name: Some Name
-  run: python .github/workflows/script_name.py
+- uses: actions/setup-node@v5
+  with:
+    node-version: '24'
+- run: npm ci --prefix .github/workflows/docs_scripts --no-audit --no-fund
+- run: node .github/workflows/docs_scripts/presence_check.ts
 ```
-
-Rules:
-
-* Always use `python`, not `python3`
-* Scripts must be referenced with the full path
-* No inline downloads or generated scripts
-
----
-
-### 🧪 Python Setup Requirement
-
-Python must be installed using **GitHub’s official action**:
-
-* `actions/setup-python@v4`
-* or `actions/setup-python@v5`
-
-Direct downloads or custom installers are **not allowed**.
 
 ---
 

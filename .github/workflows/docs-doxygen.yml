@@ -22,23 +22,20 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
       - name: Set up Node
         uses: actions/setup-node@v5
         with:
           node-version: '24'
 
-      - name: Install metadata parser dependencies
-        run: npm ci --prefix .github/workflows/scripts --no-audit --no-fund
+      - name: Install Doxygen helper dependencies
+        run: |
+          npm ci --prefix .github/workflows/metadata_scripts --no-audit --no-fund
+          npm ci --prefix .github/workflows/doxy_scripts --no-audit --no-fund
 
-      - name: Generate Doxyfile
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python .github/workflows/generate_doxyfile.py
+      - name: Verify Doxygen helpers
+        run: |
+          npm run typecheck --prefix .github/workflows/doxy_scripts
+          npm test --prefix .github/workflows/doxy_scripts
 
       - name: Set up Homebrew
         id: set-up-homebrew
@@ -50,18 +47,17 @@ jobs:
           brew install doxygen graphviz
           doxygen --version
 
-      - name: Unescape HTML entities for Doxygen
-        run: python .github/workflows/unescape.py
-
-      - name: Run Doxygen
-        run: doxygen Doxyfile.tmp
+      - name: Build Doxygen site
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/workflows/doxy_scripts/build.ts
 
       - name: Deploy to doxy_pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: doxy_pages
-          publish_dir: ./doxy/html
+          publish_dir: ./.doxy-build/site/html
           force_orphan: true
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'

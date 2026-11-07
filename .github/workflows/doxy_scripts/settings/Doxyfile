@@ -4,7 +4,7 @@ PROJECT_NUMBER         = __VERSION__
 PROJECT_BRIEF          = __DESCRIPTION__
 PROJECT_LOGO           = "assets/img/Oree.svg"
 PROJECT_ICON           = "assets/img/Jindallae.svg"
-OUTPUT_DIRECTORY       = "doxy"
+OUTPUT_DIRECTORY       = ".doxy-build/site"
 CREATE_SUBDIRS         = NO
 CREATE_SUBDIRS_LEVEL   = 8
 ALLOW_UNICODE_NAMES    = NO
@@ -24,8 +24,7 @@ ABBREVIATE_BRIEF       = "The $name class" \
                          the
 ALWAYS_DETAILED_SEC    = NO
 INLINE_INHERITED_MEMB  = NO
-STRIP_FROM_PATH        =
-STRIP_FROM_INC_PATH    =
+STRIP_FROM_PATH        = .doxy-build/source .doxy-build/pages
 SHORT_NAMES            = NO
 JAVADOC_AUTOBRIEF      = NO
 JAVADOC_BANNER         = NO
@@ -40,8 +39,7 @@ OPTIMIZE_OUTPUT_JAVA   = NO
 OPTIMIZE_FOR_FORTRAN   = NO
 OPTIMIZE_OUTPUT_VHDL   = NO
 OPTIMIZE_OUTPUT_SLICE  = NO
-EXTENSION_MAPPING      = "=C++"
-EXTENSION_MAPPING      += no_extension=C++
+EXTENSION_MAPPING      = no_extension=C++
 MARKDOWN_SUPPORT       = YES
 MARKDOWN_STRICT        = NO
 TOC_INCLUDE_HEADINGS   = 6
@@ -117,7 +115,11 @@ WARN_AS_ERROR          = NO
 WARN_FORMAT            = "$file:$line: $text"
 WARN_LINE_FORMAT       = "at line $line of file $file"
 WARN_LOGFILE           =
-INPUT                  = include/jh docs/doxy_settings/mainpage.md
+INPUT                  = __SOURCE_ROOTS__ \
+                         .doxy-build/pages/mainpage.md \
+                         .doxy-build/pages/toolkit_library.md \
+                         .doxy-build/pages/cucumber_library.md \
+                         .doxy-build/pages/tiny_test_library.md
 INPUT_ENCODING         = UTF-8
 INPUT_FILE_ENCODING    =
 FILE_PATTERNS          = * \
@@ -144,7 +146,7 @@ INPUT_FILTER           =
 FILTER_PATTERNS        =
 FILTER_SOURCE_FILES    = NO
 FILTER_SOURCE_PATTERNS =
-USE_MDFILE_AS_MAINPAGE = docs/doxy_settings/mainpage.md
+USE_MDFILE_AS_MAINPAGE = .doxy-build/pages/mainpage.md
 IMPLICIT_DIR_DOCS      = YES
 FORTRAN_COMMENT_AFTER  = 72
 SOURCE_BROWSER         = NO
@@ -154,7 +156,7 @@ REFERENCED_BY_RELATION = NO
 REFERENCES_RELATION    = NO
 REFERENCES_LINK_SOURCE = YES
 SOURCE_TOOLTIPS        = YES
-USE_HTAGS              = YES
+USE_HTAGS              = NO
 VERBATIM_HEADERS       = YES
 ALPHABETICAL_INDEX     = YES
 IGNORE_PREFIX          =
@@ -162,9 +164,9 @@ GENERATE_HTML          = __GENERATE_HTML__
 HTML_OUTPUT            = html
 HTML_FILE_EXTENSION    = .html
 HTML_HEADER            =
-HTML_FOOTER            = "docs/doxy_settings/footer.html"
+HTML_FOOTER            = ".doxy-build/footer.html"
 HTML_STYLESHEET        =
-HTML_EXTRA_STYLESHEET  = "docs/doxy_settings/style.css"
+HTML_EXTRA_STYLESHEET  = ".github/workflows/doxy_scripts/settings/style.css"
 HTML_EXTRA_FILES       =
 HTML_COLORSTYLE        = AUTO_DARK
 HTML_COLORSTYLE_HUE    = 210
@@ -233,7 +235,10 @@ EXPAND_ONLY_PREDEF     = NO
 SEARCH_INCLUDES        = YES
 INCLUDE_PATH           =
 INCLUDE_FILE_PATTERNS  =
-STRIP_FROM_INC_PATH    = include
+STRIP_FROM_INC_PATH    = .doxy-build/source/include \
+                         .doxy-build/source/simple-cucumber/include \
+                         .doxy-build/source/simple-cucumber/gherkin/include \
+                         .doxy-build/source/tiny-test/include
 FULL_PATH_NAMES        = YES
 PREDEFINED             =
 EXPAND_AS_DEFINED      =
@@ -283,4 +288,7 @@ GENERATE_LEGEND        = YES
 DOT_CLEANUP            = YES
 MSCGEN_TOOL            =
 MSCFILE_DIRS           =
-HTML_EXTRA_FILES       = assets/img/Ojing.svg
+HTML_EXTRA_FILES       = assets/img/Ojing.svg \
+                         assets/img/skill.svg \
+                         assets/img/simple-cucumber.skill.svg \
+                         assets/img/tiny-test.skill.svg

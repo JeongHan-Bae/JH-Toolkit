@@ -1,0 +1,22 @@
+{
+  "name": "jh-toolkit-workflow-doxygen",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node build.ts",
+    "generate": "node generate_doxyfile.ts",
+    "unescape": "node unescape.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test doxy.test.ts"
+  },
+  "dependencies": {
+    "html-entities": "^2.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "7.0.2"
+  }
+}

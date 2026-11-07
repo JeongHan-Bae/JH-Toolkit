@@ -7,9 +7,10 @@
   },
   "scripts": {
     "generate": "node generate_dependencies.ts",
+    "version": "node get_version.ts",
     "check": "node generate_dependencies.ts --check",
     "typecheck": "tsc --noEmit",
-    "test": "node --test cmake_pipeline.test.ts"
+    "test": "node --test cmake_pipeline.test.ts get_version.test.ts"
   },
   "dependencies": {
     "cmake-file-api": "0.1.2",

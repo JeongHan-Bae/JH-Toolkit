@@ -62,9 +62,8 @@ Thumbs.db
 # Doxygen generated files
 html/
 latex/
-doxy/
+.doxy-build/
 man/
 rtf/
 xml/
 *.tag
-Doxyfile.tmp

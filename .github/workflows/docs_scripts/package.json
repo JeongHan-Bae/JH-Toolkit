@@ -1,0 +1,20 @@
+{
+  "name": "jh-toolkit-workflow-docs",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "presence": "node presence_check.ts",
+    "hygiene": "node hygiene_check.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test checks.test.ts"
+  },
+  "dependencies": {
+    "tree-sitter-wasm": "2.0.4",
+    "web-tree-sitter": "0.27.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "7.0.2"
+  }
+}

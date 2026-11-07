@@ -28,8 +28,7 @@ on:
       - 'include/jh/**'
       - 'docs/**'
       - '.github/workflows/docs-check.yml'
-      - '.github/workflows/docs_presence_check.py'
-      - '.github/workflows/docs_hygiene_check.py'
+      - '.github/workflows/docs_scripts/**'
 
   pull_request:
     branches:
@@ -39,8 +38,7 @@ on:
       - 'include/jh/**'
       - 'docs/**'
       - '.github/workflows/docs-check.yml'
-      - '.github/workflows/docs_presence_check.py'
-      - '.github/workflows/docs_hygiene_check.py'
+      - '.github/workflows/docs_scripts/**'
 
   workflow_dispatch:
 
@@ -75,8 +73,7 @@ jobs:
           # Workflow or check script change → run both
           if git diff --name-only "$BASE" "$TARGET" -- \
             .github/workflows/docs-check.yml \
-            .github/workflows/docs_presence_check.py \
-            .github/workflows/docs_hygiene_check.py \
+            .github/workflows/docs_scripts \
             | grep -q .; then
             RUN_PRESENCE=true
             RUN_HYGIENE=true
@@ -107,14 +104,22 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Node
+        uses: actions/setup-node@v5
         with:
-          python-version: '3.x'
+          node-version: '24'
+
+      - name: Install documentation checker dependencies
+        run: npm ci --prefix .github/workflows/docs_scripts --no-audit --no-fund
+
+      - name: Verify documentation checkers
+        run: |
+          npm run typecheck --prefix .github/workflows/docs_scripts
+          npm test --prefix .github/workflows/docs_scripts
 
       - name: Documentation Presence Check
         run: |
-          python .github/workflows/docs_presence_check.py
+          node .github/workflows/docs_scripts/presence_check.ts
 
   documentation-hygiene-check:
     needs: gate
@@ -123,11 +128,19 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Node
+        uses: actions/setup-node@v5
         with:
-          python-version: '3.x'
+          node-version: '24'
+
+      - name: Install documentation checker dependencies
+        run: npm ci --prefix .github/workflows/docs_scripts --no-audit --no-fund
+
+      - name: Verify documentation checkers
+        run: |
+          npm run typecheck --prefix .github/workflows/docs_scripts
+          npm test --prefix .github/workflows/docs_scripts
 
       - name: Public Header Hygiene Check
         run: |
-          python .github/workflows/docs_hygiene_check.py
+          node .github/workflows/docs_scripts/hygiene_check.ts
