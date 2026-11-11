@@ -224,6 +224,28 @@ h.wait();
 
 Multiple launches yield independent handles, all of which must be waited.
 
+### Arguments
+
+`start()` accepts a `jh::runtime_arr<std::string_view>` containing the arguments
+after the executable name. Its default value is empty, so existing `start()`
+calls still launch without additional arguments. The array is passed by value;
+an existing array must be explicitly moved into the call.
+
+```cpp
+auto h = launcher_t::start({"first", "two words", ""});
+auto result = h.wait();
+```
+
+On POSIX, `start()` copies each argument before `fork()` and passes the copies
+as separate `argv` entries to `execv()`. A view may refer to a substring and
+does not need a trailing NUL character. The caller must keep the text referred
+to by every view valid until `start()` returns. The launcher retains neither
+the views nor the copied argument storage after that call. Arguments containing
+an embedded NUL character throw `std::invalid_argument` before launching.
+
+On Windows, an empty array preserves the existing behavior. Passing one or
+more arguments throws `std::runtime_error` before launching.
+
 ---
 
 ## ⚠️ Error Handling

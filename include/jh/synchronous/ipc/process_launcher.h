@@ -23,7 +23,7 @@
  * <h3>Rationale</h3>
  * <p>
  * This class encapsulates the platform-specific differences between
- * POSIX <code>fork() + execl()</code> and Windows <code>CreateProcess()</code>,
+ * POSIX <code>fork() + execv()</code> and Windows <code>CreateProcess()</code>,
  * exposing a unified <strong>std::thread-like</strong> API.
  * </p>
  *
@@ -32,7 +32,7 @@
  *   <li><strong>POSIX (Linux &amp; UNIX)</strong>:
  *     <ul>
  *       <li>Any file with execute permission can be launched (binary or script).</li>
- *       <li><code>fork()</code> creates the child, <code>execl()</code> replaces its image.</li>
+ *       <li><code>fork()</code> creates the child, <code>execv()</code> replaces its image.</li>
  *       <li><code>wait()</code> uses <code>waitpid()</code> to return normal exit codes or report signal termination.</li>
  *     </ul>
  *   </li>
@@ -188,12 +188,15 @@
 #include "jh/macros/platform.h"
 #include "jh/metax/expected.h"
 #include "jh/metax/t_str.h"
+#include "jh/runtime_arr"
 #include "jh/synchronous/ipc/ipc_limits.h"
 #include <cstddef>
 #include <cstdint>
 #include <cerrno>
 #include <string>
+#include <string_view>
 #include <stdexcept>
+#include <vector>
 #include <system_error>
 #include <filesystem>
 #include <iostream>   // for std::cerr
@@ -236,106 +239,106 @@ namespace jh::sync::ipc {
     enum class process_exit_error : std::uint32_t {
 #if IS_POSIX
         /// @brief POSIX signal number SIGHUP.
-        signal_hangup = SIGHUP,
+        signal_hangup [[maybe_unused]] = SIGHUP,
         /// @brief POSIX signal number SIGINT.
-        signal_interrupt = SIGINT,
+        signal_interrupt [[maybe_unused]] = SIGINT,
         /// @brief POSIX signal number SIGQUIT.
-        signal_quit = SIGQUIT,
+        signal_quit [[maybe_unused]] = SIGQUIT,
         /// @brief POSIX signal number SIGILL.
-        signal_illegal_instruction = SIGILL,
+        signal_illegal_instruction [[maybe_unused]] = SIGILL,
         /// @brief POSIX signal number SIGABRT.
-        signal_abort = SIGABRT,
+        signal_abort [[maybe_unused]] = SIGABRT,
         /// @brief POSIX signal number SIGFPE.
-        signal_floating_point = SIGFPE,
+        signal_floating_point [[maybe_unused]] = SIGFPE,
         /// @brief POSIX signal number SIGKILL.
-        signal_killed = SIGKILL,
+        signal_killed [[maybe_unused]] = SIGKILL,
         /// @brief POSIX signal number SIGSEGV.
-        signal_segmentation_fault = SIGSEGV,
+        signal_segmentation_fault [[maybe_unused]] = SIGSEGV,
         /// @brief POSIX signal number SIGPIPE.
-        signal_broken_pipe = SIGPIPE,
+        signal_broken_pipe [[maybe_unused]] = SIGPIPE,
         /// @brief POSIX signal number SIGALRM.
-        signal_alarm = SIGALRM,
+        signal_alarm [[maybe_unused]] = SIGALRM,
         /// @brief POSIX signal number SIGTERM.
-        signal_terminate = SIGTERM,
+        signal_terminate [[maybe_unused]] = SIGTERM,
         /// @brief POSIX signal number SIGUSR1.
-        signal_user_1 = SIGUSR1,
+        signal_user_1 [[maybe_unused]] = SIGUSR1,
         /// @brief POSIX signal number SIGUSR2.
-        signal_user_2 = SIGUSR2,
+        signal_user_2 [[maybe_unused]] = SIGUSR2,
         /// @brief POSIX signal number SIGCHLD.
-        signal_child = SIGCHLD,
+        signal_child [[maybe_unused]] = SIGCHLD,
         /// @brief POSIX signal number SIGCONT.
-        signal_continue = SIGCONT,
+        signal_continue [[maybe_unused]] = SIGCONT,
         /// @brief POSIX signal number SIGSTOP.
-        signal_stop = SIGSTOP,
+        signal_stop [[maybe_unused]] = SIGSTOP,
         /// @brief POSIX signal number SIGTSTP.
-        signal_terminal_stop = SIGTSTP,
+        signal_terminal_stop [[maybe_unused]] = SIGTSTP,
         /// @brief POSIX signal number SIGTTIN.
-        signal_background_terminal_input = SIGTTIN,
+        signal_background_terminal_input [[maybe_unused]] = SIGTTIN,
         /// @brief POSIX signal number SIGTTOU.
-        signal_background_terminal_output = SIGTTOU,
+        signal_background_terminal_output [[maybe_unused]] = SIGTTOU,
 #ifdef SIGBUS
         /// @brief POSIX signal number SIGBUS.
-        signal_bus_error = SIGBUS,
+        signal_bus_error [[maybe_unused]] = SIGBUS,
 #endif
 #ifdef SIGTRAP
         /// @brief Platform signal number SIGTRAP.
-        signal_trap = SIGTRAP,
+        signal_trap [[maybe_unused]] = SIGTRAP,
 #endif
 #ifdef SIGURG
         /// @brief Platform signal number SIGURG.
-        signal_urgent_socket = SIGURG,
+        signal_urgent_socket [[maybe_unused]] = SIGURG,
 #endif
 #ifdef SIGXCPU
         /// @brief Platform signal number SIGXCPU.
-        signal_cpu_limit = SIGXCPU,
+        signal_cpu_limit [[maybe_unused]] = SIGXCPU,
 #endif
 #ifdef SIGXFSZ
         /// @brief Platform signal number SIGXFSZ.
-        signal_file_size_limit = SIGXFSZ,
+        signal_file_size_limit [[maybe_unused]] = SIGXFSZ,
 #endif
 #ifdef SIGVTALRM
         /// @brief Platform signal number SIGVTALRM.
-        signal_virtual_alarm = SIGVTALRM,
+        signal_virtual_alarm [[maybe_unused]] = SIGVTALRM,
 #endif
 #ifdef SIGPROF
         /// @brief Platform signal number SIGPROF.
-        signal_profiling_alarm = SIGPROF,
+        signal_profiling_alarm [[maybe_unused]] = SIGPROF,
 #endif
 #ifdef SIGWINCH
         /// @brief Platform signal number SIGWINCH.
-        signal_window_change = SIGWINCH,
+        signal_window_change [[maybe_unused]] = SIGWINCH,
 #endif
 #ifdef SIGPOLL
         /// @brief Platform signal number SIGPOLL.
-        signal_poll = SIGPOLL,
+        signal_poll [[maybe_unused]] = SIGPOLL,
 #endif
 #ifdef SIGSYS
         /// @brief Platform signal number SIGSYS.
-        signal_bad_system_call = SIGSYS,
+        signal_bad_system_call [[maybe_unused]] = SIGSYS,
 #endif
 #ifdef SIGEMT
         /// @brief Platform signal number SIGEMT.
-        signal_emulator_trap = SIGEMT,
+        signal_emulator_trap [[maybe_unused]] = SIGEMT,
 #endif
 #ifdef SIGINFO
         /// @brief Platform signal number SIGINFO.
-        signal_information = SIGINFO,
+        signal_information [[maybe_unused]] = SIGINFO,
 #endif
 #ifdef SIGIOT
         /// @brief Platform signal number SIGIOT.
-        signal_iot = SIGIOT,
+        signal_iot [[maybe_unused]] = SIGIOT,
 #endif
 #ifdef SIGIO
         /// @brief Platform signal number SIGIO.
-        signal_io = SIGIO,
+        signal_io [[maybe_unused]] = SIGIO,
 #endif
 #ifdef SIGPWR
         /// @brief Platform signal number SIGPWR.
-        signal_power_failure = SIGPWR,
+        signal_power_failure [[maybe_unused]] = SIGPWR,
 #endif
 #ifdef SIGSTKFLT
         /// @brief Platform signal number SIGSTKFLT.
-        signal_stack_fault = SIGSTKFLT,
+        signal_stack_fault [[maybe_unused]] = SIGSTKFLT,
 #endif
 #endif
         /// @brief The child stopped without returning a normal process exit code.
@@ -604,7 +607,7 @@ namespace jh::sync::ipc {
                 if (WIFEXITED(status)) {
                     exit_result_ = static_cast<std::uint32_t>(WEXITSTATUS(status));
                 } else if (WIFSIGNALED(status)) {
-                    std::uint32_t error = static_cast<std::uint32_t>(WTERMSIG(status));
+                    auto error = static_cast<std::uint32_t>(WTERMSIG(status));
 #ifdef WCOREDUMP
                     if (WCOREDUMP(status)) error |= process_exit_core_dump_mask;
 #endif
@@ -673,13 +676,31 @@ namespace jh::sync::ipc {
          * explicitly <code>wait()</code>-ed.
          * </p>
          *
-         * On POSIX, both <code>fork()</code> and <code>exec()</code> failures
-         * are reported synchronously before a handle is returned.
+         * On POSIX, arguments are copied before <code>fork()</code> and passed as
+         * separate <code>argv</code> entries after the executable name. The
+         * caller must keep every string referenced by a view valid until this
+         * call returns. No argument storage is retained after the call.
+         * Embedded NUL characters are rejected because they cannot be passed
+         * as part of a POSIX process argument. Both <code>fork()</code> and
+         * <code>exec()</code> failures are reported synchronously before a
+         * handle is returned.
          *
-         * @throw std::runtime_error if process creation fails.
+         * On Windows, an empty argument array preserves the existing launch
+         * behavior. A nonempty array causes this call to throw before launching.
+         *
+         * @param args Arguments following the executable name. The array is
+         *             moved into the call; existing arrays require an explicit
+         *             move. The default empty array launches without arguments.
+         * @throw std::runtime_error if process creation fails or Windows
+         *                           receives a nonempty argument array.
+         * @throw std::invalid_argument on POSIX if an argument contains an
+         *                              embedded NUL.
          */
-        static handle start() {
+        static handle start(jh::runtime_arr<std::string_view> args = {}) {
 #if IS_WINDOWS
+            if (!args.empty()) {
+                throw std::runtime_error("process_launcher arguments are unsupported on Windows");
+            }
             STARTUPINFO si{};
             si.cb = sizeof(si);
             PROCESS_INFORMATION pi{};
@@ -713,6 +734,22 @@ namespace jh::sync::ipc {
             return handle{pi};
 #elif IS_POSIX
             auto exe = jh::meta::TStr{"./"} + Path;
+            std::string executable{exe.val()};
+            std::vector<std::string> argument_storage;
+            argument_storage.reserve(args.size());
+            for (auto arg : args) {
+                if (arg.find('\0') != std::string_view::npos) {
+                    throw std::invalid_argument("process_launcher argument contains an embedded NUL");
+                }
+                argument_storage.emplace_back(arg);
+            }
+
+            std::vector<char *> argv;
+            argv.reserve(argument_storage.size() + 2);
+            argv.push_back(executable.data());
+            for (auto &arg : argument_storage) argv.push_back(arg.data());
+            argv.push_back(nullptr);
+
             int exec_pipe[2]{};
             if (::pipe(exec_pipe) == -1) {
                 const int error = errno;
@@ -734,7 +771,7 @@ namespace jh::sync::ipc {
 
             if (pid == 0) {
                 ::close(exec_pipe[0]);
-                ::execl(exe.val(), exe.val(), static_cast<char *>(nullptr));
+                ::execv(executable.c_str(), argv.data());
 
                 const int error = errno;
                 const auto *error_bytes = reinterpret_cast<const char *>(&error);
