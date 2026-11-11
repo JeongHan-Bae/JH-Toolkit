@@ -1,4 +1,4 @@
-# 🔮 **JH Toolkit — Macros Repository Overview**
+# 🔮 **JH-Toolkit — Macros Repository Overview**
 
 📦 **Namespace:** `jh::macro`  
 📍 **Location:** `jh/macros/`  

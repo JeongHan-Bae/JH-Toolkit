@@ -1,4 +1,4 @@
-# ⏱️ **JH Toolkit — Synchronization Module Overview**
+# ⏱️ **JH-Toolkit — Synchronization Module Overview**
 
 📁 **Module:** `<jh/sync>`  
 📦 **Namespace:** `jh::sync`  
@@ -16,7 +16,7 @@
 
 ## 🧭 Introduction
 
-`jh::sync` defines the **synchronization layer** of the JH Toolkit.
+`jh::sync` defines the **synchronization layer** of the JH-Toolkit.
 
 It provides a set of **low-level, engineering-oriented synchronization primitives**
 designed for:

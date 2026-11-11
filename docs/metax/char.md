@@ -1,4 +1,4 @@
-# ⚗️ **JH Toolkit — `jh::meta::char` API Reference**
+# ⚗️ **JH-Toolkit — `jh::meta::char` API Reference**
 
 📁 **Header:** `<jh/metax/char.h>`  
 📦 **Namespace:** `jh::meta`  

@@ -1,4 +1,4 @@
-# 🎍 **JH Toolkit — Concurrency Module Overview**
+# 🎍 **JH-Toolkit — Concurrency Module Overview**
 
 📁 **Module:** `<jh/concurrency>`  
 📦 **Namespace:** `jh::conc`  

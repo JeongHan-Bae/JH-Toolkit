@@ -1,4 +1,4 @@
-# 🍯 **JH Toolkit — `jh::serio::base64` API Reference**
+# 🍯 **JH-Toolkit — `jh::serio::base64` API Reference**
 
 📁 **Header:** `<jh/serialize_io/base64.h>`  
 📦 **Namespace:** `jh::serio::base64` / `jh::serio::base64url`  
@@ -17,7 +17,7 @@
 ## 🧭 Introduction
 
 `jh::serio::base64` defines the **Base64 / Base64URL serialization layer**
-of the JH Toolkit — a modern, constexpr-safe, and cross-platform
+of the JH-Toolkit — a modern, constexpr-safe, and cross-platform
 binary-to-text codec designed for predictable interoperability.
 
 It implements both:
@@ -217,7 +217,7 @@ meta-programming utility.
 
 ## 🧩 Summary
 
-`jh::serio::base64` forms the **binary-to-text foundation** of the JH Toolkit.
+`jh::serio::base64` forms the **binary-to-text foundation** of the JH-Toolkit.
 Its dual namespaces (`base64`, `base64url`) offer full control over
 padding, alphabet, and output safety while retaining trivial integration
 with the POD and serialization layers.

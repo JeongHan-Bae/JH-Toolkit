@@ -2,7 +2,7 @@
 
 Place compile-time contracts and compile-pass/fail checks in `tests/static/`.
 Use `tests/tdd/unit/` and `tests/tdd/composed/` for runtime behavior, with one
-TinyTest executable and CTest entry per test module. Use `tests/bdd/` for
+tiny-test executable and CTest entry per test module. Use `tests/bdd/` for
 caller-visible behavior expressed as Gherkin scenarios. Follow
 `tests/bdd/AGENTS.md` for feature and step organization.
 
@@ -20,7 +20,7 @@ actually includes time or to prevent a broken test from hanging indefinitely.
 Stress runs and third-party detectors such as ThreadSanitizer may reveal risks,
 but their diagnostics and exit codes do not count as a red or green behavior
 test. For a defined-behavior concurrency defect, start with a separate red
-`.cpp` that makes a TinyTest assertion fail on the original implementation
+`.cpp` that makes a tiny-test assertion fail on the original implementation
 under a controlled interleaving. Run the same assertion after the fix and
 record both outcomes.
 
@@ -47,9 +47,9 @@ behavior tests may use the default mutex.
 
 ## TDD
 
-Use TinyTest's `expect`, `expect_not`, and typed `expect_throw<Exception>`
+Use tiny-test's `expect`, `expect_not`, and typed `expect_throw<Exception>`
 for assertions. Pass an operation that should throw to `expect_throw`. Call
-an operation that should complete normally directly; the TinyTest runner
+an operation that should complete normally directly; the tiny-test runner
 records an exception that reaches its outer boundary.
 
 A local `try/catch` can capture an exception's error code or message. Rethrow

@@ -1,4 +1,4 @@
-# 🌗 **JH Toolkit — Ranges Extension Module Overview**
+# 🌗 **JH-Toolkit — Ranges Extension Module Overview**
 
 📁 **Module:** `<jh/ranges_ext>`  
 📦 **Namespace:** `jh::ranges`  
@@ -32,7 +32,7 @@ forming the connective layer that binds views, concepts, and containers
 into a single coherent range architecture.
 
 The C++23 standard specifies ordered construction and insertion paths for
-`std::ranges::to`. JH Toolkit exposes its own choices as separate adaptors:
+`std::ranges::to`. JH-Toolkit exposes its own choices as separate adaptors:
 `collect` handles supported materialization paths and `to` selects a documented
 structural construction path at compile time.
 

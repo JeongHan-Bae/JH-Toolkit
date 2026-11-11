@@ -1,4 +1,4 @@
-# 🧱 **JH Toolkit — `jh::ordered_map` / `jh::ordered_set` API Reference**
+# 🧱 **JH-Toolkit — `jh::ordered_map` / `jh::ordered_set` API Reference**
 
 📁 **Header:** `<jh/core/ordered_map.h>`  
 🔄 **Forwarding Header:** `<jh/ordered_map>`  

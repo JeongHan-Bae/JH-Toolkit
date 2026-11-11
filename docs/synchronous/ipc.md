@@ -1,4 +1,4 @@
-# 🛰️ **JH Toolkit — `jh::ipc` Entry Overview**
+# 🛰️ **JH-Toolkit — `jh::ipc` Entry Overview**
 
 ### InterProcess ~~Communication~~ Coordination
 

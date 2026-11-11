@@ -1,4 +1,4 @@
-# ⚗️ **JH Toolkit — Meta Module Overview**
+# ⚗️ **JH-Toolkit — Meta Module Overview**
 
 📁 **Module:** `<jh/meta>`  
 📦 **Namespace:** `jh::meta`  
@@ -22,7 +22,7 @@
 
 ## 🧭 Introduction
 
-`jh::meta` defines the **compile-time metaprogramming core** of JH Toolkit.
+`jh::meta` defines the **compile-time metaprogramming core** of JH-Toolkit.
 
 It provides a cohesive set of **constexpr / consteval–safe utilities** for:
 

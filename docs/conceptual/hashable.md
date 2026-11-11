@@ -1,4 +1,4 @@
-# 🧩 **JH Toolkit — `jh::concepts::hashable` API Reference**
+# 🧩 **JH-Toolkit — `jh::concepts::hashable` API Reference**
 
 📁 **Header:** `<jh/conceptual/hashable.h>`  
 📦 **Namespace:** `jh::concepts`, `jh`  

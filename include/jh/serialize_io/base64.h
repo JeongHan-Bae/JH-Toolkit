@@ -19,11 +19,11 @@
 /**
  * @file base64.h
  * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
- * @brief High-level Base64 and Base64URL serialization interface for the JH Toolkit.
+ * @brief High-level Base64 and Base64URL serialization interface for the JH-Toolkit.
  *
  * <p>
  * This header provides a modern, type-safe, and constexpr-enabled Base64 / Base64URL
- * codec implementation. It is part of the <b>JH Toolkit Serialization I/O module</b>
+ * codec implementation. It is part of the <b>JH-Toolkit Serialization I/O module</b>
  * (shortened as <code>jh::serio</code>), and serves as the first officially supported
  * serialization format within the toolkit.
  * </p>
@@ -46,7 +46,7 @@
  *
  * @note
  * This header participates in the <b>Dual-Mode Header</b> system of the
- * JH Toolkit.
+ * JH-Toolkit.
  * <ul>
  *   <li>Linked through <b>jh::jh-toolkit</b> &mdash; the module behaves
  *       as a <b>header-only</b> implementation compiled in user

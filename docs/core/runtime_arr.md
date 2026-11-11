@@ -1,4 +1,4 @@
-# 🧱 **JH Toolkit — `jh::runtime_arr` API Reference**
+# 🧱 **JH-Toolkit — `jh::runtime_arr` API Reference**
 
 📁 **Header:** `<jh/core/runtime_arr.h>`  
 🔄 **Forwarding Header:** `<jh/runtime_arr>`  
@@ -276,7 +276,7 @@ depending on semantics.
 ## 🧩 Summary
 
 `jh::runtime_arr` is a **lightweight, deterministic, and POD-accelerated** dynamic container
-supporting the JH Toolkit's *write-once, build-differently* model.
+supporting the JH-Toolkit's *write-once, build-differently* model.
 
 It offers full range compatibility, predictable memory layout,
 and static specialization where it truly improves performance.

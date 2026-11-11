@@ -1,4 +1,4 @@
-# 🧩 **JH Toolkit — `jh::concepts::range_traits` API Reference**
+# 🧩 **JH-Toolkit — `jh::concepts::range_traits` API Reference**
 
 📁 **Header:** `<jh/conceptual/range_traits.h>`  
 📦 **Namespace:** `jh::concepts`  
@@ -86,7 +86,7 @@ It provides a **compile-time policy** that determines whether a range is:
 * stored **by reference** (borrowed semantics), or
 * stored **via reference wrapper** for deferred safe access.
 
-This abstraction allows all wrapper-based views in JH Toolkit to maintain
+This abstraction allows all wrapper-based views in JH-Toolkit to maintain
 consistent lifetime and forwarding semantics regardless of the range's
 value category.
 

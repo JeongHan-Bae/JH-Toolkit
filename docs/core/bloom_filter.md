@@ -1,4 +1,4 @@
-# JH Toolkit — `jh::bloom_filter` API Reference
+# JH-Toolkit — `jh::bloom_filter` API Reference
 
 **Header:** `<jh/core/bloom_filter.h>`  
 **Forwarding header:** `<jh/bloom_filter>`  

@@ -1,4 +1,4 @@
-# 🔭 **JH Toolkit — Views Module Overview**
+# 🔭 **JH-Toolkit — Views Module Overview**
 
 📁 **Module:** `<jh/views>`  
 📦 **Namespace:** `jh::views`  

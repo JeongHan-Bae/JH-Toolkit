@@ -1,4 +1,4 @@
-# 🗂️ **JH Toolkit — `jh::ranges::vis_transform_view` API Reference**
+# 🗂️ **JH-Toolkit — `jh::ranges::vis_transform_view` API Reference**
 
 📁 **Header:** `<jh/ranges/vis_transform_view.h>`  
 📦 **Namespace:** `jh::ranges`  

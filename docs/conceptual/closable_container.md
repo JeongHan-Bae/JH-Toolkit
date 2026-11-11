@@ -1,4 +1,4 @@
-# 🧩 **JH Toolkit — `jh::concepts::closable_container` API Reference**
+# 🧩 **JH-Toolkit — `jh::concepts::closable_container` API Reference**
 
 📁 **Header:** `<jh/conceptual/closable_container.h>`  
 📦 **Namespace:** `jh::concepts`  

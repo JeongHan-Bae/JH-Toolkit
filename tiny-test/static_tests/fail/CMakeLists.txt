@@ -1,7 +1,7 @@
 project_static_fail(duplicate_test_definition duplicate_test_definition.cpp "redefinition")
 project_static_fail(duplicate_session_definition duplicate_session_definition.cpp "redefinition")
-project_static_fail(duplicate_test_name_in_session duplicate_test_name_in_session.cpp "TinyTest session and test names must be unique")
-project_static_fail(duplicate_names_in_suite duplicate_names_in_suite.cpp "TinyTest suite, session, and test names must be unique")
+project_static_fail(duplicate_test_name_in_session duplicate_test_name_in_session.cpp "tiny-test session and test names must be unique")
+project_static_fail(duplicate_names_in_suite duplicate_names_in_suite.cpp "tiny-test suite, session, and test names must be unique")
 
 add_executable(tiny_test_static_fail_duplicate_test_across_tus
     duplicate_registration_main.cpp

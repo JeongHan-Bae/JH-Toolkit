@@ -1,4 +1,4 @@
-# ⚗️ JH Toolkit — `jh::meta::t_str` / `TStr` API Reference
+# ⚗️ JH-Toolkit — `jh::meta::t_str` / `TStr` API Reference
 
 📁 **Header:** `<jh/metax/t_str.h>`  
 📦 **Namespace:** `jh::meta`  
@@ -138,7 +138,7 @@ constexpr jh::meta::t_str s{"Hello"};
 | `str()`      | Converts to `std::string`                         |
 
 
-`pod_view()` provides a POD-compatible view type used across JH Toolkit POD
+`pod_view()` provides a POD-compatible view type used across JH-Toolkit POD
 containers and lookup structures.
 > Note: Introduced in version 1.4.1+
 
@@ -373,9 +373,9 @@ static_assert(t_str{"A"} != t_str{"B"});
 
 ---
 
-## 🧠 Position Within JH Toolkit
+## 🧠 Position Within JH-Toolkit
 
-`t_str / TStr` is **one of the most important components introduced in JH Toolkit 1.4.0+**.
+`t_str / TStr` is **one of the most important components introduced in JH-Toolkit 1.4.0+**.
 
 It enables and underpins a large portion of the compile-time infrastructure:
 
@@ -398,4 +398,4 @@ any feature that requires **string identity at compile time**.
 * Compile-time validation, transformation, concatenation, substring extraction,
   and hashing are built in
 * Explicit `bytes.size() + 1` sizing ensures correctness when reconstructing strings
-* Introduced in **JH Toolkit 1.4.0+** as a cornerstone for compile-time string-based design
+* Introduced in **JH-Toolkit 1.4.0+** as a cornerstone for compile-time string-based design

@@ -1,4 +1,4 @@
-# 🧊 **JH Toolkit — `jh::pod::bitflags` API Reference**
+# 🧊 **JH-Toolkit — `jh::pod::bitflags` API Reference**
 
 📁 **Header:** `<jh/pods/bits.h>`  
 📦 **Namespace:** `jh::pod`  

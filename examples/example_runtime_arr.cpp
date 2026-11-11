@@ -151,7 +151,7 @@
  * <h3>Allocator Model</h3>
  *
  * <p>
- * Unlike most containers in the JH Toolkit, the default allocator
+ * Unlike most containers in the JH-Toolkit, the default allocator
  * of <code>runtime_arr</code> is not <code>std::allocator</code>.
  * </p>
  *

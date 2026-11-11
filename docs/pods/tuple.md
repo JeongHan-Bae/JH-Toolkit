@@ -1,4 +1,4 @@
-# 🧊 **JH Toolkit — `jh::pod::tuple` API Reference**
+# 🧊 **JH-Toolkit — `jh::pod::tuple` API Reference**
 
 📁 **Header:** `<jh/pods/tuple.h>`  
 📦 **Namespace:** `jh::pod`  

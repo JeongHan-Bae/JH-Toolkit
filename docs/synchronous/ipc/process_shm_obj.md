@@ -1,4 +1,4 @@
-# 🛰️ **JH Toolkit — `jh::sync::ipc::process_shm_obj` API Reference**
+# 🛰️ **JH-Toolkit — `jh::sync::ipc::process_shm_obj` API Reference**
 
 _`IPC` stands for **InterProcess Coordination**_
 

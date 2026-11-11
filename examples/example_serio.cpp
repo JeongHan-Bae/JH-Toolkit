@@ -103,7 +103,7 @@ namespace example {
         std::cout << "\n===== serio::base64 / serio::base64url =====\n\n";
 
         const std::string payload =
-                "JH Toolkit serio: binary-text transport";
+                "JH-Toolkit serio: binary-text transport";
 
         const auto *raw =
                 reinterpret_cast<const std::uint8_t *>(payload.data());

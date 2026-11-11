@@ -1,4 +1,4 @@
-# 🍯 **JH Toolkit — Serialization I/O Module Overview**
+# 🍯 **JH-Toolkit — Serialization I/O Module Overview**
 
 📁 **Module:** `<jh/serio>`  
 📦 **Namespace:** `jh::serio`  
@@ -16,7 +16,7 @@
 
 ## 🧭 Introduction
 
-`jh::serio` provides the **Serialization I/O utilities** of the JH Toolkit.
+`jh::serio` provides the **Serialization I/O utilities** of the JH-Toolkit.
 
 The module contains **standalone codecs** for transforming data between
 representations, with a focus on:

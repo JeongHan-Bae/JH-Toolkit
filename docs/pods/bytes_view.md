@@ -1,4 +1,4 @@
-# 🧊 **JH Toolkit — `jh::pod::bytes_view` API Reference**
+# 🧊 **JH-Toolkit — `jh::pod::bytes_view` API Reference**
 
 📁 **Header:** `<jh/pods/bytes_view.h>`  
 📦 **Namespace:** `jh::pod`  

@@ -1,4 +1,4 @@
-# 🧩 **JH Toolkit — Conceptual Module Overview**
+# 🧩 **JH-Toolkit — Conceptual Module Overview**
 
 📁 **Module:** `<jh/concepts>`  
 📦 **Namespace** `jh::concepts`  
@@ -20,14 +20,14 @@
 
 ## 🧭 Introduction
 
-`jh::concepts` defines the **behavioral foundation layer** of the JH Toolkit —
+`jh::concepts` defines the **behavioral foundation layer** of the JH-Toolkit —
 a centralized system for **duck-typed semantic recognition**.
 
 Unlike functional modules such as `jh::async`, which extend features outward,
 `jh::concepts` evolves *inward* — continuously absorbing and unifying
 behavioral models across the entire toolkit.
 
-Its design follows JH Toolkit's **duck typing philosophy**:
+Its design follows JH-Toolkit's **duck typing philosophy**:
 
 > 🦆 *"If a type behaves like one, it is treated as one."*
 
@@ -66,7 +66,7 @@ iteration, range adaptation, container construction, structural hashing, and syn
 
 ## 🧩 Module Summary
 
-`jh::concepts` forms the JH Toolkit's **behavioral semantics layer** —
+`jh::concepts` forms the JH-Toolkit's **behavioral semantics layer** —
 an ever-growing foundation that recognizes types by *behavior* rather than *declaration*.
 
 ---

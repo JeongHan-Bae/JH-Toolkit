@@ -1,4 +1,4 @@
-# 🧬 **JH Toolkit — `jh::typed::null_mutex` API Reference**
+# 🧬 **JH-Toolkit — `jh::typed::null_mutex` API Reference**
 
 📁 **Header:** `<jh/typing/null_mutex.h>`  
 📦 **Namespace:** `jh::typed`  

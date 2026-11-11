@@ -1,4 +1,4 @@
-# 🧩 **JH Toolkit — `jh::concepts::mutex_like` API Reference**
+# 🧩 **JH-Toolkit — `jh::concepts::mutex_like` API Reference**
 
 📁 **Header:** `<jh/conceptual/mutex_like.h>`  
 📦 **Namespace:** `jh::concepts`  
@@ -17,7 +17,7 @@
 ### 🧭 Submodule Notice
 
 * `jh::concepts::mutex_like` defines the **foundational synchronization concept layer**
-  that governs all *lock-like* types within the JH Toolkit.
+  that governs all *lock-like* types within the JH-Toolkit.
 * It provides **compile-time validation** for mutex semantics —
   exclusive, shared, timed, and reentrant —  
   allowing structural or custom synchronization primitives
@@ -162,7 +162,7 @@ Satisfied if either `recursive_mutex` or `reentrant_mutex` holds.
 ## 🧩 Summary
 
 * The **`mutex_like` model** defines the complete conceptual lattice
-  for mutex-style synchronization in the JH Toolkit.
+  for mutex-style synchronization in the JH-Toolkit.
 * It provides **strong static contracts** ensuring semantic validity
   of exclusive, shared, timed, and reentrant locks.
 * Through trait registries, it enables **zero-cost structural detection**

@@ -1,4 +1,4 @@
-# 🌀  **JH Toolkit — Asynchronous Module Overview**
+# 🌀  **JH-Toolkit — Asynchronous Module Overview**
 
 📁 **Module:** `<jh/async>`  
 📦 **Namespace** `jh::async`  

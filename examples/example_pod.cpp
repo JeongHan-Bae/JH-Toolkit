@@ -4,7 +4,7 @@
  *
  * <p>
  * This file demonstrates practical, docs-aligned usage of the POD module in
- * JH Toolkit. It focuses on layout-stable data contracts, non-owning views,
+ * JH-Toolkit. It focuses on layout-stable data contracts, non-owning views,
  * and deterministic byte-level behavior.
  * </p>
  *

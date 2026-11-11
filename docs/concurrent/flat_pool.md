@@ -1,4 +1,4 @@
-# 🎍 **JH Toolkit — `jh::conc::flat_pool` API Reference**
+# 🎍 **JH-Toolkit — `jh::conc::flat_pool` API Reference**
 
 📁 **Header:** `<jh/concurrent/flat_pool.h>`  
 📦 **Namespace:** `jh::conc`  

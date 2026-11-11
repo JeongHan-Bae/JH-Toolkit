@@ -1,4 +1,4 @@
-# ⏱️ **JH Toolkit — `jh::sync::const_lock` API Reference**
+# ⏱️ **JH-Toolkit — `jh::sync::const_lock` API Reference**
 
 📁 **Header:** `<jh/synchronous/const_lock.h>`  
 📦 **Namespace:** `jh::sync`  

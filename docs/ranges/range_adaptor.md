@@ -1,4 +1,4 @@
-# 🗂️ **JH Toolkit — `jh::ranges::range_adaptor` API Reference**
+# 🗂️ **JH-Toolkit — `jh::ranges::range_adaptor` API Reference**
 
 📁 **Header:** `<jh/ranges/range_adaptor.h>`  
 📦 **Namespace:** `jh::ranges`  

@@ -1,4 +1,4 @@
-# 🧊 **JH Toolkit — POD Module Overview**
+# 🧊 **JH-Toolkit — POD Module Overview**
 
 📁 **Module:** `<jh/pod>`  
 📦 **Namespace:** `jh::pod`  
@@ -16,7 +16,7 @@
 
 ## 🧭 Introduction
 
-`jh::pod` defines the **Plain Old Data layer** of the JH Toolkit —  
+`jh::pod` defines the **Plain Old Data layer** of the JH-Toolkit —<br>
 a collection of **layout-stable, trivially copyable** types designed
 for predictable memory modeling and zero-overhead data handling.
 
@@ -111,7 +111,7 @@ and which should be constructed using **factory helpers (`make_*`)** for clarity
 * `jh::pod` provides a **layout-deterministic, ABI-stable** system
   for memory-safe Plain Old Data objects.  
 * It is the **foundation for binary I/O and low-level data handling**
-  throughout the JH Toolkit.  
+  throughout the JH-Toolkit.<br>
 * The module is **functionally complete** —  
   no major structural extensions are planned beyond 1.4.0.
 
@@ -141,7 +141,7 @@ and which should be constructed using **factory helpers (`make_*`)** for clarity
 > 💡 Fixed-width integers remain for fields whose width is part of a binary format, bit representation, or shared counter.
 > Normalized `std::size_t` usage prepares the API for planned WASM32 support; full WASM32 support is not yet validated.
 >
-> * For **runtime memory lengths, capacities, and indices**, JH Toolkit uses
+> * For **runtime memory lengths, capacities, and indices**, JH-Toolkit uses
 >   `std::size_t` to match addressable storage and standard-library containers.
 > * Compile-time bounds may use narrower non-type template parameters where the API defines an explicit maximum.
 > * For **generic interfaces, structured bindings, and STL interop**,

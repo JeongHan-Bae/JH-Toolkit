@@ -1,4 +1,4 @@
-# 🔮 **JH Toolkit — `platform` Reference**
+# 🔮 **JH-Toolkit — `platform` Reference**
 
 📁 **Header:** `<jh/macros/platform.h>`  
 📦 **Namespace:** `/` *(pure macro scope)*  
@@ -15,14 +15,14 @@
 > **Note:**  
 > `platform` is a **submodule**, not a class or namespace.  
 > It defines **compiler-, architecture-, OS-, and endianness-detection macros**
-> used globally across the entire JH Toolkit.  
+> used globally across the entire JH-Toolkit.<br>
 > This layer ensures consistent behavior and ABI safety before any other header is parsed.
 
 ---
 
 ## 🏷️ Overview
 
-`platform.h` is the **foundation of all environment detection** within the JH Toolkit.  
+`platform.h` is the **foundation of all environment detection** within the JH-Toolkit.<br>
 It validates the compiler and detects the target architecture before platform-specific code is selected.
 
 This submodule provides:
@@ -41,7 +41,7 @@ It is **implicitly included** by all internal components.
 > Therefore, redefinition with the **same value** is harmless and does not violate ODR.  
 > However, redefining them with **different values** indicates a deeper environment inconsistency —
 > in such cases, **behavior is undefined** and the issue lies within the toolchain itself,
-> not within the JH Toolkit.
+> not within the JH-Toolkit.
 
 ---
 

@@ -19,12 +19,12 @@
 /**
  * @file uri.h
  * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
- * @brief High-level URI percent-encoding and decoding interface for the JH Toolkit.
+ * @brief High-level URI percent-encoding and decoding interface for the JH-Toolkit.
  *
  * <p>
  * This header provides a modern, safe, and portable implementation of
  * <b>URI percent-encoding</b> and <b>percent-decoding</b>.
- * It belongs to the <b>JH Toolkit Serialization I/O module</b>
+ * It belongs to the <b>JH-Toolkit Serialization I/O module</b>
  * (<code>jh::serio</code>) and provides text-safe encoding utilities
  * for URI and URL components.
  * </p>
@@ -52,7 +52,7 @@
  * <p></p>
  * @note
  * This header participates in the <b>Dual-Mode Header</b> system of the
- * JH Toolkit.
+ * JH-Toolkit.
  * <ul>
  *   <li>Linked through <b>jh::jh-toolkit</b> &mdash; the module behaves
  *       as a <b>header-only</b> implementation compiled in user

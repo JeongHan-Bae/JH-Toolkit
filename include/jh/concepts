@@ -1,6 +1,6 @@
 /**
  * @file concepts
- * @brief Forward-aggregator header for <code>jh::concepts</code> &mdash; the behavioral foundation layer of the JH Toolkit.
+ * @brief Forward-aggregator header for <code>jh::concepts</code> &mdash; the behavioral foundation layer of the JH-Toolkit.
  *
  * <p>
  * This header serves as the unified include point for all compile-time concepts and trait
@@ -27,7 +27,7 @@
  *
  * <h4>Design Note</h4>
  * <p>
- * <code>jh::concepts</code> establishes the meta-structural layer of the JH Toolkit,
+ * <code>jh::concepts</code> establishes the meta-structural layer of the JH-Toolkit,
  * bridging low-level type traits with high-level behavioral contracts. It provides
  * constexpr-friendly, SFINAE-free, and C++20-concept-driven abstractions to ensure
  * expressive and safe compile-time reasoning across the entire codebase.
@@ -65,11 +65,11 @@
 #include "jh/conceptual/tuple_like.h"
 
 /**
- * @brief Behavioral concept namespace of the JH Toolkit.
+ * @brief Behavioral concept namespace of the JH-Toolkit.
  *
  * <p>
  * <code>jh::concepts</code> defines the <strong>behavioral foundation layer</strong>
- * of the JH Toolkit. It contains C++20 concepts and associated traits used to
+ * of the JH-Toolkit. It contains C++20 concepts and associated traits used to
  * recognize types by <em>observable behavior</em> rather than inheritance,
  * nominal typing, or explicit base classes.
  * </p>

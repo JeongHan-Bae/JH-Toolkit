@@ -8,7 +8,8 @@
   <span style="font-size: x-large;">JH-Tiny-Test</span>
 </h1>
 
-<font size="4"><code>jh-tiny-test</code></font> is a small C++20 runtime test library in the `jh::test::tiny_test` namespace. Define application tests under `test::tiny_test` and import the library API there. Test and session identities use `jh::meta::TStr`. Defining the same explicit specialization twice in one translation unit is a compile error. At runtime, names registered more than once in the same executable are ambiguous and make the global runner fail before running tests. Separate executable entry points have independent registries and may reuse names. Duplicate test names within a session and duplicate names in a suite are rejected by `static_assert`.
+<!-- CMake target name; keep it distinct from the public project name. -->
+<font size="4"><code>jh-tiny-test</code></font> is a small C++20 TDD framework for runtime tests, including unit and multi-module tests. Its API is in the `jh::test::tiny_test` namespace.
 
 ## Installation
 
@@ -29,7 +30,7 @@ find_package(jh-tiny-test CONFIG REQUIRED)
 target_link_libraries(my_tests PRIVATE jh::test::jh-tiny-test)
 ```
 
-When using FetchContent, set `SOURCE_SUBDIR tiny-test`. Both this package and `jh-simple-cucumber` export their CMake targets under `jh::test::`.
+When using FetchContent, set `SOURCE_SUBDIR tiny-test`. Both `jh-tiny-test` and `jh-simple-cucumber` export their CMake targets under `jh::test::`.
 
 ## Usage
 
@@ -83,6 +84,8 @@ namespace test {
 `tiny_main` accepts `--list`, a session name, or a test name. With no selection, it runs the full suite. `format_report` builds report text without printing it.
 
 For static registration across translation units, create one session object in each translation unit that owns a session, using a unique session and test name across the executable. Each object registers its explicit session specialization with the global runner. Define `TINY_TEST_MAIN` before including the header in exactly one translation unit to generate `main`, which calls the global `tiny_main(argc, argv)` overload. The runner does not inspect application namespaces; registrations come from the explicit session objects.
+
+Test and session identities use `jh::meta::TStr`. Duplicate explicit specializations in one translation unit fail compilation, as do duplicate test names in a session or duplicate names in a suite. Names registered more than once in an executable are ambiguous and cause the global runner to fail before running tests. Separate executables have independent registries and may reuse names.
 
 ## Self-checks
 

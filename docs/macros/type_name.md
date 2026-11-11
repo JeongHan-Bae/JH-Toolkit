@@ -1,4 +1,4 @@
-# 🔮 **JH Toolkit — `jh::macro::type_name` Reference**
+# 🔮 **JH-Toolkit — `jh::macro::type_name` Reference**
 
 📁 **Header:** `<jh/macros/type_name.h>`  
 📦 **Namespace:** `jh::macro`  

@@ -5,7 +5,7 @@
  * <p>
  * This header provides a flattened entry point to <code>jh::sync::ipc</code>
  * under the simplified namespace <code>jh::ipc</code>.
- * In JH Toolkit, IPC stands for <b>InterProcess Coordination</b>.
+ * In JH-Toolkit, IPC stands for <b>InterProcess Coordination</b>.
  * </p>
  *
  * <pre><code>#include &lt;jh/ipc&gt;</code></pre>

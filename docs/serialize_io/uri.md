@@ -1,4 +1,4 @@
-# 🍯 **JH Toolkit — `jh::serio::uri` API Reference**
+# 🍯 **JH-Toolkit — `jh::serio::uri` API Reference**
 
 📁 **Header:** `<jh/serialize_io/uri.h>`  
 📦 **Namespace:** `jh::serio::uri`  
@@ -17,7 +17,7 @@
 ## 🧭 Introduction
 
 `jh::serio::uri` provides the **URI percent-encoding and decoding layer**
-of the JH Toolkit — a safe and portable implementation of **RFC 3986
+of the JH-Toolkit — a safe and portable implementation of **RFC 3986
 percent-encoding** designed for reliable transport of textual data
 through URI/URL components.
 
@@ -304,6 +304,6 @@ Its dual API design allows developers to choose between:
 | `encode_safe()` | ✔ UTF-8 + control char check | User input        |
 | `decode_safe()` | ✔ Full validation            | Web/HTTP data     |
 
-The module integrates seamlessly with the JH Toolkit serialization
+The module integrates seamlessly with the JH-Toolkit serialization
 ecosystem and complements binary codecs such as
 `jh::serio::base64` and `jh::serio::base64url`.

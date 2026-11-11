@@ -1,4 +1,4 @@
-# 🗂️ **JH Toolkit — Ranges Repository Overview**
+# 🗂️ **JH-Toolkit — Ranges Repository Overview**
 
 📦 **Namespace:** `jh::ranges`  
 📍 **Location:** `jh/ranges/`  
@@ -15,14 +15,14 @@
 
 ## 🧭 Introduction
 
-`jh::ranges` is the **core repository** of the JH Toolkit’s range ecosystem.  
+`jh::ranges` is the **core repository** of the JH-Toolkit’s range ecosystem.<br>
 It defines the **foundational range infrastructure** that unifies:
 
 * the **view adaptor layer** (`<jh/views>`), and
 * the **semantic extension layer** (`<jh/ranges_ext>`).
 
 It is a modular range library providing view and extension interoperability
-across the entire JH Toolkit.
+across the entire JH-Toolkit.
 
 The library adapts JH sequences to standard ranges and supplies C++20
 fallbacks for selected C++23 facilities. Each adaptor documents its own
@@ -48,7 +48,7 @@ requires a source and any applied callable to support repeatable observation.
 
 ## 🧩 Structural Overview
 
-The `jh::ranges` repository represents the **complete range model** of JH Toolkit:
+The `jh::ranges` repository represents the **complete range model** of JH-Toolkit:
 
 | Layer                    | Representative Components                                       | Purpose and Design Role                                            |
 |--------------------------|-----------------------------------------------------------------|--------------------------------------------------------------------|

@@ -7,7 +7,7 @@ These instructions apply to the whole repository and to every coding agent worki
 - `include/jh/`: public C++ headers and library API; the project is fully header-only.
 - `src/`: precompiled translation units and helpers for template instantiation, not the general implementation home.
 - `tests/static/`: compile-time checks driven by CMake.
-- `tests/tdd/unit/`, `tests/tdd/composed/`: TinyTest unit and multi-module tests; keep one executable and CTest entry per test module.
+- `tests/tdd/unit/`, `tests/tdd/composed/`: tiny-test unit and multi-module tests; keep one executable and CTest entry per test module.
 - `tests/bdd/`: behavior scenarios driven by simple-cucumber.
 - `simple-cucumber/`: Gherkin/BDD test support.
 - `examples/`: usage examples; `docs/`: user and API documentation.
@@ -18,7 +18,7 @@ Put compile-time assertions and compile-pass/fail checks under `tests/static/`; 
 
 ## Header naming
 
-- The TinyTest and simple-cucumber test frameworks use `.hpp` for all code headers, including aggregate headers.
+- The tiny-test and simple-cucumber test frameworks use `.hpp` for all code headers, including aggregate headers.
 - JH-Toolkit core headers under `include/jh/` follow an STL-style convention: implementation headers use `.h`, while aggregate headers have no extension.
 - Keep each framework's header naming convention consistent when adding or moving headers.
 

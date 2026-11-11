@@ -7,11 +7,11 @@
   <span style="font-size: x-large;">&nbsp;</span>
   <span>
     <img src="assets/img/skill.svg"
-         alt="JH Toolkit Skill Icon"
+         alt="JH-Toolkit Skill Icon"
          width="72" valign="middle">
   </span>
   <span style="font-size: x-large;">&nbsp;</span>
-  <span style="font-size: x-large;">JH Toolkit</span>
+  <span style="font-size: x-large;">JH-Toolkit</span>
 </h1>
 
 <p align="center">
@@ -88,7 +88,7 @@ performance, and enhanced security.
 
 <p align="center" style="font-size: medium;">
   <em>Oree</em>, the green-headed duck whose name comes from the Korean word "오리",<br>
-  represents the <strong>JH Toolkit</strong>'s duck-typing approach:<br>
+  represents the <strong>JH-Toolkit</strong>'s duck-typing approach:<br>
   <strong>if it behaves like a duck, it is a duck.</strong>
 </p>
 
@@ -142,7 +142,7 @@ and supporting reliable system design.
 > hidden dynamic metadata.  
 > Finally, modern C++ operates naturally in **no-RTTI environments**, does not require additional dynamic type data, and
 > avoids bloated runtime infrastructures. When combined with specialized, allocation-aware data structures (such as
-> those provided by JH Toolkit), it enables low fragmentation, compact memory layouts, and predictable resource
+> those provided by JH-Toolkit), it enables low fragmentation, compact memory layouts, and predictable resource
 > usage—properties
 > that are essential for long-running, production-grade software systems.
 
@@ -161,7 +161,7 @@ For complete build instructions, supported toolchains, component installation, a
 
 The JH-Toolkit library has **no runtime dependencies**.
 Its **build requirement** is a conforming **C++20 standard library**.
-Repository tests use CMake compile checks, TinyTest unit/composed tests, and simple-cucumber behavior scenarios.
+Repository tests use CMake compile checks, tiny-test unit/composed tests, and simple-cucumber behavior scenarios.
 For version details, see: [Dependencies](dependencies.toml).
 
 ---
@@ -361,7 +361,7 @@ quickly locate relevant functionality and then explore it at the desired depth.
 
 ## How to Read the JH-Toolkit Project
 
-The **primary source of truth** for understanding JH Toolkit is its **Doxygen documentation**.
+The **primary source of truth** for understanding JH-Toolkit is its **Doxygen documentation**.
 
 All semantic guarantees, design intent, usage constraints, and documented limitations are expressed through
 Doxygen comments embedded directly in the public headers under `include/`.
@@ -492,7 +492,7 @@ reading experience.
 
 ## Engineering-Oriented Scope and Intent
 
-JH Toolkit is **not designed solely for final production code**.
+JH-Toolkit is **not designed solely for final production code**.
 
 A portion of its components are intentionally built to **empower early-stage prototyping**, lowering cognitive load
 while guiding users toward correct and scalable designs.
@@ -532,7 +532,7 @@ guidance**.
 APIs are shaped to encourage patterns that scale better in real systems, nudging users toward more disciplined and
 production-oriented practices.
 
-In summary, **JH Toolkit is an engineering-first toolkit**.
+In summary, **JH-Toolkit is an engineering-first toolkit**.
 It is oriented toward practice rather than language experimentation, with the explicit goal of helping C++ developers:
 
 * internalize engineering-oriented thinking,
@@ -550,10 +550,10 @@ sustainably.
        alt="Python Logo"
        height="28" valign="middle">
   </span>
-  <span style="font-size: large;">Pythonic Aesthetics and Philosophy in JH Toolkit</span>
+  <span style="font-size: large;">Pythonic Aesthetics and Philosophy in JH-Toolkit</span>
 </h2>
 
-<p style="font-size: medium;"><strong>JH Toolkit</strong> brings Pythonic expressiveness and clarity into modern <strong>C++20</strong> design.</p>
+<p style="font-size: medium;"><strong>JH-Toolkit</strong> brings Pythonic expressiveness and clarity into modern <strong>C++20</strong> design.</p>
 
 <ol style="font-size: medium;">
   <li><strong>Duck Typing:</strong> Behavior matters more than declarations.</li>

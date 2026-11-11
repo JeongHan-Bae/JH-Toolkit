@@ -538,7 +538,7 @@ namespace example {
  * <p>
  * In many engineering scenarios, immutable strings are shared across
  * subsystems, caches, registries, or long-lived configuration objects.
- * For this purpose, the JH Toolkit provides two convenience helpers
+ * For this purpose, the JH-Toolkit provides two convenience helpers
  * that return:
  * </p>
  *
@@ -591,8 +591,8 @@ namespace example {
         // The hash is based on std::hash<std::string_view> of the string content,
         // The compiler should be able to use std::hash<std::string_view>, unstable compiler versions
         // such as LLVM 17 and 18 may not be able to link to std::hash<std::string_view> normally,
-        // LLVM 20 is recommended as the best LLVM version for use with the JH Toolkit, (LLVM 16 also works)
-        // for best compatibility with the JH Toolkit.
+        // LLVM 20 is recommended as the best LLVM version for use with the JH-Toolkit, (LLVM 16 also works)
+        // for best compatibility with the JH-Toolkit.
 
         std::cout << "\n===== shared immutable_str factory demo =====\n\n";
 
@@ -666,7 +666,7 @@ namespace example {
  * @brief Deduplication using <code>jh::observe_pool&lt;jh::immutable_str&lt;&gt;&gt;</code>.
  *
  * <p>
- * The JH Toolkit provides <code>jh::observe_pool&lt;T&gt;</code> as a
+ * The JH-Toolkit provides <code>jh::observe_pool&lt;T&gt;</code> as a
  * structural deduplication facility.
  * </p>
  *
@@ -774,7 +774,7 @@ namespace example {
  * @brief Transparent hashing and equality for <code>shared_str_ptr</code>.
  *
  * <p>
- * The JH Toolkit provides:
+ * The JH-Toolkit provides:
  * </p>
  *
  * <ul>

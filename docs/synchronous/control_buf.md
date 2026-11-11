@@ -1,4 +1,4 @@
-# ⏱️ **JH Toolkit — `jh::sync::control_buf` API Reference**
+# ⏱️ **JH-Toolkit — `jh::sync::control_buf` API Reference**
 
 📁 **Header:** `<jh/synchronous/control_buf.h>`  
 📦 **Namespace:** `jh::sync`  

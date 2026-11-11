@@ -1,4 +1,4 @@
-# 🧩 **JH Toolkit — POD Concepts Overview**
+# 🧩 **JH-Toolkit — POD Concepts Overview**
 
 📁 **Header:** `<jh/conceptual/pod_concepts.h>`  
 📦 **Namespace:** `jh::concepts`  

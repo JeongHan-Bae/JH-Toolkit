@@ -24,7 +24,7 @@
  * <h3>Philosophy Summary</h3>
  *
  * <p>
- * Pool families in JH Toolkit separate two identity models:
+ * Pool families in JH-Toolkit separate two identity models:
  * </p>
  *
  * <ol>

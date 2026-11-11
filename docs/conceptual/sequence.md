@@ -1,4 +1,4 @@
-# 🧩 **JH Toolkit — `jh::concepts::sequence` API Reference**
+# 🧩 **JH-Toolkit — `jh::concepts::sequence` API Reference**
 
 📁 **Header:** `<jh/conceptual/sequence.h>`  
 📦 **Namespace:** `jh::concepts`  
@@ -25,7 +25,7 @@
 
 ## 🧩 Introduction
 
-This header defines the **semantic concept of a "sequence"** within the JH Toolkit —
+This header defines the **semantic concept of a "sequence"** within the JH-Toolkit —
 a type that can be traversed through `begin()` and `end()` in a stable, repeatable manner,
 without assuming it must behave like a full `std::ranges::range`.
 

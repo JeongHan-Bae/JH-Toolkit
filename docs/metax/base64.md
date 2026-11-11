@@ -1,4 +1,4 @@
-# ⚗️ **JH Toolkit — `jh::meta::base64` API Reference**
+# ⚗️ **JH-Toolkit — `jh::meta::base64` API Reference**
 
 📁 **Header:** `<jh/metax/base64.h>`  
 📦 **Namespace:** `jh::meta`  

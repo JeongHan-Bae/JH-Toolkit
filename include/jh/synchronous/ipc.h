@@ -21,7 +21,7 @@
  * @brief Aggregated header for InterProcess Coordination primitives under <code>jh::sync</code>.
  *
  * <p>
- * In JH Toolkit, IPC means <b>InterProcess Coordination</b>, not a message-transport framework.
+ * In JH-Toolkit, IPC means <b>InterProcess Coordination</b>, not a message-transport framework.
  * This header collects all process-level coordination primitives into a single entry point:
  * </p>
  *
@@ -99,7 +99,7 @@
  * @brief Synchronous inter-process coordination primitives.
  *
  * The <code>jh::sync::ipc</code> namespace defines the complete set of OS-backed,
- * process-shared coordination primitives in JH Toolkit.
+ * process-shared coordination primitives in JH-Toolkit.
  * <br>
  * IPC here explicitly means <b>InterProcess Coordination</b>:
  * synchronization plus shared pure data, not high-level object sharing or messaging.

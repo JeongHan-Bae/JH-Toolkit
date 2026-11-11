@@ -1,4 +1,4 @@
-# 🌗 **JH Toolkit — `jh::ranges::collect` API Reference**
+# 🌗 **JH-Toolkit — `jh::ranges::collect` API Reference**
 
 📁 **Header:** `<jh/ranges/collect.h>`  
 📦 **Namespace:** `jh::ranges`  

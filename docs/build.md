@@ -1,6 +1,6 @@
 # 🧰 Build & Platform Guide
 
-This document provides a complete reference for building **JH Toolkit**, including supported toolchains, CMake
+This document provides a complete reference for building **JH-Toolkit**, including supported toolchains, CMake
 targets, component installation, FetchContent usage, and platform-specific notes.
 
 [![Back to README](https://img.shields.io/badge/%20Back%20to%20README-blue?style=for-the-badge)](../README.md)
@@ -15,7 +15,7 @@ targets, component installation, FetchContent usage, and platform-specific notes
 |------------------------------|-----------------|------------------------------------------------|
 | **C++**                      | 20              | Mandatory                                      |
 | **CMake (consumer)**         | **3.14+**       | Required when using `find_package(jh-toolkit)` |
-| **CMake (building toolkit)** | **3.21+**       | Required when building JH Toolkit itself       |
+| **CMake (building toolkit)** | **3.21+**       | Required when building JH-Toolkit itself       |
 | **Git**                      | Latest          | Required for Debug / FetchContent builds       |
 | **System ABI**               | Itanium C++ ABI | `std::size_t` follows target width; WASM32 support is planned |
 
@@ -66,7 +66,7 @@ git clone https://github.com/JeongHan-Bae/jh-toolkit.git
 git clone --branch 1.4.x-LTS --depth=1 https://github.com/JeongHan-Bae/jh-toolkit.git
 ```
 
-👉 Or download from: **[JH Toolkit Latest LTS Release](https://github.com/JeongHan-Bae/JH-Toolkit/releases/latest)**
+👉 Or download from: **[JH-Toolkit Latest LTS Release](https://github.com/JeongHan-Bae/JH-Toolkit/releases/latest)**
 
 ---
 
@@ -171,7 +171,7 @@ do not inherit `-fno-rtti`.
 
 ## 🧠 Notes on Precompiled Translation Units & Platform Semantics
 
-JH Toolkit is **primarily a template-based library**.
+JH-Toolkit is **primarily a template-based library**.
 Most components are fully defined in headers and instantiated at the point of use.
 
 As a result, the number of precompiled translation units (TUs) is intentionally minimal.
@@ -278,11 +278,11 @@ but limitations imposed by the underlying runtime environment.
 
 ### Platform Recommendation
 
-If your project relies on the **full behavioral guarantees of JH Toolkit**:
+If your project relies on the **full behavioral guarantees of JH-Toolkit**:
 
 * **Linux or macOS** are strongly recommended as final deployment platforms
 
-> LLVM-Clang 20 is the most stable, smartest compiler for JH Toolkit on both Linux and macOS.  
+> LLVM-Clang 20 is the most stable, smartest compiler for JH-Toolkit on both Linux and macOS.<br>
 > GCC 13+ is also fully supported on Linux, but may produce less optimal code in some cases.  
 > If you work with Linux in a virtualized environment and LLVM 20 is available, it is recommended to use it instead of
 > GCC.  
@@ -325,7 +325,7 @@ They do **not** require different usage patterns at the CMake level.
 
 ### Installed Package Usage
 
-After installing JH Toolkit from a source build, consume it as a standard CMake package:
+After installing JH-Toolkit from a source build, consume it as a standard CMake package:
 
 ```cmake
 find_package(jh-toolkit REQUIRED)
@@ -344,7 +344,7 @@ The specific internal composition is resolved automatically.
 
 ### FetchContent Usage (1.4.0+)
 
-Starting from **v1.4.0**, JH Toolkit can also be consumed directly via
+Starting from **v1.4.0**, JH-Toolkit can also be consumed directly via
 `FetchContent`, without prior installation:
 
 ```cmake
@@ -410,7 +410,7 @@ target_link_libraries(my_project PRIVATE jh::jh-toolkit-static)   # Available wi
 
 ### ⚙️ Motivation & Advantages
 
-With **dual-mode headers**, JH Toolkit eliminates code duplication between header-only and compiled modes.
+With **dual-mode headers**, JH-Toolkit eliminates code duplication between header-only and compiled modes.
 
 > 🧠 **Write once, use twice.**
 
@@ -506,4 +506,4 @@ g++ -std=c++20 -I/usr/local/include main.cpp -o test
 
 ---
 
-> 🚀 Build with confidence — JH Toolkit is tested, modern, and designed for clarity.
+> 🚀 Build with confidence — JH-Toolkit is tested, modern, and designed for clarity.

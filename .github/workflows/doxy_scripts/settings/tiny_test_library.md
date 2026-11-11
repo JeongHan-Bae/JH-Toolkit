@@ -1,10 +1,11 @@
-@page tiny_test_library TinyTest
+@page tiny_test_library JH-Tiny-Test
 
-# TinyTest
+# JH-Tiny-Test
 
 Version: __TINY_TEST_VERSION__
 
-TinyTest is the repository's lightweight C++20 test framework. Its public API is in
+JH-Tiny-Test is a lightweight C++20 TDD framework for runtime tests, including
+unit and multi-module tests. Its public API is in
 `tiny-test/include/jh/test/tiny_test/`.
 
 - [Usage and installation guide](https://github.com/JeongHan-Bae/JH-Toolkit/blob/main/tiny-test/README.md)

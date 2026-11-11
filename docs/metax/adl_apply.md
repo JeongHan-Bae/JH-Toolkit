@@ -1,4 +1,4 @@
-# ⚗️ **JH Toolkit — `jh::meta::adl_apply` API Reference**
+# ⚗️ **JH-Toolkit — `jh::meta::adl_apply` API Reference**
 
 📁 **Header:** `<jh/metax/adl_apply.h>`  
 📦 **Namespace:** `jh::meta`  

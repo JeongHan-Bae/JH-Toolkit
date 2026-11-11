@@ -1,4 +1,4 @@
-# 🧬 **JH Toolkit — Typing Subsystem Overview**
+# 🧬 **JH-Toolkit — Typing Subsystem Overview**
 
 📁 **Module:** `<jh/typed>`  
 📦 **Namespace:** `jh::typed`  
@@ -17,7 +17,7 @@
 ## 🧭 Introduction
 
 `jh::typed` defines the **Typing subsystem** —  
-a group of components related to **type modeling** and **meta-programming primitives** in the JH Toolkit.
+a group of components related to **type modeling** and **meta-programming primitives** in the JH-Toolkit.
 
 This subsystem provides minimal, header-only utilities that support
 type traits, semantic placeholders, and structural typing used across generic programming contexts.

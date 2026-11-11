@@ -22,7 +22,7 @@
  * @author JeongHan-Bae <a href="mailto:mastropseudo&#64;gmail.com">&lt;mastropseudo\@gmail.com&gt;</a>
  *
  * <p>
- * This header provides the JH Toolkit's sequence-aware
+ * This header provides the JH-Toolkit's sequence-aware
  * <code>jh::ranges::views::zip</code> adaptor. It converts
  * <code>jh::concepts::sequence</code> inputs to standard ranges before
  * constructing <code>jh::ranges::zip_view</code>.

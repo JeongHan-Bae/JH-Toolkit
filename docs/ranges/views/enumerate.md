@@ -1,4 +1,4 @@
-# 🔭 **JH Toolkit — `jh::ranges::views::enumerate` API Reference**
+# 🔭 **JH-Toolkit — `jh::ranges::views::enumerate` API Reference**
 
 📁 **Header:** `<jh/ranges/views/enumerate.h>`  
 📦 **Namespace:** `jh::ranges::views`  

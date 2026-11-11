@@ -1,4 +1,4 @@
-# ⚗️ **JH Toolkit — `jh::meta::flatten_proxy` API Reference**
+# ⚗️ **JH-Toolkit — `jh::meta::flatten_proxy` API Reference**
 
 📁 **Header:** `<jh/metax/flatten_proxy.h>`  
 📦 **Namespace:** `jh::meta`  
@@ -100,7 +100,7 @@ reference elements still alias their sources.
 
 ### 🧩 Tuple-like Concept and Recognized Types
 
-In JH Toolkit, **tuple-likeness** is defined purely by *structure declaration*,
+In JH-Toolkit, **tuple-likeness** is defined purely by *structure declaration*,
 not by inheritance or explicit tagging.  
 
 A type is considered `tuple_like` **if and only if** it provides:
@@ -115,7 +115,7 @@ Once these are present, the type explicitly declares
 
 ---
 
-#### ✅ Tuple-like types in JH Toolkit
+#### ✅ Tuple-like types in JH-Toolkit
 
 Within the standard layer (`jh` and `std` namespaces):
 
@@ -261,7 +261,7 @@ static_assert(flat == std::tuple{1, 2, 3});
 ## 🧩 Summary
 
 `jh::meta::flatten_proxy` provides the **compile-time flattening infrastructure**
-for tuple-like meta utilities in JH Toolkit.
+for tuple-like meta utilities in JH-Toolkit.
 
 It ensures deterministic, constexpr-resolved flattening
 and a consistent structural interface for meta-level tuple manipulation.

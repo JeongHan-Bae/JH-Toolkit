@@ -1,4 +1,4 @@
-# 🌀 **JH Toolkit — `jh::async::slot` System Reference**
+# 🌀 **JH-Toolkit — `jh::async::slot` System Reference**
 
 📁 **Header:** `<jh/asynchronous/slot.h>`  
 📦 **Namespace:** `jh::async`  

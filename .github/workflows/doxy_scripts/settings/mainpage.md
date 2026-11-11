@@ -8,8 +8,8 @@ library below for its purpose, public headers, and usage guide.
 | Library | Version | Start here |
 | --- | --- | --- |
 | JH-Toolkit | __TOOLKIT_VERSION__ | @ref toolkit_library "Core toolkit and public API" |
-| JH Simple Cucumber | __CUCUMBER_VERSION__ | @ref cucumber_library "Typed BDD steps and Gherkin integration" |
-| TinyTest | __TINY_TEST_VERSION__ | @ref tiny_test_library "Lightweight C++ test framework" |
+| JH-Simple-Cucumber | __CUCUMBER_VERSION__ | @ref cucumber_library "Typed BDD steps and Gherkin integration" |
+| JH-Tiny-Test | __TINY_TEST_VERSION__ | @ref tiny_test_library "C++ TDD test framework" |
 
 The API navigation includes the public headers of all three libraries.
 

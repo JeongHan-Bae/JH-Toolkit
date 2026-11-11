@@ -1,4 +1,4 @@
-# 🍯 JH Toolkit — `jh::serio::huffman` API Reference
+# 🍯 JH-Toolkit — `jh::serio::huffman` API Reference
 
 📁 **Header:** `<jh/serialize_io/huffman.h>`  
 📦 **Namespace:** `jh::serio`  

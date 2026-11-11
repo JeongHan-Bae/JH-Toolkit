@@ -1,4 +1,4 @@
-# 🌗 **JH Toolkit — `jh::ranges::to` API Reference**
+# 🌗 **JH-Toolkit — `jh::ranges::to` API Reference**
 
 📁 **Header:** `<jh/ranges/to.h>`  
 📦 **Namespace:** `jh::ranges`  
@@ -216,7 +216,7 @@ an allocation and a traversal, so this is a workload-dependent choice.
 * **Auditable construction** — the selected path shows where moves and copies may occur.
 
 The C++23 [`std::ranges::to`](https://eel.is/c++draft/range.utility.conv.to)
-also specifies an ordered set of construction and insertion cases. JH Toolkit
+also specifies an ordered set of construction and insertion cases. JH-Toolkit
 places insertion and tuple reconstruction in `collect`, and documents the
 priority of its `to` paths above. Neither interface guarantees a particular
 runtime cost for the selected container's constructor.

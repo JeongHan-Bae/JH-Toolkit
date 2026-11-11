@@ -1,4 +1,4 @@
-# 🎍 **JH Toolkit — `jh::conc::occ_box` API Reference**
+# 🎍 **JH-Toolkit — `jh::conc::occ_box` API Reference**
 
 📁 **Header:** `<jh/concurrent/occ_box.h>`  
 📦 **Namespace:** `jh::conc`  

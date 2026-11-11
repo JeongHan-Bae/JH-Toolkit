@@ -1,4 +1,4 @@
-# ⚗️ **JH Toolkit — `jh::meta::lookup_map` API Reference**
+# ⚗️ **JH-Toolkit — `jh::meta::lookup_map` API Reference**
 
 📁 **Header:** `<jh/metax/lookup_map.h>`  
 📦 **Namespace:** `jh::meta`  

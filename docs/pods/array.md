@@ -1,4 +1,4 @@
-# 🧊 **JH Toolkit — `jh::pod::array` API Reference**
+# 🧊 **JH-Toolkit — `jh::pod::array` API Reference**
 
 📁 **Header:** `<jh/pods/array.h>`  
 📦 **Namespace:** `jh::pod`  

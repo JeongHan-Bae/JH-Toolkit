@@ -16,7 +16,7 @@
  * @endcode
  *
  * <p>
- * In JH Toolkit, IPC means <b>InterProcess Coordination</b>, not message transport.
+ * In JH-Toolkit, IPC means <b>InterProcess Coordination</b>, not message transport.
  * This example merges lock-based and shared-memory workflows into one runnable demo.
  * </p>
  *

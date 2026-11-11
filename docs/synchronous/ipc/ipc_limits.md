@@ -1,4 +1,4 @@
-# 🛰️ JH Toolkit — `jh::sync::ipc::limits` API Reference
+# 🛰️ JH-Toolkit — `jh::sync::ipc::limits` API Reference
 
 _`IPC` stands for **InterProcess Coordination**_
 

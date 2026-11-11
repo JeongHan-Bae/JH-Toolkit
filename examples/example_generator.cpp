@@ -450,7 +450,7 @@ namespace example {
  * Generator[T, U, R]
  * @endcode
  *
- * In the JH Toolkit, this is modeled as:
+ * In the JH-Toolkit, this is modeled as:
  *
  * @code
  * template&lt;typename T, typename U = jh::typed::monostate&gt;
@@ -1368,7 +1368,7 @@ namespace example {
  *
  * This converts a lazy generator into a concrete container.
  *
- * The JH Toolkit provides equivalent eager utilities:
+ * The JH-Toolkit provides equivalent eager utilities:
  *
  * <ul>
  *   <li><code>jh::async::to_vector()</code></li>

@@ -1,4 +1,4 @@
-# 🧬 **JH Toolkit — `jh::typed::monostate` API Reference**
+# 🧬 **JH-Toolkit — `jh::typed::monostate` API Reference**
 
 📁 **Header:** `<jh/typing/monostate.h>`  
 📦 **Namespace:** `jh::typed`  

@@ -1,4 +1,4 @@
-# 🔭 **JH Toolkit — `jh::ranges::views::zip` API Reference**
+# 🔭 **JH-Toolkit — `jh::ranges::views::zip` API Reference**
 
 📁 **Header:** `<jh/ranges/views/zip.h>`  
 📦 **Namespace:** `jh::ranges::views`  
@@ -16,7 +16,7 @@
 
 ## 🧭 Introduction
 
-`jh::ranges::views::zip` is the JH Toolkit's sequence-aware Zip adaptor.
+`jh::ranges::views::zip` is the JH-Toolkit's sequence-aware Zip adaptor.
 It accepts types modeling [`jh::concepts::sequence`](../../conceptual/sequence.md),
 converts them to standard ranges through `jh::to_range()`, and combines them
 with `jh::ranges::zip_view`. This gives callers a non-consuming Sequence input
@@ -61,7 +61,7 @@ combining the converted input sequences.
 seq1 | jh::ranges::views::zip(seq2)
 ```
 
-This one-argument return type is a JH Toolkit adaptor choice. The C++23
+This one-argument return type is a JH-Toolkit adaptor choice. The C++23
 `std::views::zip(b)` expression returns a view containing one range.
 
 ---
@@ -156,7 +156,7 @@ int main() {
 
 ## 🔹 Design Rationale
 
-The JH Toolkit separates two caller intentions: `zip(a, b, ...)` constructs
+The JH-Toolkit separates two caller intentions: `zip(a, b, ...)` constructs
 a view immediately, while `zip(b)` captures one sequence for a later pipe
 expression. `zip_pipe(b, c, ...)` captures multiple sequences for the same
 purpose. These forms make sequence conversion and pipe composition explicit

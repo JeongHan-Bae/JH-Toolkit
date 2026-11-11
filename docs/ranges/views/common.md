@@ -1,4 +1,4 @@
-# 🔭 **JH Toolkit — `jh::ranges::views::common` API Reference**
+# 🔭 **JH-Toolkit — `jh::ranges::views::common` API Reference**
 
 📁 **Header:** `<jh/ranges/views/common.h>`  
 📦 **Namespace:** `jh::ranges::views`  

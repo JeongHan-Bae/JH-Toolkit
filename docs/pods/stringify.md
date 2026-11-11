@@ -1,4 +1,4 @@
-# 🧾 **JH Toolkit — `jh::pod::stringify` Reference**
+# 🧾 **JH-Toolkit — `jh::pod::stringify` Reference**
 
 📁 **Header:** `<jh/pods/stringify.h>`  
 📦 **Namespace:** `jh::pod`  

@@ -1,4 +1,4 @@
-# 🧱 JH Toolkit — `jh::flat_multimap` API Reference
+# 🧱 JH-Toolkit — `jh::flat_multimap` API Reference
 
 📁 **Header:** `<jh/core/flat_multimap.h>`  
 🔄 **Forwarding Header:** `<jh/flat_multimap>`  

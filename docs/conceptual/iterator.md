@@ -1,4 +1,4 @@
-# 🧩 **JH Toolkit — `jh::concepts::iterator` API Reference**
+# 🧩 **JH-Toolkit — `jh::concepts::iterator` API Reference**
 
 📁 **Header:** `<jh/conceptual/iterator.h>`  
 📦 **Namespace:** `jh::concepts`  
@@ -23,7 +23,7 @@
 
 ## 🧭 Introduction
 
-This header defines the unified, duck-typed iterator model of the JH Toolkit.  
+This header defines the unified, duck-typed iterator model of the JH-Toolkit.<br>
 Unlike STL iterators, which depend on `std::iterator_traits` and strict inheritance,
 these iterators are **recognized entirely by behavior** —  
 a type qualifies if it supports readable or writable iteration expressions,

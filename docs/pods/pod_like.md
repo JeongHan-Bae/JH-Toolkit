@@ -1,4 +1,4 @@
-# 🧊 **JH Toolkit — `jh::pod::pod_like` API Reference**
+# 🧊 **JH-Toolkit — `jh::pod::pod_like` API Reference**
 
 📁 **Header:** `<jh/pods/pod_like.h>`  
 📦 **Namespace:** `jh::pod`  

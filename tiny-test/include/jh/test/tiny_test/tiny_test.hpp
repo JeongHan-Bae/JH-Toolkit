@@ -405,7 +405,7 @@ namespace jh::test::tiny_test {
     struct session_definition {
         static_assert(
             detail::unique_names_in_session<Name, Tests...>(),
-            "TinyTest session and test names must be unique"
+            "tiny-test session and test names must be unique"
         );
 
         /// @brief The compile-time name of this session.
@@ -490,7 +490,7 @@ namespace jh::test::tiny_test {
     class suite final {
         static_assert(
             detail::unique_names_in_suite<Sessions...>(),
-            "TinyTest suite, session, and test names must be unique"
+            "tiny-test suite, session, and test names must be unique"
         );
 
     public:
@@ -751,7 +751,7 @@ namespace jh::test::tiny_test {
 
 #ifdef TINY_TEST_MAIN
 /**
- * @brief Runs all statically registered TinyTest sessions from the process command line.
+ * @brief Runs all statically registered tiny-test sessions from the process command line.
  * @details Define <code>TINY_TEST_MAIN</code> in one translation unit before including this header.
  */
 int main(int argc, char** argv) {

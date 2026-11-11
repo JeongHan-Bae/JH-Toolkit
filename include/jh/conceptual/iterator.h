@@ -677,7 +677,7 @@ namespace jh::concepts {
      *
      * @details
      * <code>iterator_t&lt;Container&gt;</code> provides a unified iterator deduction path for
-     * all iterable entities supported by the JH Toolkit. It cooperates with
+     * all iterable entities supported by the JH-Toolkit. It cooperates with
      * <code>jh::iterator&lt;Container&gt;</code>, which serves as the non-intrusive
      * extension point for third-party containers.
      *

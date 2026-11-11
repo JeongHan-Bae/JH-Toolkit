@@ -1,4 +1,4 @@
-# 🧩 **JH Toolkit — `jh::concepts::tuple_like` API Reference**
+# 🧩 **JH-Toolkit — `jh::concepts::tuple_like` API Reference**
 
 📁 **Header:** `<jh/conceptual/tuple_like.h>`  
 📦 **Namespace:** `jh::concepts`  
@@ -17,7 +17,7 @@
 ## 🧭 Submodule Scope
 
 `jh::concepts::tuple_like` defines the **formal structural contract**
-used across the JH Toolkit to recognize **explicit tuple-protocol types**.
+used across the JH-Toolkit to recognize **explicit tuple-protocol types**.
 
 This header does **not** introduce tuple semantics.
 It only validates whether a type already conforms to the tuple model
@@ -286,7 +286,7 @@ are **semantically self-consistent** across nested and proxy contexts.
 
 ---
 
-## ✅ Tuple-like Types in JH Toolkit
+## ✅ Tuple-like Types in JH-Toolkit
 
 Within the standard layer (`jh` and `std` namespaces):
 

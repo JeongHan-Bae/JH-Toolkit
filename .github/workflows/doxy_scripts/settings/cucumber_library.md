@@ -1,6 +1,6 @@
-@page cucumber_library JH Simple Cucumber
+@page cucumber_library JH-Simple-Cucumber
 
-# JH Simple Cucumber
+# JH-Simple-Cucumber
 
 Version: __CUCUMBER_VERSION__
 

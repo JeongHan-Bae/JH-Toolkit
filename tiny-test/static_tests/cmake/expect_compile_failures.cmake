@@ -38,7 +38,7 @@ execute_process(
 if(NOT "${configure_result}" STREQUAL "0")
     string(CONCAT configure_output "${configure_stdout}" "${configure_stderr}")
     message(FATAL_ERROR
-        "Could not configure the TinyTest compile-failure runner "
+        "Could not configure the tiny-test compile-failure runner "
         "(result: ${configure_result})\n${configure_output}"
     )
 endif()
@@ -145,7 +145,7 @@ _run_tiny_test_runtime_case(
 
 if(failed_count GREATER 0)
     message(FATAL_ERROR
-        "TinyTest static fail checks failed (${failed_count}/${check_count} checks):"
+        "tiny-test static fail checks failed (${failed_count}/${check_count} checks):"
         "${failure_report}"
     )
 endif()

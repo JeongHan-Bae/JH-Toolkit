@@ -1,4 +1,4 @@
-# ⚗️ **JH Toolkit — `jh::meta::hash` API Reference**
+# ⚗️ **JH-Toolkit — `jh::meta::hash` API Reference**
 
 📁 **Header:** `<jh/metax/hash.h>`  
 📦 **Namespace:** `jh::meta`  

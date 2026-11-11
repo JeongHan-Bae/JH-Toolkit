@@ -1,4 +1,4 @@
-# 🛰️ **JH Toolkit — InterProcess Coordination Module Overview**
+# 🛰️ **JH-Toolkit — InterProcess Coordination Module Overview**
 
 📁 **Module:** `<jh/synchronous/ipc.h>`  
 📦 **Namespace:** `jh::sync::ipc`  
@@ -17,7 +17,7 @@
 
 ## 🧭 Introduction
 
-`jh::sync::ipc` is the **synchronous IPC subsystem** of the JH Toolkit.  
+`jh::sync::ipc` is the **synchronous IPC subsystem** of the JH-Toolkit.<br>
 It exposes a set of **named, globally addressable primitives** (mutexes, conditions, counters, shared memory objects,
 and process launchers) that coordinate inter-process workflows without any runtime registries or supervising daemons.
 

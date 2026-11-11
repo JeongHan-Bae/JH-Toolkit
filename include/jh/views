@@ -37,7 +37,7 @@
  * @brief Range view adaptor implementations with explicit semantic control.
  *
  * The <code>jh::ranges::views</code> namespace contains the complete
- * implementation of JH Toolkit's range view adaptors.
+ * implementation of JH-Toolkit's range view adaptors.
  * <br>
  * This layer extends the standard C++ ranges/view model with
  * explicit, engineering-oriented semantics for traversal,

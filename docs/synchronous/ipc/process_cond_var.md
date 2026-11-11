@@ -1,4 +1,4 @@
-# 🛰️ **JH Toolkit — `jh::sync::ipc::process_cond_var` API Reference**
+# 🛰️ **JH-Toolkit — `jh::sync::ipc::process_cond_var` API Reference**
 
 _`IPC` stands for **InterProcess Coordination**_
 

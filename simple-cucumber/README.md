@@ -8,11 +8,12 @@
   <span style="font-size: x-large;">JH-Simple-Cucumber</span>
 </h1>
 
+<!-- CMake target name; keep it distinct from the public project name. -->
 <font size="4"><code>jh-simple-cucumber</code></font> is a small C++20 test library for typed Cucumber step definitions and Gherkin feature files. Its C++ API lives in `jh::test::cucumber`; the Gherkin C++ parser is fetched from the official Cucumber Gherkin project.
 
 ## Installation
 
-`jh-simple-cucumber` depends on the JH-Toolkit headers and `jh::meta::expected`. Its installed CMake target uses the shared `jh::test::` package namespace. From a JH-Toolkit checkout, configure and install it as a standalone CMake package:
+JH-Simple-Cucumber depends on the JH-Toolkit headers and `jh::meta::expected`. Its installed CMake target uses the shared `jh::test::` package namespace. From a JH-Toolkit checkout, configure and install it as a standalone CMake package:
 
 ```sh
 cmake -S simple-cucumber -B build/simple-cucumber \
@@ -376,8 +377,8 @@ add_test(NAME calculator_bdd COMMAND calculator_bdd)
 
 Behavior-driven development (BDD) describes expected behavior through concrete examples that developers, testers, and product owners can discuss together. Gherkin expresses those examples in readable feature files. A `Feature` groups behavior; each `Scenario` gives an example using `Given` for initial context, `When` for an action, and `Then` for an observable result. `And` continues the preceding step kind. `Scenario Outline` and `Examples` let the parser expand one scenario template into multiple cases.
 
-`jh-simple-cucumber` uses the official Cucumber Gherkin C++ parser to parse feature files and expand them into steps. The library binds those parsed steps to typed C++ functions, runs each scenario with fresh step state, and collects assertion or conversion failures into a report.
+JH-Simple-Cucumber uses the official Cucumber Gherkin C++ parser to parse feature files and expand them into steps. The library binds those parsed steps to typed C++ functions, runs each scenario with fresh step state, and collects assertion or conversion failures into a report.
 
 ## License
 
-JH Simple Cucumber is distributed under the Apache License 2.0, the same license as JH-Toolkit. See the [repository license](../LICENSE). Third-party dependencies retain their respective licenses.
+JH-Simple-Cucumber is distributed under the Apache License 2.0, the same license as JH-Toolkit. See the [repository license](../LICENSE). Third-party dependencies retain their respective licenses.

@@ -1,4 +1,4 @@
-# 🧩 **JH Toolkit — `jh::concepts::collectable_container` API Reference**
+# 🧩 **JH-Toolkit — `jh::concepts::collectable_container` API Reference**
 
 📁 **Header:** `<jh/conceptual/collectable_container.h>`  
 📦 **Namespace:** `jh::concepts`  

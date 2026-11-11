@@ -1,4 +1,4 @@
-# ⚗️ JH Toolkit — `jh::meta::variant_adt` Usage Guide
+# ⚗️ JH-Toolkit — `jh::meta::variant_adt` Usage Guide
 
 📁 **Header:** `<jh/metax/variant_adt.h>`  
 📦 **Namespace:** `jh::meta`  

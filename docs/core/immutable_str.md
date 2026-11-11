@@ -1,4 +1,4 @@
-# 🧱 **JH Toolkit — `jh::immutable_str` API Reference**
+# 🧱 **JH-Toolkit — `jh::immutable_str` API Reference**
 
 📁 **Header:** `<jh/core/immutable_str.h>`  
 🔄 **Forwarding Header:** `<jh/immutable_str>`  
@@ -258,7 +258,7 @@ or globally immutable and therefore safe for concurrent reads.
 #### `jh::make_atomic`
 
 ```cpp
-auto shared = jh::make_atomic("JH Toolkit");
+auto shared = jh::make_atomic("JH-Toolkit");
 auto copy   = shared; // reference-counted, safe to share
 ```
 
@@ -353,8 +353,8 @@ std::size_t h = shared->hash();
 
 ```cpp
 jh::observe_pool<jh::immutable_str<>> pool;
-auto x = pool.acquire("JH Toolkit");
-auto y = pool.acquire("JH Toolkit");
+auto x = pool.acquire("JH-Toolkit");
+auto y = pool.acquire("JH-Toolkit");
 
 if (x.get() == y.get()) {
     std::puts("deduplicated successfully");
@@ -448,7 +448,7 @@ and `false` when using the **header-only** (`jh::jh-toolkit`) mode.
 
 ## 🧩 Summary
 
-`jh::immutable_str` is the **core immutable text primitive** of the JH Toolkit.  
+`jh::immutable_str` is the **core immutable text primitive** of the JH-Toolkit.<br>
 It exposes read-only string data for safe concurrent reads and integrates
 with the toolkit's pool and atomic systems.
 

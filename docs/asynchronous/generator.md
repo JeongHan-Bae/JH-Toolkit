@@ -1,4 +1,4 @@
-# 🌀  **JH Toolkit — `jh::async::generator` API Reference**
+# 🌀  **JH-Toolkit — `jh::async::generator` API Reference**
 
 📁 **Header:** `<jh/asynchronous/generator.h>`  
 📦 **Namespace:** `jh::async`  
@@ -68,7 +68,7 @@ Generator[T, U, R]
 In C++, coroutine semantics already distinguish **yielded**, **awaited**, and **returned** values.
 `R` is unnecessary — exceptions and `co_return` naturally express termination.
 
-Therefore, the JH Toolkit simplifies this to:
+Therefore, the JH-Toolkit simplifies this to:
 
 ```cpp
 template<typename T, typename U = typed::monostate>

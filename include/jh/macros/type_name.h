@@ -64,7 +64,7 @@
  * compiler- or platform-specific macros.
  *
  * This namespace is intended for <b>internal infrastructure and diagnostics</b>
- * within the JH Toolkit. Its facilities are not part of the stable public API
+ * within the JH-Toolkit. Its facilities are not part of the stable public API
  * and should not be relied upon directly by user code.
  *
  * @note

@@ -1,4 +1,4 @@
-# 🔭 **JH Toolkit — `jh::ranges::views::flatten` API Reference**
+# 🔭 **JH-Toolkit — `jh::ranges::views::flatten` API Reference**
 
 📁 **Header:** `<jh/ranges/views/flatten.h>`  
 📦 **Namespace:** `jh::ranges::views`  

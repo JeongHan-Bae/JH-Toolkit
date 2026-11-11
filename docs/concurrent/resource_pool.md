@@ -1,4 +1,4 @@
-# 🎍 **JH Toolkit — `jh::resource_pool` API Reference**
+# 🎍 **JH-Toolkit — `jh::resource_pool` API Reference**
 
 📁 **Header:** `<jh/concurrent/resource_pool.h>`  
 📦 **Namespace:** `jh`  

@@ -1,558 +1,134 @@
-<h1 align="center">
-  <span>
-    <img src="https://upload.wikimedia.org/wikipedia/commons/1/18/ISO_C%2B%2B_Logo.svg" 
-         alt="C++ Logo" 
-         width="72" valign="middle">
-  </span>
-  <span style="font-size: x-large;">&nbsp;Contribution Guide for JH Toolkit</span>
-</h1>
+# Contributing to JH-Toolkit
 
-<p align="center">
-  <img
-    src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/JeongHan-Bae/JH-Toolkit/main/version_badge.json"
-    alt="badge"
-    width="196"
-  >
-</p>
+Thank you for contributing. Keep changes focused, practical, and compatible with
+existing APIs within the same major and minor version series. Document any
+breaking change and its migration path.
 
----
+## Project names
 
-## 💡 Introduction
+Use the following names consistently in documentation and user-facing text.
+When the projects appear in parallel, use the same naming category for each.
 
-Thank you for contributing to **JH Toolkit**.
+| Project             | Internal short name | Public name        |
+|---------------------|---------------------|--------------------|
+| Core library        | `jh-toolkit`        | JH-Toolkit         |
+| TDD framework       | `tiny-test`         | JH-Tiny-Test       |
+| BDD framework       | `simple-cucumber`   | JH-Simple-Cucumber |
 
-JH Toolkit is a **modern, RTTI-free C++20 engineering toolkit** built around **behavioral compatibility and duck
-typing**.
-Types are identified by **what they can do**, not by inheritance hierarchies or runtime type information.
+The CMake build targets have their own names: `jh-toolkit` and
+`jh::jh-toolkit`; `jh-tiny-test` and `jh::test::jh-tiny-test`;
+`jh-simple-cucumber` and `jh::test::jh-simple-cucumber`. Use those exact names
+when referring to the targets.
 
-Starting from **1.3.3**, the toolkit guarantees full compatibility with `-fno-rtti`.  
-From **1.4.0 onward**, the project significantly expands its scope and target use cases, prioritizing:
+## Branches
 
-* **Real-world engineering applicability**
-* **Predictable semantics**
-* **Cross-platform toolchain compatibility**
-* **Auditable, intention-revealing APIs**
+The project uses these long-lived branch names:
 
-This is **not** a playground for showcasing new C++20 features.
-Every feature must justify its **practical value in production software**.
+- `main`: release entry, documentation, and metadata.
+- `<version>-dev`: development for a specific version, for example `1.4.1-dev`.
+- `<major>.<minor>.x-LTS`: a supported release series, for example `1.4.x-LTS`.
 
----
+Develop against the latest appropriate `<version>-dev` branch. Do not make
+source changes directly on `main` or an `*-LTS` branch. When creating a new
+version development branch, start from the latest development branch and name
+it for the version being developed:
 
-## 🧩 Versioning and Release Strategy
-
-### 🔢 Semantic Versioning
-
-JH Toolkit follows **Semantic Versioning**:
-
-```
-MAJOR.MINOR.PATCH
+```sh
+git switch 1.4.1-dev
+git switch -c 1.4.2-dev
 ```
 
-| Level     | Meaning                                               |
-|-----------|-------------------------------------------------------|
-| **PATCH** | Bug fixes or strictly compatible behavior refinements |
-| **MINOR** | New features, modules, or expanded capabilities       |
-| **MAJOR** | Breaking API or architectural changes                 |
+Replace these version numbers with the actual base and target versions. Submit
+a pull request to the appropriate development branch; release and LTS
+synchronization are handled separately.
 
-Backward compatibility is guaranteed within each `Major.Minor.x` series unless explicitly documented.
+## Commits
 
----
+Write commit messages in English. Use one behavior and one or more specific
+domains in the subject, separating multiple domains with commas. Follow the
+subject with a blank line and, when useful, a brief explanation. Then describe
+zero or more affected modules in their own sections. After the module sections,
+add optional sections such as Docs, Tests, or other cross-module concerns when
+they help explain the change. Use plain text, `*` for bullets, and no nested
+lists or Markdown formatting in the body.
 
-### 🧱 CMake as the Single Source of Truth
+```text
+<behavior>(<domain>[, <domain>...]): <short description>
 
-The **only authoritative version source** is the top-level `CMakeLists.txt`:
+<optional brief explanation>
 
-```cmake
-set(PROJECT_VERSION 1.4.0)
+<optional module sections, zero or more>:
+* <module-specific changes>
+
+<optional cross-module sections, zero or more>:
+* <changes or verification>
 ```
 
-All other versioned artifacts (badges, releases, metadata, CI variables) are **derived automatically** via tooling.
-Manual duplication of version numbers is prohibited.
+For example:
 
----
+```text
+feat(ipc): add process launch arguments
 
-## 🧪 Development Workflow
+This commit adds an argument API for POSIX process launches.
 
-### 🧵 Branch Policy
-
-| Branch          | Purpose                                |
-|-----------------|----------------------------------------|
-| `main`          | Documentation, metadata, release entry |
-| `<version>-dev` | Active development branch              |
-| `*-LTS`         | Supported maintenance branches         |
-
-* Direct source changes to `main` or `*-LTS` are not allowed.
-* All development must occur on a `*-dev` branch and be merged.
-
----
-
-## 🔗 GitHub Actions and CI Integration
-
-JH Toolkit uses **GitHub Actions** for CI and automation. Workflow files are in
-`.github/workflows/`; their TypeScript helpers are grouped by purpose:
-
-| Directory | Purpose |
-|-----------|---------|
-| `.github/workflows/metadata_scripts/` | CMake metadata and dependency generation |
-| `.github/workflows/docs_scripts/` | Public-header documentation presence and hygiene checks |
-| `.github/workflows/doxy_scripts/` | Doxygen build, configuration, and entry-point pages |
-
-Each helper directory owns its `package.json`, lockfile, and TypeScript configuration.
-Install dependencies with `npm ci --prefix .github/workflows/<directory>` before running its scripts.
-Use Node.js 24 or newer and run scripts with their full repository-relative path.
-Keep workflow YAML filenames in kebab-case and helper modules in snake_case.
-The Doxygen workflow runs `node .github/workflows/doxy_scripts/build.ts`. It stages
-source headers and writes configuration and generated pages under the ignored
-`.doxy-build/` directory. Doxygen settings live beside the script; project
-entry-header guides remain under `docs/entry_points/`.
-The metadata helper `get_version.ts` reads the toolkit version by default and emits
-all three library versions as JSON with `--all`.
-
----
-
-### 🏷️ Workflow `name` Rules
-
-Each workflow must define a `name` with the following rules:
-
-* **Title Case**
-* Words separated by **spaces**
-* **Hyphenated words are kept**
-* Each part of a hyphenated word is capitalized
-
-Examples:
-
-```yaml
-name: "Cross-Platform CI"
-name: "Documentation Integrity Check"
-name: "Install Component Integration"
-```
-
-`cross-platform` is treated as a single hyphenated word, so both parts are capitalized.
-
----
-
-### 🟩 Using TypeScript Helpers in Workflows
-
-Set up Node.js with `actions/setup-node@v5`, install the relevant helper directory
-with `npm ci --prefix`, and run its scripts with `node`. Example:
-
-```yaml
-- uses: actions/setup-node@v5
-  with:
-    node-version: '24'
-- run: npm ci --prefix .github/workflows/docs_scripts --no-audit --no-fund
-- run: node .github/workflows/docs_scripts/presence_check.ts
-```
-
----
-
-### ⚠️ Cross-Platform CI (ci.yml)
-
-`ci.yml` runs the **Cross-Platform CI** workflow.
-
-Known limitation:
-
-* The **Windows runner (MinGW GCC)** is unstable
-* Even without stress tests or Debug builds, it may **freeze occasionally**
-
-Reason:
-
-* Insufficient runner resources
-* Interaction with UCRT runtime behavior
-
-Current policy:
-
-* This is **accepted**
-* If the Windows job freezes, use **“Re-run jobs”** in GitHub Actions
-* The second run usually succeeds
-
-There is currently no better solution without increasing complexity.
-
----
-
-All new or modified workflows **must follow these rules**.
-
-
----
-
-## ⚙️ Platform and Toolchain Requirements (1.4.0+)
-
-All new contributions **must satisfy the following guarantees**:
-
-### ✅ Fully Supported Platforms
-
-The feature **must compile and pass tests** on:
-
-* **macOS** — LLVM Clang (Apple toolchain)
-* **Ubuntu Linux** — GCC **13 or newer**
-
-These platforms define the **reference behavior**.
-
-### ⚠️ Minimum Windows Requirement
-
-On **Windows (MinGW GCC)**:
-
-* The feature must provide **API-level availability**
-* **Semantic compatibility must be preserved at a minimum level**
-* Full optimization or identical behavior is not required, but:
-
-    * The API must exist
-    * The documented contract must not be violated
-
-> Windows support focuses on **engineering usability**, not parity at any cost.
-
----
-
-## 🧾 Documentation and Doxygen Policy
-
-### 📘 What Doxygen Should Describe
-
-Doxygen documentation must focus on:
-
-* **Behavior**
-* **Intent**
-* **Design philosophy**
-* **Expected usage patterns**
-* **Constraints and assumptions**
-
-### 🚫 What Doxygen Must Avoid
-
-* Over-describing implementation details
-* Mirroring internal logic
-* Explaining mechanisms that may change between versions
-
-> Implementation details age quickly and provide little value to readers.
-> Behavior and intent do not.
-
-When a behavior relies on **user discipline** rather than enforceable constraints, this **must be explicitly
-documented**.
-
----
-
-## 🧱 Coding and API Design Guidelines (1.4.0+)
-
-### 1. 🎯 Engineering-First Design Philosophy
-
-JH Toolkit is:
-
-* **Engineering-oriented**
-* **Software-development-oriented**
-
-It is **not**:
-
-* A C++20 feature showcase
-* A template metaprogramming experiment
-* A "maximum genericity" library
-
-Do **not** design APIs:
-
-* Without a clear real-world use case
-* "Just in case" they might be useful
-* Solely to demonstrate abstraction capability
-
-Practical applicability always overrides theoretical generality.
-
----
-
-### 2. 🧠 STL-Aligned Naming and Mental Model
-
-* Follow **STL naming conventions** wherever possible
-* Prefer familiar aliases, types, and function names
-* Minimize cognitive overhead for users
-
-The closer an API feels to the STL, the **lower the learning and audit cost**.
-
----
-
-### 3. 🧩 Compile-Time Strings and NTTP Usage
-
-All compile-time strings **must use** `jh::meta::TStr`.
-
-#### ✅ Correct Pattern
-
-```cpp
-template<jh::meta::TStr Name>
-struct label {};
-
-label<"demo"> l;
-```
-
-#### 🚫 Prohibited Patterns
-
-Do **not** use:
-
-* String literals directly as template parameters
-* `std::string_view`
-* Any runtime string wrapper
-
-These **cannot provide stable identity in templates** and break compile-time guarantees.
-
----
-
-### 4. 🧠 Constraints, Concepts, and Illegal States
-
-* Prefer **concepts + SFINAE** to disable illegal operations at compile time
-* If an invalid usage pattern **cannot be reliably detected**, then:
-
-    * The API must document the assumption
-    * Doxygen must clearly state the required user discipline
-
-This is essential for:
-
-* **Code review**
-* **Security auditing**
-* **Long-term maintainability**
-
-Silent undefined behavior is unacceptable.
-
----
-
-### 5. ✂️ Controlled Genericity and Compiler Assistance
-
-* Avoid over-generalization
-* Prefer **purpose-driven APIs**
-* Allow **reasonable specialization**
-* Proactively leverage **Clang's stronger deduction capabilities**
-
-Selective constraints are encouraged if they:
-
-* Improve diagnostics
-* Reduce misuse
-* Clarify intent
-
----
-
-## 🔄 Version Evolution, Refactoring, and Lifecycle Policy
-
-JH Toolkit explicitly supports **in-series evolution** and **controlled large-scale refactoring**.
-Major internal changes are permitted, but **user-facing continuity is mandatory** within a version series.
-
-This section defines how evolution, compatibility, and lifecycle transitions are handled.
-
----
-
-### 🧩 In-Series Backward Compatibility Guarantee
-
-When a **large-scale refactor** occurs within a version series
-(for example, **`1.3.3`** being a major internal redesign):
-
-* **All versions within the same `Major.Minor.x` series must remain backward-compatible**
-* Code written for:
-
-    * `1.3.0`
-    * `1.3.1`
-    * `1.3.2`
-
-  **must continue to compile and function correctly on `1.3.3`**
-
-This guarantee applies even if:
-
-* Core implementations are replaced
-* Internal architecture is reorganized
-* Performance or memory models change
-
-#### Compatibility Mechanism
-
-To satisfy this requirement, contributors **must**:
-
-* Preserve existing APIs and semantics
-* Introduce **compatibility layers / alias interfaces** when implementations migrate
-* Avoid breaking observable behavior unless explicitly documented and deferred to a future release
-
-> Compatibility layers are an **engineering tool**, not technical debt.
-> They are expected to exist during transitional phases.
-
----
-
-### 🧱 Post-Refactor LTS State Transition
-
-Once a **major refactor version** (e.g. `1.3.3`) is released:
-
-#### 1️⃣ Previous LTS Enters Maintenance Mode
-
-* The previous LTS branch (e.g. `1.2.x-LTS`) transitions to:
-
-  ```
-  1.2.x-Maintenance
-  ```
-* This branch:
-
-    * Receives **critical fixes only**
-    * No longer receives feature updates
-    * Is kept buildable and usable for existing users
-
----
-
-#### 2️⃣ Maintenance → EOL on Next Minor Release
-
-When the **next minor version** is released (e.g. `1.4.0`):
-
-* The maintenance branch transitions to:
-
-  ```
-  1.2.x-EOL
-  ```
-* At this point:
-
-    * No further updates are applied
-    * The branch is considered **archived**
-
----
-
-### 🗃️ Release Retention and Archival Policy
-
-When a branch enters **EOL** status:
-
-* **All GitHub Releases for that version and earlier versions are withdrawn**
-
-    * Includes:
-
-        * `1.2.x`
-        * `1.1.x`
-        * `1.0.x`
-* Only **Git tags** are retained:
-
-    * For historical reference
-    * For evolution tracing
-    * For source inspection
-
-There will be:
-
-* ❌ No release binaries
-* ❌ No main-page download entries
-
-However:
-
-* ✅ The repository remains clonable
-* ✅ Tags remain accessible for engineering reference
-
-> Tags exist to document **design evolution**, not to serve as supported distributions.
-
----
-
-### 🔁 Dual-LTS Parallel Phase
-
-After the release of `1.4.0`, the project re-enters a **dual-LTS phase**:
-
-* **Active LTS branches**:
-
-    * `1.3.x-LTS`
-    * `1.4.x-LTS`
-
-Both branches are:
-
-* Actively supported
-* Synchronized where applicable
-* Maintained until the **next major internal refactor**
-
-This dual-track model continues **until another large-scale restructuring is required**, at which point the cycle
-repeats.
-
----
-
-### 🧠 Design Rationale
-
-This evolution model ensures that:
-
-* Users are never forced into abrupt migrations
-* Large internal improvements remain feasible
-* Maintenance cost stays bounded
-* Active branches share a **unified structural baseline**
-
-By deliberately retiring older baselines, JH Toolkit avoids long-term fragmentation while preserving **engineering
-continuity**.
-
----
-
-## 🚀 Contribution Workflow Summary
-
-1. Branch from the latest `<version>-dev`
-2. Implement a **justified, production-relevant** change
-3. Follow commit and PR conventions
-4. Ensure all required platforms compile successfully
-5. Verify CI
-6. Merge into `main` for release, then synchronize to LTS
-
-### Commit message format
-
-Please commit *ONLY in English* using the following format:
-
-```
-<behavior>(<domain>): <short description>
-
-<detailed explanation: optional, multi-line, no-markdown-formatting, optional `*` for bullet points>
-```
-
-Example:
-
-```
-refactor(module1_name, module2_name, tests): do something and something else
-
-This commit refactors module1 and module2 to improve performance and maintainability.
-
-Module1:
-* do something
-* do something else
-
-Module2:
-* do something
-* do something else
+process_launcher:
+* Copy arguments before starting the child process.
+* Reject unsupported arguments on Windows.
 
 Tests:
-* update some tests to reflect some semantic changes
+* Check argument delivery and platform-specific failure behavior.
 ```
 
+The body may be omitted for a change that is clear from its subject. Choose
+section names for the actual components changed; do not use a generic subject
+such as `fix: fix a bug`.
+
+## Pull requests
+
+Write pull requests in English and target the appropriate development branch.
+Explain the problem solved or the new behavior, identify any breaking changes
+(or state that there are none), and report the tests run and whether CI covers
+and passes the change. Verify the required CI before requesting review.
+
+Use [PR #32](https://github.com/JeongHan-Bae/JH-Toolkit/pull/32) as a
+format example. Its body uses the following sections; add Notes only when
+additional context, such as a backport or release plan, is relevant:
+
+```markdown
+### What problem does this PR solve / What is new in this PR?
+
+Describe the problem and the resulting change.
+
+### Is the PR backed by CI tests?
+
+State the CI status and summarize relevant tests.
+
+### Any breaking changes?
+
+State whether the change is breaking and explain any migration needed.
+
+### Notes
+
+Add relevant context when needed.
 ```
-docs(module_name): update documentation for some behavior
-This commit updates the documentation for module_name to clarify the expected behavior of some function.
 
-module_name::submodule_name:
-* some_function: documented to reflect some behavior
-* some_sub_class: documented to reflect some behavior
+Test changes on macOS with LLVM Clang and Ubuntu with GCC 13 or newer. Windows
+with MinGW GCC must provide the API and honor its documented contract; platform
+behavior may differ when documented. Explain any checks you could not run.
 
-another_module_name:
-* some_function: documented to reflect some behavior
-```
+## Code style
 
-Anti-patterns:
+The following guidelines apply to the JH-Toolkit core project. tiny-test and
+simple-cucumber are separate frameworks with their own coding and header
+conventions; follow the conventions of the framework being changed.
 
-```
-fix: fix some bug in some module
-```
-> Explain: should use `fix(module_name):` instead of a generic `fix:`.
-
-```
-* Module2:
-  * do something
-```
-> Explain: no `*` for paragraphs, only for bullet points.
-> no nested bullet points.
-
-```
-**Module2**:
- - do something
-```
-> Explain: use `*` for bullet points, not `-`.
-> Markdown formatting is not allowed in the commit message body.
-> Markdown `**` is not allowed in the commit message body.
-
-### Pull Request format
-
-Please create PRs *ONLY in English*, including the following sections:
-
-* What problem does this PR solve / What is new in this PR?
-* Is the PR backed by CI tests?
-* Any breaking changes?
-
----
-
-## 🙏 Acknowledgement
-
-JH Toolkit exists to support **real engineering work**:
-
-> **Behavior-driven APIs, RTTI-free design, predictable semantics, and cross-platform reliability — in disciplined
-C++20.**
-
-Your contributions help keep the toolkit **useful, auditable, and production-ready**.
-
-— *The JH Toolkit Project*
+- Follow the existing module layout and STL-style names. Prefer practical,
+  purpose-driven APIs over unnecessary generality.
+- Maintain C++20 and `-fno-rtti` compatibility. Use `jh::meta::TStr` for
+  compile-time string identities.
+- Use concepts or constraints to reject invalid operations where practical;
+  document any requirements that callers must enforce.
+- Document public API behavior and caller obligations in Doxygen. Follow the
+  header naming, copyright, and comment conventions in [AGENTS.md](AGENTS.md).
+- Keep compile-time checks in `tests/static/` and runtime tests in the existing
+  TDD or BDD modules. Add tests for observable behavior affected by a change.

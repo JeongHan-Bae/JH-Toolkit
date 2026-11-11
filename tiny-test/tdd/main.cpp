@@ -232,7 +232,7 @@ int main() {
         ++failures;
     }
     if (failures == 0) {
-        std::cout << "All TinyTest behavior checks passed.\n";
+        std::cout << "All tiny-test behavior checks passed.\n";
     }
     return failures;
 }

@@ -93,7 +93,7 @@
  *
  * int main() {
  *     auto pool = jh::observe_pool&lt;jh::immutable_str&lt;&gt;&gt;();
- *     const auto str = pool.acquire("Hello, JH Toolkit!");
+ *     const auto str = pool.acquire("Hello, JH-Toolkit!");
  *     std::cout &lt;&lt; str-&gt;view() &lt;&lt; std::endl;
  *     return 0;
  * }
@@ -139,8 +139,8 @@
  *
  * int main() {
  *     jh::observe_pool&lt;jh::immutable_str&lt;&gt;&gt; pool;  // automatically available
- *     auto a = pool.acquire("JH Toolkit");
- *     auto b = pool.acquire("JH Toolkit");
+ *     auto a = pool.acquire("JH-Toolkit");
+ *     auto b = pool.acquire("JH-Toolkit");
  *
  *     // both handles reference the same pooled immutable instance
  *     if (a.get() == b.get()) {
