@@ -31,7 +31,7 @@ files = [ "include/jh/conceptual/enum.h", "include/jh/detail/base64_common.h", "
 
 [[components.selectable]]
 name = "jh-ipcs"
-files = [ "include/jh/conceptual/container_traits.h", "include/jh/conceptual/enum.h", "include/jh/conceptual/iterator.h", "include/jh/conceptual/mutex_like.h", "include/jh/conceptual/range_traits.h", "include/jh/conceptual/sequence.h", "include/jh/detail/base64_common.h", "include/jh/ipc", "include/jh/macros/platform.h", "include/jh/metax/char.h", "include/jh/metax/expected.h", "include/jh/metax/hash.h", "include/jh/metax/t_str.h", "include/jh/pods/array.h", "include/jh/pods/optional.h", "include/jh/pods/pod_like.h", "include/jh/pods/string_view.h", "include/jh/ranges/range_adaptor.h", "include/jh/sync" ]
+files = [ "include/jh/conceptual/container_traits.h", "include/jh/conceptual/enum.h", "include/jh/conceptual/iterator.h", "include/jh/conceptual/mutex_like.h", "include/jh/conceptual/range_traits.h", "include/jh/conceptual/sequence.h", "include/jh/core/runtime_arr.h", "include/jh/detail/base64_common.h", "include/jh/ipc", "include/jh/macros/header_begin.h", "include/jh/macros/header_end.h", "include/jh/macros/platform.h", "include/jh/metax/char.h", "include/jh/metax/expected.h", "include/jh/metax/hash.h", "include/jh/metax/t_str.h", "include/jh/pods/array.h", "include/jh/pods/optional.h", "include/jh/pods/pod_like.h", "include/jh/pods/string_view.h", "include/jh/ranges/range_adaptor.h", "include/jh/runtime_arr", "include/jh/sync", "include/jh/typing/monostate.h" ]
 directories = [ "include/jh/synchronous/" ]
 
 [[components.selectable]]
