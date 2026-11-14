@@ -98,6 +98,7 @@
 #pragma once
 
 #include <coroutine>
+#include <concepts>
 #include <functional>
 #include <deque>
 #include <optional>
@@ -1047,18 +1048,23 @@ namespace jh::async {
      *   <li>Each call to <code>begin()</code> constructs a new generator instance via the stored factory.</li>
      *   <li>Fully compatible with <code>std::ranges</code> and STL algorithms.</li>
      *   <li>Usable in <code>for(auto v : range)</code>, <code>std::views::zip(...)</code>, and similar constructs.</li>
-     *   <li>Guarantees value-type semantics &mdash; <code>T</code> must be copyable.</li>
+     *   <li>Guarantees value-type semantics &mdash; <code>T</code> must satisfy
+     *       <code>std::copy_constructible&lt;T&gt;</code>.</li>
      * </ul>
      *
      * @note The factory does <strong>not</strong> accept runtime arguments.
      * It must capture all external state through its closure (via <code>[...]</code> capture).
      * Passing parameterized generators must be done by creating multiple distinct factories.
+     * Postfix increment returns a detached copy of the previous value. That snapshot
+     * stays readable after the active iterator advances or reaches the end, but it
+     * cannot advance the generator independently.
      *
      * @tparam T The yielded value type of the underlying <code>jh::async::generator</code>.
+     *           It must support copy and move construction; assignment is not required.
      *
      * @see jh::to_range
      */
-    template<typename T>
+    template<typename T> requires std::copy_constructible<T>
     class generator_range final : std::ranges::view_interface<generator_range<T> > {
     public:
         using generator_factory_t = std::function<generator<T>()>;
@@ -1099,8 +1105,13 @@ namespace jh::async {
                 ++(*this); // prime
             }
 
-            /// @brief Advances to the next yielded value or marks the iterator exhausted.
+            /**
+             * @brief Advances to the next yielded value or marks the iterator exhausted.
+             * @throws std::logic_error if this is a detached postfix snapshot.
+             */
             iterator &operator++() {
+                if (!gen_ && current_value_)
+                    throw std::logic_error("Cannot advance a detached generator snapshot");
                 if (gen_) {
                     if (!gen_->next() || gen_->done()) {
                         gen_.reset(); // Stop: no more values
@@ -1120,7 +1131,9 @@ namespace jh::async {
             /**
              * @brief Advances this single-pass iterator and returns its prior value.
              * @return A detached iterator holding the previous yielded value.
-             * @note The returned iterator does not own or advance the generator.
+             * @note The returned iterator is readable but cannot be incremented.
+             * It remains valid independently of subsequent advances of the source iterator.
+             * @throws std::logic_error if this is already a detached postfix snapshot.
              */
             iterator operator++(int) {
                 iterator previous;
@@ -1147,7 +1160,12 @@ namespace jh::async {
                 return std::addressof(*current_value_);
             }
 
-            /// @brief Compares active generator identity and detached or exhausted states.
+            /**
+             * @brief Compares active generator identity and detached or exhausted states.
+             * @details An iterator equals itself. Distinct detached snapshots compare unequal,
+             * even when they store equal values. Two exhausted iterators compare equal;
+             * a readable snapshot compares unequal to an exhausted iterator.
+             */
             friend bool operator==(const iterator &lhs, const iterator &rhs) {
                 if (std::addressof(lhs) == std::addressof(rhs)) return true;
                 if (!lhs.gen_ && !rhs.gen_)
@@ -1162,7 +1180,10 @@ namespace jh::async {
             }
 
             // Support std::default_sentinel_t as the end
-            /// @brief Checks whether the iterator has reached the default sentinel.
+            /**
+             * @brief Checks whether this iterator has reached the default sentinel.
+             * @return True only when it owns no generator and holds no readable snapshot.
+             */
             friend bool operator==(const iterator &it, std::default_sentinel_t) {
                 return !it.gen_ && !it.current_value_;
             }

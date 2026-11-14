@@ -364,6 +364,13 @@ Spawning:
 s.spawn();
 ```
 
+The slot owns its coroutine frame. Moving an unbound, unspawned slot transfers
+that ownership and leaves the source empty. Keep the slot at a stable address
+after `bind_slot(s)` or `spawn()`; moving it afterward invalidates the hub's
+binding. Stop and join emitters before the slot is destroyed. Its destructor
+then releases the frame, so the hub and listeners must remain alive through
+every resume.
+
 From this point on, any successful `emit()` will resume the slot coroutine.
 
 ---

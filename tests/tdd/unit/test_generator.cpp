@@ -1265,12 +1265,22 @@ void tiny_test_case_27() {
     auto previous = it++;
     jh::test::tiny_test::expect(previous->value == 3, "postfix returns the prior value");
     jh::test::tiny_test::expect(previous != range_.end(), "postfix result remains readable");
+    jh::test::tiny_test::expect(previous == previous, "postfix snapshot compares equal to itself");
+    jh::test::tiny_test::expect(previous != it, "postfix snapshot differs from the advanced iterator");
+    jh::test::tiny_test::expect_throw<std::logic_error>([&] { ++previous; },
+                                                        "postfix snapshot cannot advance the generator");
+    jh::test::tiny_test::expect_throw<std::logic_error>([&] { (void)previous++; },
+                                                        "postfix increment also rejects a detached snapshot");
+    jh::test::tiny_test::expect(previous->value == 3, "failed snapshot increment preserves its value");
     jh::test::tiny_test::expect(it->value == 7, "postfix increment reaches the next value");
     jh::test::tiny_test::expect((*it).value == 7, "dereference follows postfix increment");
 
-    it++;
+    auto second_previous = it++;
     jh::test::tiny_test::expect(it == range_.end(), "postfix increment reaches the sentinel");
     jh::test::tiny_test::expect(previous->value == 3, "postfix snapshot retains its value after exhaustion");
+    jh::test::tiny_test::expect(second_previous->value == 7, "second snapshot preserves its own value");
+    jh::test::tiny_test::expect(previous != second_previous, "different postfix snapshots remain distinct");
+    jh::test::tiny_test::expect(previous != range_.end(), "detached snapshot is not the end sentinel");
     jh::test::tiny_test::expect_throw<std::runtime_error>([&] { (void)it.operator->(); },
                                                           "arrow rejects the end iterator");
 }

@@ -53,3 +53,24 @@ static_assert(jh::concepts::is_iterator<jh::async::generator<int>::iterator>);
 static_assert(jh::concepts::input_iterator<jh::async::generator<int>::iterator>);
 static_assert(jh::concepts::sequence<jh::async::generator_range<int>>);
 
+struct non_assignable_value {
+    const int value{};
+    non_assignable_value(const non_assignable_value&) = default;
+    non_assignable_value(non_assignable_value&&) = default;
+    non_assignable_value& operator=(const non_assignable_value&) = delete;
+    non_assignable_value& operator=(non_assignable_value&&) = delete;
+};
+
+struct copy_only {
+    copy_only(const copy_only&) = default;
+    copy_only(copy_only&&) = delete;
+};
+
+template<class T>
+concept generator_range_name_available = requires { typename jh::async::generator_range<T>; };
+
+static_assert(std::copy_constructible<non_assignable_value>);
+static_assert(generator_range_name_available<non_assignable_value>);
+static_assert(!generator_range_name_available<std::unique_ptr<int>>);
+static_assert(!generator_range_name_available<copy_only>);
+

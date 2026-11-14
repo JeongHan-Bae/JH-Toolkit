@@ -596,6 +596,14 @@ void tiny_test_case_6() {
         owned.spawn();
     }
     jh::test::tiny_test::expect(destroyed == 1, "slot destruction releases its coroutine frame");
+
+    int moved_destroyed = 0;
+    {
+        auto source = make_slot(moved_destroyed);
+        auto destination = std::move(source);
+        destination.spawn();
+    }
+    jh::test::tiny_test::expect(moved_destroyed == 1, "moving a slot keeps one frame owner");
 }
 }
 template<>

@@ -319,8 +319,12 @@ namespace jh::async {
      *
      * <h4>Lifetime</h4>
      * <ul>
-     *   <li>Must not be moved after binding to a hub.</li>
-     *   <li><code>slot</code>, <code>slot_hub</code>, and <code>listener</code>s must share unified lifetime.</li>
+     *   <li>Moving is allowed only before binding or spawning. The hub stores the
+     *       slot's address, so moving a bound slot invalidates that binding.</li>
+     *   <li>A move transfers sole ownership of the coroutine frame and leaves the
+     *       source without a handle. The destination destroys the frame on exit.</li>
+     *   <li>Stop and join event emitters before destroying the slot. The slot,
+     *       its hub, and its listeners must remain alive through every resume.</li>
      * </ul>
      *
      * @note
@@ -341,10 +345,19 @@ namespace jh::async {
         /// @brief Default constructor for slot.
         slot() = default;
 
-        /// @brief Move constructor transferring coroutine handle ownership.
+        /**
+         * @brief Transfers sole ownership of a coroutine frame from another slot.
+         * @param o Source slot, left without a coroutine handle.
+         * @pre The source has not been bound to a hub or spawned.
+         */
         slot(slot &&o) noexcept: h(o.h) { o.h = {}; }
 
-        /// @brief Replaces the owned coroutine frame and transfers ownership from another slot.
+        /**
+         * @brief Releases the current frame and takes sole ownership of another.
+         * @param o Source slot, left without a coroutine handle.
+         * @return This slot after the ownership transfer.
+         * @pre Neither slot has been bound to a hub or spawned.
+         */
         slot &operator=(slot &&o) noexcept {
             if (this != &o) {
                 if (h) h.destroy();
@@ -354,7 +367,10 @@ namespace jh::async {
             return *this;
         }
 
-        /// @brief Destroys the owned coroutine frame when the slot leaves its lifetime domain.
+        /**
+         * @brief Destroys the owned coroutine frame when the slot leaves scope.
+         * @pre No emitter may resume the slot during destruction.
+         */
         ~slot() {
             if (h) h.destroy();
         }

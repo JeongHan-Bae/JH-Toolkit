@@ -382,7 +382,7 @@ Under the hood, `to_range()` simply wraps your factory into a `generator_range<T
 whose internal type is defined as:
 
 ```cpp
-template<typename T>
+template<typename T> requires std::copy_constructible<T>
 class generator_range {
 public:
     using generator_factory_t = std::function<generator<T>()>;
@@ -394,12 +394,21 @@ This means:
 
 * `Factory` must be callable as `generator<T>()`.
 * The generator must have `U == typed::monostate`.
+* `T` must support copy and move construction; assignment is not required.
 * Each call to `begin()` constructs a **new generator instance** from the stored factory.
 * The range is **repeatable**, but **each iterator** is single-pass internally.
+
+Postfix increment returns a detached iterator holding the prior value. It remains
+readable after the active iterator advances or ends, but cannot advance the
+generator: incrementing that snapshot throws `std::logic_error`. A snapshot is
+not the end sentinel; distinct snapshots compare unequal even if their values
+match. Destroying or advancing the active iterator does not invalidate the
+snapshot's stored value.
 
 > ⚙️ **Constraint Summary:**
 >
 > * Factory signature: `generator<T>()`
+> * Yield type: `std::copy_constructible<T>`.
 > * Generator type: `jh::async::generator<T, typed::monostate>`
 > * Input parameter `U` must be `typed::monostate`.
 > * Intended for output-only generators — those that yield values but never await input.
