@@ -59,6 +59,7 @@ namespace jh::sync {
     template<jh::concepts::basic_lockable Mutex>
     class strong_unique_lock final {
     public:
+        /// @brief Acquires the supplied mutex with unique ownership.
         explicit strong_unique_lock(Mutex &m)
                 : m_(&m), owns_(true) {
             m_->lock();
@@ -92,6 +93,7 @@ namespace jh::sync {
     template<jh::concepts::shared_lockable Mutex>
     class strong_shared_lock final {
     public:
+        /// @brief Acquires the supplied mutex with shared ownership.
         explicit strong_shared_lock(Mutex &m)
                 : m_(&m), owns_(true) {
             m_->lock_shared();

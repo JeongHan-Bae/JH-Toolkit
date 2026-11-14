@@ -161,6 +161,7 @@ namespace jh::ranges {
     class range_adaptor;
 
     template<typename Seq>
+    /// @brief Deduces a range adaptor from a forwarded sequence.
     range_adaptor(Seq &&) -> range_adaptor<Seq>;
 } // namespace jh::ranges
 

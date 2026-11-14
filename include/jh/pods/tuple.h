@@ -199,15 +199,18 @@ namespace jh::pod {
     };
 
     template<std::size_t I, typename... Ts>
+    /// @brief Returns the indexed element of a mutable POD tuple.
     constexpr decltype(auto) get(tuple<Ts...> &t) noexcept {
         return get<I>(static_cast<detail::tuple_impl<std::index_sequence_for<Ts...>, Ts...> &>(t));
     }
 
     template<std::size_t I, typename... Ts>
+    /// @brief Returns the indexed element of a const POD tuple.
     constexpr auto get(const tuple<Ts...> &t) noexcept {
         return get<I>(static_cast<const detail::tuple_impl<std::index_sequence_for<Ts...>, Ts...> &>(t));
     }
 
+    /// @brief Returns the indexed element of a mutable POD pair.
     template<std::size_t I, typename T1, typename T2>
     requires (I < 2)
     constexpr decltype(auto) get(jh::pod::pair<T1, T2>& p) noexcept {
@@ -215,6 +218,7 @@ namespace jh::pod {
         else return (p.second);
     }
 
+    /// @brief Returns the indexed element of a const POD pair.
     template<std::size_t I, typename T1, typename T2>
     requires (I < 2)
     constexpr decltype(auto) get(const jh::pod::pair<T1, T2>& p) noexcept {
@@ -222,12 +226,14 @@ namespace jh::pod {
         else return (p.second);
     }
 
+    /// @brief Returns the indexed element of a mutable POD array.
     template<std::size_t I, typename T, std::size_t N>
     requires (I < N)
     constexpr decltype(auto) get(jh::pod::array<T, N>& a) noexcept {
         return (a.data[I]);
     }
 
+    /// @brief Returns the indexed element of a const POD array.
     template<std::size_t I, typename T, std::size_t N>
     requires (I < N)
     constexpr decltype(auto) get(const jh::pod::array<T, N>& a) noexcept {
@@ -251,6 +257,7 @@ namespace std {
     template<typename T1, typename T2>
     struct tuple_size<jh::pod::pair<T1, T2>> : std::integral_constant<std::size_t, 2> {};
 
+    /// @brief Provides the standard tuple element type for a POD pair.
     template<std::size_t I, typename T1, typename T2>
     requires (I < 2)
     struct tuple_element<I, jh::pod::pair<T1, T2>> {
@@ -260,6 +267,7 @@ namespace std {
     template<typename T, std::size_t N>
     struct tuple_size<jh::pod::array<T, N>> : std::integral_constant<std::size_t, N> {};
 
+    /// @brief Provides the standard tuple element type for a POD array.
     template<std::size_t I, typename T, std::size_t N>
     requires (I < N)
     struct tuple_element<I, jh::pod::array<T, N>> {
@@ -308,6 +316,7 @@ namespace jh::pod {
     }
 
     template<typename... Ts>
+    /// @brief Compares two POD tuples element by element for equality.
     constexpr bool operator==(const tuple<Ts...>& lhs, const tuple<Ts...>& rhs) noexcept {
         bool result = true;
         [&]<std::size_t... Is>(std::index_sequence<Is...>) {
@@ -317,6 +326,7 @@ namespace jh::pod {
     }
 
     template<typename... Ts>
+    /// @brief Compares two POD tuples element by element for inequality.
     constexpr bool operator!=(const tuple<Ts...>& lhs, const tuple<Ts...>& rhs) noexcept {
         return !(lhs == rhs);
     }

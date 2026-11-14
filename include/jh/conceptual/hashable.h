@@ -172,6 +172,7 @@ namespace jh {
     /// @brief Case 1: std::hash<T> is valid.
     template <typename T>
     struct hash<T, std::enable_if_t<jh::concepts::has_std_hash<T>>> {
+        /// @brief Hashes a value using its supported standard hash operation.
         constexpr std::size_t operator()(const T& v) const noexcept {
             return std::hash<T>{}(v);
         }
@@ -180,6 +181,7 @@ namespace jh {
     /// @brief Case 2: ADL-discovered hash(T)
     template <typename T>
     struct hash<T, std::enable_if_t<!jh::concepts::has_std_hash<T> && jh::concepts::has_adl_hash<T>>> {
+        /// @brief Hashes a value using its ADL hash operation.
         constexpr std::size_t operator()(const T& v) const noexcept(noexcept(hash_detail::invoke_adl_hash(v))) {
             return static_cast<std::size_t>(hash_detail::invoke_adl_hash(v));
         }
@@ -190,6 +192,7 @@ namespace jh {
     struct hash<T, std::enable_if_t<!jh::concepts::has_std_hash<T> &&
                                     !jh::concepts::has_adl_hash<T> &&
                                     jh::concepts::has_mbr_hash<T>>> {
+        /// @brief Hashes a value using its member hash operation.
         constexpr std::size_t operator()(const T& v) const noexcept(noexcept(v.hash())) {
             return static_cast<std::size_t>(v.hash());
         }

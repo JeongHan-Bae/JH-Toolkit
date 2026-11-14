@@ -51,17 +51,23 @@ namespace jh::meta {
     public:
         constexpr unexpected() noexcept = default;
 
+        /// @brief Constructs an unexpected result from an error code.
         constexpr explicit unexpected(E value) noexcept: error_(value) {}
 
+        /// @brief Returns mutable access to the stored error code.
         [[nodiscard]] constexpr E &error() & noexcept { return error_; }
 
+        /// @brief Returns read-only access to the stored error code.
         [[nodiscard]] constexpr const E &error() const & noexcept { return error_; }
 
+        /// @brief Moves the stored error code from an rvalue.
         [[nodiscard]] constexpr E &&error() && noexcept { return std::move(error_); }
 
+        /// @brief Compares two unexpected results by their error codes.
         constexpr bool operator==(const unexpected &) const noexcept = default;
     };
 
+    /// @brief Deduces the error enum type from an unexpected value.
     template<jh::concepts::scoped_enum E>
     unexpected(E) -> unexpected<E>;
 
@@ -93,24 +99,31 @@ namespace jh::meta {
 
         constexpr expected() noexcept(std::is_nothrow_default_constructible_v<T>) = default;
 
+        /// @brief Copies the success value and error state from another result.
         constexpr expected(const expected &) = default;
 
+        /// @brief Moves the success value and error state from another result.
         constexpr expected(expected &&) = default;
 
+        /// @brief Copies another result into this result.
         constexpr expected &operator=(const expected &) = default;
 
+        /// @brief Moves another result into this result.
         constexpr expected &operator=(expected &&) = default;
 
         constexpr ~expected() = default;
 
+        /// @brief Constructs a successful result by copying a value.
         constexpr expected(const T &success_value)
         noexcept(std::is_nothrow_copy_constructible_v<T>)
                 : value_(success_value), ec_{} {}
 
+        /// @brief Constructs a successful result by moving a value.
         constexpr expected(T &&success_value)
         noexcept(std::is_nothrow_move_constructible_v<T>)
                 : value_(std::move(success_value)), ec_{} {}
 
+        /// @brief Constructs a failed result from an unexpected error code.
         constexpr expected(unexpected<E> failure) noexcept(
         std::is_nothrow_default_constructible_v<T>
         ) requires(std::is_default_constructible_v<T>)
@@ -118,45 +131,58 @@ namespace jh::meta {
             ec_.store(static_cast<error_underlying_type>(failure.error()));
         }
 
+        /// @brief Reports whether this result contains a success value.
         [[nodiscard]] constexpr explicit operator bool() const noexcept {
             return has_value();
         }
 
+        /// @brief Reports whether this result contains a success value.
         [[nodiscard]] constexpr bool has_value() const noexcept {
             return !ec_.has();
         }
 
+        /// @brief Reports whether this result contains an error.
         [[nodiscard]] constexpr bool has_error() const noexcept {
             return ec_.has();
         }
 
+        /// @brief Returns a pointer to the success value, aborting on failure.
         [[nodiscard]] constexpr T *operator->() noexcept { return std::addressof(value()); }
 
+        /// @brief Returns a const pointer to the success value, aborting on failure.
         [[nodiscard]] constexpr const T *operator->() const noexcept { return std::addressof(value()); }
 
+        /// @brief Returns mutable access to the success value, aborting on failure.
         [[nodiscard]] constexpr T &operator*() & noexcept { return value(); }
 
+        /// @brief Returns const access to the success value, aborting on failure.
         [[nodiscard]] constexpr const T &operator*() const & noexcept { return value(); }
 
+        /// @brief Moves the success value from an rvalue result, aborting on failure.
         [[nodiscard]] constexpr T &&operator*() && noexcept { return std::move(value()); }
 
+        /// @brief Moves the const success value from an rvalue result, aborting on failure.
         [[nodiscard]] constexpr const T &&operator*() const && noexcept { return std::move(value()); }
 
+        /// @brief Returns mutable access to the success value; aborts on failure.
         [[nodiscard]] constexpr T &value() & noexcept {
             if (!has_value()) std::abort();
             return value_;
         }
 
+        /// @brief Returns const access to the success value; aborts on failure.
         [[nodiscard]] constexpr const T &value() const & noexcept {
             if (!has_value()) std::abort();
             return value_;
         }
 
+        /// @brief Moves the success value from an rvalue result; aborts on failure.
         [[nodiscard]] constexpr T &&value() && noexcept {
             if (!has_value()) std::abort();
             return std::move(value_);
         }
 
+        /// @brief Moves the const success value from an rvalue result; aborts on failure.
         [[nodiscard]] constexpr const T &&value() const && noexcept {
             if (!has_value()) std::abort();
             return std::move(value_);
@@ -168,6 +194,7 @@ namespace jh::meta {
             return static_cast<E>(ec_.ref());
         }
 
+        /// @brief Returns the copied success value or a converted fallback.
         template<typename U>
         requires (std::is_copy_constructible_v<T> && std::is_convertible_v<U &&, T>)
         [[nodiscard]] constexpr T value_or(U &&fallback) const &
@@ -175,6 +202,7 @@ namespace jh::meta {
             return has_value() ? value_ : static_cast<T>(std::forward<U>(fallback));
         }
 
+        /// @brief Moves the success value or returns a converted fallback.
         template<typename U>
         requires (std::is_move_constructible_v<T> && std::is_convertible_v<U &&, T>)
         [[nodiscard]] constexpr T value_or(U &&fallback) &&
@@ -182,6 +210,7 @@ namespace jh::meta {
             return has_value() ? std::move(value_) : static_cast<T>(std::forward<U>(fallback));
         }
 
+        /// @brief Returns the stored error code or a converted fallback.
         template<typename U>
         requires std::is_convertible_v<U &&, E>
         [[nodiscard]] constexpr E error_or(U &&fallback) const
@@ -189,6 +218,7 @@ namespace jh::meta {
             return has_error() ? error() : static_cast<E>(std::forward<U>(fallback));
         }
 
+        /// @brief Copies a success value and clears any previous error.
         constexpr expected &operator=(const T &success_value)
         noexcept(std::is_nothrow_copy_assignable_v<T>) requires
                 (std::is_copy_assignable_v<T>) {
@@ -197,6 +227,7 @@ namespace jh::meta {
             return *this;
         }
 
+        /// @brief Moves a success value and clears any previous error.
         constexpr expected &operator=(T &&success_value)
         noexcept(std::is_nothrow_move_assignable_v<T>) requires
                 (std::is_move_assignable_v<T>) {
@@ -205,6 +236,7 @@ namespace jh::meta {
             return *this;
         }
 
+        /// @brief Stores a failure and resets the success value.
         constexpr expected &operator=(unexpected<E> failure) noexcept(
         std::is_nothrow_default_constructible_v<T> &&
         std::is_nothrow_assignable_v<T &, T> &&
@@ -215,6 +247,7 @@ namespace jh::meta {
             return *this;
         }
 
+        /// @brief Compares results by success values or error codes.
         [[nodiscard]] constexpr bool operator==(const expected &rhs) const
         noexcept(noexcept(std::declval<const T &>() == std::declval<const T &>())) requires requires
         (

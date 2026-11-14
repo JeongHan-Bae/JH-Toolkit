@@ -104,25 +104,35 @@ namespace jh::typed {
         using is_reentrant_tag [[maybe_unused]] = std::true_type;
 
         // Exclusive locks
+        /// @brief Acquires the exclusive lock as a no-op.
         [[maybe_unused]] void lock() noexcept {}
+        /// @brief Releases the exclusive lock as a no-op.
         [[maybe_unused]] void unlock() noexcept {}
+        /// @brief Reports immediate exclusive lock acquisition without synchronization.
         [[maybe_unused]] static bool try_lock() noexcept { return true; }
 
         template <typename Rep, typename Period>
+        /// @brief Reports successful exclusive lock acquisition without waiting.
         [[maybe_unused]] bool try_lock_for(const std::chrono::duration<Rep, Period>&) noexcept { return true; }
 
         template <typename Clock, typename Duration>
+        /// @brief Reports exclusive lock success without inspecting the deadline.
         [[maybe_unused]] bool try_lock_until(const std::chrono::time_point<Clock, Duration>&) noexcept { return true; }
 
         // Shared locks
+        /// @brief Acquires the shared lock as a no-op.
         [[maybe_unused]] void lock_shared() noexcept {}
+        /// @brief Releases the shared lock as a no-op.
         [[maybe_unused]] void unlock_shared() noexcept {}
+        /// @brief Reports immediate shared lock acquisition without synchronization.
         [[maybe_unused]] static bool try_lock_shared() noexcept { return true; }
 
         template <typename Rep, typename Period>
+        /// @brief Reports successful shared lock acquisition without waiting.
         [[maybe_unused]] bool try_lock_shared_for(const std::chrono::duration<Rep, Period>&) noexcept { return true; }
 
         template <typename Clock, typename Duration>
+        /// @brief Reports shared lock success without inspecting the deadline.
         [[maybe_unused]] bool try_lock_shared_until(const std::chrono::time_point<Clock, Duration>&) noexcept { return true; }
     };
 

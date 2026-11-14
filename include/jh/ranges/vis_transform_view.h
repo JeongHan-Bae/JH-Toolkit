@@ -133,6 +133,7 @@ namespace jh::ranges {
 
             iterator() = default;
 
+            /// @brief Creates an iterator bound to this view and a base iterator.
             constexpr iterator(const vis_transform_view *p, base_iterator it)
                     : current_(it), parent_(p) {}
 
@@ -144,11 +145,13 @@ namespace jh::ranges {
                 return std::invoke(parent_->func_, *current_);
             }
 
+            /// @brief Advances the underlying iterator and returns this iterator.
             constexpr iterator &operator++() {
                 ++current_;
                 return *this;
             }
 
+            /// @brief Advances the underlying iterator and returns the prior iterator.
             constexpr iterator operator++(int)
             noexcept(noexcept(std::declval<base_iterator &>()++)) requires requires(base_iterator it) { it++; } {
                 auto tmp = *this;
@@ -156,12 +159,14 @@ namespace jh::ranges {
                 return tmp;
             }
 
+            /// @brief Compares underlying iterator positions for equality.
             friend constexpr bool operator==(const iterator &a, const iterator &b)
             noexcept(noexcept(a.current_ == b.current_)) requires requires(const base_iterator &x,
                                                                            const base_iterator &y) { x == y; } {
                 return a.current_ == b.current_;
             }
 
+            /// @brief Compares underlying iterator positions for inequality.
             friend constexpr bool operator!=(const iterator &a, const iterator &b)
             noexcept(noexcept(!(a == b))) requires requires(const base_iterator &x, const base_iterator &y) {
                 x == y;
@@ -169,12 +174,14 @@ namespace jh::ranges {
                 return !(a == b);
             }
 
+            /// @brief Moves the underlying iterator to the previous element.
             constexpr iterator &operator--()
             noexcept(noexcept(--std::declval<base_iterator &>())) requires requires(base_iterator it) { --it; } {
                 --current_;
                 return *this;
             }
 
+            /// @brief Moves to the previous element and returns the prior iterator.
             constexpr iterator operator--(int)
             noexcept(noexcept(std::declval<base_iterator &>()--)) requires requires(base_iterator it) { it--; } {
                 auto tmp = *this;
@@ -182,6 +189,7 @@ namespace jh::ranges {
                 return tmp;
             }
 
+            /// @brief Advances the underlying iterator by the given offset.
             constexpr iterator &operator+=(difference_type n)
             noexcept(noexcept(std::declval<base_iterator &>() += n)) requires requires(base_iterator it,
                                                                                        difference_type n) { it += n; } {
@@ -189,6 +197,7 @@ namespace jh::ranges {
                 return *this;
             }
 
+            /// @brief Moves the underlying iterator backward by the given offset.
             constexpr iterator &operator-=(difference_type n)
             noexcept(noexcept(std::declval<base_iterator &>() -= n)) requires requires(base_iterator it,
                                                                                        difference_type n) { it -= n; } {
@@ -196,6 +205,7 @@ namespace jh::ranges {
                 return *this;
             }
 
+            /// @brief Returns an iterator advanced by the given offset.
             constexpr iterator operator+(difference_type n) const
             noexcept(noexcept(std::declval<const base_iterator &>() + n)) requires requires(const base_iterator it,
                                                                                             difference_type n) {
@@ -204,6 +214,7 @@ namespace jh::ranges {
                 return iterator(parent_, current_ + n);
             }
 
+            /// @brief Returns an iterator moved backward by the given offset.
             constexpr iterator operator-(difference_type n) const
             noexcept(noexcept(std::declval<const base_iterator &>() - n)) requires requires(const base_iterator it,
                                                                                             difference_type n) {
@@ -212,36 +223,42 @@ namespace jh::ranges {
                 return iterator(parent_, current_ - n);
             }
 
+            /// @brief Returns the distance between two underlying iterators.
             friend constexpr difference_type operator-(const iterator &a, const iterator &b)
             noexcept(noexcept(a.current_ - b.current_)) requires requires(const base_iterator &x,
                                                                           const base_iterator &y) { x - y; } {
                 return a.current_ - b.current_;
             }
 
+            /// @brief Applies the view transform to the element at the given offset.
             constexpr decltype(auto) operator[](difference_type n) const
             noexcept(noexcept(std::declval<const base_iterator &>()[n])) requires requires(const base_iterator it,
                                                                                            difference_type n) { it[n]; } {
                 return std::invoke(parent_->func_, current_[n]);
             }
 
+            /// @brief Checks whether one underlying iterator precedes another.
             friend constexpr bool operator<(const iterator &a, const iterator &b)
             noexcept(noexcept(a.current_ < b.current_)) requires requires(const base_iterator &x,
                                                                           const base_iterator &y) { x < y; } {
                 return a.current_ < b.current_;
             }
 
+            /// @brief Checks whether one underlying iterator follows another.
             friend constexpr bool operator>(const iterator &a, const iterator &b)
             noexcept(noexcept(a.current_ > b.current_)) requires requires(const base_iterator &x,
                                                                           const base_iterator &y) { x > y; } {
                 return a.current_ > b.current_;
             }
 
+            /// @brief Checks whether one iterator does not follow another.
             friend constexpr bool operator<=(const iterator &a, const iterator &b)
             noexcept(noexcept(a.current_ <= b.current_)) requires requires(const base_iterator &x,
                                                                            const base_iterator &y) { x <= y; } {
                 return a.current_ <= b.current_;
             }
 
+            /// @brief Checks whether one iterator does not precede another.
             friend constexpr bool operator>=(const iterator &a, const iterator &b)
             noexcept(noexcept(a.current_ >= b.current_)) requires requires(const base_iterator &x,
                                                                            const base_iterator &y) { x >= y; } {
@@ -249,6 +266,7 @@ namespace jh::ranges {
             }
 
             // --- n + iterator ---
+            /// @brief Returns an iterator at the given offset from another iterator.
             friend constexpr iterator operator+(difference_type n, const iterator &it)
             noexcept(noexcept(n + std::declval<const base_iterator &>())) requires requires(const base_iterator &i,
                                                                                             difference_type n) {
@@ -258,24 +276,28 @@ namespace jh::ranges {
             }
 
             // --- sentinel cmp ---
+            /// @brief Checks whether an iterator has reached a sentinel.
             template<typename Sentinel>
             friend constexpr bool operator==(const iterator &it, const Sentinel &sent)
             noexcept(noexcept(it.current_ == sent)) {
                 return it.current_ == sent;
             }
 
+            /// @brief Checks whether a sentinel has been reached by an iterator.
             template<typename Sentinel>
             friend constexpr bool operator==(const Sentinel &sent, const iterator &it)
             noexcept(noexcept(it == sent)) {
                 return it == sent;
             }
 
+            /// @brief Checks whether an iterator has not reached a sentinel.
             template<typename Sentinel>
             friend constexpr bool operator!=(const iterator &it, const Sentinel &sent)
             noexcept(noexcept(!(it == sent))) {
                 return !(it == sent);
             }
 
+            /// @brief Checks whether a sentinel has not been reached by an iterator.
             template<typename Sentinel>
             friend constexpr bool operator!=(const Sentinel &sent, const iterator &it)
             noexcept(noexcept(!(it == sent))) {
@@ -303,10 +325,12 @@ namespace jh::ranges {
                 return std::ranges::end(base_);
         }
 
+        /// @brief Returns a mutable iterator at the start of the transformed view.
         constexpr auto begin() {
             return std::as_const(*this).begin();
         }
 
+        /// @brief Returns the end iterator or sentinel of the transformed view.
         constexpr auto end() {
             return std::as_const(*this).end();
         }

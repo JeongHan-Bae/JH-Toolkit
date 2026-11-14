@@ -344,13 +344,19 @@ namespace jh::async {
         /// @brief Move constructor transferring coroutine handle ownership.
         slot(slot &&o) noexcept: h(o.h) { o.h = {}; }
 
-        /// @brief Move assignment operator transferring coroutine handle ownership.
+        /// @brief Replaces the owned coroutine frame and transfers ownership from another slot.
         slot &operator=(slot &&o) noexcept {
             if (this != &o) {
+                if (h) h.destroy();
                 h = o.h;
                 o.h = {};
             }
             return *this;
+        }
+
+        /// @brief Destroys the owned coroutine frame when the slot leaves its lifetime domain.
+        ~slot() {
+            if (h) h.destroy();
         }
 
         /// @brief Copy constructor is deleted to prevent duplication of coroutine handle.

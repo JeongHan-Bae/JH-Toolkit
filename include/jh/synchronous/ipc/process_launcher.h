@@ -515,10 +515,12 @@ namespace jh::sync::ipc {
 
             handle &operator=(const handle &) = delete;
 
+            /// @brief Transfers ownership of a process handle from another handle.
             handle(handle &&other) noexcept {
                 move_from(std::move(other));
             }
 
+            /// @brief Replaces this process handle by moving another handle.
             handle &operator=(handle &&other) noexcept {
                 if (this == &other)
                     return *this;

@@ -56,7 +56,9 @@ namespace jh::typed {
 
     /// @brief Trivial empty type representing "no value".
     struct monostate final {
+        /// @brief Compares equal to every other monostate value.
         constexpr bool operator==(monostate) const noexcept { return true; }
+        /// @brief Reports that two monostate values are never unequal.
         constexpr bool operator!=(monostate) const noexcept { return false; }
     };
 

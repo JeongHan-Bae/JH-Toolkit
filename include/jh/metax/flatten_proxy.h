@@ -641,6 +641,7 @@ namespace jh::meta {
     >;
 
     template<std::size_t I, typename Tuple>
+    /// @brief Forwards indexed access to a flatten proxy for ADL-based lookup.
     constexpr decltype(auto) get(const flatten_proxy<Tuple> &p)
             noexcept(noexcept(p.template get<I>())) {
         return p.template get<I>();

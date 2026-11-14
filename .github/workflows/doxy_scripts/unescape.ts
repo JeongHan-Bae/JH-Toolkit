@@ -9,8 +9,8 @@ export function decodeEntities(source: string): string {
     entity => decodeEntity(entity, { level: 'html5' }));
 }
 
-export function unescapeHeaders(root: string): void {
-  const stagedRoot = join(root, '.doxy-build', 'source');
+export function unescapeHeaders(root: string, buildRoot = join(root, '.doxy-build')): void {
+  const stagedRoot = join(buildRoot, 'source');
   rmSync(stagedRoot, { recursive: true, force: true });
   const libraries = ['include', 'simple-cucumber/include', 'simple-cucumber/gherkin/include', 'tiny-test/include'];
   for (const library of libraries) cpSync(join(root, library), join(stagedRoot, library), { recursive: true });

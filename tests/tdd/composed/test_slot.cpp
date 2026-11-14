@@ -578,3 +578,35 @@ namespace test {
     [[maybe_unused]] const tiny_test::session<"test module test_slot case 5"> registration_5{};
 }
 
+namespace test {
+void tiny_test_case_6() {
+    struct frame_probe {
+        int *destroyed;
+        ~frame_probe() { ++*destroyed; }
+    };
+
+    auto make_slot = [](int &destroyed) -> jh::async::slot {
+        frame_probe probe{&destroyed};
+        co_await std::suspend_always{};
+    };
+
+    int destroyed = 0;
+    {
+        auto owned = make_slot(destroyed);
+        owned.spawn();
+    }
+    jh::test::tiny_test::expect(destroyed == 1, "slot destruction releases its coroutine frame");
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Slot owns its coroutine frame">
+    : jh::test::tiny_test::test_definition<"Slot owns its coroutine frame", &::test::tiny_test_case_6> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_slot case 6">
+    : jh::test::tiny_test::session_definition<
+          "test module test_slot case 6", jh::test::tiny_test::test<"Slot owns its coroutine frame">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_slot case 6"> registration_6{};
+}
+

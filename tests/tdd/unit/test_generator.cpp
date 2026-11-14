@@ -37,6 +37,15 @@ namespace test {
             co_yield start;
         }
     }
+
+    struct range_item {
+        int value;
+    };
+
+    jh::async::generator<range_item> range_items() {
+        co_yield range_item{3};
+        co_yield range_item{7};
+    }
 }
 
 // **Simple Test**
@@ -1241,4 +1250,39 @@ struct jh::test::tiny_test::session<"test module test_generator case 26">
       > {};
 namespace test {
     [[maybe_unused]] const tiny_test::session<"test module test_generator case 26"> registration_26{};
+}
+
+namespace test {
+void tiny_test_case_27() {
+    auto range_ = jh::to_range([] { return range_items(); });
+    auto it = range_.begin();
+
+    const auto *first = it.operator->();
+    jh::test::tiny_test::expect(first == it.operator->(), "arrow pointer remains stable before increment");
+    jh::test::tiny_test::expect(it->value == 3, "arrow accesses the first yielded value");
+    jh::test::tiny_test::expect((*it).value == 3, "dereference accesses the first yielded value");
+
+    auto previous = it++;
+    jh::test::tiny_test::expect(previous->value == 3, "postfix returns the prior value");
+    jh::test::tiny_test::expect(previous != range_.end(), "postfix result remains readable");
+    jh::test::tiny_test::expect(it->value == 7, "postfix increment reaches the next value");
+    jh::test::tiny_test::expect((*it).value == 7, "dereference follows postfix increment");
+
+    it++;
+    jh::test::tiny_test::expect(it == range_.end(), "postfix increment reaches the sentinel");
+    jh::test::tiny_test::expect(previous->value == 3, "postfix snapshot retains its value after exhaustion");
+    jh::test::tiny_test::expect_throw<std::runtime_error>([&] { (void)it.operator->(); },
+                                                          "arrow rejects the end iterator");
+}
+}
+template<>
+struct jh::test::tiny_test::test<"Generator range iterator postfix and arrow">
+    : jh::test::tiny_test::test_definition<"Generator range iterator postfix and arrow", &::test::tiny_test_case_27> {};
+template<>
+struct jh::test::tiny_test::session<"test module test_generator case 27">
+    : jh::test::tiny_test::session_definition<
+          "test module test_generator case 27", jh::test::tiny_test::test<"Generator range iterator postfix and arrow">
+      > {};
+namespace test {
+    [[maybe_unused]] const tiny_test::session<"test module test_generator case 27"> registration_27{};
 }

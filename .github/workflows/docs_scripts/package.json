@@ -6,6 +6,7 @@
   "scripts": {
     "presence": "node presence_check.ts",
     "hygiene": "node hygiene_check.ts",
+    "doxygen": "node doxygen_check.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test checks.test.ts"
   },

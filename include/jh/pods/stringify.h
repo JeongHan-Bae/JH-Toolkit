@@ -178,6 +178,7 @@ namespace jh::pod {
     !std::is_enum_v<T> &&
     !std::is_pointer_v<T>;
 
+    /// @brief Writes the elements of a POD array to the output stream.
     template<streamable T, std::size_t N>
     requires(!std::is_same_v<T, char> && // forbid printing char arrays
              requires(std::ostream &os, T v) {
@@ -195,6 +196,7 @@ namespace jh::pod {
     }
 
     template<std::size_t N>
+    /// @brief Writes a POD character array as an escaped JSON string.
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::array<char, N> &str) {
         os << '"';  // start escaped JSON string
         for (std::size_t i = 0; i < N && str[i] != '\0'; ++i) {
@@ -237,18 +239,21 @@ namespace jh::pod {
         return os;
     }
 
+    /// @brief Writes a mutable monostate value to the output stream.
     inline std::ostream &operator<<(std::ostream &os, jh::typed::monostate &) {
         os << "null";
         return os;
     }
 
     template<streamable T1, streamable T2>
+    /// @brief Writes both elements of a POD pair to the output stream.
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::pair<T1, T2> &t) {
         os << "{" << t.first << ", " << t.second << "}";
         return os;
     }
 
     template<streamable T>
+    /// @brief Writes the present value or empty state of a POD optional to the output stream.
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::optional<T> &opt) {
         if (opt.has()) {
             os << opt.ref();
@@ -259,6 +264,7 @@ namespace jh::pod {
     }
 
     template<std::uint16_t N>
+    /// @brief Writes the bits of a flag set to the output stream.
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::bitflags<N> &flags) {
         auto bytes = jh::pod::to_bytes(flags);
         std::ios_base::fmtflags fmt = os.flags();
@@ -283,6 +289,7 @@ namespace jh::pod {
         return os;
     }
 
+    /// @brief Writes the bytes of a byte view in Base64 form.
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::bytes_view bv) {
         // empty view should print as base64''
         os << "base64'";
@@ -328,6 +335,7 @@ namespace jh::pod {
     }
 
     template<streamable T>
+    /// @brief Writes the elements of a span to the output stream.
     inline std::ostream &operator<<(std::ostream &os, const span<T> &sp) {
         os << "span<" << macro::type_name<T>() << ">[";
         for (std::size_t i = 0; i < sp.size(); ++i) {
@@ -338,6 +346,7 @@ namespace jh::pod {
         return os;
     }
 
+    /// @brief Writes the characters of a string view to the output stream.
     inline std::ostream &operator<<(std::ostream &os, const string_view &sv) {
         os << "string_view\"";
         const auto buffer = std::string_view(sv);
@@ -347,6 +356,7 @@ namespace jh::pod {
     }
 
     template<streamable_pod Pod>
+    /// @brief Converts a supported POD value to its string representation.
     std::string to_string(const Pod &p) {
         std::ostringstream oss;
         oss << p;
@@ -361,6 +371,7 @@ namespace jh::pod {
     }
 
     template<streamable... Ts>
+    /// @brief Writes the elements of a POD tuple to the output stream.
     inline std::ostream &operator<<(std::ostream &os, const jh::pod::tuple<Ts...> &t) {
         constexpr std::size_t N = sizeof...(Ts);
         os << "(";
@@ -377,6 +388,7 @@ namespace jh::pod {
 } // namespace jh::pod
 
 namespace jh::typed {
+    /// @brief Writes a const monostate value to the output stream.
     inline std::ostream &operator<<(std::ostream &os, const jh::typed::monostate &) {
         os << "null";
         return os;

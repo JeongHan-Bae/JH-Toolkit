@@ -67,6 +67,7 @@
 #include <cstdint>
 #include "jh/pods/array.h"
 #include "jh/pods/string_view.h"
+#include "jh/detail/base64_common.h"
 #include "jh/metax/hash.h"
 #include "jh/macros/platform.h"
 
@@ -651,7 +652,8 @@ namespace jh::meta {
          * @return true if valid Base64, false otherwise.
          */
         [[nodiscard]] constexpr bool is_base64() const noexcept {
-            return pod_view().is_base64();
+            if (size() == 0) return true;
+            return jh::detail::base64_common::is_base64(storage.data, size());
         }
 
         /**
@@ -660,7 +662,8 @@ namespace jh::meta {
          * @return true if valid Base64URL, false otherwise.
          */
         [[nodiscard]] constexpr bool is_base64url() const noexcept {
-            return pod_view().is_base64url();
+            if (size() == 0) return true;
+            return jh::detail::base64_common::is_base64url(storage.data, size());
         }
 
         /**

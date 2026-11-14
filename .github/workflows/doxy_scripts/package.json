@@ -9,6 +9,7 @@
     "build": "node build.ts",
     "generate": "node generate_doxyfile.ts",
     "unescape": "node unescape.ts",
+    "check-documentation": "node documentation_check.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test doxy.test.ts"
   },

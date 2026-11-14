@@ -7,6 +7,28 @@ import { runInNewContext } from 'node:vm';
 import { renderDoxyfile, renderPage, repositoryName } from './doxyfile.ts';
 import { decodeEntities, unescapeHeaders } from './unescape.ts';
 import { libraryVersions } from './metadata_version.ts';
+import { undocumentedTypesAndFunctions } from './documentation_check.ts';
+
+test('Doxygen check includes types and functions, including member and friend functions', () => {
+  const sourceRoot = '/tmp/check/source';
+  const output = [
+    '/tmp/check/source/include/jh/example.h:10: warning: Compound example is not documented.',
+    '/tmp/check/source/include/jh/example.h:12: warning: Member try_lock() noexcept (function) of struct example is not documented.',
+    '/tmp/check/source/include/jh/example.h:13: warning: Member operator==(const example &, const example &) (friend) of struct example is not documented.',
+    '/tmp/check/source/include/jh/example.h:14: warning: Member free_function() (function) of namespace jh is not documented.',
+    '/tmp/check/source/include/jh/example.h:15: warning: Member value (variable) of struct example is not documented.',
+    '/tmp/check/source/include/jh/example.h:16: warning: Member alias (typedef) of struct example is not documented.',
+    '/tmp/check/source/include/jh/example.h:17: warning: Member MACRO (macro definition) of file example.h is not documented.',
+    '/tmp/check/source/include/jh/example.h:13: warning: Namespace example is not documented.',
+    '/other/include/jh/example.h:14: warning: Member other() of struct example is not documented.',
+  ].join('\n');
+  const issues = undocumentedTypesAndFunctions(output, sourceRoot);
+  strictEqual(issues.length, 4);
+  strictEqual(issues[0]?.path, 'include/jh/example.h');
+  strictEqual(issues[0]?.kind, 'type');
+  strictEqual(issues[1]?.line, 12);
+  strictEqual(issues[1]?.kind, 'function');
+});
 
 test('Doxyfile markers are substituted and required', () => {
   strictEqual(renderDoxyfile('PROJECT_NUMBER=__VERSION__\nPROJECT_BRIEF=__DESCRIPTION__\nGENERATE_HTML=__GENERATE_HTML__\nGENERATE_XML=__GENERATE_XML__\nINPUT=__SOURCE_ROOTS__\n', {

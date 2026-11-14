@@ -13,6 +13,15 @@ namespace {
     static_assert(literal_expression.valid);
     static_assert(literal_expression.parameter_count == 0);
 
+    constexpr auto parameter_expression = parseExpression<"before <int> after">();
+    static_assert(parameter_expression.valid);
+    static_assert(parameter_expression.token_count == 3);
+    static_assert(parameter_expression.tokens[1].offset == 8);
+    static_assert(parameter_expression.tokens[1].length == 3);
+
+    constexpr auto missing_close = parseExpression<"before <int">();
+    static_assert(!missing_close.valid);
+
     class DuplicateBindingSteps final {
     public:
         void first() {}

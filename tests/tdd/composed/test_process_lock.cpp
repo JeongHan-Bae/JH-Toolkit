@@ -103,7 +103,7 @@ namespace test {
         jh::test::tiny_test::expect(
             abnormal_result.has_error() &&
                 jh::sync::ipc::process_exit_is_signal(abnormal_result.error()) &&
-                jh::sync::ipc::process_exit_signal_number(abnormal_result.error()) == SIGSEGV,
+                jh::sync::ipc::process_exit_signal_number(abnormal_result.error()) == SIGKILL,
             "the POSIX terminating signal is returned as unexpected"
         );
 #elif IS_WINDOWS

@@ -4,6 +4,11 @@
 #include "jh/jindallae"
 #include "jh/pod"
 
+static_assert(jh::jindallae::t_str{""}.is_base64());
+static_assert(jh::jindallae::t_str{""}.is_base64url());
+static_assert(!jh::jindallae::t_str{"!"}.is_base64());
+static_assert(!jh::jindallae::t_str{"!"}.is_base64url());
+
 static_assert(jh::jindallae::decode_base64<"SGVsbG8=">() ==
               jh::pod::array<std::uint8_t, 5>{{'H', 'e', 'l', 'l', 'o'}});
 static_assert(jh::jindallae::decode_base64url<"SGVsbG8=">() ==

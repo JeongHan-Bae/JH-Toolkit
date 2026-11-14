@@ -163,11 +163,13 @@ namespace jh::ranges {
     template<typename T>
     inline constexpr bool is_zip_proxy_v = is_zip_proxy<T>::value;
 
+    /// @brief Derives the value type stored by a zipped reference element.
     template<typename T>
     struct zip_proxy_value_tuple final {
         using type = std::unwrap_reference_t<std::remove_cvref_t<T>>;
     };
 
+    /// @brief Derives a tuple of value types from nested zipped reference elements.
     template<typename... Ts>
     struct zip_proxy_value_tuple<class zip_reference_proxy<Ts...>> final {
         using type = std::tuple<
@@ -231,6 +233,7 @@ namespace jh::ranges {
         }
 
     public:
+        /// @brief Copies the referenced elements into a value tuple.
         constexpr operator zip_proxy_value_tuple_t<zip_reference_proxy>() // NOLINT
                 const & {
             return jh::meta::adl_apply([](auto const&... e) {
@@ -238,6 +241,7 @@ namespace jh::ranges {
             }, elems);
         }
 
+        /// @brief Moves the referenced elements into a value tuple.
         constexpr operator zip_proxy_value_tuple_t<zip_reference_proxy>() // NOLINT
                 && {
             return jh::meta::adl_apply([](auto&&... e) {
@@ -245,11 +249,13 @@ namespace jh::ranges {
             }, std::move(elems));
         }
 
+        /// @brief Returns the indexed element stored by this lvalue proxy.
         template <std::size_t N>
         constexpr decltype(auto) get() const & noexcept {
             return std::get<N>(elems);
         }
 
+        /// @brief Returns the indexed element stored by this rvalue proxy.
         template <std::size_t N>
         constexpr decltype(auto) get() && noexcept {
             return std::get<N>(std::move(elems));
@@ -361,6 +367,7 @@ namespace jh::ranges {
                                                   std::forward_iterator_tag,
                                                   std::input_iterator_tag>;
 
+        /// @brief Combines the current elements of all underlying iterators into a proxy.
         constexpr reference operator*() const {
             auto packed = tuple_transform([](auto &it) -> decltype(auto) {
                 return detail::wrap_element(*it);
@@ -370,21 +377,25 @@ namespace jh::ranges {
             }, packed);
         }
 
+        /// @brief Advances every underlying iterator by one element.
         constexpr zip_iterator &operator++() {
             jh::meta::adl_apply([](auto &... it) { (++it, ...); }, iters);
             return *this;
         }
 
+        /// @brief Advances a single-pass zip iterator without returning its old state.
         constexpr void operator++(int) requires (!(std::forward_iterator<Iters> && ...)) {
             ++(*this);
         }
 
+        /// @brief Advances a forward zip iterator and returns its old state.
         constexpr zip_iterator operator++(int) requires (std::forward_iterator<Iters> && ...) {
             auto tmp = *this;
             ++(*this);
             return tmp;
         }
 
+        /// @brief Compares zipped positions, using any exhausted component at the end.
         constexpr bool operator==(const zip_iterator &other) const
             requires (std::equality_comparable<Iters> && ...) {
             return [&]<std::size_t... I>(std::index_sequence<I...>) {
@@ -395,11 +406,13 @@ namespace jh::ranges {
             }(std::index_sequence_for<Iters...>{});
         }
 
+        /// @brief Reports whether two zipped iterators differ.
         constexpr bool operator!=(const zip_iterator &other) const
             requires (std::equality_comparable<Iters> && ...) {
             return !(*this == other); // NOLINT
         }
 
+        /// @brief Checks whether any component has reached its corresponding sentinel.
         template<typename... Sentinels>
         constexpr bool operator==(const zip_sentinel<Sentinels...> &s) const {
             return [&]<std::size_t... I>(std::index_sequence<I...>) {
@@ -407,18 +420,21 @@ namespace jh::ranges {
             }(std::index_sequence_for<Iters...>{});
         }
 
+        /// @brief Checks whether every component remains before its sentinel.
         template<typename... Sentinels>
         constexpr bool operator!=(const zip_sentinel<Sentinels...> &s) const {
             return !(*this == s); // NOLINT
         }
     };
 
+    /// @brief Checks whether a sentinel has been reached by a zipped iterator.
     template<typename... Iters, typename... Sentinels>
     constexpr bool operator==(const zip_sentinel<Sentinels...>& s,
                               const zip_iterator<Iters...>& it) {
         return it == s;
     }
 
+    /// @brief Checks whether a zipped iterator remains before the sentinel.
     template<typename... Iters, typename... Sentinels>
     constexpr bool operator!=(const zip_sentinel<Sentinels...>& s,
                               const zip_iterator<Iters...>& it) {
@@ -597,11 +613,13 @@ namespace std {
             : std::integral_constant<std::size_t, sizeof...(Elems)> {
     };
 
+    /// @brief Exposes the standard tuple element type of a zipped reference proxy.
     template<std::size_t I, typename... Elems>
     struct tuple_element<I, jh::ranges::zip_reference_proxy<Elems...>> {
         using type = decltype(std::declval<jh::ranges::zip_reference_proxy<Elems...>>().template get<I>());
     };
 
+    /// @brief Derives a common reference between a zipped proxy and a tuple.
     template<typename... Ts, typename... Us>
     struct [[maybe_unused]] common_reference<
             jh::ranges::zip_reference_proxy<Ts...>,
@@ -612,6 +630,7 @@ namespace std {
                 std::unwrap_reference_t<Us>>...>;
     };
 
+    /// @brief Derives a common reference between a tuple and a zipped proxy.
     template<typename... Ts, typename... Us>
     struct [[maybe_unused]] common_reference<
             std::tuple<Ts...>,
@@ -622,6 +641,7 @@ namespace std {
                 std::unwrap_reference_t<Us>>...>;
     };
 
+    /// @brief Derives a common reference between two zipped proxies.
     template<typename... Ts, typename... Us>
     struct [[maybe_unused]] common_reference<
             jh::ranges::zip_reference_proxy<Ts...>,

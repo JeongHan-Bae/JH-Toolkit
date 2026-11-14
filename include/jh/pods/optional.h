@@ -71,6 +71,7 @@ namespace jh::pod {
      */
     template<cv_free_pod_like T>
     struct alignas(alignof(T)) optional final {
+        /// @brief Stores either an active value or an empty marker in shared storage.
         union storage_type {
             T value;
             std::byte bytes[sizeof(T)];

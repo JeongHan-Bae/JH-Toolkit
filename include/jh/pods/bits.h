@@ -421,6 +421,7 @@ namespace jh::pod {
     template<std::uint16_t N>
     requires (is_native_bitflags<N>)
     [[nodiscard]] constexpr bitflags<N>
+    /// @brief Computes the bitwise union of two flag sets.
     operator|(const bitflags<N>& lhs, const bitflags<N>& rhs) noexcept {
         bitflags<N> out{};
         out.bits = lhs.bits | rhs.bits;
@@ -430,6 +431,7 @@ namespace jh::pod {
     template<std::uint16_t N>
     requires (is_native_bitflags<N>)
     [[nodiscard]] constexpr bitflags<N>
+    /// @brief Computes the bitwise intersection of two flag sets.
     operator&(const bitflags<N>& lhs, const bitflags<N>& rhs) noexcept {
         bitflags<N> out{};
         out.bits = lhs.bits & rhs.bits;
@@ -439,6 +441,7 @@ namespace jh::pod {
     template<std::uint16_t N>
     requires (is_native_bitflags<N>)
     [[nodiscard]] constexpr bitflags<N>
+    /// @brief Computes the bitwise exclusive-or of two flag sets.
     operator^(const bitflags<N>& lhs, const bitflags<N>& rhs) noexcept {
         bitflags<N> out{};
         out.bits = lhs.bits ^ rhs.bits;
@@ -448,6 +451,7 @@ namespace jh::pod {
     template<std::uint16_t N>
     requires (is_native_bitflags<N>)
     [[nodiscard]] constexpr bitflags<N>
+    /// @brief Inverts every bit in a flag set.
     operator~(const bitflags<N>& v) noexcept {
         bitflags<N> out{};
         out.bits = ~v.bits;

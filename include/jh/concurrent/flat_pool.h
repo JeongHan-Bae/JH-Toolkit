@@ -244,6 +244,7 @@ namespace jh::conc {
         template<typename V>
         struct value_factory final {
             template<typename... Args>
+            /// @brief Constructs a value directly from the forwarded arguments.
             static V make(Args &&... args) {
                 return V(std::forward<Args>(args)...);
             }
@@ -268,6 +269,7 @@ namespace jh::conc {
         template<typename T>
         struct value_factory<std::shared_ptr<T>> final {
             template<typename... Args>
+            /// @brief Constructs a shared owner for a value from the forwarded arguments.
             static std::shared_ptr<T> make(Args &&... args) {
                 return std::make_shared<T>(std::forward<Args>(args)...);
             }
@@ -291,6 +293,7 @@ namespace jh::conc {
         template<typename T>
         struct value_factory<std::unique_ptr<T>> final {
             template<typename... Args>
+            /// @brief Constructs a unique owner for a value from the forwarded arguments.
             static std::unique_ptr<T> make(Args &&... args) {
                 return std::make_unique<T>(std::forward<Args>(args)...);
             }

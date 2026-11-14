@@ -8,7 +8,8 @@
 #        * workflow file changes
 #
 # 2. Documentation Hygiene Check
-#    - Ensures public headers satisfy hygiene rules (ASCII-only, copyright, etc.).
+#    - Ensures public headers satisfy hygiene rules (ASCII-only, copyright, etc.)
+#      and reports types and functions that Doxygen considers undocumented.
 #    - Triggered by:
 #        * ANY change under include/jh/** (add / delete / modify)
 #        * workflow file changes
@@ -29,6 +30,7 @@ on:
       - 'docs/**'
       - '.github/workflows/docs-check.yml'
       - '.github/workflows/docs_scripts/**'
+      - '.github/workflows/doxy_scripts/**'
 
   pull_request:
     branches:
@@ -39,6 +41,7 @@ on:
       - 'docs/**'
       - '.github/workflows/docs-check.yml'
       - '.github/workflows/docs_scripts/**'
+      - '.github/workflows/doxy_scripts/**'
 
   workflow_dispatch:
 
@@ -74,6 +77,7 @@ jobs:
           if git diff --name-only "$BASE" "$TARGET" -- \
             .github/workflows/docs-check.yml \
             .github/workflows/docs_scripts \
+            .github/workflows/doxy_scripts \
             | grep -q .; then
             RUN_PRESENCE=true
             RUN_HYGIENE=true
@@ -136,11 +140,22 @@ jobs:
       - name: Install documentation checker dependencies
         run: npm ci --prefix .github/workflows/docs_scripts --no-audit --no-fund
 
+      - name: Install Doxygen checker dependencies
+        run: npm ci --prefix .github/workflows/doxy_scripts --no-audit --no-fund
+
+      - name: Install Doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen
+
       - name: Verify documentation checkers
         run: |
           npm run typecheck --prefix .github/workflows/docs_scripts
           npm test --prefix .github/workflows/docs_scripts
+          npm run typecheck --prefix .github/workflows/doxy_scripts
+          npm test --prefix .github/workflows/doxy_scripts
 
       - name: Public Header Hygiene Check
         run: |
           node .github/workflows/docs_scripts/hygiene_check.ts
+
+      - name: Doxygen Type and Function Documentation Check
+        run: node .github/workflows/docs_scripts/doxygen_check.ts

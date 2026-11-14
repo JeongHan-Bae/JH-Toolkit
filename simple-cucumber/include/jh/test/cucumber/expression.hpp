@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <string_view>
@@ -146,8 +147,9 @@ namespace jh::test::cucumber {
                     return spec;
                 }
 
-                const auto close = text.find('>', cursor + 1);
-                if (close == std::string_view::npos) return spec;
+                const auto close_it = std::ranges::find(text.begin() + cursor + 1, text.end(), '>');
+                if (close_it == text.end()) return spec;
+                const auto close = static_cast<std::size_t>(close_it - text.begin());
 
                 const auto name = text.substr(cursor + 1, close - cursor - 1);
                 if (!is_parameter_type(name)) return spec;

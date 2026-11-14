@@ -1218,10 +1218,13 @@ namespace jh {
          */
         runtime_arr &operator=(const runtime_arr &) = delete;
 
+        /// @brief Returns mutable span access to the array elements.
         [[nodiscard]] std::span<value_type> as_span() noexcept { return {data(), size()}; }
 
+        /// @brief Returns read-only span access to the array elements.
         [[nodiscard]] std::span<const value_type> as_span() const noexcept { return {data(), size()}; }
 
+        /// @brief Reports whether this array uses statically built storage.
         [[maybe_unused]] static bool is_static_built() {
 #ifdef JH_IS_STATIC_BUILD
             return true;
@@ -1297,22 +1300,26 @@ namespace jh {
 
             bool_flat_alloc() = default;
 
+            /// @brief Rebinds this allocator to its supported bool value type.
             template<class U> requires (std::same_as<U, bool>)
             struct rebind {
                 using other = bool_flat_alloc;
             };
 
+            /// @brief Allocates storage for the requested number of bool values.
             [[nodiscard]] bool *allocate(std::size_t n) // NOLINT
             {
                 return new bool[n];
             }
 
+            /// @brief Releases bool storage previously obtained from this allocator.
             void deallocate(bool *p, std::size_t) noexcept // NOLINT
             {
                 delete[] p;
             }
 
             // allocator equality (stateless allocator)
+            /// @brief Reports that stateless bool allocators are interchangeable.
             bool operator==(const bool_flat_alloc &) const noexcept = default;
         };
 
@@ -1513,10 +1520,12 @@ namespace jh {
             std::uint64_t mask_;
 
         public:
+            /// @brief References the bit at the supplied offset within a word.
             bit_ref(std::uint64_t &word, const std::size_t bit)
                     : word_(word), mask_(1ULL << bit) {
             }
 
+            /// @brief Writes a bool value into the referenced bit.
             bit_ref &operator=(bool val) & noexcept {
                 if (val) word_ |= mask_;
                 else word_ &= ~mask_;
@@ -1524,12 +1533,14 @@ namespace jh {
             }
 
             // declared for std::output_iterator
+            /// @brief Writes a bool value through a temporary proxy for output iteration.
             bit_ref &operator=(bool val) const && noexcept {
                 const_cast<bit_ref &>(*this) = val;
                 return // NOLINT
                         const_cast<bit_ref &>(*this);
             }
 
+            /// @brief Reads the referenced bit as a bool value.
             operator bool() // NOLINT
             const {
                 return (word_ & mask_) != 0;
@@ -1562,62 +1573,79 @@ namespace jh {
             using reference = bit_ref;
             using pointer = void;
 
+            /// @brief Creates a mutable bit iterator at the specified array index.
             bit_iterator(runtime_arr *parent, const std::size_t index)
                     : parent_(parent), index_(index) {
             }
 
+            /// @brief Returns a writable proxy for the current bit.
             bit_ref operator*() const { return (*parent_)[index_]; }
 
+            /// @brief Advances to the next bit and returns this iterator.
             bit_iterator &operator++() {
                 ++index_;
                 return *this;
             }
 
+            /// @brief Advances to the next bit and returns the prior iterator.
             bit_iterator operator++(int) {
                 const auto tmp = *this;
                 ++*this;
                 return tmp;
             }
 
+            /// @brief Moves to the previous bit and returns this iterator.
             bit_iterator &operator--() {
                 --index_;
                 return *this;
             }
 
+            /// @brief Moves to the previous bit and returns the prior iterator.
             bit_iterator operator--(int) {
                 const auto tmp = *this;
                 --*this;
                 return tmp;
             }
 
+            /// @brief Advances this bit iterator by the given offset.
             bit_iterator &operator+=(const difference_type n) {
                 index_ += n;
                 return *this;
             }
 
+            /// @brief Moves this bit iterator backward by the given offset.
             bit_iterator &operator-=(const difference_type n) {
                 index_ -= n;
                 return *this;
             }
 
+            /// @brief Returns a bit iterator advanced by the given offset.
             bit_iterator operator+(const difference_type n) const { return {parent_, index_ + n}; }
 
+            /// @brief Returns a bit iterator moved backward by the given offset.
             bit_iterator operator-(const difference_type n) const { return {parent_, index_ - n}; }
 
+            /// @brief Returns the index distance between two bit iterators.
             difference_type operator-(const bit_iterator &other) const {
                 return static_cast<std::ptrdiff_t>(index_ - other.index_); // NOLINT
             }
 
+            /// @brief Compares bit iterator positions for equality.
             bool operator==(const bit_iterator &other) const { return index_ == other.index_; }
 
+            /// @brief Compares bit iterator positions for inequality.
             bool operator!=(const bit_iterator &other) const { return !(*this == other); }
 
+            /// @brief Checks whether this bit iterator precedes another.
             bool operator<(const bit_iterator &other) const { return index_ < other.index_; }
 
+            /// @brief Checks whether this bit iterator does not follow another.
             bool operator<=(const bit_iterator &other) const { return index_ <= other.index_; }
 
+            /// @brief Checks whether this bit iterator follows another.
             bool operator>(const bit_iterator &other) const { return index_ > other.index_; }
 
+            /// @brief Checks whether this bit iterator does not precede another.
             bool operator>=(const bit_iterator &other) const { return index_ >= other.index_; }
         };
 
@@ -1648,65 +1676,82 @@ namespace jh {
             using reference = bit_ref;
             using pointer = void;
 
+            /// @brief Creates a read-only bit iterator at the specified array index.
             bit_const_iterator(const runtime_arr *parent, const std::size_t index)
                     : parent_(parent), index_(index) {
             }
 
+            /// @brief Reads the current bit as a bool value.
             bool operator*() const {
                 const auto word = parent_->raw_data()[index_ / BITS];
                 return (word >> (index_ % BITS)) & 1ULL;
             }
 
+            /// @brief Advances to the next bit and returns this iterator.
             bit_const_iterator &operator++() {
                 ++index_;
                 return *this;
             }
 
+            /// @brief Advances to the next bit and returns the prior iterator.
             bit_const_iterator operator++(int) {
                 const auto tmp = *this;
                 ++*this;
                 return tmp;
             }
 
+            /// @brief Moves to the previous bit and returns this iterator.
             bit_const_iterator &operator--() {
                 --index_;
                 return *this;
             }
 
+            /// @brief Moves to the previous bit and returns the prior iterator.
             bit_const_iterator operator--(int) {
                 const auto tmp = *this;
                 --*this;
                 return tmp;
             }
 
+            /// @brief Advances this bit iterator by the given offset.
             bit_const_iterator &operator+=(const difference_type n) {
                 index_ += n;
                 return *this;
             }
 
+            /// @brief Moves this bit iterator backward by the given offset.
             bit_const_iterator &operator-=(const difference_type n) {
                 index_ -= n;
                 return *this;
             }
 
+            /// @brief Returns a bit iterator advanced by the given offset.
             bit_const_iterator operator+(const difference_type n) const { return {parent_, index_ + n}; }
 
+            /// @brief Returns a bit iterator moved backward by the given offset.
             bit_const_iterator operator-(const difference_type n) const { return {parent_, index_ - n}; }
 
+            /// @brief Returns the index distance between two bit iterators.
             difference_type operator-(const bit_const_iterator &other) const {
                 return static_cast<std::ptrdiff_t>(index_ - other.index_); // NOLINT
             }
 
+            /// @brief Compares bit iterator positions for equality.
             bool operator==(const bit_const_iterator &other) const { return index_ == other.index_; }
 
+            /// @brief Compares bit iterator positions for inequality.
             bool operator!=(const bit_const_iterator &other) const { return !(*this == other); }
 
+            /// @brief Checks whether this bit iterator precedes another.
             bool operator<(const bit_const_iterator &other) const { return index_ < other.index_; }
 
+            /// @brief Checks whether this bit iterator does not follow another.
             bool operator<=(const bit_const_iterator &other) const { return index_ <= other.index_; }
 
+            /// @brief Checks whether this bit iterator follows another.
             bool operator>(const bit_const_iterator &other) const { return index_ > other.index_; }
 
+            /// @brief Checks whether this bit iterator does not precede another.
             bool operator>=(const bit_const_iterator &other) const { return index_ >= other.index_; }
         };
 
@@ -2112,6 +2157,7 @@ namespace jh {
         /// @brief Copy assignment deleted &mdash; bit array is non-copyable by design.
         runtime_arr &operator=(const runtime_arr &) = delete;
 
+        /// @brief Reports whether this specialization uses statically built storage.
         [[maybe_unused]] static bool is_static_built();
     };
 

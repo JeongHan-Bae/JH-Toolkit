@@ -413,12 +413,16 @@ namespace jh::meta {
             K key;       ///< Canonical key.
             V value;     ///< Stored value.
 
+            /// @brief Orders entries by their stored hash.
             constexpr bool operator<(const entry &rhs) const noexcept { return hash < rhs.hash; }
 
+            /// @brief Compares entries by their stored hash.
             constexpr bool operator==(const entry &rhs) const noexcept { return hash == rhs.hash; }
 
+            /// @brief Compares an entry hash against a raw hash.
             friend constexpr bool operator<(const entry &lhs, std::size_t rhs_hash) noexcept { return lhs.hash < rhs_hash; }
 
+            /// @brief Compares a raw hash against an entry hash.
             friend constexpr bool operator<(std::size_t lhs_hash, const entry &rhs) noexcept { return lhs_hash < rhs.hash; }
         };
 

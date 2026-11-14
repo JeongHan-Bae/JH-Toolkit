@@ -343,11 +343,14 @@ namespace jh::ranges {
         using sentinel = decltype(std::declval<Seq &>().end());
         using iterator = detail::completed_iterator<inner_iterator, sentinel>;
 
+        /// @brief Adapts the forwarded sequence for range iteration.
         explicit range_adaptor(Seq &&s)
                 : seq_(traits::wrap(std::forward<Seq>(s))) {}
 
+        /// @brief Returns an iterator at the start of the adapted sequence.
         auto begin() noexcept(noexcept(get().begin())) { return iterator(get().begin()); }
 
+        /// @brief Returns an iterator or sentinel at the end of the adapted sequence.
         auto end() noexcept(noexcept(get().end())) {
             if constexpr (std::same_as<inner_iterator, sentinel>)
                 return iterator(get().end());

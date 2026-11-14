@@ -524,8 +524,10 @@ namespace jh::radix {
 
         frozen_radix_tree &operator=(const frozen_radix_tree &) = delete;
 
+        /// @brief Moves a frozen radix tree into a new owner.
         frozen_radix_tree(frozen_radix_tree &&) noexcept = default;
 
+        /// @brief Replaces this frozen radix tree by moving another.
         frozen_radix_tree &operator=(frozen_radix_tree &&) noexcept = default;
 
         /// @brief Returns the number of literal bytes stored in the tree's pool.
@@ -607,8 +609,10 @@ namespace jh::radix {
 
         radix_tree_builder &operator=(const radix_tree_builder &) = delete;
 
+        /// @brief Moves a radix tree builder into a new owner.
         radix_tree_builder(radix_tree_builder &&) = default;
 
+        /// @brief Replaces this radix tree builder by moving another.
         radix_tree_builder &operator=(radix_tree_builder &&) = default;
 
         /// @brief Appends a pattern with a movable value; registration is not thread-safe.

@@ -233,10 +233,12 @@ namespace jh::async {
             std::optional<value_type> current_value;
             bool is_begin = false;
 
+            /// @brief Binds this input iterator to a generator before its first increment.
             explicit iterator(generator &g) : gen(g), is_begin(true) {}
 
             iterator() = default;
 
+            /// @brief Advances the generator and caches its next yielded value.
             iterator &operator++() {
                 begin_check();
                 if (gen && gen->get().next()) current_value = gen->get().value();
@@ -247,25 +249,30 @@ namespace jh::async {
                 return *this;
             }
 
+            /// @brief Advances the generator and returns its previous iterator state.
             iterator operator++(int) {
                 iterator tmp = *this;
                 ++*this;
                 return tmp;
             }
 
+            /// @brief Returns the current yielded value, throwing at the end.
             const value_type &operator*() {
                 begin_check();
                 if (!current_value) throw std::runtime_error("Dereferencing end iterator");
                 return *current_value;
             }
 
+            /// @brief Returns a pointer to the current yielded value.
             const value_type *operator->() { return &**this; }
 
+            /// @brief Compares generator iterators by ownership or exhausted state.
             bool operator==(const iterator &other) const {
                 return (!gen && !other.gen) ||
                        (gen && other.gen && std::addressof(gen->get()) == std::addressof(other.gen->get()));
             }
 
+            /// @brief Reports whether two generator iterators differ.
             bool operator!=(const iterator &other) const {
                 return !(*this == other); // NOLINT
             }
@@ -1056,10 +1063,12 @@ namespace jh::async {
     public:
         using generator_factory_t = std::function<generator<T>()>;
 
+        /// @brief Stores the factory used to create a fresh generator for each traversal.
         explicit generator_range(generator_factory_t factory)
                 : factory_(std::move(factory)) {
         }
 
+        /// @brief Single-pass iterator over a generator created by the range factory.
         class iterator final {
         public:
             using value_type = T;
@@ -1084,66 +1093,96 @@ namespace jh::async {
             /// @brief Move-assigns an <code>iterator</code>, transferring ownership of the underlying generator.
             iterator &operator=(iterator &&) noexcept = default;
 
+            /// @brief Creates and primes an iterator from a generator factory.
             explicit iterator(generator_factory_t factory)
                     : gen_(std::make_unique<generator<T> >(factory())) {
                 ++(*this); // prime
             }
 
+            /// @brief Advances to the next yielded value or marks the iterator exhausted.
             iterator &operator++() {
                 if (gen_) {
-                    if (!gen_->next() || gen_->done() || !gen_->value().has_value()) {
+                    if (!gen_->next() || gen_->done()) {
                         gen_.reset(); // Stop: no more values
+                        current_value_.reset();
+                    } else {
+                        auto value = gen_->value();
+                        if (value) current_value_.emplace(*value);
+                        else {
+                            gen_.reset();
+                            current_value_.reset();
+                        }
                     }
                 }
                 return *this;
             }
 
+            /**
+             * @brief Advances this single-pass iterator and returns its prior value.
+             * @return A detached iterator holding the previous yielded value.
+             * @note The returned iterator does not own or advance the generator.
+             */
             iterator operator++(int) {
-                iterator tmp = *this;
+                iterator previous;
+                if (current_value_) previous.current_value_.emplace(*current_value_);
                 ++(*this);
-                return tmp;
+                return previous;
             }
 
+            /// @brief Returns the current yielded value, throwing at the end.
             value_type operator*() const {
-                if (!gen_ || !gen_->value().has_value())
+                if (!current_value_)
                     throw std::runtime_error("Dereferencing end iterator");
-                return *gen_->value();
+                return *current_value_;
             }
 
+            /**
+             * @brief Returns a pointer to the cached current value.
+             * @return A pointer valid until the iterator advances or is destroyed.
+             * @throws std::runtime_error if the iterator is exhausted.
+             */
             pointer operator->() const {
-                return &**this;
+                if (!current_value_)
+                    throw std::runtime_error("Dereferencing end iterator");
+                return std::addressof(*current_value_);
             }
 
+            /// @brief Compares active generator identity and detached or exhausted states.
             friend bool operator==(const iterator &lhs, const iterator &rhs) {
-                // both exhausted
-                if (!lhs.gen_ && !rhs.gen_) return true;
-                // one is exhausted, one is not
+                if (std::addressof(lhs) == std::addressof(rhs)) return true;
+                if (!lhs.gen_ && !rhs.gen_)
+                    return !lhs.current_value_ && !rhs.current_value_;
                 if (!lhs.gen_ || !rhs.gen_) return false;
-                // fallback: pointer identity
                 return lhs.gen_.get() == rhs.gen_.get();
             }
 
+            /// @brief Reports whether two generator iterators differ.
             friend bool operator!=(const iterator &lhs, const iterator &rhs) {
                 return !(lhs == rhs); // NOLINT
             }
 
             // Support std::default_sentinel_t as the end
+            /// @brief Checks whether the iterator has reached the default sentinel.
             friend bool operator==(const iterator &it, std::default_sentinel_t) {
-                return !it.gen_;
+                return !it.gen_ && !it.current_value_;
             }
 
+            /// @brief Checks whether the iterator has not reached the default sentinel.
             friend bool operator!=(const iterator &it, std::default_sentinel_t s) {
                 return !(it == s); // NOLINT
             }
 
         private:
             std::unique_ptr<generator<T> > gen_;
+            std::optional<value_type> current_value_;
         };
 
+        /// @brief Creates a fresh generator and returns its first iterator.
         iterator begin() const {
             return iterator{factory_};
         }
 
+        /// @brief Returns the default sentinel representing the end of iteration.
         [[nodiscard]] static std::default_sentinel_t end() noexcept {
             return {};
         }

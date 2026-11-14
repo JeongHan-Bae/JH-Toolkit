@@ -285,6 +285,7 @@ namespace jh::sync::ipc {
         }
 
     public:
+        /// @brief Returns the process-wide condition variable instance.
         static process_cond_var &instance() {
             static process_cond_var inst;
             return inst;

@@ -955,6 +955,7 @@ namespace jh {
         /// @brief Enables <code>find(const char*)</code> or <code>find(const char (&lit)[N])</code> in hash-based containers.
         using is_transparent [[maybe_unused]] = void;
 
+        /// @brief Hashes the supplied value for immutable string lookup.
         template<typename U>
         requires immutable_str_compatible<U, AutoTrim>
         std::size_t operator()(const U &value) const noexcept {
@@ -1040,6 +1041,7 @@ namespace jh {
         /// @brief Enables <code>find(const char*)</code> or <code>find(const char (&lit)[N])</code> in hash-based containers.
         using is_transparent [[maybe_unused]] = void;
 
+        /// @brief Compares two values for immutable string equality.
         template<typename U, typename V>
         requires (immutable_str_compatible<U, AutoTrim> && immutable_str_compatible<V, AutoTrim> &&
                   (std::same_as<std::remove_cvref_t<U>, shared_str_ptr<AutoTrim>> ||
